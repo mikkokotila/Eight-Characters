@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: eight-pillars
+    name: eight-characters
     runtime: docker
     region: frankfurt
     plan: starter
