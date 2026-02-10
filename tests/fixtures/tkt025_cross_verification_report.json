@@ -1,0 +1,632 @@
+{
+  "total": 1000,
+  "mismatch_count": 42,
+  "mismatch_ratio": 0.042,
+  "examples": [
+    {
+      "input": {
+        "year": 2023,
+        "month": 1,
+        "day": 6,
+        "hour": 23,
+        "minute": 39,
+        "second": 16
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "壬寅",
+        "month": "癸丑",
+        "day": "甲子",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "壬寅",
+        "month": "癸丑",
+        "day": "甲子",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1973,
+        "month": 12,
+        "day": 18,
+        "hour": 23,
+        "minute": 2,
+        "second": 7
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "癸丑",
+        "month": "甲子",
+        "day": "戊子",
+        "hour": "壬子"
+      },
+      "reference": {
+        "year": "癸丑",
+        "month": "甲子",
+        "day": "戊子",
+        "hour": "甲子"
+      }
+    },
+    {
+      "input": {
+        "year": 1990,
+        "month": 6,
+        "day": 8,
+        "hour": 23,
+        "minute": 11,
+        "second": 55
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "庚午",
+        "month": "壬午",
+        "day": "甲辰",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "庚午",
+        "month": "壬午",
+        "day": "甲辰",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1988,
+        "month": 9,
+        "day": 28,
+        "hour": 23,
+        "minute": 44,
+        "second": 23
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "戊辰",
+        "month": "辛酉",
+        "day": "丙戌",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "戊辰",
+        "month": "辛酉",
+        "day": "丙戌",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 2026,
+        "month": 1,
+        "day": 24,
+        "hour": 23,
+        "minute": 41,
+        "second": 59
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "乙巳",
+        "month": "己丑",
+        "day": "戊戌",
+        "hour": "壬子"
+      },
+      "reference": {
+        "year": "乙巳",
+        "month": "己丑",
+        "day": "戊戌",
+        "hour": "甲子"
+      }
+    },
+    {
+      "input": {
+        "year": 2023,
+        "month": 4,
+        "day": 7,
+        "hour": 23,
+        "minute": 53,
+        "second": 13
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "癸卯",
+        "month": "丙辰",
+        "day": "乙未",
+        "hour": "丙子"
+      },
+      "reference": {
+        "year": "癸卯",
+        "month": "丙辰",
+        "day": "乙未",
+        "hour": "戊子"
+      }
+    },
+    {
+      "input": {
+        "year": 1999,
+        "month": 2,
+        "day": 21,
+        "hour": 23,
+        "minute": 32,
+        "second": 50
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "己卯",
+        "month": "丙寅",
+        "day": "甲辰",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "己卯",
+        "month": "丙寅",
+        "day": "甲辰",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1954,
+        "month": 10,
+        "day": 1,
+        "hour": 23,
+        "minute": 38,
+        "second": 22
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "甲午",
+        "month": "癸酉",
+        "day": "庚寅",
+        "hour": "丙子"
+      },
+      "reference": {
+        "year": "甲午",
+        "month": "癸酉",
+        "day": "庚寅",
+        "hour": "戊子"
+      }
+    },
+    {
+      "input": {
+        "year": 2033,
+        "month": 11,
+        "day": 16,
+        "hour": 23,
+        "minute": 59,
+        "second": 16
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "癸丑",
+        "month": "癸亥",
+        "day": "辛未",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "癸丑",
+        "month": "癸亥",
+        "day": "辛未",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 1957,
+        "month": 12,
+        "day": 28,
+        "hour": 23,
+        "minute": 13,
+        "second": 6
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "丁酉",
+        "month": "壬子",
+        "day": "甲戌",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "丁酉",
+        "month": "壬子",
+        "day": "甲戌",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1989,
+        "month": 11,
+        "day": 17,
+        "hour": 23,
+        "minute": 40,
+        "second": 15
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "己巳",
+        "month": "乙亥",
+        "day": "辛巳",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "己巳",
+        "month": "乙亥",
+        "day": "辛巳",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 1975,
+        "month": 6,
+        "day": 25,
+        "hour": 23,
+        "minute": 23,
+        "second": 34
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "乙卯",
+        "month": "壬午",
+        "day": "壬寅",
+        "hour": "庚子"
+      },
+      "reference": {
+        "year": "乙卯",
+        "month": "壬午",
+        "day": "壬寅",
+        "hour": "壬子"
+      }
+    },
+    {
+      "input": {
+        "year": 2025,
+        "month": 1,
+        "day": 15,
+        "hour": 23,
+        "minute": 41,
+        "second": 24
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "甲辰",
+        "month": "丁丑",
+        "day": "甲申",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "甲辰",
+        "month": "丁丑",
+        "day": "甲申",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1952,
+        "month": 3,
+        "day": 27,
+        "hour": 23,
+        "minute": 57,
+        "second": 51
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "壬辰",
+        "month": "癸卯",
+        "day": "壬申",
+        "hour": "庚子"
+      },
+      "reference": {
+        "year": "壬辰",
+        "month": "癸卯",
+        "day": "壬申",
+        "hour": "壬子"
+      }
+    },
+    {
+      "input": {
+        "year": 1960,
+        "month": 7,
+        "day": 15,
+        "hour": 23,
+        "minute": 34,
+        "second": 28
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "庚子",
+        "month": "癸未",
+        "day": "甲辰",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "庚子",
+        "month": "癸未",
+        "day": "甲辰",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 1999,
+        "month": 8,
+        "day": 4,
+        "hour": 23,
+        "minute": 34,
+        "second": 30
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "己卯",
+        "month": "辛未",
+        "day": "戊子",
+        "hour": "壬子"
+      },
+      "reference": {
+        "year": "己卯",
+        "month": "辛未",
+        "day": "戊子",
+        "hour": "甲子"
+      }
+    },
+    {
+      "input": {
+        "year": 2036,
+        "month": 10,
+        "day": 5,
+        "hour": 23,
+        "minute": 17,
+        "second": 15
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "丙辰",
+        "month": "丁酉",
+        "day": "乙巳",
+        "hour": "丙子"
+      },
+      "reference": {
+        "year": "丙辰",
+        "month": "丁酉",
+        "day": "乙巳",
+        "hour": "戊子"
+      }
+    },
+    {
+      "input": {
+        "year": 2043,
+        "month": 2,
+        "day": 14,
+        "hour": 23,
+        "minute": 52,
+        "second": 13
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "癸亥",
+        "month": "甲寅",
+        "day": "戊子",
+        "hour": "壬子"
+      },
+      "reference": {
+        "year": "癸亥",
+        "month": "甲寅",
+        "day": "戊子",
+        "hour": "甲子"
+      }
+    },
+    {
+      "input": {
+        "year": 2038,
+        "month": 6,
+        "day": 23,
+        "hour": 23,
+        "minute": 51,
+        "second": 58
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "戊午",
+        "month": "戊午",
+        "day": "辛未",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "戊午",
+        "month": "戊午",
+        "day": "辛未",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 2004,
+        "month": 12,
+        "day": 12,
+        "hour": 23,
+        "minute": 42,
+        "second": 58
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "甲申",
+        "month": "丙子",
+        "day": "乙丑",
+        "hour": "丙子"
+      },
+      "reference": {
+        "year": "甲申",
+        "month": "丙子",
+        "day": "乙丑",
+        "hour": "戊子"
+      }
+    },
+    {
+      "input": {
+        "year": 1974,
+        "month": 9,
+        "day": 12,
+        "hour": 23,
+        "minute": 28,
+        "second": 49
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "甲寅",
+        "month": "癸酉",
+        "day": "丙辰",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "甲寅",
+        "month": "癸酉",
+        "day": "丙辰",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 2030,
+        "month": 7,
+        "day": 2,
+        "hour": 23,
+        "minute": 12,
+        "second": 51
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "庚戌",
+        "month": "壬午",
+        "day": "戊戌",
+        "hour": "壬子"
+      },
+      "reference": {
+        "year": "庚戌",
+        "month": "壬午",
+        "day": "戊戌",
+        "hour": "甲子"
+      }
+    },
+    {
+      "input": {
+        "year": 2010,
+        "month": 2,
+        "day": 25,
+        "hour": 23,
+        "minute": 29,
+        "second": 10
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "庚寅",
+        "month": "戊寅",
+        "day": "丙午",
+        "hour": "戊子"
+      },
+      "reference": {
+        "year": "庚寅",
+        "month": "戊寅",
+        "day": "丙午",
+        "hour": "庚子"
+      }
+    },
+    {
+      "input": {
+        "year": 1957,
+        "month": 4,
+        "day": 7,
+        "hour": 23,
+        "minute": 2,
+        "second": 55
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "丁酉",
+        "month": "甲辰",
+        "day": "己酉",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "丁酉",
+        "month": "甲辰",
+        "day": "己酉",
+        "hour": "丙子"
+      }
+    },
+    {
+      "input": {
+        "year": 2018,
+        "month": 10,
+        "day": 9,
+        "hour": 23,
+        "minute": 52,
+        "second": 24
+      },
+      "mismatch_fields": [
+        "hour"
+      ],
+      "ours": {
+        "year": "戊戌",
+        "month": "壬戌",
+        "day": "甲戌",
+        "hour": "甲子"
+      },
+      "reference": {
+        "year": "戊戌",
+        "month": "壬戌",
+        "day": "甲戌",
+        "hour": "丙子"
+      }
+    }
+  ]
+}

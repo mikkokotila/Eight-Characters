@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BaZi — Neljä pilaria</title>
+<link rel="stylesheet" href="/static/style.css?v={{ app_version }}">
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     VIEW 1 — INPUT FORM
+     ═══════════════════════════════════════════════════ -->
+<div id="input-view" class="input-container">
+
+  <div class="input-header">
+    <div class="language-switch">
+      <button type="button" class="lang-btn" data-lang="fi">FI</button>
+      <button type="button" class="lang-btn" data-lang="en">EN</button>
+    </div>
+    <h1 data-i18n="heading">Neljä pilaria</h1>
+    <div class="title" data-i18n="title">Kahdeksan merkkiä</div>
+  </div>
+
+  <form id="chart-form">
+
+    <!-- Date, Time, Location -->
+    <div class="datetime-row">
+      <div class="field-group">
+        <label for="date" data-i18n="label_date">Syntymäpäivä</label>
+        <input type="date" id="date" name="date" required>
+      </div>
+      <div class="field-group">
+        <label for="time" data-i18n="label_time">Kellonaika</label>
+        <input type="time" id="time" name="time" required>
+      </div>
+      <div class="field-group location-group">
+        <label for="location" data-i18n="label_location">Syntymäpaikka</label>
+        <div class="location-search-wrap">
+          <input type="text" id="location" name="location" placeholder="Kaupunki" data-i18n-placeholder="placeholder_city" autocomplete="off" required>
+        </div>
+        <div id="location-suggestions" class="location-suggestions hidden"></div>
+        <div id="location-status" class="location-status" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="submit-row">
+      <button type="submit" class="submit-btn" id="create-chart-btn" data-i18n="create_chart" disabled>Luo kartta</button>
+    </div>
+
+  </form>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     VIEW 2 — CHART (hidden initially)
+     ═══════════════════════════════════════════════════ -->
+<div id="chart-view" class="chart-container hidden">
+
+  <div class="chart-header">
+    <h1 data-i18n="heading">Neljä pilaria</h1>
+    <div class="name" id="chart-date"></div>
+  </div>
+
+  <div class="pillars" id="pillars"></div>
+
+  <div class="back-row">
+    <button id="back-btn" class="back-btn" data-i18n="back">← Takaisin</button>
+  </div>
+
+</div>
+
+<script src="/static/localization.js?v={{ app_version }}"></script>
+<script src="/static/app.js?v={{ app_version }}"></script>
+</body>
+</html>

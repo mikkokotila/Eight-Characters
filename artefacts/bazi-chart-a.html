@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BaZi — Neljä pilaria</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Manrope:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F0E8;
+    --text: #2A2520;
+    --text-muted: #7A7168;
+    --text-light: #9A9389;
+
+    --metal-bg: #C8C2B8;
+    --metal-text: #33302C;
+    --fire-bg: #C4857A;
+    --fire-text: #2E150F;
+    --wood-bg: #7A9E72;
+    --wood-text: #0F200D;
+    --earth-bg: #BBA862;
+    --earth-text: #2A2610;
+    --water-bg: #7A8FA0;
+    --water-text: #0F1A22;
+
+    /* Gua line dimensions — single source of truth */
+    --line-w: 54px;
+    --line-h: 5px;
+    --line-gap: 6px;
+    --break-gap: 10px;
+    --line-r: 1px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Manrope', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+  }
+
+  .chart-container { max-width: 960px; width: 100%; }
+
+  .chart-header {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .chart-header h1 {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 14px;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 8px;
+  }
+
+  .chart-header .name {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-size: 32px;
+    color: var(--text);
+    letter-spacing: 1px;
+  }
+
+  .pillars {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 28px;
+  }
+
+  .pillar {
+    display: flex;
+    flex-direction: column;
+    animation: fadeUp 0.6s ease both;
+  }
+  .pillar:nth-child(1) { animation-delay: 0.5s; }
+  .pillar:nth-child(2) { animation-delay: 0.35s; }
+  .pillar:nth-child(3) { animation-delay: 0.2s; }
+  .pillar:nth-child(4) { animation-delay: 0.05s; }
+
+  .pillar-header { text-align: center; padding-bottom: 16px; }
+
+  .pillar-label {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 400;
+    font-size: 13px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--text-light);
+    margin-bottom: 6px;
+  }
+
+  .pillar-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 300;
+    font-size: 36px;
+    color: var(--text);
+    line-height: 1.1;
+  }
+
+  .pillar-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .card {
+    padding: 24px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    min-height: 180px;
+  }
+
+  .card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 60%);
+    pointer-events: none;
+  }
+
+  .card.stem { border-radius: 14px 14px 3px 3px; }
+  .card.branch { border-radius: 3px 3px 14px 14px; }
+
+  .card.metal { background: var(--metal-bg); color: var(--metal-text); }
+  .card.fire  { background: var(--fire-bg);  color: var(--fire-text); }
+  .card.wood  { background: var(--wood-bg);  color: var(--wood-text); }
+  .card.earth { background: var(--earth-bg); color: var(--earth-text); }
+  .card.water { background: var(--water-bg); color: var(--water-text); }
+
+  /* ===== CSS-drawn gua lines ===== */
+  .gua {
+    display: flex;
+    flex-direction: column;
+    gap: var(--line-gap);
+    align-items: center;
+    opacity: 0.65;
+  }
+
+  /* Solid line */
+  .L {
+    width: var(--line-w);
+    height: var(--line-h);
+    border-radius: var(--line-r);
+    background: currentColor;
+  }
+
+  /* Broken line */
+  .B {
+    width: var(--line-w);
+    height: var(--line-h);
+    background: none;
+    display: flex;
+    justify-content: space-between;
+  }
+  .B::before, .B::after {
+    content: '';
+    width: calc((var(--line-w) - var(--break-gap)) / 2);
+    height: var(--line-h);
+    border-radius: var(--line-r);
+    background: currentColor;
+  }
+
+  /* ===== Text ===== */
+  .element-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-size: 18px;
+    letter-spacing: 0.5px;
+    text-align: center;
+  }
+
+  .animal-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  .animal-element {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 300;
+    font-size: 13px;
+    letter-spacing: 1px;
+    opacity: 0.75;
+    text-align: center;
+    margin-top: -4px;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @media (max-width: 640px) {
+    .pillars { grid-template-columns: repeat(2, 1fr); gap: 20px; }
+    .pillar-value { font-size: 28px; }
+    .card { padding: 20px 14px; min-height: 160px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="chart-container">
+  <div class="chart-header">
+    <h1>Neljä pilaria</h1>
+    <div class="name">14. heinäkuuta 1999 · 04:02</div>
+  </div>
+
+  <div class="pillars">
+
+    <!-- HOUR PILLAR: Xin 辛 Chou 丑 -->
+    <div class="pillar">
+      <div class="pillar-header">
+        <div class="pillar-label">Teon portti</div>
+        <div class="pillar-value">04:02</div>
+      </div>
+      <div class="pillar-cards">
+        <!-- Stem: Yin Metal → Dui ☱ (broken, solid, solid) -->
+        <div class="card metal stem">
+          <div class="gua">
+            <div class="B"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+          </div>
+          <div class="element-name">Yin Metalli</div>
+        </div>
+        <!-- Branch: Ox 丑 → Hex 19 Lin 臨 (Kun over Dui) -->
+        <div class="card earth branch">
+          <div class="gua">
+            <div class="B"></div>
+            <div class="B"></div>
+            <div class="B"></div>
+            <div class="B"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+          </div>
+          <div class="animal-name">Härkä</div>
+          <div class="animal-element">Yin Maa</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- DAY PILLAR: Ding 丁 Mao 卯 -->
+    <div class="pillar">
+      <div class="pillar-header">
+        <div class="pillar-label">Sisäinen valo</div>
+        <div class="pillar-value">14</div>
+      </div>
+      <div class="pillar-cards">
+        <!-- Stem: Yin Fire → Li ☲ (solid, broken, solid) -->
+        <div class="card fire stem">
+          <div class="gua">
+            <div class="L"></div>
+            <div class="B"></div>
+            <div class="L"></div>
+          </div>
+          <div class="element-name">Yin Tuli</div>
+        </div>
+        <!-- Branch: Rabbit 卯 → Hex 57 Xun 巽 (Xun over Xun) -->
+        <div class="card wood branch">
+          <div class="gua">
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="B"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="B"></div>
+          </div>
+          <div class="animal-name">Jänis</div>
+          <div class="animal-element">Yin Puu</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MONTH PILLAR: Xin 辛 Wei 未 -->
+    <div class="pillar">
+      <div class="pillar-header">
+        <div class="pillar-label">Sisäinen vuodenaika</div>
+        <div class="pillar-value">Heinäkuu</div>
+      </div>
+      <div class="pillar-cards">
+        <!-- Stem: Yin Metal → Dui ☱ (broken, solid, solid) -->
+        <div class="card metal stem">
+          <div class="gua">
+            <div class="B"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+          </div>
+          <div class="element-name">Yin Metalli</div>
+        </div>
+        <!-- Branch: Goat 未 → Hex 33 Dun 遁 (Qian over Gen) -->
+        <div class="card earth branch">
+          <div class="gua">
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="B"></div>
+            <div class="B"></div>
+          </div>
+          <div class="animal-name">Vuohi</div>
+          <div class="animal-element">Yin Maa</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- YEAR PILLAR: Ji 己 Mao 卯 -->
+    <div class="pillar">
+      <div class="pillar-header">
+        <div class="pillar-label">Elämän kenttä</div>
+        <div class="pillar-value">1999</div>
+      </div>
+      <div class="pillar-cards">
+        <!-- Stem: Yin Earth → Kun ☷ (broken, broken, broken) -->
+        <div class="card earth stem">
+          <div class="gua">
+            <div class="B"></div>
+            <div class="B"></div>
+            <div class="B"></div>
+          </div>
+          <div class="element-name">Yin Maa</div>
+        </div>
+        <!-- Branch: Rabbit 卯 → Hex 57 Xun 巽 (Xun over Xun) -->
+        <div class="card wood branch">
+          <div class="gua">
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="B"></div>
+            <div class="L"></div>
+            <div class="L"></div>
+            <div class="B"></div>
+          </div>
+          <div class="animal-name">Jänis</div>
+          <div class="animal-element">Yin Puu</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

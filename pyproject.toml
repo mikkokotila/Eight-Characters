@@ -1,0 +1,25 @@
+[build-system]
+requires = ['setuptools>=68', 'wheel']
+build-backend = 'setuptools.build_meta'
+
+[project]
+name = 'eight-characters'
+version = '0.10.2'
+description = 'BaZi Four Pillars chart generator'
+readme = 'README.md'
+requires-python = '>=3.9'
+dependencies = [
+  'fastapi>=0.115.0',
+  'uvicorn>=0.34.0',
+  'jinja2>=3.1.0',
+  'pydantic>=2.0.0',
+  'tzdata>=2024.1',
+  'httpx>=0.27.0',
+  'lunar-python>=1.4.8',
+]
+
+[tool.setuptools.packages.find]
+include = ['eight_characters*']
+
+[tool.setuptools.package-data]
+eight_characters = ['templates/*.html', 'static/*.css', 'static/*.js']

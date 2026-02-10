@@ -1,0 +1,9 @@
+services:
+  eight-characters:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: eight-characters
+    ports:
+      - '8000:8000'
+    restart: unless-stopped
