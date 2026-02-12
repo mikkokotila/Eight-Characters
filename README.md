@@ -62,6 +62,9 @@ Returns:
 - four pillars
 - ambiguity and warning flags
 
+Also available:
+- `POST /api/hidden_stems` to resolve hidden stems from four supplied pillars.
+
 ### 3) Run validation suite
 
 ```bash
@@ -79,20 +82,20 @@ python -m unittest discover -s tests -p 'test_*.py'
 
 ## Engineering and Audit Artifacts
 
-- Main product spec: `astrometrics-spec.md`
-- Task board: `backend-task-tree.md`
-- Execution workboard: `backend-implementation-workboard.md`
+- Main product spec: `artefacts/spec.md`
+- Task board: `artefacts/backend-task-tree.md`
+- Execution workboard: `artefacts/backend-implementation-workboard.md`
 - Phase reports:
-  - `phase1-governance-architecture-baseline.md`
-  - `phase2-time-normalization-core.md`
-  - `phase3-astronomical-computation-kernel.md`
-  - `phase4-boundary-solving-and-pillar-assignment.md`
-  - `phase5-integrity-output-verification.md`
+  - `artefacts/phase1-governance-architecture-baseline.md`
+  - `artefacts/phase2-time-normalization-core.md`
+  - `artefacts/phase3-astronomical-computation-kernel.md`
+  - `artefacts/phase4-boundary-solving-and-pillar-assignment.md`
+  - `artefacts/phase5-integrity-output-verification.md`
 - Final closeout:
-  - `tkt028-limitations-and-warning-behavior.md`
-  - `tkt029-licensing-and-attribution-checklist.md`
-  - `tkt030-release-readiness-audit.md`
+  - `artefacts/tkt028-limitations-and-warning-behavior.md`
+  - `artefacts/tkt029-licensing-and-attribution-checklist.md`
+  - `artefacts/tkt030-release-readiness-audit.md`
 
 ## License and Data
 
-See `tkt029-licensing-and-attribution-checklist.md` for attribution and data-source compliance requirements.
+See `artefacts/tkt029-licensing-and-attribution-checklist.md` for attribution and data-source compliance requirements.

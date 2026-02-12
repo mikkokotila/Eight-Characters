@@ -295,6 +295,26 @@ document.addEventListener('DOMContentLoaded', () => {
       renderChart(chartData);
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
+
+      // Fetch hidden stems in background (non-blocking)
+      const hsPayload = {
+        year_pillar: pillars.year.stem.chinese + pillars.year.branch.chinese,
+        month_pillar: pillars.month.stem.chinese + pillars.month.branch.chinese,
+        day_pillar: pillars.day.stem.chinese + pillars.day.branch.chinese,
+        hour_pillar: pillars.hour.stem.chinese + pillars.hour.branch.chinese,
+      };
+      fetch('/api/hidden_stems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(hsPayload),
+      })
+        .then((r) => r.json())
+        .then((hsData) => {
+          if (hsData.hidden_stems) {
+            populateHiddenStems(hsData.hidden_stems);
+          }
+        })
+        .catch((hsErr) => console.warn('Hidden stems:', hsErr));
     } catch (err) {
       console.error(err);
       setLocationStatus(err.message || t('chart_create_error'), 'is-error');
@@ -305,6 +325,67 @@ document.addEventListener('DOMContentLoaded', () => {
     clearResolvedLocation();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
+  });
+
+  // ── Hidden stems: populate, expand, collapse ──
+
+  const populateHiddenStems = (data) => {
+    const panels = document.querySelectorAll('.hidden-stems-panel');
+    panels.forEach((panel) => {
+      const pillarName = panel.dataset.pillar;
+      const pillarData = data[pillarName];
+      if (!pillarData) return;
+
+      const list = panel.querySelector('.hidden-stems-list');
+      if (!list) return;
+
+      list.innerHTML = pillarData.hidden_stems
+        .map((hs) => {
+          const elementName = t('element_' + hs.element);
+          const qiLabel = t('qi_' + hs.qi_type);
+          return `
+            <div class='hidden-stem-item'>
+              <span class='hidden-stem-dot ${esc(hs.element)}'></span>
+              <span class='hidden-stem-label'>${esc(hs.polarity)} ${esc(elementName)}</span>
+              <span class='hidden-stem-type'>${esc(qiLabel)}</span>
+            </div>`;
+        })
+        .join('');
+    });
+  };
+
+  const expandPanel = (panel, branchCard) => {
+    branchCard.classList.add('is-expanded');
+    panel.classList.add('is-expanded');
+    panel.style.height = panel.scrollHeight + 'px';
+  };
+
+  const collapsePanel = (panel, branchCard) => {
+    panel.style.height = panel.scrollHeight + 'px';
+    panel.offsetHeight; // force reflow
+    panel.classList.remove('is-expanded');
+    branchCard.classList.remove('is-expanded');
+    panel.style.height = '0';
+  };
+
+  document.getElementById('pillars').addEventListener('click', (e) => {
+    const branchCard = e.target.closest('.card.branch');
+    if (!branchCard) return;
+
+    const pillarCards = branchCard.closest('.pillar-cards');
+    if (!pillarCards) return;
+
+    const panel = pillarCards.querySelector('.hidden-stems-panel');
+    if (!panel) return;
+
+    const list = panel.querySelector('.hidden-stems-list');
+    if (!list || !list.children.length) return;
+
+    if (panel.classList.contains('is-expanded')) {
+      collapsePanel(panel, branchCard);
+    } else {
+      expandPanel(panel, branchCard);
+    }
   });
 
   languageButtons.forEach((button) => {
@@ -327,6 +408,8 @@ function renderChart(data) {
   const container = document.getElementById('pillars');
   container.innerHTML = '';
 
+  const pillarKeys = ['hour', 'day', 'month', 'year'];
+
   data.pillars.forEach((p, i) => {
     const pillar = document.createElement('div');
     pillar.className = 'pillar';
@@ -342,10 +425,14 @@ function renderChart(data) {
           <div class='gua'>${renderLines(p.stem.lines)}</div>
           <div class='element-name'>${esc(p.stem.label)}</div>
         </div>
-        <div class='card ${p.branch.element} branch'>
+        <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}'>
           <div class='gua'>${renderLines(p.branch.lines)}</div>
           <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
           <div class='animal-element'>${esc(p.branch.element_label)}</div>
+          <svg class='branch-expand-hint' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>
+        </div>
+        <div class='hidden-stems-panel ${p.branch.element}' data-pillar='${pillarKeys[i]}'>
+          <div class='hidden-stems-list'></div>
         </div>
       </div>
     `;

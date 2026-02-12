@@ -37,5 +37,5 @@ Stored under `tests/fixtures/`, including:
 
 ## Related Reports
 
-- `phase5-integrity-output-verification.md`
-- `tkt030-release-readiness-audit.md`
+- `../artefacts/phase5-integrity-output-verification.md`
+- `../artefacts/tkt030-release-readiness-audit.md`

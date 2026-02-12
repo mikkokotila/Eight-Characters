@@ -64,6 +64,38 @@ Computes solar time and Four Pillars from date, time, and location.
 
 Legacy frontend chart endpoint for existing UI rendering payloads.
 
+### `POST /api/hidden_stems`
+
+Returns hidden stems for the four supplied pillar pairs.
+
+#### Request body
+
+```json
+{
+  "year_pillar": "丁卯",
+  "month_pillar": "癸丑",
+  "day_pillar": "己丑",
+  "hour_pillar": "壬申"
+}
+```
+
+Each pillar must be exactly two Chinese characters:
+- first character: heavenly stem
+- second character: earthly branch
+
+#### Success response
+
+```json
+{
+  "hidden_stems": {
+    "year": { "pillar": "丁卯", "branch": "卯", "hidden_stems": ["乙"] },
+    "month": { "pillar": "癸丑", "branch": "丑", "hidden_stems": ["己", "癸", "辛"] },
+    "day": { "pillar": "己丑", "branch": "丑", "hidden_stems": ["己", "癸", "辛"] },
+    "hour": { "pillar": "壬申", "branch": "申", "hidden_stems": ["庚", "壬", "戊"] }
+  }
+}
+```
+
 ## Errors
 
 - `400` for invalid input, DST ambiguity without fold, DST nonexistent time, and convention validation errors

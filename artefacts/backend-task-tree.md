@@ -349,6 +349,21 @@ Immediate `blocked` state if any of these occur:
 
 ---
 
+## Post-Completion Enhancements
+
+- `ENH-001` Hidden stems lookup API
+  - Status: `done`
+  - Scope:
+    - added `POST /api/hidden_stems`
+    - loads lookup mapping from `artefacts/hidden-stems.csv`
+    - validates four input pillar pairs
+    - returns hidden stems per branch for year/month/day/hour
+  - Validation:
+    - endpoint tests added in `tests/test_api_hidden_stems_endpoint.py`
+    - full suite pass after integration
+
+---
+
 ## Progress Snapshot
 
 - Completed: `TKT-001`, `TKT-002`, `TKT-003`, `TKT-004`, `TKT-005`, `TKT-006`, `TKT-007`, `TKT-008`, `TKT-009`, `TKT-010`, `TKT-011`, `TKT-012`, `TKT-013`, `TKT-014`, `TKT-015`, `TKT-016`, `TKT-017`, `TKT-018`, `TKT-019`, `TKT-020`, `TKT-021`, `TKT-022`, `TKT-023`, `TKT-024`, `TKT-025`, `TKT-026`, `TKT-027`, `TKT-028`, `TKT-029`, `TKT-030`

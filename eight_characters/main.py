@@ -1,3 +1,4 @@
+import csv
 from pathlib import Path
 from datetime import datetime
 
@@ -17,6 +18,7 @@ from eight_characters.engine import compute_engine_payload
 from eight_characters.time_convert import AmbiguousTimeError, BirthInput, NonexistentTimeError
 
 BASE_DIR = Path(__file__).resolve().parent
+ROOT_DIR = BASE_DIR.parent
 
 app = FastAPI(title='Eight Characters')
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
@@ -75,6 +77,13 @@ class LocationSearchRequest(BaseModel):
 class LocationSuggestRequest(BaseModel):
     query: str
     limit: int = 6
+
+
+class HiddenStemsRequest(BaseModel):
+    year_pillar: str
+    month_pillar: str
+    day_pillar: str
+    hour_pillar: str
 
 
 class ResolvedCity(BaseModel):
@@ -200,6 +209,85 @@ def _build_bazi_result(
         'flags': engine_payload['flags'],
         'engine': engine_payload['engine'],
     }
+
+
+def _extract_hidden_stem_char(entry: str) -> str:
+    token = entry.strip()
+    if not token:
+        raise ValueError('Hidden stem entry cannot be empty.')
+    parts = token.split()
+    return parts[-1]
+
+
+def _load_hidden_stems_lookup() -> dict[str, list[str]]:
+    csv_path = ROOT_DIR / 'artefacts' / 'hidden-stems.csv'
+    if not csv_path.exists():
+        raise RuntimeError(f'Hidden stems lookup not found: {csv_path}')
+
+    lookup: dict[str, list[str]] = {}
+    with csv_path.open('r', encoding='utf-8', newline='') as csv_file:
+        reader = csv.DictReader(csv_file)
+        for row in reader:
+            branch_col = (row.get('Earthly Branch') or '').strip()
+            hidden_col = (row.get('Hidden Stems (Main, Middle, Residual Qi)') or '').strip()
+            if not branch_col or not hidden_col:
+                continue
+            branch_char = branch_col[-1]
+            entries = [item for item in hidden_col.split(',') if item.strip()]
+            lookup[branch_char] = [_extract_hidden_stem_char(item) for item in entries]
+
+    if not lookup:
+        raise RuntimeError('Hidden stems lookup is empty.')
+    return lookup
+
+
+def _validate_pillar_text(pillar_text: str, field_name: str) -> tuple[str, str]:
+    value = pillar_text.strip()
+    if len(value) != 2:
+        raise ValueError(f'{field_name} must be exactly 2 Chinese characters.')
+    stem_char, branch_char = value[0], value[1]
+    if stem_char not in STEMS:
+        raise ValueError(f'Invalid stem in {field_name}: {stem_char}')
+    if branch_char not in BRANCHES:
+        raise ValueError(f'Invalid branch in {field_name}: {branch_char}')
+    return stem_char, branch_char
+
+
+def _build_hidden_stems_result(payload: HiddenStemsRequest) -> dict:
+    lookup = _load_hidden_stems_lookup()
+    pillar_inputs = {
+        'year': payload.year_pillar,
+        'month': payload.month_pillar,
+        'day': payload.day_pillar,
+        'hour': payload.hour_pillar,
+    }
+    qi_types = ['main', 'middle', 'residual']
+    result: dict[str, dict] = {}
+    for pillar_name, pillar_text in pillar_inputs.items():
+        stem_char, branch_char = _validate_pillar_text(
+            pillar_text,
+            field_name=f'{pillar_name}_pillar',
+        )
+        hidden_chars = lookup.get(branch_char)
+        if hidden_chars is None:
+            raise ValueError(f'No hidden stem mapping found for branch: {branch_char}')
+        enriched = []
+        for i, h_char in enumerate(hidden_chars):
+            stem_info = STEMS.get(h_char)
+            if stem_info is None:
+                raise ValueError(f'Unknown stem character in hidden stems: {h_char}')
+            enriched.append({
+                'char': h_char,
+                'element': stem_info['element'],
+                'polarity': stem_info['polarity'],
+                'qi_type': qi_types[i] if i < len(qi_types) else 'residual',
+            })
+        result[pillar_name] = {
+            'pillar': f'{stem_char}{branch_char}',
+            'branch': branch_char,
+            'hidden_stems': enriched,
+        }
+    return result
 
 
 # ── Routes ──
@@ -346,3 +434,16 @@ async def location_suggest(payload: LocationSuggestRequest):
         )
 
     return {'suggestions': suggestions}
+
+
+@app.post('/api/hidden_stems')
+async def hidden_stems(payload: HiddenStemsRequest):
+    '''Resolve hidden stems for the four supplied pillar pairs.'''
+    try:
+        hidden_stems_payload = _build_hidden_stems_result(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail='Internal hidden stems lookup error.') from exc
+
+    return {'hidden_stems': hidden_stems_payload}
