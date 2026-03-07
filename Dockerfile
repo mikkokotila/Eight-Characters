@@ -12,6 +12,7 @@ RUN apt-get update \
 
 COPY pyproject.toml README.md /app/
 COPY eight_characters /app/eight_characters
+COPY artefacts/hidden-stems.csv /app/artefacts/hidden-stems.csv
 
 RUN pip install --upgrade pip \
     && pip install .
