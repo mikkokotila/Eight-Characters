@@ -71,10 +71,14 @@ class FourPillarsRequest(BaseModel):
     country: str | None = None
     conventions: ConventionInput = ConventionInput()
     birth_time_uncertainty_seconds: float | None = None
+    include_chart: bool = False
+    include_hidden_stems: bool = False
+    lang: str = 'fi'
 
 
 class LocationSearchRequest(BaseModel):
     city: str
+    country: str | None = None
 
 
 class LocationSuggestRequest(BaseModel):
@@ -264,6 +268,48 @@ def _build_four_pillars_result(
     }
 
 
+def _pillar_component_from_four_pillars(
+    four_pillars: dict[str, Any],
+    pillar_name: str,
+    component_name: str,
+) -> str:
+    pillar_raw = four_pillars.get(pillar_name)
+    if not isinstance(pillar_raw, dict):
+        raise ValueError(f'four_pillars.{pillar_name} is missing or invalid')
+    pillar = cast(dict[str, Any], pillar_raw)
+
+    component_raw = pillar.get(component_name)
+    if not isinstance(component_raw, dict):
+        raise ValueError(
+            f'four_pillars.{pillar_name}.{component_name} is missing or invalid'
+        )
+    component = cast(dict[str, Any], component_raw)
+
+    chinese_char_raw = component.get('chinese')
+    if not isinstance(chinese_char_raw, str) or not chinese_char_raw:
+        raise ValueError(
+            f'four_pillars.{pillar_name}.{component_name}.chinese is missing or invalid'
+        )
+    return chinese_char_raw
+
+
+def _pillar_text_for_hidden_stems(
+    four_pillars: dict[str, Any],
+    pillar_name: str,
+) -> str:
+    stem_char = _pillar_component_from_four_pillars(
+        four_pillars=four_pillars,
+        pillar_name=pillar_name,
+        component_name='stem',
+    )
+    branch_char = _pillar_component_from_four_pillars(
+        four_pillars=four_pillars,
+        pillar_name=pillar_name,
+        component_name='branch',
+    )
+    return f'{stem_char}{branch_char}'
+
+
 async def _resolve_four_pillars_location(
     payload: FourPillarsRequest,
 ) -> tuple[LocationInput, ResolvedCity | None]:
@@ -406,15 +452,21 @@ async def index(request: Request):
 
 
 @app.post('/api/chart')
-async def create_chart(payload: ChartRequest) -> ChartPayload | dict[str, str]:
+async def create_chart(payload: ChartRequest) -> ChartPayload:
     """Return structured chart data for rendering."""
     # Validate characters
     for field in ['hour_stem', 'day_stem', 'month_stem', 'year_stem']:
         if getattr(payload, field) not in STEMS:
-            return {'error': f'Invalid stem: {getattr(payload, field)}'}
+            raise HTTPException(
+                status_code=400,
+                detail=f'Invalid stem: {getattr(payload, field)}',
+            )
     for field in ['hour_branch', 'day_branch', 'month_branch', 'year_branch']:
         if getattr(payload, field) not in BRANCHES:
-            return {'error': f'Invalid branch: {getattr(payload, field)}'}
+            raise HTTPException(
+                status_code=400,
+                detail=f'Invalid branch: {getattr(payload, field)}',
+            )
 
     chart = build_chart(
         payload.date,
@@ -449,7 +501,7 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    response = {
+    response: dict[str, Any] = {
         'solar_time': result['solar_time'],
         'four_pillars': result['four_pillars'],
         'flags': result['flags'],
@@ -461,6 +513,66 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
             'country': resolved_city.country,
             'timezone': resolved_city.timezone,
         }
+
+    four_pillars = cast(dict[str, Any], result['four_pillars'])
+    try:
+        if payload.include_chart:
+            response['chart'] = build_chart(
+                payload.date,
+                payload.time,
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='hour',
+                    component_name='stem',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='hour',
+                    component_name='branch',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='day',
+                    component_name='stem',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='day',
+                    component_name='branch',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='month',
+                    component_name='stem',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='month',
+                    component_name='branch',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='year',
+                    component_name='stem',
+                ),
+                _pillar_component_from_four_pillars(
+                    four_pillars,
+                    pillar_name='year',
+                    component_name='branch',
+                ),
+                lang=payload.lang,
+            )
+        if payload.include_hidden_stems:
+            hidden_stems_request = HiddenStemsRequest(
+                year_pillar=_pillar_text_for_hidden_stems(four_pillars, 'year'),
+                month_pillar=_pillar_text_for_hidden_stems(four_pillars, 'month'),
+                day_pillar=_pillar_text_for_hidden_stems(four_pillars, 'day'),
+                hour_pillar=_pillar_text_for_hidden_stems(four_pillars, 'hour'),
+            )
+            response['hidden_stems'] = _build_hidden_stems_result(hidden_stems_request)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail='Internal engine error.') from exc
+
     return response
 
 
@@ -468,7 +580,7 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
 async def location_search(payload: LocationSearchRequest) -> dict[str, dict[str, str]]:
     """Resolve a free-text city query and return canonical city metadata."""
     try:
-        _, resolved_city = await _resolve_city_location(payload.city)
+        _, resolved_city = await _resolve_city_location(payload.city, payload.country)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

@@ -4,16 +4,15 @@
 
 - Framework: FastAPI
 - Local default: `http://127.0.0.1:8000`
+- Content type: `application/json`
 
 ## Endpoints
 
 ### `POST /api/four_pillars`
 
-Computes solar time and Four Pillars from date/time using either explicit coordinates or city resolution.
+Computes solar time and Four Pillars from date/time and location.
 
-#### Request body
-
-Option A: explicit resolved location
+Request mode A (`location` provided):
 
 ```json
 {
@@ -24,72 +23,74 @@ Option A: explicit resolved location
     "longitude": 104.066,
     "latitude": 30.658,
     "fold": null
-  },
-  "conventions": {
-    "zi_convention": "split_midnight",
-    "hour_basis": "true_solar",
-    "day_boundary_basis": "true_solar"
-  },
-  "birth_time_uncertainty_seconds": null
+  }
 }
 ```
 
-Option B: city and country
+Request mode B (`city` + `country` provided):
 
 ```json
 {
   "date": "1988-02-04",
   "time": "16:30:00",
   "city": "Chengdu",
-  "country": "China",
-  "conventions": {
-    "zi_convention": "split_midnight",
-    "hour_basis": "true_solar",
-    "day_boundary_basis": "true_solar"
-  },
-  "birth_time_uncertainty_seconds": null
+  "country": "China"
 }
 ```
 
-#### Required fields
+Optional request fields:
 
-- `date` in `YYYY-MM-DD`
-- `time` in `HH:MM` or `HH:MM:SS`
-- either:
-  - `location.timezone` (IANA), `location.longitude`, `location.latitude`
-  - or `city` + `country`
-
-#### Optional fields
-
-- `location.fold` for DST fall-back ambiguity (`0` or `1`)
-- `conventions` (defaults are applied when omitted)
+- `conventions`
 - `birth_time_uncertainty_seconds`
+- `include_chart` (`false` by default)
+- `include_hidden_stems` (`false` by default)
+- `lang` (`fi` by default, used when `include_chart=true`)
 
-#### Success response
+Response always includes:
 
 - `solar_time`
-  - `utc_time`
-  - `local_mean_solar_time`
-  - `true_solar_time`
-  - `equation_of_time_minutes`
 - `four_pillars`
-  - `year`, `month`, `day`, `hour`
 - `flags`
-  - ambiguity and warning fields
 - `engine`
-  - engine and model metadata
-- `resolved_location` (present when `city` + `country` mode is used)
-  - `city`, `country`, `timezone`
+
+Response conditionally includes:
+
+- `resolved_location` (when city resolution mode is used)
+- `chart` (when `include_chart=true`)
+- `hidden_stems` (when `include_hidden_stems=true`)
 
 ### `POST /api/chart`
 
-Legacy frontend chart endpoint for existing UI rendering payloads.
+Builds UI-ready chart payload from already computed pillar characters.
+
+Request:
+
+```json
+{
+  "date": "1988-02-04",
+  "time": "16:30:00",
+  "hour_stem": "壬",
+  "hour_branch": "申",
+  "day_stem": "己",
+  "day_branch": "丑",
+  "month_stem": "癸",
+  "month_branch": "丑",
+  "year_stem": "丁",
+  "year_branch": "卯",
+  "lang": "en"
+}
+```
+
+Success response includes:
+
+- `header`
+- `pillars`
 
 ### `POST /api/hidden_stems`
 
-Returns hidden stems for the four supplied pillar pairs.
+Returns hidden stems for the provided four pillar pairs.
 
-#### Request body
+Request:
 
 ```json
 {
@@ -100,11 +101,7 @@ Returns hidden stems for the four supplied pillar pairs.
 }
 ```
 
-Each pillar must be exactly two Chinese characters:
-- first character: heavenly stem
-- second character: earthly branch
-
-#### Success response
+Success response:
 
 ```json
 {
@@ -129,12 +126,76 @@ Each pillar must be exactly two Chinese characters:
 }
 ```
 
-## Errors
+### `POST /api/location_suggest`
 
-- `400` for invalid input, DST ambiguity without fold, DST nonexistent time, and convention validation errors
-- `500` for unexpected internal errors
+Returns autosuggest choices for city input.
 
-## Example `curl`
+Request:
+
+```json
+{
+  "query": "Hels",
+  "limit": 5
+}
+```
+
+Success response:
+
+```json
+{
+  "suggestions": [
+    {
+      "city": "Helsinki",
+      "country": "Finland",
+      "timezone": "Europe/Helsinki"
+    }
+  ]
+}
+```
+
+### `POST /api/location_search`
+
+Resolves a city string into canonical location metadata.
+
+Request:
+
+```json
+{
+  "city": "Helsinki",
+  "country": "Finland"
+}
+```
+
+`country` is optional but recommended for disambiguation.
+
+Success response:
+
+```json
+{
+  "resolved_location": {
+    "city": "Helsinki",
+    "country": "Finland",
+    "timezone": "Europe/Helsinki"
+  }
+}
+```
+
+## Error Contract
+
+All non-2xx API responses use this shape:
+
+```json
+{
+  "detail": "Human-readable error message"
+}
+```
+
+Common status codes:
+
+- `400` invalid input, invalid stem/branch characters, unresolved city, DST ambiguity without `fold`, nonexistent local time, or convention validation errors
+- `500` unexpected internal errors
+
+## Example curl
 
 ```bash
 curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
@@ -142,10 +203,10 @@ curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
   -d '{
     "date": "1988-02-04",
     "time": "16:30:00",
-    "location": {
-      "timezone": "Asia/Shanghai",
-      "longitude": 104.066,
-      "latitude": 30.658
-    }
+    "city": "Chengdu",
+    "country": "China",
+    "include_chart": true,
+    "include_hidden_stems": true,
+    "lang": "en"
   }'
 ```

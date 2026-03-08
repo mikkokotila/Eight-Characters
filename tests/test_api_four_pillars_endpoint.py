@@ -233,6 +233,29 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_four_pillars_can_embed_chart_and_hidden_stems(self) -> None:
+        response = self.client.post(
+            '/api/four_pillars',
+            json={
+                'date': '1988-02-04',
+                'time': '16:30:00',
+                'location': {
+                    'timezone': 'Asia/Shanghai',
+                    'longitude': 104.066,
+                    'latitude': 30.658,
+                },
+                'include_chart': True,
+                'include_hidden_stems': True,
+                'lang': 'en',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('chart', payload)
+        self.assertIn('hidden_stems', payload)
+        self.assertIn('header', payload['chart'])
+        self.assertIn('year', payload['hidden_stems'])
+
     def test_bazi_endpoint_removed(self) -> None:
         response = self.client.post(
             '/api/bazi',

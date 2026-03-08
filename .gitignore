@@ -2,3 +2,9 @@
 *.egg-info
 __pycache__
 *.pyc
+.ruff_cache
+.venv
+.eight-characters.egg-info
+venv
+.env
+artefacts/
