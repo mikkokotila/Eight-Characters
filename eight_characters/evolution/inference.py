@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from math import exp, inf, isinf, log
+from math import inf, isinf, log
 from typing import Sequence
 
 import numpy as np
@@ -16,6 +16,7 @@ from eight_characters.evolution.state import (
     FullTransformationCapture,
     LatentState,
     ObservedState,
+    RULE_COUNT,
     RULE_STATE_DOMAINS,
     VALID_MODES,
     recompute_effective_ten_gods,
@@ -220,7 +221,7 @@ def _propose_discrete(
     rng: np.random.Generator,
     temperature: float,
 ) -> ParticleSnapshot:
-    pick = int(rng.integers(0, 35))  # 0 => mode, 1..34 => switches
+    pick = int(rng.integers(0, RULE_COUNT + 1))  # 0 => mode, 1..RULE_COUNT => switches
     current_latent = particle.latent_state
 
     if pick == 0:
@@ -279,7 +280,7 @@ def _propose_continuous(
     rng: np.random.Generator,
     temperature: float,
 ) -> ParticleSnapshot:
-    rule_index = int(rng.integers(1, 35))
+    rule_index = int(rng.integers(1, RULE_COUNT + 1))
     lower, upper = omega_bounds[rule_index - 1]
     current_omega = particle.latent_state.omegas[rule_index - 1]
     candidate_omega = float(rng.normal(current_omega, sigma))
@@ -323,8 +324,8 @@ def _initial_particle(
     # Start from structurally valid dormant topology, with randomized global mode.
     mode = VALID_MODES[int(rng.integers(0, len(VALID_MODES)))]
     latent_state = LatentState(
-        switches=tuple(0 for _ in range(34)),
-        omegas=tuple(OMEGA_MIN_R for _ in range(34)),
+        switches=tuple(0 for _ in range(RULE_COUNT)),
+        omegas=tuple(OMEGA_MIN_R for _ in range(RULE_COUNT)),
         mode=mode,
     )
     return _build_particle(
@@ -369,7 +370,7 @@ def run_tempered_smc(
             [particle.energy_breakdown.total for particle in particles],
             dtype=np.float64,
         )
-        increments = np.exp(-energies * delta, dtype=np.float64)
+        increments = np.exp(-energies * delta).astype(np.float64)
         weights = weights * increments
 
         weight_sum = float(np.sum(weights))

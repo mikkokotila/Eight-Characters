@@ -112,6 +112,10 @@ class ObservedState:
     day_master_index: int
 
     def validate(self) -> None:
+        if len(self.branch_ids) != PILLAR_COUNT:
+            raise ValueError(
+                f'branch_ids must contain exactly {PILLAR_COUNT} pillar entries'
+            )
         for index, branch_id in enumerate(self.branch_ids):
             if branch_id < 1 or branch_id > 12:
                 raise ValueError(

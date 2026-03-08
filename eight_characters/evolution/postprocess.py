@@ -21,7 +21,13 @@ from eight_characters.evolution.primitives import (
     OMEGA_MIN_R,
     season_element_from_month_branch,
 )
-from eight_characters.evolution.state import LatentState, ObservedState, RULE_STATE_DOMAINS
+from eight_characters.evolution.state import (
+    LatentState,
+    ObservedState,
+    RULE_COUNT,
+    RULE_STATE_DOMAINS,
+    VALID_MODES,
+)
 
 
 @dataclass(frozen=True)
@@ -106,7 +112,7 @@ def _distance(
     )
 
     cont_sum = 0.0
-    for idx in range(34):
+    for idx in range(RULE_COUNT):
         left_active = switches_a[idx] > 0
         right_active = switches_b[idx] > 0
         if not (left_active or right_active):
@@ -118,28 +124,28 @@ def _distance(
         ) / denom
 
     return (
-        CLUSTER_ALPHA * (d_h_switch + mode_gap) / 35.0
+        CLUSTER_ALPHA * (d_h_switch + mode_gap) / float(RULE_COUNT + 1)
         + CLUSTER_BETA * d_h_effective / 16.0
-        + CLUSTER_GAMMA * (cont_sum / 34.0)
+        + CLUSTER_GAMMA * (cont_sum / float(RULE_COUNT))
     )
 
 
 def _distance_matrix(
     particles: Sequence[ParticleSnapshot],
     omega_bounds: Sequence[tuple[float, float]],
-) -> list[list[float]]:
+) -> np.ndarray:
     size = len(particles)
-    matrix = [[0.0] * size for _ in range(size)]
+    matrix = np.zeros((size, size), dtype=np.float64)
     for left in range(size):
         for right in range(left + 1, size):
             value = _distance(particles[left], particles[right], omega_bounds)
-            matrix[left][right] = value
-            matrix[right][left] = value
+            matrix[left, right] = value
+            matrix[right, left] = value
     return matrix
 
 
 def _dbscan_labels(
-    distance_matrix: Sequence[Sequence[float]],
+    distance_matrix: np.ndarray,
     eps: float,
     min_samples: int,
 ) -> list[int]:
@@ -379,7 +385,7 @@ def _discrete_relax(
         # Mode first.
         best_candidate = current
         best_delta = 0.0
-        for mode in ('Standard', 'FollowWealth', 'FollowAuthority', 'FollowOutput', 'FollowStrength'):
+        for mode in VALID_MODES:
             if mode == current.latent_state.mode:
                 continue
             candidate_latent = LatentState(
@@ -399,7 +405,7 @@ def _discrete_relax(
             changed = True
 
         # Then rule switches in order 1..34.
-        for rule_index in range(1, 35):
+        for rule_index in range(1, RULE_COUNT + 1):
             current_value = current.latent_state.switches[rule_index - 1]
             domain = RULE_STATE_DOMAINS[rule_index - 1]
             best_candidate = current

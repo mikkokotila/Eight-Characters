@@ -31,7 +31,7 @@ Gather all other elements in the chart to form a single evaluation pool to be ma
 
 1. **Visible Stems:** Collect the Heavenly Stems from the **Year**, **Month**, and **Hour** pillars (exactly 3 items).
 2. **Hidden Stems:** Pass the 4 Earthly Branches (Year, Month, Day, Hour) to our existing **Hidden Stems API**. Collect every hidden stem returned by the service.
-3. **Total Pool Size ():** .
+3. **Total Pool Size (`N`):** Let `N = V + H`, where `V = 3` visible stems (Year/Month/Hour) and `H` is the number of hidden stems returned by the Hidden Stems API across all four branches.
 
 ### Step 3: Map the Ten Gods
 
@@ -51,8 +51,8 @@ To provide a macro-view of the chart's elemental composition, calculate the perc
 
 *(Product Note: To guarantee determinism in this baseline iteration, all stems are treated equally. 1 stem = 1 unit of mathematical weight. Do not introduce subjective domain weighting for Main vs. Residual Qi).*
 
-1. **Determine Total Population ():** Use the total size of the evaluation pool calculated in Step 2.
-2. **Count Occurrences ():** Group the evaluation pool by the assigned Ten Gods. Count exactly how many times each specific Ten God appears in the chart.
+1. **Determine Total Population (`N`):** Use the total size of the evaluation pool calculated in Step 2.
+2. **Count Occurrences (`C`):** Group the evaluation pool by the assigned Ten Gods. Count exactly how many times each specific Ten God appears in the chart.
 3. **Calculate Share:** For each Ten God present, apply the formula: `(C / N) * 100`.
 4. **Rounding Rule:** To prevent floating-point UI inconsistencies across clients, round all final percentages to exactly **two decimal places** (e.g., `14.29%`) using standard half-up rounding.
 
