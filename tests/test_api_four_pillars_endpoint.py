@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from eight_characters.main import LocationInput, ResolvedCity, app
+from eight_characters.main import (
+    CityLookupServiceError,
+    LocationInput,
+    ResolvedCity,
+    app,
+)
 
 
 class TestApiFourPillarsEndpoint(unittest.TestCase):
@@ -297,6 +302,24 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         payload = response.json()
         self.assertIn('suggestions', payload)
         self.assertIsInstance(payload['suggestions'], list)
+
+    def test_location_suggest_returns_500_on_lookup_service_error(self) -> None:
+        with patch(
+            'eight_characters.main._search_city_candidates',
+            new=AsyncMock(
+                side_effect=CityLookupServiceError('City lookup service request failed.')
+            ),
+        ):
+            response = self.client.post(
+                '/api/location_suggest',
+                json={
+                    'query': 'Hels',
+                    'limit': 3,
+                },
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['detail'], 'City lookup service unavailable.')
 
 
 if __name__ == '__main__':

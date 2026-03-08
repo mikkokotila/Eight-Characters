@@ -1,5 +1,6 @@
 import csv
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, TypedDict, cast
 
@@ -9,7 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from eight_characters import __version__
 from eight_characters.conventions import ConventionSettings
@@ -96,7 +97,7 @@ class FourPillarsRequest(BaseModel):
     location: LocationInput | None = None
     city: str | None = None
     country: str | None = None
-    conventions: ConventionInput = ConventionInput()
+    conventions: ConventionInput = Field(default_factory=ConventionInput)
     birth_time_uncertainty_seconds: float | None = None
     include_chart: bool = False
     include_hidden_stems: bool = False
@@ -132,6 +133,10 @@ class GeocodeResult(TypedDict, total=False):
     timezone: str
     longitude: float
     latitude: float
+
+
+class CityLookupServiceError(RuntimeError):
+    """Raised when upstream geocoding service is unavailable or fails."""
 
 
 def _parse_date_and_time(
@@ -208,8 +213,10 @@ async def _search_city_candidates(query: str, count: int = 6) -> list[GeocodeRes
                 params={'name': city_name, 'count': safe_count, 'language': 'en'},
             )
         response.raise_for_status()
-    except Exception as exc:
-        raise ValueError('Failed to resolve city. Please try again.') from exc
+    except httpx.HTTPStatusError as exc:
+        raise CityLookupServiceError('City lookup service returned an error.') from exc
+    except httpx.RequestError as exc:
+        raise CityLookupServiceError('City lookup service request failed.') from exc
 
     payload = cast(dict[str, Any], response.json())
     raw_results_obj = payload.get('results')
@@ -413,6 +420,7 @@ def _extract_hidden_stem_char(entry: str) -> str:
     return parts[-1]
 
 
+@lru_cache(maxsize=1)
 def _load_hidden_stems_lookup() -> dict[str, list[str]]:
     csv_path = MAPPINGS_DIR / 'hidden-stems.csv'
     if not csv_path.exists():
@@ -621,6 +629,11 @@ async def location_search(payload: LocationSearchRequest) -> dict[str, dict[str,
     """Resolve a free-text city query and return canonical city metadata."""
     try:
         _, resolved_city = await _resolve_city_location(payload.city, payload.country)
+    except CityLookupServiceError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail='City lookup service unavailable.',
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:
@@ -646,6 +659,11 @@ async def location_suggest(
 
     try:
         results = await _search_city_candidates(query, count=payload.limit)
+    except CityLookupServiceError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail='City lookup service unavailable.',
+        ) from exc
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except Exception as exc:

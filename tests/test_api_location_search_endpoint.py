@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from eight_characters.main import LocationInput, ResolvedCity, app
+from eight_characters.main import (
+    CityLookupServiceError,
+    LocationInput,
+    ResolvedCity,
+    app,
+)
 
 
 class TestApiLocationSearchEndpoint(unittest.TestCase):
@@ -82,6 +87,17 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
             )
         self.assertEqual(response.status_code, 400)
         self.assertIn('Could not resolve city', response.json()['detail'])
+
+    def test_location_search_returns_500_on_lookup_service_error(self) -> None:
+        with patch(
+            'eight_characters.main._resolve_city_location',
+            new=AsyncMock(
+                side_effect=CityLookupServiceError('City lookup service request failed.')
+            ),
+        ):
+            response = self.client.post('/api/location_search', json={'city': 'Helsinki'})
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['detail'], 'City lookup service unavailable.')
 
 
 if __name__ == '__main__':
