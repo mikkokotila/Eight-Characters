@@ -23,7 +23,12 @@ dependencies = [
 include = ['eight_characters*']
 
 [tool.setuptools.package-data]
-eight_characters = ['templates/*.html', 'static/*.css', 'static/*.js']
+eight_characters = [
+  'templates/*.html',
+  'static/*.css',
+  'static/*.js',
+  'resources/*.csv',
+]
 
 [tool.ruff]
 target-version = "py312"

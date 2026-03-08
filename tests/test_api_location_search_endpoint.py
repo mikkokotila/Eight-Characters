@@ -65,7 +65,9 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
                 )
             ),
         ) as resolve_mock:
-            response = self.client.post('/api/location_search', json={'city': 'Helsinki'})
+            response = self.client.post(
+                '/api/location_search', json={'city': 'Helsinki'}
+            )
 
         self.assertEqual(response.status_code, 200)
         resolve_mock.assert_awaited_once_with('Helsinki', None)
@@ -75,7 +77,9 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
             'eight_characters.main._resolve_city_location',
             new=AsyncMock(side_effect=ValueError('Could not resolve city')),
         ):
-            response = self.client.post('/api/location_search', json={'city': 'Nowhere'})
+            response = self.client.post(
+                '/api/location_search', json={'city': 'Nowhere'}
+            )
         self.assertEqual(response.status_code, 400)
         self.assertIn('Could not resolve city', response.json()['detail'])
 

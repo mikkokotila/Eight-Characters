@@ -339,9 +339,16 @@ def _extract_hidden_stem_char(entry: str) -> str:
 
 
 def _load_hidden_stems_lookup() -> dict[str, list[str]]:
-    csv_path = ROOT_DIR / 'artefacts' / 'hidden-stems.csv'
-    if not csv_path.exists():
-        raise RuntimeError(f'Hidden stems lookup not found: {csv_path}')
+    csv_candidates = (
+        BASE_DIR / 'resources' / 'hidden-stems.csv',
+        ROOT_DIR / 'artefacts' / 'hidden-stems.csv',
+    )
+    csv_path = next(
+        (candidate for candidate in csv_candidates if candidate.exists()), None
+    )
+    if csv_path is None:
+        searched = ', '.join(str(candidate) for candidate in csv_candidates)
+        raise RuntimeError(f'Hidden stems lookup not found. Searched: {searched}')
 
     lookup: dict[str, list[str]] = {}
     with csv_path.open('r', encoding='utf-8', newline='') as csv_file:
