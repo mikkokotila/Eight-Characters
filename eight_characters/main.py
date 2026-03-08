@@ -54,18 +54,12 @@ class ConventionInput(BaseModel):
     day_boundary_basis: str = 'true_solar'
 
 
-class BaziRequest(BaseModel):
-    date: str
-    time: str
-    location: LocationInput
-    conventions: ConventionInput = ConventionInput()
-    birth_time_uncertainty_seconds: float | None = None
-
-
 class FourPillarsRequest(BaseModel):
     date: str
     time: str
-    city: str
+    location: LocationInput | None = None
+    city: str | None = None
+    country: str | None = None
     conventions: ConventionInput = ConventionInput()
     birth_time_uncertainty_seconds: float | None = None
 
@@ -119,12 +113,29 @@ def _parse_date_and_time(date_value: str, time_value: str) -> tuple[int, int, in
     )
 
 
-async def _resolve_city_location(city: str) -> tuple[LocationInput, ResolvedCity]:
-    results = await _search_city_candidates(city, count=1)
+async def _resolve_city_location(city: str, country: str | None = None) -> tuple[LocationInput, ResolvedCity]:
+    city_name = city.strip()
+    country_name = (country or '').strip()
+    if not city_name:
+        raise ValueError('city must not be empty.')
+
+    query = f'{city_name}, {country_name}' if country_name else city_name
+    count = 8 if country_name else 1
+    results = await _search_city_candidates(query, count=count)
     if not results:
-        raise ValueError(f'Could not resolve city: {city.strip()}')
-    top_match = results[0]
-    return _city_models_from_result(top_match, city.strip())
+        if country_name:
+            raise ValueError(f'Could not resolve city/country combination: {city_name}, {country_name}')
+        raise ValueError(f'Could not resolve city: {city_name}')
+
+    if not country_name:
+        return _city_models_from_result(results[0], city_name)
+
+    target_country = country_name.casefold()
+    for candidate in results:
+        candidate_country = str(candidate.get('country') or '').strip().casefold()
+        if candidate_country == target_country:
+            return _city_models_from_result(candidate, city_name)
+    raise ValueError(f'Could not resolve city/country combination: {city_name}, {country_name}')
 
 
 async def _search_city_candidates(query: str, count: int = 6) -> list[dict]:
@@ -168,7 +179,7 @@ def _city_models_from_result(top_match: dict, city_fallback: str) -> tuple[Locat
     return resolved_location, resolved_city
 
 
-def _build_bazi_result(
+def _build_four_pillars_result(
     *,
     date_value: str,
     time_value: str,
@@ -209,6 +220,25 @@ def _build_bazi_result(
         'flags': engine_payload['flags'],
         'engine': engine_payload['engine'],
     }
+
+
+async def _resolve_four_pillars_location(
+    payload: FourPillarsRequest,
+) -> tuple[LocationInput, ResolvedCity | None]:
+    has_location = payload.location is not None
+    city_name = (payload.city or '').strip()
+    country_name = (payload.country or '').strip()
+    has_city_fields = bool(city_name or country_name)
+
+    if has_location and has_city_fields:
+        raise ValueError('Provide either location or city/country, not both.')
+    if has_location:
+        return payload.location, None
+    if not has_city_fields:
+        raise ValueError('Provide either location or city/country.')
+    if not city_name or not country_name:
+        raise ValueError('Both city and country are required when using city/country input.')
+    return await _resolve_city_location(city_name, country_name)
 
 
 def _extract_hidden_stem_char(entry: str) -> str:
@@ -333,36 +363,12 @@ async def create_chart(payload: ChartRequest):
     return chart
 
 
-@app.post('/api/bazi')
-async def calculate_bazi(payload: BaziRequest):
-    '''Calculate true solar time and four pillars from date, time, and location.'''
-    try:
-        result = _build_bazi_result(
-            date_value=payload.date,
-            time_value=payload.time,
-            location=payload.location,
-            conventions_input=payload.conventions,
-            birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
-        )
-    except (ValueError, AmbiguousTimeError, NonexistentTimeError) as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail='Internal engine error.') from exc
-
-    return {
-        'solar_time': result['solar_time'],
-        'four_pillars': result['four_pillars'],
-        'flags': result['flags'],
-        'engine': result['engine'],
-    }
-
-
 @app.post('/api/four_pillars')
 async def calculate_four_pillars(payload: FourPillarsRequest):
-    '''Resolve city and return only four pillars + solar time.'''
+    '''Calculate true solar time and four pillars from date/time with either location or city/country.'''
     try:
-        location, resolved_city = await _resolve_city_location(payload.city)
-        result = _build_bazi_result(
+        location, resolved_city = await _resolve_four_pillars_location(payload)
+        result = _build_four_pillars_result(
             date_value=payload.date,
             time_value=payload.time,
             location=location,
@@ -374,15 +380,19 @@ async def calculate_four_pillars(payload: FourPillarsRequest):
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    return {
-        'resolved_location': {
+    response = {
+        'solar_time': result['solar_time'],
+        'four_pillars': result['four_pillars'],
+        'flags': result['flags'],
+        'engine': result['engine'],
+    }
+    if resolved_city is not None:
+        response['resolved_location'] = {
             'city': resolved_city.city,
             'country': resolved_city.country,
             'timezone': resolved_city.timezone,
-        },
-        'solar_time': result['solar_time'],
-        'four_pillars': result['four_pillars'],
-    }
+        }
+    return response
 
 
 @app.post('/api/location_search')

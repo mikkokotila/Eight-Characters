@@ -249,7 +249,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const fourPillarsPayload = {
       date: form.date.value,
       time: form.time.value,
-      city: `${resolvedLocation.city}, ${resolvedLocation.country}`,
+      city: resolvedLocation.city,
+      country: resolvedLocation.country,
     };
 
     try {

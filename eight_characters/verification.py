@@ -13,7 +13,18 @@ def read_regression_fixture(target_file: str) -> dict:
     return json.loads(path.read_text(encoding='utf-8'))
 
 
-def fixture_roundtrip_matches(target_file: str, payload_json: str) -> bool:
-    write_regression_fixture(target_file, payload_json)
+def fixture_roundtrip_matches(
+    target_file: str,
+    payload_json: str,
+    *,
+    update_fixture: bool = False,
+) -> bool:
+    if update_fixture:
+        write_regression_fixture(target_file, payload_json)
+
+    path = Path(target_file)
+    if not path.exists():
+        return False
+
     loaded = read_regression_fixture(target_file)
     return json.dumps(loaded, ensure_ascii=False, sort_keys=True, separators=(',', ':')) == payload_json

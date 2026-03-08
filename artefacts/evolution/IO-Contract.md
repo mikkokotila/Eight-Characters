@@ -40,7 +40,7 @@ In current pipeline usage, entities are arranged in pillar order (`year`, `month
 
 At present, building `EvolutionInput` requires combining:
 
-1. `POST /api/bazi` (for four pillars and timing context),
+1. `POST /api/four_pillars` (for four pillars and timing context),
 2. `POST /api/hidden_stems` (for hidden stem composition), and
 3. local deterministic mapping code to derive:
    - one-hot element vectors,

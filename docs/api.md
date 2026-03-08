@@ -7,11 +7,13 @@
 
 ## Endpoints
 
-### `POST /api/bazi`
+### `POST /api/four_pillars`
 
-Computes solar time and Four Pillars from date, time, and location.
+Computes solar time and Four Pillars from date/time using either explicit coordinates or city resolution.
 
 #### Request body
+
+Option A: explicit resolved location
 
 ```json
 {
@@ -32,13 +34,30 @@ Computes solar time and Four Pillars from date, time, and location.
 }
 ```
 
+Option B: city and country
+
+```json
+{
+  "date": "1988-02-04",
+  "time": "16:30:00",
+  "city": "Chengdu",
+  "country": "China",
+  "conventions": {
+    "zi_convention": "split_midnight",
+    "hour_basis": "true_solar",
+    "day_boundary_basis": "true_solar"
+  },
+  "birth_time_uncertainty_seconds": null
+}
+```
+
 #### Required fields
 
 - `date` in `YYYY-MM-DD`
 - `time` in `HH:MM` or `HH:MM:SS`
-- `location.timezone` (IANA, for example `Asia/Shanghai`)
-- `location.longitude` in `[-180, 180]`
-- `location.latitude` in `[-90, 90]`
+- either:
+  - `location.timezone` (IANA), `location.longitude`, `location.latitude`
+  - or `city` + `country`
 
 #### Optional fields
 
@@ -59,6 +78,8 @@ Computes solar time and Four Pillars from date, time, and location.
   - ambiguity and warning fields
 - `engine`
   - engine and model metadata
+- `resolved_location` (present when `city` + `country` mode is used)
+  - `city`, `country`, `timezone`
 
 ### `POST /api/chart`
 
@@ -88,10 +109,22 @@ Each pillar must be exactly two Chinese characters:
 ```json
 {
   "hidden_stems": {
-    "year": { "pillar": "丁卯", "branch": "卯", "hidden_stems": ["乙"] },
-    "month": { "pillar": "癸丑", "branch": "丑", "hidden_stems": ["己", "癸", "辛"] },
-    "day": { "pillar": "己丑", "branch": "丑", "hidden_stems": ["己", "癸", "辛"] },
-    "hour": { "pillar": "壬申", "branch": "申", "hidden_stems": ["庚", "壬", "戊"] }
+    "year": {
+      "pillar": "丁卯",
+      "branch": "卯",
+      "hidden_stems": [
+        { "char": "乙", "element": "wood", "polarity": "Yin", "qi_type": "main" }
+      ]
+    },
+    "month": {
+      "pillar": "癸丑",
+      "branch": "丑",
+      "hidden_stems": [
+        { "char": "己", "element": "earth", "polarity": "Yin", "qi_type": "main" },
+        { "char": "癸", "element": "water", "polarity": "Yin", "qi_type": "middle" },
+        { "char": "辛", "element": "metal", "polarity": "Yin", "qi_type": "residual" }
+      ]
+    }
   }
 }
 ```
@@ -104,7 +137,7 @@ Each pillar must be exactly two Chinese characters:
 ## Example `curl`
 
 ```bash
-curl -X POST 'http://127.0.0.1:8000/api/bazi' \
+curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
   -H 'Content-Type: application/json' \
   -d '{
     "date": "1988-02-04",

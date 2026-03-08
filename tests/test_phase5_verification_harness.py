@@ -24,7 +24,20 @@ class TestVerificationHarness(unittest.TestCase):
             )
         )
         fixture_path = Path('tests') / 'fixtures' / 'phase5-regression-1988-02-04.json'
-        self.assertTrue(fixture_roundtrip_matches(str(fixture_path), payload_json))
+        self.assertTrue(
+            fixture_roundtrip_matches(
+                str(fixture_path),
+                payload_json,
+                update_fixture=False,
+            )
+        )
+
+    def test_regression_fixture_roundtrip_does_not_write_by_default(self) -> None:
+        fixture_path = Path('tests') / 'fixtures' / 'phase5-regression-1988-02-04.json'
+        before = fixture_path.read_text(encoding='utf-8')
+        self.assertTrue(fixture_roundtrip_matches(str(fixture_path), before))
+        after = fixture_path.read_text(encoding='utf-8')
+        self.assertEqual(before, after)
 
 
 if __name__ == '__main__':
