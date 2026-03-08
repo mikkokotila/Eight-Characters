@@ -1,0 +1,30 @@
+name: api-integration-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  api-integration-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run API integration tests
+        run: |
+          python -m unittest \
+            tests.test_api_bazi_endpoint \
+            tests.test_api_hidden_stems_endpoint

@@ -24,3 +24,51 @@ include = ['eight_characters*']
 
 [tool.setuptools.package-data]
 eight_characters = ['templates/*.html', 'static/*.css', 'static/*.js']
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+exclude = [
+  ".git",
+  ".venv",
+  "__pycache__",
+  "venv",
+  "eight_characters.egg-info",
+]
+
+[tool.ruff.format]
+quote-style = "single"
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "F",    # pyflakes
+  "I",    # isort
+  "UP",   # pyupgrade
+  "RUF",  # ruff-specific
+]
+ignore = [
+  "E501",  # keep long reference strings and URLs as-is
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "BLE001", "PLR2004", "ANN"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["eight_characters"]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+include = [
+  "eight_characters",
+]
+exclude = [
+  "**/__pycache__",
+  ".venv",
+  "venv",
+  "eight_characters.egg-info",
+]
+venvPath = "."
+venv = ".venv"
+reportMissingImports = true

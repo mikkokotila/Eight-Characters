@@ -1,0 +1,31 @@
+name: external-ref-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  external-ref-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run external reference verification tests
+        run: |
+          python -m unittest \
+            tests.test_tkt023_hko_solar_term_verification \
+            tests.test_tkt024_sexagenary_day_verification \
+            tests.test_tkt025_cross_verification_lunar_python

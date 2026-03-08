@@ -1,0 +1,36 @@
+name: regression-safety-gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  regression-safety-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+
+      - name: Run regression safety tests
+        run: |
+          python -m unittest tests.test_phase5_verification_harness
+
+      - name: Ensure fixtures remain unchanged
+        run: |
+          if [ -n "$(git status --porcelain -- tests/fixtures)" ]; then
+            echo "Fixture files changed during test run:"
+            git status --porcelain -- tests/fixtures
+            exit 1
+          fi
