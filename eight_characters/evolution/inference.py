@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
-from math import inf, isinf, log
-from typing import Sequence
+from math import isinf, log
 
 import numpy as np
 
@@ -11,14 +11,17 @@ from eight_characters.evolution.families import (
     family_spec,
 )
 from eight_characters.evolution.mechanics import compute_dynamic_vitality_amplitudes
-from eight_characters.evolution.primitives import OMEGA_MIN_R, season_element_from_month_branch
+from eight_characters.evolution.primitives import (
+    OMEGA_MIN_R,
+    season_element_from_month_branch,
+)
 from eight_characters.evolution.state import (
-    FullTransformationCapture,
-    LatentState,
-    ObservedState,
     RULE_COUNT,
     RULE_STATE_DOMAINS,
     VALID_MODES,
+    FullTransformationCapture,
+    LatentState,
+    ObservedState,
     recompute_effective_ten_gods,
     resolve_effective_elements,
 )
@@ -186,6 +189,20 @@ def _build_particle(
         effective_ten_gods=effective_ten_gods,
         dynamic_amplitudes=dynamic_amplitudes,
         energy_breakdown=energy_breakdown,
+    )
+
+
+def build_particle(
+    observed_state: ObservedState,
+    latent_state: LatentState,
+    evaluations: Sequence[FamilyEvaluation],
+    season_element_index: int,
+) -> ParticleSnapshot:
+    return _build_particle(
+        observed_state=observed_state,
+        latent_state=latent_state,
+        evaluations=evaluations,
+        season_element_index=season_element_index,
     )
 
 
@@ -431,4 +448,3 @@ def run_tempered_smc(
         weight_sum_history=tuple(weight_sum_history),
         resample_steps=tuple(resample_steps),
     )
-

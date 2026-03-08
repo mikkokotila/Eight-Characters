@@ -202,7 +202,9 @@ class TestEvolutionModuleEEnergy(unittest.TestCase):
             mode=latent_follow_strength.mode,
         )
         amp_standard = compute_dynamic_vitality_amplitudes(observed, latent_standard)
-        amp_follow = compute_dynamic_vitality_amplitudes(observed, latent_follow_strength)
+        amp_follow = compute_dynamic_vitality_amplitudes(
+            observed, latent_follow_strength
+        )
 
         e_standard = compute_energy_breakdown(
             observed_state=observed,
@@ -225,4 +227,3 @@ class TestEvolutionModuleEEnergy(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

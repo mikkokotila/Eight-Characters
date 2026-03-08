@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from math import cos, pi
 
-
 DEG_PER_RAD = 180.0 / pi
 
 
@@ -38,12 +37,8 @@ L_SERIES: tuple[tuple[VsopTerm, ...], ...] = (
         VsopTerm(0.00000289226, 5.84384198723, 6283.0758499914),
         VsopTerm(0.00000034955, 0.0, 0.0),
     ),
-    (
-        VsopTerm(0.00000114084, 3.14159265359, 0.0),
-    ),
-    (
-        VsopTerm(0.00000000878, 3.14159265359, 0.0),
-    ),
+    (VsopTerm(0.00000114084, 3.14159265359, 0.0),),
+    (VsopTerm(0.00000000878, 3.14159265359, 0.0),),
 )
 
 B_SERIES: tuple[tuple[VsopTerm, ...], ...] = (
@@ -69,9 +64,7 @@ R_SERIES: tuple[tuple[VsopTerm, ...], ...] = (
         VsopTerm(0.00103018608, 1.10748968172, 6283.0758499914),
         VsopTerm(0.00001721238, 1.06442301418, 12566.1516999828),
     ),
-    (
-        VsopTerm(0.00004359385, 5.78455133738, 6283.0758499914),
-    ),
+    (VsopTerm(0.00004359385, 5.78455133738, 6283.0758499914),),
 )
 
 
@@ -85,7 +78,7 @@ def _evaluate_series(series: tuple[tuple[VsopTerm, ...], ...], tau: float) -> fl
         partial = 0.0
         for term in terms:
             partial += term.amplitude * cos(term.phase + term.frequency * tau)
-        total += partial * (tau ** power)
+        total += partial * (tau**power)
     return total
 
 

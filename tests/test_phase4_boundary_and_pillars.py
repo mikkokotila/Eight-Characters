@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from eight_characters.conventions import (
     DAY_BOUNDARY_BASIS_CIVIL,
@@ -22,8 +22,7 @@ from eight_characters.sexagenary import (
 )
 from eight_characters.solar_term_solver import nearest_jie_distance_seconds
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 class TestRootFinding(unittest.TestCase):
@@ -48,8 +47,12 @@ class TestBoundaryDistance(unittest.TestCase):
 
 class TestYearAndMonthPillars(unittest.TestCase):
     def test_year_pillar_boundary_before_after(self) -> None:
-        before, bazi_year_before = year_pillar(civil_year=2020, birth_jd_tt=2458883.0, lichun_jd_tt=2458883.5)
-        after, bazi_year_after = year_pillar(civil_year=2020, birth_jd_tt=2458884.0, lichun_jd_tt=2458883.5)
+        before, bazi_year_before = year_pillar(
+            civil_year=2020, birth_jd_tt=2458883.0, lichun_jd_tt=2458883.5
+        )
+        after, bazi_year_after = year_pillar(
+            civil_year=2020, birth_jd_tt=2458884.0, lichun_jd_tt=2458883.5
+        )
         self.assertEqual(bazi_year_before, 2019)
         self.assertEqual(bazi_year_after, 2020)
         before.validate_polarity()
@@ -123,7 +126,9 @@ class TestDayAndHourPillars(unittest.TestCase):
         )
         civil_dt = datetime(2024, 1, 1, 14, 0, 0)
         tst_dt = datetime(2024, 1, 1, 12, 30, 0)
-        pillar = hour_pillar(day_stem_idx=5, civil_dt_local=civil_dt, tst_dt=tst_dt, conventions=conv)
+        pillar = hour_pillar(
+            day_stem_idx=5, civil_dt_local=civil_dt, tst_dt=tst_dt, conventions=conv
+        )
         pillar.validate_polarity()
 
 

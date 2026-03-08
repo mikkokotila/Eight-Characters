@@ -34,9 +34,9 @@ Or with compose:
 docker compose up --build
 ```
 
-### 2) Call the Ba Zi API
+### 2) Call the Four Pillars API
 
-`POST /api/bazi`
+`POST /api/four_pillars`
 
 Example payload:
 

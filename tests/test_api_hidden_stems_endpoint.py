@@ -22,14 +22,22 @@ class TestApiHiddenStemsEndpoint(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         payload = response.json()['hidden_stems']
-        self.assertEqual(payload['year']['hidden_stems'], ['乙'])
-        self.assertEqual(payload['month']['hidden_stems'], ['己', '癸', '辛'])
-        self.assertEqual(payload['day']['hidden_stems'], ['己', '癸', '辛'])
-        self.assertEqual(payload['hour']['hidden_stems'], ['庚', '壬', '戊'])
 
-    def test_hidden_stems_accepts_bazi_output(self) -> None:
-        bazi_response = self.client.post(
-            '/api/bazi',
+        def stem_chars(entries: list[dict[str, str]]) -> list[str]:
+            return [entry['char'] for entry in entries]
+
+        self.assertEqual(stem_chars(payload['year']['hidden_stems']), ['乙'])
+        self.assertEqual(
+            stem_chars(payload['month']['hidden_stems']), ['己', '癸', '辛']
+        )
+        self.assertEqual(stem_chars(payload['day']['hidden_stems']), ['己', '癸', '辛'])
+        self.assertEqual(
+            stem_chars(payload['hour']['hidden_stems']), ['庚', '壬', '戊']
+        )
+
+    def test_hidden_stems_accepts_four_pillars_output(self) -> None:
+        four_pillars_response = self.client.post(
+            '/api/four_pillars',
             json={
                 'date': '1988-02-04',
                 'time': '16:30:00',
@@ -40,9 +48,11 @@ class TestApiHiddenStemsEndpoint(unittest.TestCase):
                 },
             },
         )
-        self.assertEqual(bazi_response.status_code, 200)
-        pillars = bazi_response.json()['four_pillars']
-        to_text = lambda p: f"{p['stem']['chinese']}{p['branch']['chinese']}"
+        self.assertEqual(four_pillars_response.status_code, 200)
+        pillars = four_pillars_response.json()['four_pillars']
+
+        def to_text(pillar: dict[str, dict[str, str]]) -> str:
+            return f'{pillar["stem"]["chinese"]}{pillar["branch"]["chinese"]}'
 
         hs_response = self.client.post(
             '/api/hidden_stems',

@@ -1,6 +1,6 @@
 # Troubleshooting
 
-## `400` on `/api/bazi`
+## `400` on `/api/four_pillars`
 
 Common causes:
 - invalid `date` format (must be `YYYY-MM-DD`)

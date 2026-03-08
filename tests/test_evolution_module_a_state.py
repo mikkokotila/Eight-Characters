@@ -125,9 +125,15 @@ class TestEvolutionModuleARewritesAndTenGods(unittest.TestCase):
             effective_elements=observed.base_elements,
             mode=MODE_STANDARD,
         )
-        self.assertEqual(_active_index(ten_gods[0]), 0)  # Companion (wood vs wood, same polarity)
-        self.assertEqual(_active_index(ten_gods[1]), 2)  # Eating God (wood produces fire)
-        self.assertEqual(_active_index(ten_gods[3]), 7)  # Direct Officer (metal controls wood, opposite polarity)
+        self.assertEqual(
+            _active_index(ten_gods[0]), 0
+        )  # Companion (wood vs wood, same polarity)
+        self.assertEqual(
+            _active_index(ten_gods[1]), 2
+        )  # Eating God (wood produces fire)
+        self.assertEqual(
+            _active_index(ten_gods[3]), 7
+        )  # Direct Officer (metal controls wood, opposite polarity)
 
     def test_follow_wealth_mode_shifts_potential_center(self) -> None:
         observed = _build_observed_fixture()
@@ -136,8 +142,12 @@ class TestEvolutionModuleARewritesAndTenGods(unittest.TestCase):
             effective_elements=observed.base_elements,
             mode=MODE_FOLLOW_WEALTH,
         )
-        self.assertEqual(active_mode_center(day_master_element_index=0, mode=MODE_FOLLOW_WEALTH), 2)
-        self.assertEqual(_active_index(ten_gods[2]), 6)  # DM appears as Seven Killings vs Earth center
+        self.assertEqual(
+            active_mode_center(day_master_element_index=0, mode=MODE_FOLLOW_WEALTH), 2
+        )
+        self.assertEqual(
+            _active_index(ten_gods[2]), 6
+        )  # DM appears as Seven Killings vs Earth center
 
 
 class TestEvolutionModuleADerivedState(unittest.TestCase):
@@ -163,4 +173,3 @@ class TestEvolutionModuleADerivedState(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 
-
 ZI_CONVENTION_SPLIT_MIDNIGHT = 'split_midnight'
 ZI_CONVENTION_WHOLE_ZI_23 = 'whole_zi_23'
 

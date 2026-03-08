@@ -54,7 +54,9 @@ class TestTkt024SexagenaryDayVerification(unittest.TestCase):
             dt_noon = datetime(day_value.year, day_value.month, day_value.day, 12, 0, 0)
             our_idx0 = day_pillar(dt_noon, dt_noon, conventions).idx0
 
-            solar = Solar.fromYmdHms(day_value.year, day_value.month, day_value.day, 12, 0, 0)
+            solar = Solar.fromYmdHms(
+                day_value.year, day_value.month, day_value.day, 12, 0, 0
+            )
             lunar_day_ganzhi = solar.getLunar().getDayInGanZhi()
             ref_idx0 = self._idx0_from_ganzhi(lunar_day_ganzhi)
             if our_idx0 != ref_idx0:

@@ -3,7 +3,6 @@ from datetime import datetime
 
 from eight_characters.conventions import ConventionSettings
 
-
 MIN_SUPPORTED_YEAR = 1949
 MAX_SUPPORTED_YEAR = 2100
 

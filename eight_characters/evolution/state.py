@@ -1,5 +1,5 @@
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from typing import Iterable, Sequence
 
 from eight_characters.evolution.primitives import (
     ELEMENT_COUNT,
@@ -11,7 +11,6 @@ from eight_characters.evolution.primitives import (
     ten_god_one_hot,
     wealth_element,
 )
-
 
 PILLAR_COUNT = 4
 RULE_COUNT = 34
@@ -81,6 +80,7 @@ RULE_STATE_DOMAINS: tuple[tuple[int, ...], ...] = (
     (0, 1),  # 34
 )
 
+
 def _validate_binary_int(value: int, field_name: str) -> None:
     if value not in (0, 1):
         raise ValueError(f'{field_name} must be 0 or 1, got {value}')
@@ -93,11 +93,6 @@ def _validate_one_hot(vector: Sequence[int], length: int, field_name: str) -> No
         raise ValueError(f'{field_name} must contain only 0/1 values')
     if sum(vector) != 1:
         raise ValueError(f'{field_name} must be one-hot with exactly one active entry')
-
-
-def _one_hot_index(vector: Sequence[int], field_name: str, length: int) -> int:
-    _validate_one_hot(vector, length=length, field_name=field_name)
-    return vector.index(1)
 
 
 @dataclass(frozen=True)
@@ -138,7 +133,9 @@ class ObservedState:
             raise ValueError('vitality_stages length must match base_elements length')
 
         for idx, one_hot in enumerate(self.base_elements):
-            _validate_one_hot(one_hot, length=ELEMENT_COUNT, field_name=f'base_elements[{idx}]')
+            _validate_one_hot(
+                one_hot, length=ELEMENT_COUNT, field_name=f'base_elements[{idx}]'
+            )
         for idx, polarity in enumerate(self.polarities):
             _validate_binary_int(polarity, f'polarities[{idx}]')
         for idx, hierarchy in enumerate(self.hierarchy_levels):
@@ -183,9 +180,13 @@ class LatentState:
         if self.mode not in VALID_MODES:
             raise ValueError(f'mode must be one of {VALID_MODES}, got {self.mode}')
 
-        for idx, (value, domain) in enumerate(zip(self.switches, RULE_STATE_DOMAINS), start=1):
+        for idx, (value, domain) in enumerate(
+            zip(self.switches, RULE_STATE_DOMAINS), start=1
+        ):
             if value not in domain:
-                raise ValueError(f'S_{idx} invalid state {value}; allowed states={domain}')
+                raise ValueError(
+                    f'S_{idx} invalid state {value}; allowed states={domain}'
+                )
         for idx, omega_value in enumerate(self.omegas, start=1):
             if omega_value < 0.0:
                 raise ValueError(f'omega_{idx} must be non-negative')
@@ -207,7 +208,9 @@ class DerivedState:
         if len(self.effective_ten_gods) != expected_entity_count:
             raise ValueError('effective_ten_gods length must match entity count')
         if len(self.dynamic_vitality_amplitudes) != expected_entity_count:
-            raise ValueError('dynamic_vitality_amplitudes length must match entity count')
+            raise ValueError(
+                'dynamic_vitality_amplitudes length must match entity count'
+            )
 
         for idx, one_hot in enumerate(self.effective_elements):
             _validate_one_hot(
@@ -319,4 +322,3 @@ def recompute_effective_ten_gods(
             )
         )
     return tuple(result)
-

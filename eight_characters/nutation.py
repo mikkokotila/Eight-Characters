@@ -2,7 +2,7 @@ from math import cos, radians, sin
 
 
 def _longitude_of_ascending_node_deg(t_centuries: float) -> float:
-    return 125.04452 - 1934.136261 * t_centuries + 0.0020708 * (t_centuries ** 2)
+    return 125.04452 - 1934.136261 * t_centuries + 0.0020708 * (t_centuries**2)
 
 
 def _mean_longitude_sun_deg(t_centuries: float) -> float:

@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 
 class BracketingError(ValueError):
@@ -51,8 +51,8 @@ def brentq(
     xtol: float = 1e-12,
     max_iter: int = 100,
 ) -> float:
-    fa = func(xa)
-    fb = func(xb)
+    fa: float = func(xa)
+    fb: float = func(xb)
 
     if fa == 0.0:
         return xa
@@ -61,12 +61,12 @@ def brentq(
     if fa * fb > 0.0:
         raise ValueError('Root is not bracketed.')
 
-    a = xa
-    b = xb
-    c = a
-    fc = fa
-    d = b - a
-    e = d
+    a: float = xa
+    b: float = xb
+    c: float = a
+    fc: float = fa
+    d: float = b - a
+    e: float = d
 
     for _ in range(max_iter):
         if fb * fc > 0.0:
@@ -86,14 +86,19 @@ def brentq(
             return b
 
         if abs(e) >= tol and abs(fa) > abs(fb):
-            s = fb / fa
+            s: float = fb / fa
+            p: float = 0.0
+            q: float = 0.0
             if a == c:
                 p = 2.0 * midpoint * s
                 q = 1.0 - s
             else:
-                q_ratio = fa / fc
-                r_ratio = fb / fc
-                p = s * (2.0 * midpoint * q_ratio * (q_ratio - r_ratio) - (b - a) * (r_ratio - 1.0))
+                q_ratio: float = fa / fc
+                r_ratio: float = fb / fc
+                p = s * (
+                    2.0 * midpoint * q_ratio * (q_ratio - r_ratio)
+                    - (b - a) * (r_ratio - 1.0)
+                )
                 q = (q_ratio - 1.0) * (r_ratio - 1.0) * (s - 1.0)
 
             if p > 0.0:

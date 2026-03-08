@@ -1,7 +1,7 @@
 import json
+import os
 import random
 import unittest
-from datetime import datetime
 from pathlib import Path
 
 from lunar_python import Solar
@@ -15,12 +15,12 @@ from eight_characters.conventions import (
 from eight_characters.engine import compute_engine_payload
 from eight_characters.time_convert import BirthInput
 
-
 REPORT_PATH = Path('tests/fixtures/tkt025_cross_verification_report.json')
+WRITE_REPORT_ENV = 'EC_WRITE_REPORT_FIXTURE'
 
 
 def _pillar_as_text(pillar: dict) -> str:
-    return f"{pillar['stem']['chinese']}{pillar['branch']['chinese']}"
+    return f'{pillar["stem"]["chinese"]}{pillar["branch"]["chinese"]}'
 
 
 class TestTkt025CrossVerification(unittest.TestCase):
@@ -122,8 +122,12 @@ class TestTkt025CrossVerification(unittest.TestCase):
             'mismatch_ratio': mismatch_count / total,
             'examples': mismatch_examples,
         }
-        REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
-        REPORT_PATH.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding='utf-8')
+        if os.environ.get(WRITE_REPORT_ENV) == '1':
+            REPORT_PATH.parent.mkdir(parents=True, exist_ok=True)
+            REPORT_PATH.write_text(
+                json.dumps(report, ensure_ascii=False, indent=2),
+                encoding='utf-8',
+            )
 
         self.assertEqual(total, 1000)
         self.assertLessEqual(mismatch_count, 100)

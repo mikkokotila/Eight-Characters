@@ -1,11 +1,11 @@
 from dataclasses import asdict
 from datetime import datetime
+from typing import Any, TypedDict
 
 from eight_characters import __version__
 from eight_characters.conventions import (
     DAY_BOUNDARY_BASIS_TRUE_SOLAR,
     HOUR_BASIS_TRUE_SOLAR,
-    ConventionSettings,
 )
 from eight_characters.embedded_data import ENGINE_MODEL_IDS, get_tzdb_version
 from eight_characters.integrity import (
@@ -18,7 +18,12 @@ from eight_characters.integrity import (
 from eight_characters.output import dumps_deterministic
 from eight_characters.sexagenary import (
     BRANCHES as SEXAGENARY_BRANCHES,
+)
+from eight_characters.sexagenary import (
     STEMS as SEXAGENARY_STEMS,
+)
+from eight_characters.sexagenary import (
+    Pillar,
     day_pillar,
     hour_pillar,
     month_pillar,
@@ -33,8 +38,11 @@ from eight_characters.solar_term_solver import (
     lichun_jd_tt_for_civil_year,
     nearest_jie_distance_seconds,
 )
-from eight_characters.time_convert import BirthInput, convert_utc_to_tt, normalize_birth_input
-
+from eight_characters.time_convert import (
+    BirthInput,
+    convert_utc_to_tt,
+    normalize_birth_input,
+)
 
 TERM_LABEL_BY_TARGET = {
     315.0: 'lichun_315',
@@ -51,7 +59,20 @@ TERM_LABEL_BY_TARGET = {
     285.0: 'xiaohan_285',
 }
 
-MONTH_BOUNDARIES = (315.0, 345.0, 15.0, 45.0, 75.0, 105.0, 135.0, 165.0, 195.0, 225.0, 255.0, 285.0)
+MONTH_BOUNDARIES = (
+    315.0,
+    345.0,
+    15.0,
+    45.0,
+    75.0,
+    105.0,
+    135.0,
+    165.0,
+    195.0,
+    225.0,
+    255.0,
+    285.0,
+)
 
 TERM_SEED_MONTH_DAY = {
     285.0: (1, 5),
@@ -67,6 +88,16 @@ TERM_SEED_MONTH_DAY = {
     225.0: (11, 7),
     255.0: (12, 7),
 }
+
+
+class StemOrBranchPayload(TypedDict):
+    index: int
+    chinese: str
+
+
+class PillarPayload(TypedDict):
+    stem: StemOrBranchPayload
+    branch: StemOrBranchPayload
 
 
 def _seed_jd_for_target(year_value: int, target_longitude: float) -> float:
@@ -90,7 +121,7 @@ def _boundary_note(distance_seconds: float, label: str) -> str:
     return f'Birth is after boundary {label}.'
 
 
-def _pillar_dict(pillar_obj) -> dict:
+def _pillar_dict(pillar_obj: Pillar) -> PillarPayload:
     return {
         'stem': {
             'index': pillar_obj.stem_idx,
@@ -103,7 +134,7 @@ def _pillar_dict(pillar_obj) -> dict:
     }
 
 
-def compute_engine_payload(value: BirthInput) -> dict:
+def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
     normalized = normalize_birth_input(value)
     tt_result = convert_utc_to_tt(normalized.utc_datetime)
 
@@ -151,7 +182,9 @@ def compute_engine_payload(value: BirthInput) -> dict:
 
     term_jds = _nearby_month_term_jds(normalized.utc_datetime.year)
     nearest_term_seconds = nearest_jie_distance_seconds(solar.jd_tt, term_jds)
-    model_uncertainty_seconds = model_uncertainty_seconds_for_year(normalized.utc_datetime.year)
+    model_uncertainty_seconds = model_uncertainty_seconds_for_year(
+        normalized.utc_datetime.year
+    )
     user_uncertainty = value.birth_time_uncertainty_seconds or 0.0
     total_uncertainty_seconds = max(model_uncertainty_seconds, user_uncertainty)
     solar_term_ambiguous = nearest_term_seconds < total_uncertainty_seconds
@@ -168,7 +201,7 @@ def compute_engine_payload(value: BirthInput) -> dict:
         zi_basis_dt = civil_local_naive
     zi_window = is_zi_hour_window(zi_basis_dt)
 
-    alternative_pillars = None
+    alternative_pillars: dict[str, Any] | None = None
     if zi_window:
         alternative_conventions = build_alternative_zi_convention(value.conventions)
         alt_day = day_pillar(
@@ -190,7 +223,7 @@ def compute_engine_payload(value: BirthInput) -> dict:
 
     lichun_distance_seconds = (solar.jd_tt - lichun_jd) * 86400.0
 
-    payload = {
+    payload: dict[str, Any] = {
         'engine': {
             'version': __version__,
             'vsop87_series': ENGINE_MODEL_IDS['vsop87_series'],
@@ -217,7 +250,9 @@ def compute_engine_payload(value: BirthInput) -> dict:
             'tt_julian_date': solar.jd_tt,
             'solar_longitude_deg': solar.lambda_apparent_deg,
             'equation_of_time_minutes': solar.equation_of_time_minutes,
-            'local_mean_solar_time': solar.local_mean_solar_time.strftime('%Y-%m-%dT%H:%M:%S'),
+            'local_mean_solar_time': solar.local_mean_solar_time.strftime(
+                '%Y-%m-%dT%H:%M:%S'
+            ),
             'true_solar_time': solar.true_solar_time.strftime('%Y-%m-%dT%H:%M:%S'),
             'effective_day_date': day_result.effective_date.isoformat(),
             'julian_day_number': day_result.jdn,
@@ -229,7 +264,9 @@ def compute_engine_payload(value: BirthInput) -> dict:
                 'boundary': {
                     'type': TERM_LABEL_BY_TARGET[315.0],
                     'distance_seconds': lichun_distance_seconds,
-                    'note': _boundary_note(lichun_distance_seconds, TERM_LABEL_BY_TARGET[315.0]),
+                    'note': _boundary_note(
+                        lichun_distance_seconds, TERM_LABEL_BY_TARGET[315.0]
+                    ),
                 },
             },
             'month': {

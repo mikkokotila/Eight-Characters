@@ -5,7 +5,10 @@ from eight_characters.evolution.postprocess import (
     PostprocessConfig,
     postprocess_inference,
 )
-from eight_characters.evolution.primitives import element_to_one_hot, stem_element_polarity
+from eight_characters.evolution.primitives import (
+    element_to_one_hot,
+    stem_element_polarity,
+)
 from eight_characters.evolution.state import ObservedState
 
 
@@ -113,4 +116,3 @@ class TestEvolutionModuleGPostprocess(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

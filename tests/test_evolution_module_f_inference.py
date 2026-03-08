@@ -6,7 +6,11 @@ from eight_characters.evolution.inference import (
     run_tempered_smc,
     temperature_ladder,
 )
-from eight_characters.evolution.primitives import OMEGA_MIN_R, element_to_one_hot, stem_element_polarity
+from eight_characters.evolution.primitives import (
+    OMEGA_MIN_R,
+    element_to_one_hot,
+    stem_element_polarity,
+)
 from eight_characters.evolution.state import ObservedState
 
 
@@ -100,7 +104,9 @@ class TestEvolutionModuleFInference(unittest.TestCase):
             branch_ids=(1, 2, 3, 4),
         )
         evaluations = evaluate_all_families(observed)
-        omega_max_values = tuple(1.0 + evaluation.proximity_weight for evaluation in evaluations)
+        omega_max_values = tuple(
+            1.0 + evaluation.proximity_weight for evaluation in evaluations
+        )
 
         config = InferenceConfig(
             particles=18,
@@ -117,4 +123,3 @@ class TestEvolutionModuleFInference(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
