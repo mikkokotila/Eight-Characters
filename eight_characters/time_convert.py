@@ -1,5 +1,5 @@
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from eight_characters.conventions import ConventionSettings
@@ -10,9 +10,6 @@ from eight_characters.embedded_data import (
     get_tzdb_version,
 )
 from eight_characters.policy import EnginePolicy
-
-
-UTC = timezone.utc
 
 
 class TimeResolutionError(ValueError):
@@ -41,7 +38,7 @@ class BirthInput:
     fold: int | None = None
     utc_timestamp: str | None = None
     birth_time_uncertainty_seconds: float | None = None
-    conventions: ConventionSettings = ConventionSettings()
+    conventions: ConventionSettings = field(default_factory=ConventionSettings)
 
 
 @dataclass(frozen=True)
@@ -101,7 +98,10 @@ def _resolve_local_time(
     rt1 = utc1.astimezone(tz)
 
     def _matches(roundtrip_dt: datetime, expected_fold: int) -> bool:
-        return roundtrip_dt.replace(tzinfo=None) == wall and roundtrip_dt.fold == expected_fold
+        return (
+            roundtrip_dt.replace(tzinfo=None) == wall
+            and roundtrip_dt.fold == expected_fold
+        )
 
     m0 = _matches(rt0, 0)
     m1 = _matches(rt1, 1)
@@ -167,32 +167,48 @@ def normalize_birth_input(value: BirthInput) -> NormalizedTimeInput:
     if any(field is None for field in required_local_fields):
         raise ValueError('Local time mode requires date, time, and timezone fields.')
 
-    policy.validate_year(value.year)
+    year = value.year
+    month = value.month
+    day = value.day
+    hour = value.hour
+    minute = value.minute
+    second = value.second
+    timezone_name = value.timezone_name
+
+    assert year is not None
+    assert month is not None
+    assert day is not None
+    assert hour is not None
+    assert minute is not None
+    assert second is not None
+    assert timezone_name is not None
+
+    policy.validate_year(year)
 
     utc_datetime = _resolve_local_time(
-        year=value.year,
-        month=value.month,
-        day=value.day,
-        hour=value.hour,
-        minute=value.minute,
-        second=value.second,
-        timezone_name=value.timezone_name,
+        year=year,
+        month=month,
+        day=day,
+        hour=hour,
+        minute=minute,
+        second=second,
+        timezone_name=timezone_name,
         fold=value.fold,
     )
 
     civil_datetime_local = datetime(
-        value.year,
-        value.month,
-        value.day,
-        value.hour,
-        value.minute,
-        value.second,
+        year,
+        month,
+        day,
+        hour,
+        minute,
+        second,
     )
 
     return NormalizedTimeInput(
         utc_datetime=utc_datetime,
         civil_datetime_local=civil_datetime_local,
-        timezone_name=value.timezone_name,
+        timezone_name=timezone_name,
         fold=value.fold,
         longitude=value.longitude,
         latitude=value.latitude,
@@ -222,7 +238,9 @@ def convert_utc_to_tt(utc_datetime: datetime) -> TTConversionResult:
     if normalized_utc >= threshold:
         tai_minus_utc = float(get_leap_second_offset_seconds(normalized_utc))
         tt_minus_utc = tai_minus_utc + 32.184
-        tt_datetime = normalized_utc.replace(tzinfo=None) + timedelta(seconds=tt_minus_utc)
+        tt_datetime = normalized_utc.replace(tzinfo=None) + timedelta(
+            seconds=tt_minus_utc
+        )
         return TTConversionResult(
             tt_datetime=tt_datetime,
             tt_minus_utc_seconds=tt_minus_utc,
@@ -233,7 +251,9 @@ def convert_utc_to_tt(utc_datetime: datetime) -> TTConversionResult:
 
     decimal_year_value = decimal_year(normalized_utc)
     delta_t_seconds = evaluate_delta_t_seconds(decimal_year_value)
-    tt_datetime = normalized_utc.replace(tzinfo=None) + timedelta(seconds=delta_t_seconds)
+    tt_datetime = normalized_utc.replace(tzinfo=None) + timedelta(
+        seconds=delta_t_seconds
+    )
     return TTConversionResult(
         tt_datetime=tt_datetime,
         tt_minus_utc_seconds=delta_t_seconds,

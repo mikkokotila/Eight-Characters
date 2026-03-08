@@ -1,14 +1,12 @@
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from eight_characters.conventions import ConventionSettings
 from eight_characters.engine import compute_engine_payload
-from eight_characters.solar_position import julian_date_from_datetime_utc
 from eight_characters.solar_term_solver import lichun_jd_tt_for_civil_year
 from eight_characters.time_convert import BirthInput
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 def _dt_from_jd(jd_value: float) -> datetime:
@@ -143,8 +141,14 @@ class TestTkt026MandatoryEdgeCases(unittest.TestCase):
                 conventions=ConventionSettings(),
             )
         )
-        day_text = payload['pillars']['day']['stem']['chinese'] + payload['pillars']['day']['branch']['chinese']
-        hour_text = payload['pillars']['hour']['stem']['chinese'] + payload['pillars']['hour']['branch']['chinese']
+        day_text = (
+            payload['pillars']['day']['stem']['chinese']
+            + payload['pillars']['day']['branch']['chinese']
+        )
+        hour_text = (
+            payload['pillars']['hour']['stem']['chinese']
+            + payload['pillars']['hour']['branch']['chinese']
+        )
         self.assertEqual(day_text, '己丑')
         self.assertEqual(hour_text, '壬申')
 

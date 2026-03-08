@@ -1,13 +1,12 @@
 import json
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 from eight_characters.solar_position import julian_date_from_datetime_utc
 from eight_characters.solar_term_solver import find_solar_term
 
-
-UTC = timezone.utc
+UTC = UTC
 HKT = timezone(timedelta(hours=8))
 FIXTURE_PATH = Path('tests/fixtures/hko_solar_terms_2019_2028.json')
 
@@ -43,7 +42,9 @@ class TestTkt023HkoSolarTermVerification(unittest.TestCase):
                 datetime(year_value, month_value, day_value, 0, 0, 0, tzinfo=UTC)
             )
             computed_jd = find_solar_term(target_longitude_deg, seed_jd)
-            computed_utc = datetime.fromtimestamp((computed_jd - 2440587.5) * 86400, tz=UTC)
+            computed_utc = datetime.fromtimestamp(
+                (computed_jd - 2440587.5) * 86400, tz=UTC
+            )
             errors_seconds.append(abs((computed_utc - hko_utc).total_seconds()))
 
         self.assertEqual(len(errors_seconds), 240)

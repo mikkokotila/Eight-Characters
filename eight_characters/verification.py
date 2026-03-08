@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from typing import Any
 
 
 def write_regression_fixture(target_file: str, payload_json: str) -> None:
@@ -8,7 +9,7 @@ def write_regression_fixture(target_file: str, payload_json: str) -> None:
     path.write_text(payload_json, encoding='utf-8')
 
 
-def read_regression_fixture(target_file: str) -> dict:
+def read_regression_fixture(target_file: str) -> dict[str, Any]:
     path = Path(target_file)
     return json.loads(path.read_text(encoding='utf-8'))
 
@@ -26,5 +27,8 @@ def fixture_roundtrip_matches(
     if not path.exists():
         return False
 
-    loaded = read_regression_fixture(target_file)
-    return json.dumps(loaded, ensure_ascii=False, sort_keys=True, separators=(',', ':')) == payload_json
+    loaded: dict[str, Any] = read_regression_fixture(target_file)
+    return (
+        json.dumps(loaded, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
+        == payload_json
+    )

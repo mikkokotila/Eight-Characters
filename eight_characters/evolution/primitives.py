@@ -1,3 +1,5 @@
+from collections.abc import Sequence
+
 ELEMENT_COUNT = 5
 TEN_GOD_COUNT = 10
 
@@ -144,6 +146,7 @@ _LIFE_STAGE_TABLE = {
     'Gui': (4, 3, 2, 1, 12, 11, 10, 9, 8, 7, 6, 5),
 }
 
+
 # Math.md Section 3.4.
 def temperature_contribution(element_index: int, polarity: int) -> float:
     _validate_element_index(element_index)
@@ -205,8 +208,8 @@ PARTIAL_STATE_WEIGHT_BY_S = (
 TAU_R = 0.4
 OMEGA_MIN_R = 0.5
 PROXIMITY_WEIGHT_BY_GAP = (
-    1.0,   # adjacent
-    0.5,   # gap 1
+    1.0,  # adjacent
+    0.5,  # gap 1
     0.25,  # gap 2
 )
 
@@ -269,10 +272,12 @@ def _validate_branch_id(branch_id: int) -> None:
 
 def element_to_one_hot(element_index: int) -> tuple[int, int, int, int, int]:
     _validate_element_index(element_index)
-    return tuple(1 if idx == element_index else 0 for idx in range(ELEMENT_COUNT))
+    values = [0, 0, 0, 0, 0]
+    values[element_index] = 1
+    return (values[0], values[1], values[2], values[3], values[4])
 
 
-def one_hot_to_element(one_hot: tuple[int, int, int, int, int]) -> int:
+def one_hot_to_element(one_hot: Sequence[int]) -> int:
     if len(one_hot) != ELEMENT_COUNT:
         raise ValueError(f'element one-hot must have length {ELEMENT_COUNT}')
     if any(value not in (0, 1) for value in one_hot):
@@ -417,7 +422,9 @@ def sigma_stem_row(element_index: int, polarity: int) -> str:
     return _SIGMA_ROW_BY_ELEMENT_POLARITY[(element_index, polarity)]
 
 
-def life_stage_anchor(element_index: int, polarity: int, branch_index_1_based: int) -> int:
+def life_stage_anchor(
+    element_index: int, polarity: int, branch_index_1_based: int
+) -> int:
     if branch_index_1_based < 1 or branch_index_1_based > 12:
         raise ValueError('branch index must be in [1..12]')
     row_name = sigma_stem_row(element_index, polarity)
@@ -480,4 +487,3 @@ def season_element_from_month_branch(branch_id: int) -> int:
     if branch_id in (BRANCH_SHEN, BRANCH_YOU, BRANCH_XU):
         return ELEMENT_METAL
     return ELEMENT_WATER
-

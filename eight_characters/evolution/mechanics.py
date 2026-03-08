@@ -1,4 +1,4 @@
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from eight_characters.evolution.primitives import (
     DELTA_CLASH,
@@ -31,7 +31,9 @@ def _validate_amplitudes(amplitudes: Sequence[float], expected_count: int) -> No
             raise ValueError(f'amplitudes[{idx}] must be in [0,1], got {value}')
 
 
-def _validate_flux_matrix(matrix: Sequence[Sequence[float]], expected_count: int) -> None:
+def _validate_flux_matrix(
+    matrix: Sequence[Sequence[float]], expected_count: int
+) -> None:
     if len(matrix) != expected_count:
         raise ValueError(
             f'flux matrix row count mismatch: expected {expected_count}, got {len(matrix)}'
@@ -153,7 +155,9 @@ def realized_flux(
 def pillar_climate_summaries(
     observed_state: ObservedState,
     effective_elements: Sequence[Sequence[int]],
-) -> tuple[tuple[float, float, float, float], tuple[float, float, float, float], float, float]:
+) -> tuple[
+    tuple[float, float, float, float], tuple[float, float, float, float], float, float
+]:
     observed_state.validate()
     if len(effective_elements) != len(observed_state.base_elements):
         raise ValueError('effective_elements length must match entity count')
@@ -175,8 +179,12 @@ def pillar_climate_summaries(
             element_index = tuple(one_hot).index(1)
             polarity = observed_state.polarities[entity_index]
             weight = mask * hierarchy
-            numerator_theta += weight * temperature_contribution(element_index, polarity)
-            numerator_saturation += weight * moisture_contribution(element_index, polarity)
+            numerator_theta += weight * temperature_contribution(
+                element_index, polarity
+            )
+            numerator_saturation += weight * moisture_contribution(
+                element_index, polarity
+            )
             denominator += weight
 
         theta_values.append(numerator_theta / (denominator + EPSILON))
@@ -227,4 +235,3 @@ def pillar_retention(
         retention_values[2],
         retention_values[3],
     )
-

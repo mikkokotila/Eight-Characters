@@ -1,6 +1,6 @@
+from collections.abc import Sequence
 from dataclasses import dataclass
 from statistics import median
-from typing import Sequence
 
 import numpy as np
 
@@ -8,7 +8,7 @@ from eight_characters.evolution.families import FamilyEvaluation, evaluate_all_f
 from eight_characters.evolution.inference import (
     InferenceResult,
     ParticleSnapshot,
-    _build_particle,
+    build_particle,
 )
 from eight_characters.evolution.mechanics import realized_flux
 from eight_characters.evolution.primitives import (
@@ -22,11 +22,11 @@ from eight_characters.evolution.primitives import (
     season_element_from_month_branch,
 )
 from eight_characters.evolution.state import (
-    LatentState,
-    ObservedState,
     RULE_COUNT,
     RULE_STATE_DOMAINS,
     VALID_MODES,
+    LatentState,
+    ObservedState,
 )
 
 
@@ -86,7 +86,9 @@ class PostprocessResult:
 def _omega_bounds(
     evaluations: Sequence[FamilyEvaluation],
 ) -> tuple[tuple[float, float], ...]:
-    return tuple((OMEGA_MIN_R, 1.0 + evaluation.proximity_weight) for evaluation in evaluations)
+    return tuple(
+        (OMEGA_MIN_R, 1.0 + evaluation.proximity_weight) for evaluation in evaluations
+    )
 
 
 def _distance(
@@ -119,9 +121,13 @@ def _distance(
             continue
         lower, upper = omega_bounds[idx]
         denom = max(upper - lower, EPSILON)
-        cont_sum += abs(
-            particle_a.latent_state.omegas[idx] - particle_b.latent_state.omegas[idx]
-        ) / denom
+        cont_sum += (
+            abs(
+                particle_a.latent_state.omegas[idx]
+                - particle_b.latent_state.omegas[idx]
+            )
+            / denom
+        )
 
     return (
         CLUSTER_ALPHA * (d_h_switch + mode_gap) / float(RULE_COUNT + 1)
@@ -155,9 +161,7 @@ def _dbscan_labels(
 
     def neighbors(index: int) -> list[int]:
         return [
-            other
-            for other, dist in enumerate(distance_matrix[index])
-            if dist <= eps
+            other for other, dist in enumerate(distance_matrix[index]) if dist <= eps
         ]
 
     cluster_id = 0
@@ -203,7 +207,7 @@ def _active_edges(
     if not nonzero:
         return 0.0, []
     threshold = 0.25 * max(nonzero)
-    edges = []
+    edges: list[tuple[int, int, float]] = []
     for source in range(len(flux_matrix)):
         for target in range(len(flux_matrix)):
             value = flux_matrix[source][target]
@@ -227,7 +231,8 @@ def _motifs_for_particle(
             element_idx
             for element_idx in range(5)
             if sum(
-                observed_state.masks[i] * int(particle.effective_elements[i][element_idx] == 1)
+                observed_state.masks[i]
+                * int(particle.effective_elements[i][element_idx] == 1)
                 for i in range(len(particle.effective_elements))
             )
             == 0
@@ -251,7 +256,8 @@ def _motifs_for_particle(
         element_idx
         for element_idx in range(5)
         if sum(
-            observed_state.masks[i] * int(particle.effective_elements[i][element_idx] == 1)
+            observed_state.masks[i]
+            * int(particle.effective_elements[i][element_idx] == 1)
             for i in range(len(particle.effective_elements))
         )
         == 0
@@ -271,7 +277,7 @@ def _motifs_for_particle(
             if sign is not None and edge_sign != sign:
                 continue
             extension_found = True
-            walk_chain(path + (nxt,), edge_sign if sign is None else sign)
+            walk_chain((*path, nxt), edge_sign if sign is None else sign)
         if not extension_found and len(path) >= 3:
             chains_set.add(path)
 
@@ -292,7 +298,7 @@ def _motifs_for_particle(
                 continue
             if nxt in path:
                 continue
-            dfs_cycle(start, nxt, path + (nxt,))
+            dfs_cycle(start, nxt, (*path, nxt))
 
     for node in range(len(flux)):
         dfs_cycle(node, node, (node,))
@@ -315,26 +321,29 @@ def _motifs_for_particle(
         and 0.5 <= inbound[idx] / (outbound[idx] + EPSILON) <= 2.0
     )
 
-    cascades = []
+    cascades: list[tuple[int, ...]] = []
     for chain in chains:
         magnitudes = [
             abs(edge_value[(chain[idx], chain[idx + 1])])
             for idx in range(len(chain) - 1)
         ]
-        if all(
-            magnitudes[idx + 1] >= magnitudes[idx]
-            for idx in range(len(magnitudes) - 1)
-        ) and magnitudes[-1] / (magnitudes[0] + EPSILON) >= 1.25:
+        if (
+            all(
+                magnitudes[idx + 1] >= magnitudes[idx]
+                for idx in range(len(magnitudes) - 1)
+            )
+            and magnitudes[-1] / (magnitudes[0] + EPSILON) >= 1.25
+        ):
             cascades.append(chain)
 
-    b_values = []
+    b_values: list[float] = []
     for idx in range(len(flux)):
-        score = (inbound[idx] + outbound[idx]) / (particle.dynamic_amplitudes[idx] + EPSILON)
+        score = (inbound[idx] + outbound[idx]) / (
+            particle.dynamic_amplitudes[idx] + EPSILON
+        )
         b_values.append(score)
     quartile = float(np.quantile(np.array(b_values, dtype=np.float64), 0.75))
-    bottlenecks = tuple(
-        idx for idx, value in enumerate(b_values) if value >= quartile
-    )
+    bottlenecks = tuple(idx for idx, value in enumerate(b_values) if value >= quartile)
 
     return MotifInventory(
         chains=chains,
@@ -347,11 +356,14 @@ def _motifs_for_particle(
 
 
 def _active_omega_l2(latent_state: LatentState) -> float:
-    return sum(
-        omega * omega
-        for omega, switch in zip(latent_state.omegas, latent_state.switches)
-        if switch > 0
-    ) ** 0.5
+    return (
+        sum(
+            omega * omega
+            for omega, switch in zip(latent_state.omegas, latent_state.switches)
+            if switch > 0
+        )
+        ** 0.5
+    )
 
 
 def _try_build(
@@ -361,7 +373,7 @@ def _try_build(
     season_element: int,
 ) -> ParticleSnapshot | None:
     try:
-        return _build_particle(
+        return build_particle(
             observed_state=observed_state,
             latent_state=latent_state,
             evaluations=evaluations,
@@ -393,7 +405,9 @@ def _discrete_relax(
                 omegas=current.latent_state.omegas,
                 mode=mode,
             )
-            candidate = _try_build(observed_state, candidate_latent, evaluations, season_element)
+            candidate = _try_build(
+                observed_state, candidate_latent, evaluations, season_element
+            )
             if candidate is None:
                 continue
             delta = candidate.energy_breakdown.total - current.energy_breakdown.total
@@ -428,7 +442,9 @@ def _discrete_relax(
                 )
                 if candidate is None:
                     continue
-                delta = candidate.energy_breakdown.total - current.energy_breakdown.total
+                delta = (
+                    candidate.energy_breakdown.total - current.energy_breakdown.total
+                )
                 if delta < best_delta:
                     best_delta = delta
                     best_candidate = candidate
@@ -601,4 +617,3 @@ def postprocess_inference(
         labels=tuple(labels),
         relaxed_particles=tuple(relaxed_particles),
     )
-

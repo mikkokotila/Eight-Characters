@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Any
 
 from eight_characters.conventions import (
     ZI_CONVENTION_SPLIT_MIDNIGHT,
@@ -16,7 +17,7 @@ class IntegrityFlags:
     hour_boundary_proximity_seconds: float
     model_uncertainty_seconds: float
     high_latitude_warning: bool
-    alternative_pillars: dict | None
+    alternative_pillars: dict[str, Any] | None
 
 
 def validate_pillar_set(pillars: dict[str, Pillar]) -> None:
@@ -31,7 +32,9 @@ def model_uncertainty_seconds_for_year(year_value: int) -> float:
 
 
 def hour_boundary_distance_seconds(basis_dt: datetime) -> float:
-    seconds_of_hour = basis_dt.minute * 60.0 + basis_dt.second + basis_dt.microsecond / 1_000_000.0
+    seconds_of_hour = (
+        basis_dt.minute * 60.0 + basis_dt.second + basis_dt.microsecond / 1_000_000.0
+    )
     seconds_to_previous_boundary = seconds_of_hour
     seconds_to_next_boundary = 3600.0 - seconds_of_hour
     return min(seconds_to_previous_boundary, seconds_to_next_boundary)
@@ -41,7 +44,9 @@ def is_zi_hour_window(basis_dt: datetime) -> bool:
     return basis_dt.hour in (23, 0)
 
 
-def build_alternative_zi_convention(conventions: ConventionSettings) -> ConventionSettings:
+def build_alternative_zi_convention(
+    conventions: ConventionSettings,
+) -> ConventionSettings:
     if conventions.zi_convention == ZI_CONVENTION_SPLIT_MIDNIGHT:
         return ConventionSettings(
             zi_convention=ZI_CONVENTION_WHOLE_ZI_23,

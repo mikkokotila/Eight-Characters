@@ -112,7 +112,9 @@ def validate_module_contracts(
 
     for module_name, contract in graph.items():
         if contract.name != module_name:
-            raise ValueError(f'Module key/name mismatch: {module_name} != {contract.name}')
+            raise ValueError(
+                f'Module key/name mismatch: {module_name} != {contract.name}'
+            )
         for dependency in contract.dependencies:
             if dependency not in graph:
                 raise ValueError(

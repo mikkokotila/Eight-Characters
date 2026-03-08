@@ -8,7 +8,6 @@ from eight_characters.conventions import (
     ConventionSettings,
 )
 
-
 STEMS = ('甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸')
 BRANCHES = ('子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥')
 
@@ -40,14 +39,24 @@ def gregorian_to_jdn(year: int, month: int, day: int) -> int:
     a = (14 - month) // 12
     y = year + 4800 - a
     m = month + 12 * a - 3
-    return day + ((153 * m + 2) // 5) + 365 * y + (y // 4) - (y // 100) + (y // 400) - 32045
+    return (
+        day
+        + ((153 * m + 2) // 5)
+        + 365 * y
+        + (y // 4)
+        - (y // 100)
+        + (y // 400)
+        - 32045
+    )
 
 
 def day_index_from_jdn(jdn: int) -> int:
     return (jdn - 11) % 60
 
 
-def year_pillar(civil_year: int, birth_jd_tt: float, lichun_jd_tt: float) -> tuple[Pillar, int]:
+def year_pillar(
+    civil_year: int, birth_jd_tt: float, lichun_jd_tt: float
+) -> tuple[Pillar, int]:
     bazi_year = civil_year - 1 if birth_jd_tt < lichun_jd_tt else civil_year
     pillar = Pillar(
         stem_idx=(bazi_year - 4) % 10,

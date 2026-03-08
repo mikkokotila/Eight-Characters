@@ -1,6 +1,6 @@
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from math import inf, isinf
-from typing import Iterable, Sequence
 
 from eight_characters.evolution.families import (
     FAMILY_CATALOG,
@@ -111,7 +111,9 @@ def _stem_entity_index_by_position(observed_state: ObservedState) -> dict[int, i
         if mask != 1 or hierarchy != 4:
             continue
         if position in mapping:
-            raise ValueError(f'multiple active stem entities found in position {position}')
+            raise ValueError(
+                f'multiple active stem entities found in position {position}'
+            )
         mapping[position] = entity_index
     return mapping
 
@@ -174,28 +176,19 @@ def _mode_diagnostics(
             continue
         if observed_state.hierarchy_levels[entity_index] >= 4:
             continue
-        if one_hot_to_element(tuple(effective_elements[entity_index])) == day_master_element:
+        if (
+            one_hot_to_element(tuple(effective_elements[entity_index]))
+            == day_master_element
+        ):
             root_dm = 1
             break
 
     season_dm = season_score(day_master_element, season_element_index)
     score_str = (
-        u_self
-        + u_res
-        + 0.2 * root_dm
-        + 0.1 * max(season_dm, 0)
-        - u_out
-        - u_w
-        - u_auth
+        u_self + u_res + 0.2 * root_dm + 0.1 * max(season_dm, 0) - u_out - u_w - u_auth
     )
     score_weak = (
-        u_out
-        + u_w
-        + u_auth
-        + 0.1 * max(-season_dm, 0)
-        - u_self
-        - u_res
-        - 0.2 * root_dm
+        u_out + u_w + u_auth + 0.1 * max(-season_dm, 0) - u_self - u_res - 0.2 * root_dm
     )
     return (
         score_str,
@@ -275,7 +268,11 @@ def compute_energy_breakdown(
     if len(dynamic_amplitudes) != entity_count:
         raise ValueError('dynamic_amplitudes length must match entity count')
 
-    evaluations = tuple(family_evaluations) if family_evaluations is not None else evaluate_all_families(observed_state)
+    evaluations = (
+        tuple(family_evaluations)
+        if family_evaluations is not None
+        else evaluate_all_families(observed_state)
+    )
     if len(evaluations) != len(FAMILY_CATALOG):
         raise ValueError(
             f'family evaluations length mismatch: expected {len(FAMILY_CATALOG)}, got {len(evaluations)}'
@@ -283,7 +280,9 @@ def compute_energy_breakdown(
     enforce_applicability_lock(latent_state=latent_state, evaluations=evaluations)
 
     if season_element_index is None:
-        season_element_index = season_element_from_month_branch(observed_state.branch_ids[1])
+        season_element_index = season_element_from_month_branch(
+            observed_state.branch_ids[1]
+        )
 
     e_excl = exclusivity_energy(full_captures=full_captures, entity_count=entity_count)
     if isinf(e_excl):
@@ -349,14 +348,21 @@ def compute_energy_breakdown(
         branch_id = observed_state.branch_ids[pillar_position - 1]
         v_star = life_stage_anchor(stem_element, stem_polarity, branch_id)
         anchor_amplitude = stage_amplitude(v_star)
-        penalty = LAMBDA_V * m_stem * abs(dynamic_amplitudes[stem_entity] - anchor_amplitude) ** 2
+        penalty = (
+            LAMBDA_V
+            * m_stem
+            * abs(dynamic_amplitudes[stem_entity] - anchor_amplitude) ** 2
+        )
         e_intra += pillar_chem + penalty
 
     # E_inter
     e_inter = 0.0
     for source_index in range(entity_count):
         for target_index in range(entity_count):
-            if observed_state.positions[source_index] == observed_state.positions[target_index]:
+            if (
+                observed_state.positions[source_index]
+                == observed_state.positions[target_index]
+            ):
                 continue
             e_inter -= flux_matrix[source_index][target_index]
 
@@ -381,8 +387,7 @@ def compute_energy_breakdown(
                         continue
                     numerator += abs(flux_matrix[source_index][target_index])
             denominator = (
-                active_count_by_pillar[left] * active_count_by_pillar[right]
-                + EPSILON
+                active_count_by_pillar[left] * active_count_by_pillar[right] + EPSILON
             )
             q_km = numerator / denominator
             climate_gap = (theta_k[left - 1] - theta_k[right - 1]) ** 2 + (
@@ -460,13 +465,11 @@ def compute_energy_breakdown(
         omega = latent_state.omegas[rule_idx - 1]
         evaluation = evaluations[rule_idx - 1]
         local_chem = sum(
-            e_chem_by_pillar[position - 1]
-            for position in evaluation.selected_positions
+            e_chem_by_pillar[position - 1] for position in evaluation.selected_positions
         )
-        e_clash += (
-            LAMBDA_CLASH * omega * omega * (DELTA_V_R**2)
-            + LAMBDA_SCATTER * omega * abs(min(0.0, local_chem))
-        )
+        e_clash += LAMBDA_CLASH * omega * omega * (
+            DELTA_V_R**2
+        ) + LAMBDA_SCATTER * omega * abs(min(0.0, local_chem))
 
     # E_frame
     e_frame = 0.0
@@ -503,8 +506,7 @@ def compute_energy_breakdown(
         omega = latent_state.omegas[rule_idx - 1]
         evaluation = evaluations[rule_idx - 1]
         retention_sum = sum(
-            retention[position - 1] ** 2
-            for position in evaluation.selected_positions
+            retention[position - 1] ** 2 for position in evaluation.selected_positions
         )
         e_pun += LAMBDA_PUN * omega * omega * retention_sum
 
@@ -519,7 +521,11 @@ def compute_energy_breakdown(
             continue
         threatened_spec = family_spec(threatened)
         threatened_full_state = max(threatened_spec.state_domain)
-        active_indicator = 1.0 if latent_state.switches[threatened - 1] == threatened_full_state else 0.0
+        active_indicator = (
+            1.0
+            if latent_state.switches[threatened - 1] == threatened_full_state
+            else 0.0
+        )
         omega = latent_state.omegas[rule_idx - 1]
         e_cor += LAMBDA_COR * omega * omega * active_indicator
 
@@ -537,10 +543,14 @@ def compute_energy_breakdown(
         evaluation = evaluations[rule_idx - 1]
         inner = 0.0
         for entity_index in evaluation.q_entity_indices:
-            base_element = one_hot_to_element(observed_state.base_elements[entity_index])
+            base_element = one_hot_to_element(
+                observed_state.base_elements[entity_index]
+            )
             polarity = observed_state.polarities[entity_index]
             tg_base = ten_god_one_hot(base_element, polarity, center, p_dm)
-            tg_target = ten_god_one_hot(spec.target_element_index, polarity, center, p_dm)
+            tg_target = ten_god_one_hot(
+                spec.target_element_index, polarity, center, p_dm
+            )
             inner += ten_god_distance(tg_base, tg_target)
         cross_sum += weight_c * inner
     e_cross = LAMBDA_CROSS * cross_sum
@@ -582,4 +592,3 @@ def compute_energy_breakdown(
         mode_score_str=score_str,
         mode_score_weak=score_weak,
     )
-

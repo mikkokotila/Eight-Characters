@@ -6,7 +6,10 @@ from eight_characters.evolution.pipeline import (
     run_natal_mvp,
 )
 from eight_characters.evolution.postprocess import PostprocessConfig
-from eight_characters.evolution.primitives import element_to_one_hot, stem_element_polarity
+from eight_characters.evolution.primitives import (
+    element_to_one_hot,
+    stem_element_polarity,
+)
 
 
 def _input_from_stems(
@@ -104,4 +107,3 @@ class TestEvolutionModuleHPipeline(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

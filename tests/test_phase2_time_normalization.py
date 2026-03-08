@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from eight_characters.conventions import ConventionSettings
 from eight_characters.embedded_data import (
@@ -16,8 +16,7 @@ from eight_characters.time_convert import (
     normalize_birth_input,
 )
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 class TestEmbeddedDataLayer(unittest.TestCase):
@@ -29,8 +28,12 @@ class TestEmbeddedDataLayer(unittest.TestCase):
         self.assertAlmostEqual(value, 29.07, places=2)
 
     def test_leap_second_offsets(self) -> None:
-        before_1972 = get_leap_second_offset_seconds(datetime(1971, 12, 31, 12, tzinfo=UTC))
-        at_2017 = get_leap_second_offset_seconds(datetime(2017, 1, 1, 0, 0, 0, tzinfo=UTC))
+        before_1972 = get_leap_second_offset_seconds(
+            datetime(1971, 12, 31, 12, tzinfo=UTC)
+        )
+        at_2017 = get_leap_second_offset_seconds(
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=UTC)
+        )
         self.assertEqual(before_1972, 0)
         self.assertEqual(at_2017, 37)
 
@@ -46,7 +49,9 @@ class TestInputAndTimeResolution(unittest.TestCase):
                 conventions=ConventionSettings(),
             )
         )
-        self.assertEqual(normalized.utc_datetime, datetime(1988, 2, 4, 8, 30, tzinfo=UTC))
+        self.assertEqual(
+            normalized.utc_datetime, datetime(1988, 2, 4, 8, 30, tzinfo=UTC)
+        )
         self.assertIsNone(normalized.civil_datetime_local)
 
     def test_high_latitude_warning(self) -> None:

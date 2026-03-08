@@ -27,10 +27,22 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         payload = response.json()
         pillars = payload['four_pillars']
-        self.assertEqual(pillars['year']['stem']['chinese'] + pillars['year']['branch']['chinese'], '丁卯')
-        self.assertEqual(pillars['month']['stem']['chinese'] + pillars['month']['branch']['chinese'], '癸丑')
-        self.assertEqual(pillars['day']['stem']['chinese'] + pillars['day']['branch']['chinese'], '己丑')
-        self.assertEqual(pillars['hour']['stem']['chinese'] + pillars['hour']['branch']['chinese'], '壬申')
+        self.assertEqual(
+            pillars['year']['stem']['chinese'] + pillars['year']['branch']['chinese'],
+            '丁卯',
+        )
+        self.assertEqual(
+            pillars['month']['stem']['chinese'] + pillars['month']['branch']['chinese'],
+            '癸丑',
+        )
+        self.assertEqual(
+            pillars['day']['stem']['chinese'] + pillars['day']['branch']['chinese'],
+            '己丑',
+        )
+        self.assertEqual(
+            pillars['hour']['stem']['chinese'] + pillars['hour']['branch']['chinese'],
+            '壬申',
+        )
 
     def test_zi_convention_changes_day_hour_at_23(self) -> None:
         base_request = {
@@ -51,8 +63,14 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         base_request['conventions']['zi_convention'] = 'whole_zi_23'
         whole_payload = self.client.post('/api/four_pillars', json=base_request).json()
 
-        split_day = split_payload['four_pillars']['day']['stem']['chinese'] + split_payload['four_pillars']['day']['branch']['chinese']
-        whole_day = whole_payload['four_pillars']['day']['stem']['chinese'] + whole_payload['four_pillars']['day']['branch']['chinese']
+        split_day = (
+            split_payload['four_pillars']['day']['stem']['chinese']
+            + split_payload['four_pillars']['day']['branch']['chinese']
+        )
+        whole_day = (
+            whole_payload['four_pillars']['day']['stem']['chinese']
+            + whole_payload['four_pillars']['day']['branch']['chinese']
+        )
         self.assertNotEqual(split_day, whole_day)
 
     def test_civil_vs_true_solar_hour_basis_can_differ(self) -> None:
@@ -140,7 +158,9 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         self.assertIn('solar_time', payload)
         self.assertIn('four_pillars', payload)
 
-    def test_four_pillars_accepts_city_country_and_exposes_resolved_location(self) -> None:
+    def test_four_pillars_accepts_city_country_and_exposes_resolved_location(
+        self,
+    ) -> None:
         with patch(
             'eight_characters.main._resolve_city_location',
             new=AsyncMock(

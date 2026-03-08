@@ -1,166 +1,319 @@
+from typing import Literal, TypedDict
+
 # ── Trigram line patterns (top-to-bottom: line3, line2, line1) ──
 # L = solid, B = broken
 
-TRIGRAM_LINES = {
-    'Zhen': ['B', 'B', 'L'],   # ☳ Thunder
-    'Xun':  ['L', 'L', 'B'],   # ☴ Wind
-    'Li':   ['L', 'B', 'L'],   # ☲ Fire
-    'Gen':  ['L', 'B', 'B'],   # ☶ Mountain
-    'Kun':  ['B', 'B', 'B'],   # ☷ Earth
-    'Qian': ['L', 'L', 'L'],   # ☰ Heaven
-    'Dui':  ['B', 'L', 'L'],   # ☱ Lake
-    'Kan':  ['B', 'L', 'B'],   # ☵ Water
+Language = Literal['fi', 'en']
+ElementName = Literal['wood', 'fire', 'earth', 'metal', 'water']
+PolarityName = Literal['Yang', 'Yin']
+
+
+class StemInfo(TypedDict):
+    pinyin: str
+    element: ElementName
+    polarity: PolarityName
+    trigram: str
+    element_fi: str
+
+
+class BranchInfo(TypedDict):
+    pinyin: str
+    animal: str
+    element: ElementName
+    polarity: PolarityName
+    hexagram: str
+    animal_fi: str
+    element_fi: str
+
+
+class StemRender(TypedDict):
+    char: str
+    pinyin: str
+    element: str
+    polarity: str
+    label: str
+    lines: list[str]
+
+
+class BranchRender(TypedDict):
+    char: str
+    pinyin: str
+    element: str
+    polarity: str
+    animal_name: str
+    animal_fi: str
+    element_label: str
+    lines: list[str]
+
+
+class PillarRender(TypedDict):
+    label: str
+    value: str
+    stem: StemRender
+    branch: BranchRender
+
+
+class ChartPayload(TypedDict):
+    header: str
+    pillars: list[PillarRender]
+
+
+TRIGRAM_LINES: dict[str, list[str]] = {
+    'Zhen': ['B', 'B', 'L'],  # ☳ Thunder
+    'Xun': ['L', 'L', 'B'],  # ☴ Wind
+    'Li': ['L', 'B', 'L'],  # ☲ Fire
+    'Gen': ['L', 'B', 'B'],  # ☶ Mountain
+    'Kun': ['B', 'B', 'B'],  # ☷ Earth
+    'Qian': ['L', 'L', 'L'],  # ☰ Heaven
+    'Dui': ['B', 'L', 'L'],  # ☱ Lake
+    'Kan': ['B', 'L', 'B'],  # ☵ Water
 }
 
 # ── Hexagram line patterns (twelve sovereign hexagrams, top-to-bottom) ──
 
-HEXAGRAM_LINES = {
-    'Fu':        ['B', 'B', 'B', 'B', 'B', 'L'],  # #24 Returning
-    'Lin':       ['B', 'B', 'B', 'B', 'L', 'L'],  # #19 Approach
-    'Tai':       ['B', 'B', 'B', 'L', 'L', 'L'],  # #11 Peace
-    'Dazhuang':  ['B', 'B', 'L', 'L', 'L', 'L'],  # #34 Great Power
-    'Guai':      ['B', 'L', 'L', 'L', 'L', 'L'],  # #43 Breakthrough
-    'Qian':      ['L', 'L', 'L', 'L', 'L', 'L'],  # #1  Heaven
-    'Gou':       ['L', 'L', 'L', 'L', 'L', 'B'],  # #44 Coming to Meet
-    'Dun':       ['L', 'L', 'L', 'L', 'B', 'B'],  # #33 Retreat
-    'Pi':        ['L', 'L', 'L', 'B', 'B', 'B'],  # #12 Stagnation
-    'Guan':      ['L', 'L', 'B', 'B', 'B', 'B'],  # #20 Contemplation
-    'Bo':        ['L', 'B', 'B', 'B', 'B', 'B'],  # #23 Stripping Away
-    'Kun':       ['B', 'B', 'B', 'B', 'B', 'B'],  # #2  Earth
+HEXAGRAM_LINES: dict[str, list[str]] = {
+    'Fu': ['B', 'B', 'B', 'B', 'B', 'L'],  # #24 Returning
+    'Lin': ['B', 'B', 'B', 'B', 'L', 'L'],  # #19 Approach
+    'Tai': ['B', 'B', 'B', 'L', 'L', 'L'],  # #11 Peace
+    'Dazhuang': ['B', 'B', 'L', 'L', 'L', 'L'],  # #34 Great Power
+    'Guai': ['B', 'L', 'L', 'L', 'L', 'L'],  # #43 Breakthrough
+    'Qian': ['L', 'L', 'L', 'L', 'L', 'L'],  # #1  Heaven
+    'Gou': ['L', 'L', 'L', 'L', 'L', 'B'],  # #44 Coming to Meet
+    'Dun': ['L', 'L', 'L', 'L', 'B', 'B'],  # #33 Retreat
+    'Pi': ['L', 'L', 'L', 'B', 'B', 'B'],  # #12 Stagnation
+    'Guan': ['L', 'L', 'B', 'B', 'B', 'B'],  # #20 Contemplation
+    'Bo': ['L', 'B', 'B', 'B', 'B', 'B'],  # #23 Stripping Away
+    'Kun': ['B', 'B', 'B', 'B', 'B', 'B'],  # #2  Earth
 }
 
 
 # ── Heavenly Stems (天干) ──
 
-STEMS = {
+STEMS: dict[str, StemInfo] = {
     '甲': {
-        'pinyin': 'Jia', 'element': 'wood', 'polarity': 'Yang',
-        'trigram': 'Zhen', 'element_fi': 'Puu',
+        'pinyin': 'Jia',
+        'element': 'wood',
+        'polarity': 'Yang',
+        'trigram': 'Zhen',
+        'element_fi': 'Puu',
     },
     '乙': {
-        'pinyin': 'Yi', 'element': 'wood', 'polarity': 'Yin',
-        'trigram': 'Xun', 'element_fi': 'Puu',
+        'pinyin': 'Yi',
+        'element': 'wood',
+        'polarity': 'Yin',
+        'trigram': 'Xun',
+        'element_fi': 'Puu',
     },
     '丙': {
-        'pinyin': 'Bing', 'element': 'fire', 'polarity': 'Yang',
-        'trigram': 'Li', 'element_fi': 'Tuli',
+        'pinyin': 'Bing',
+        'element': 'fire',
+        'polarity': 'Yang',
+        'trigram': 'Li',
+        'element_fi': 'Tuli',
     },
     '丁': {
-        'pinyin': 'Ding', 'element': 'fire', 'polarity': 'Yin',
-        'trigram': 'Li', 'element_fi': 'Tuli',
+        'pinyin': 'Ding',
+        'element': 'fire',
+        'polarity': 'Yin',
+        'trigram': 'Li',
+        'element_fi': 'Tuli',
     },
     '戊': {
-        'pinyin': 'Wu', 'element': 'earth', 'polarity': 'Yang',
-        'trigram': 'Gen', 'element_fi': 'Maa',
+        'pinyin': 'Wu',
+        'element': 'earth',
+        'polarity': 'Yang',
+        'trigram': 'Gen',
+        'element_fi': 'Maa',
     },
     '己': {
-        'pinyin': 'Ji', 'element': 'earth', 'polarity': 'Yin',
-        'trigram': 'Kun', 'element_fi': 'Maa',
+        'pinyin': 'Ji',
+        'element': 'earth',
+        'polarity': 'Yin',
+        'trigram': 'Kun',
+        'element_fi': 'Maa',
     },
     '庚': {
-        'pinyin': 'Geng', 'element': 'metal', 'polarity': 'Yang',
-        'trigram': 'Qian', 'element_fi': 'Metalli',
+        'pinyin': 'Geng',
+        'element': 'metal',
+        'polarity': 'Yang',
+        'trigram': 'Qian',
+        'element_fi': 'Metalli',
     },
     '辛': {
-        'pinyin': 'Xin', 'element': 'metal', 'polarity': 'Yin',
-        'trigram': 'Dui', 'element_fi': 'Metalli',
+        'pinyin': 'Xin',
+        'element': 'metal',
+        'polarity': 'Yin',
+        'trigram': 'Dui',
+        'element_fi': 'Metalli',
     },
     '壬': {
-        'pinyin': 'Ren', 'element': 'water', 'polarity': 'Yang',
-        'trigram': 'Kan', 'element_fi': 'Vesi',
+        'pinyin': 'Ren',
+        'element': 'water',
+        'polarity': 'Yang',
+        'trigram': 'Kan',
+        'element_fi': 'Vesi',
     },
     '癸': {
-        'pinyin': 'Gui', 'element': 'water', 'polarity': 'Yin',
-        'trigram': 'Kan', 'element_fi': 'Vesi',
+        'pinyin': 'Gui',
+        'element': 'water',
+        'polarity': 'Yin',
+        'trigram': 'Kan',
+        'element_fi': 'Vesi',
     },
 }
 
 
 # ── Earthly Branches (地支) ──
 
-BRANCHES = {
+BRANCHES: dict[str, BranchInfo] = {
     '子': {
-        'pinyin': 'Zi', 'animal': 'Rat', 'element': 'water',
-        'polarity': 'Yang', 'hexagram': 'Fu',
-        'animal_fi': 'Rotta', 'element_fi': 'Vesi',
+        'pinyin': 'Zi',
+        'animal': 'Rat',
+        'element': 'water',
+        'polarity': 'Yang',
+        'hexagram': 'Fu',
+        'animal_fi': 'Rotta',
+        'element_fi': 'Vesi',
     },
     '丑': {
-        'pinyin': 'Chou', 'animal': 'Ox', 'element': 'earth',
-        'polarity': 'Yin', 'hexagram': 'Lin',
-        'animal_fi': 'Härkä', 'element_fi': 'Maa',
+        'pinyin': 'Chou',
+        'animal': 'Ox',
+        'element': 'earth',
+        'polarity': 'Yin',
+        'hexagram': 'Lin',
+        'animal_fi': 'Härkä',
+        'element_fi': 'Maa',
     },
     '寅': {
-        'pinyin': 'Yin', 'animal': 'Tiger', 'element': 'wood',
-        'polarity': 'Yang', 'hexagram': 'Tai',
-        'animal_fi': 'Tiikeri', 'element_fi': 'Puu',
+        'pinyin': 'Yin',
+        'animal': 'Tiger',
+        'element': 'wood',
+        'polarity': 'Yang',
+        'hexagram': 'Tai',
+        'animal_fi': 'Tiikeri',
+        'element_fi': 'Puu',
     },
     '卯': {
-        'pinyin': 'Mao', 'animal': 'Rabbit', 'element': 'wood',
-        'polarity': 'Yin', 'hexagram': 'Dazhuang',
-        'animal_fi': 'Jänis', 'element_fi': 'Puu',
+        'pinyin': 'Mao',
+        'animal': 'Rabbit',
+        'element': 'wood',
+        'polarity': 'Yin',
+        'hexagram': 'Dazhuang',
+        'animal_fi': 'Jänis',
+        'element_fi': 'Puu',
     },
     '辰': {
-        'pinyin': 'Chen', 'animal': 'Dragon', 'element': 'earth',
-        'polarity': 'Yang', 'hexagram': 'Guai',
-        'animal_fi': 'Lohikäärme', 'element_fi': 'Maa',
+        'pinyin': 'Chen',
+        'animal': 'Dragon',
+        'element': 'earth',
+        'polarity': 'Yang',
+        'hexagram': 'Guai',
+        'animal_fi': 'Lohikäärme',
+        'element_fi': 'Maa',
     },
     '巳': {
-        'pinyin': 'Si', 'animal': 'Snake', 'element': 'fire',
-        'polarity': 'Yin', 'hexagram': 'Qian',
-        'animal_fi': 'Käärme', 'element_fi': 'Tuli',
+        'pinyin': 'Si',
+        'animal': 'Snake',
+        'element': 'fire',
+        'polarity': 'Yin',
+        'hexagram': 'Qian',
+        'animal_fi': 'Käärme',
+        'element_fi': 'Tuli',
     },
     '午': {
-        'pinyin': 'Wu', 'animal': 'Horse', 'element': 'fire',
-        'polarity': 'Yang', 'hexagram': 'Gou',
-        'animal_fi': 'Hevonen', 'element_fi': 'Tuli',
+        'pinyin': 'Wu',
+        'animal': 'Horse',
+        'element': 'fire',
+        'polarity': 'Yang',
+        'hexagram': 'Gou',
+        'animal_fi': 'Hevonen',
+        'element_fi': 'Tuli',
     },
     '未': {
-        'pinyin': 'Wei', 'animal': 'Goat', 'element': 'earth',
-        'polarity': 'Yin', 'hexagram': 'Dun',
-        'animal_fi': 'Vuohi', 'element_fi': 'Maa',
+        'pinyin': 'Wei',
+        'animal': 'Goat',
+        'element': 'earth',
+        'polarity': 'Yin',
+        'hexagram': 'Dun',
+        'animal_fi': 'Vuohi',
+        'element_fi': 'Maa',
     },
     '申': {
-        'pinyin': 'Shen', 'animal': 'Monkey', 'element': 'metal',
-        'polarity': 'Yang', 'hexagram': 'Pi',
-        'animal_fi': 'Apina', 'element_fi': 'Metalli',
+        'pinyin': 'Shen',
+        'animal': 'Monkey',
+        'element': 'metal',
+        'polarity': 'Yang',
+        'hexagram': 'Pi',
+        'animal_fi': 'Apina',
+        'element_fi': 'Metalli',
     },
     '酉': {
-        'pinyin': 'You', 'animal': 'Rooster', 'element': 'metal',
-        'polarity': 'Yin', 'hexagram': 'Guan',
-        'animal_fi': 'Kukko', 'element_fi': 'Metalli',
+        'pinyin': 'You',
+        'animal': 'Rooster',
+        'element': 'metal',
+        'polarity': 'Yin',
+        'hexagram': 'Guan',
+        'animal_fi': 'Kukko',
+        'element_fi': 'Metalli',
     },
     '戌': {
-        'pinyin': 'Xu', 'animal': 'Dog', 'element': 'earth',
-        'polarity': 'Yang', 'hexagram': 'Bo',
-        'animal_fi': 'Koira', 'element_fi': 'Maa',
+        'pinyin': 'Xu',
+        'animal': 'Dog',
+        'element': 'earth',
+        'polarity': 'Yang',
+        'hexagram': 'Bo',
+        'animal_fi': 'Koira',
+        'element_fi': 'Maa',
     },
     '亥': {
-        'pinyin': 'Hai', 'animal': 'Pig', 'element': 'water',
-        'polarity': 'Yin', 'hexagram': 'Kun',
-        'animal_fi': 'Sika', 'element_fi': 'Vesi',
+        'pinyin': 'Hai',
+        'animal': 'Pig',
+        'element': 'water',
+        'polarity': 'Yin',
+        'hexagram': 'Kun',
+        'animal_fi': 'Sika',
+        'element_fi': 'Vesi',
     },
 }
 
 
 # ── Finnish month names ──
 
-MONTHS_FI = [
-    'Tammikuu', 'Helmikuu', 'Maaliskuu', 'Huhtikuu',
-    'Toukokuu', 'Kesäkuu', 'Heinäkuu', 'Elokuu',
-    'Syyskuu', 'Lokakuu', 'Marraskuu', 'Joulukuu',
+MONTHS_FI: list[str] = [
+    'Tammikuu',
+    'Helmikuu',
+    'Maaliskuu',
+    'Huhtikuu',
+    'Toukokuu',
+    'Kesäkuu',
+    'Heinäkuu',
+    'Elokuu',
+    'Syyskuu',
+    'Lokakuu',
+    'Marraskuu',
+    'Joulukuu',
 ]
 
 
 # ── Pillar labels (Finnish) ──
 
-MONTHS_EN = [
-    'January', 'February', 'March', 'April',
-    'May', 'June', 'July', 'August',
-    'September', 'October', 'November', 'December',
+MONTHS_EN: list[str] = [
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
 ]
 
 
-PILLAR_LABELS = {
+PILLAR_LABELS: dict[Language, dict[str, str]] = {
     'fi': {
         'hour': 'Teon portti',
         'day': 'Sisäinen valo',
@@ -176,7 +329,7 @@ PILLAR_LABELS = {
 }
 
 
-ELEMENT_NAMES = {
+ELEMENT_NAMES: dict[Language, dict[str, str]] = {
     'fi': {
         'wood': 'Puu',
         'fire': 'Tuli',
@@ -194,18 +347,26 @@ ELEMENT_NAMES = {
 }
 
 
-def _resolve_lang(lang):
-    return lang if lang in ('fi', 'en') else 'fi'
+def _resolve_lang(lang: str) -> Language:
+    if lang == 'en':
+        return 'en'
+    return 'fi'
 
 
-def _header_text(lang, day, month_value, year, time_value):
+def _header_text(
+    lang: Language,
+    day: int,
+    month_value: str,
+    year: int,
+    time_value: str,
+) -> str:
     if lang == 'en':
         return f'{month_value} {day}, {year} · {time_value}'
     return f'{day}. {month_value.lower()}ta {year} · {time_value}'
 
 
-def build_stem_data(char, lang='fi'):
-    '''Return full stem rendering data for a Chinese character.'''
+def build_stem_data(char: str, lang: Language = 'fi') -> StemRender:
+    """Return full stem rendering data for a Chinese character."""
     active_lang = _resolve_lang(lang)
     stem = STEMS[char]
     element_label = ELEMENT_NAMES[active_lang][stem['element']]
@@ -219,8 +380,8 @@ def build_stem_data(char, lang='fi'):
     }
 
 
-def build_branch_data(char, lang='fi'):
-    '''Return full branch rendering data for a Chinese character.'''
+def build_branch_data(char: str, lang: Language = 'fi') -> BranchRender:
+    """Return full branch rendering data for a Chinese character."""
     active_lang = _resolve_lang(lang)
     branch = BRANCHES[char]
     element_label = ELEMENT_NAMES[active_lang][branch['element']]
@@ -237,13 +398,20 @@ def build_branch_data(char, lang='fi'):
     }
 
 
-def build_chart(date_str, time_str,
-                hour_stem, hour_branch,
-                day_stem, day_branch,
-                month_stem, month_branch,
-                year_stem, year_branch,
-                lang='fi'):
-    '''Build complete chart data for the frontend.'''
+def build_chart(
+    date_str: str,
+    time_str: str,
+    hour_stem: str,
+    hour_branch: str,
+    day_stem: str,
+    day_branch: str,
+    month_stem: str,
+    month_branch: str,
+    year_stem: str,
+    year_branch: str,
+    lang: str = 'fi',
+) -> ChartPayload:
+    """Build complete chart data for the frontend."""
     active_lang = _resolve_lang(lang)
 
     # Parse date for display

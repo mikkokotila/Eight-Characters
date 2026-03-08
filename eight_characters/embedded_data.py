@@ -1,10 +1,7 @@
-from dataclasses import dataclass
-from datetime import datetime, timezone
-from importlib import metadata
 from bisect import bisect_right
-
-
-UTC = timezone.utc
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from importlib import metadata
 
 ENGINE_MODEL_IDS = {
     'vsop87_series': 'VSOP87D_full_Earth',
@@ -38,14 +35,14 @@ class DeltaTSegment:
 class Segment1941to1961(DeltaTSegment):
     def evaluate(self, decimal_year_value: float) -> float:
         t = decimal_year_value - 1950.0
-        return 29.07 + 0.407 * t - (t ** 2) / 233.0 + (t ** 3) / 2547.0
+        return 29.07 + 0.407 * t - (t**2) / 233.0 + (t**3) / 2547.0
 
 
 @dataclass(frozen=True)
 class Segment1961to1986(DeltaTSegment):
     def evaluate(self, decimal_year_value: float) -> float:
         t = decimal_year_value - 1975.0
-        return 45.45 + 1.067 * t - (t ** 2) / 260.0 - (t ** 3) / 718.0
+        return 45.45 + 1.067 * t - (t**2) / 260.0 - (t**3) / 718.0
 
 
 @dataclass(frozen=True)
@@ -55,10 +52,10 @@ class Segment1986to2005(DeltaTSegment):
         return (
             63.86
             + 0.3345 * t
-            - 0.060374 * (t ** 2)
-            + 0.0017275 * (t ** 3)
-            + 0.000651814 * (t ** 4)
-            + 0.00002373599 * (t ** 5)
+            - 0.060374 * (t**2)
+            + 0.0017275 * (t**3)
+            + 0.000651814 * (t**4)
+            + 0.00002373599 * (t**5)
         )
 
 
@@ -66,14 +63,14 @@ class Segment1986to2005(DeltaTSegment):
 class Segment2005to2050(DeltaTSegment):
     def evaluate(self, decimal_year_value: float) -> float:
         t = decimal_year_value - 2000.0
-        return 62.92 + 0.32217 * t + 0.005589 * (t ** 2)
+        return 62.92 + 0.32217 * t + 0.005589 * (t**2)
 
 
 @dataclass(frozen=True)
 class Segment2050to2150(DeltaTSegment):
     def evaluate(self, decimal_year_value: float) -> float:
         u = (decimal_year_value - 1820.0) / 100.0
-        return -20.0 + 32.0 * (u ** 2) - 0.5628 * (2150.0 - decimal_year_value)
+        return -20.0 + 32.0 * (u**2) - 0.5628 * (2150.0 - decimal_year_value)
 
 
 DELTA_T_SEGMENTS: tuple[DeltaTSegment, ...] = (

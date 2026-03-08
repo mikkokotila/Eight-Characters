@@ -126,4 +126,3 @@ def run_natal_mvp(
         weight_sum_history=inference_result.weight_sum_history,
         resample_steps=inference_result.resample_steps,
     )
-

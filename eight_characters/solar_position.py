@@ -10,7 +10,6 @@ from eight_characters.obliquity import (
 )
 from eight_characters.vsop87d import earth_heliocentric_lbr, normalize_degrees
 
-
 J2000_JD = 2451545.0
 SECONDS_PER_DAY = 86400.0
 
@@ -36,9 +35,14 @@ def julian_date_from_datetime_utc(utc_datetime: datetime) -> float:
         dt = utc_datetime
     year_value = dt.year
     month_value = dt.month
-    day_fraction = dt.day + (
-        dt.hour + (dt.minute + (dt.second + dt.microsecond / 1_000_000.0) / 60.0) / 60.0
-    ) / 24.0
+    day_fraction = (
+        dt.day
+        + (
+            dt.hour
+            + (dt.minute + (dt.second + dt.microsecond / 1_000_000.0) / 60.0) / 60.0
+        )
+        / 24.0
+    )
 
     if month_value <= 2:
         year_value -= 1
@@ -56,7 +60,9 @@ def julian_date_from_datetime_utc(utc_datetime: datetime) -> float:
     return jd
 
 
-def compute_apparent_solar_longitude(jd_tt: float) -> tuple[float, float, float, float, float, float]:
+def compute_apparent_solar_longitude(
+    jd_tt: float,
+) -> tuple[float, float, float, float, float, float]:
     tau = (jd_tt - J2000_JD) / 365250.0
     t_centuries = (jd_tt - J2000_JD) / 36525.0
 
@@ -64,9 +70,13 @@ def compute_apparent_solar_longitude(jd_tt: float) -> tuple[float, float, float,
     theta_deg = normalize_degrees(earth_l_deg + 180.0)
     beta_deg = -earth_b_deg
 
-    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(t_centuries)
+    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(
+        t_centuries
+    )
     aberration_deg = (-20.4898 / radius_au) / 3600.0
-    lambda_apparent_deg = normalize_degrees(theta_deg + delta_psi_arcseconds / 3600.0 + aberration_deg)
+    lambda_apparent_deg = normalize_degrees(
+        theta_deg + delta_psi_arcseconds / 3600.0 + aberration_deg
+    )
 
     return (
         lambda_apparent_deg,
@@ -98,7 +108,7 @@ def _equation_of_time_minutes(
     alpha_deg = alpha * 180.0 / pi
 
     l0_deg = normalize_degrees(
-        280.46646 + 36000.76983 * t_centuries + 0.0003032 * (t_centuries ** 2)
+        280.46646 + 36000.76983 * t_centuries + 0.0003032 * (t_centuries**2)
     )
     eot_deg = (
         l0_deg
@@ -164,7 +174,9 @@ def mean_obliquity_degrees_for_jd_tt(jd_tt: float) -> float:
 
 def nutation_degrees_for_jd_tt(jd_tt: float) -> tuple[float, float]:
     t_centuries = (jd_tt - J2000_JD) / 36525.0
-    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(t_centuries)
+    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(
+        t_centuries
+    )
     return (
         delta_psi_arcseconds / 3600.0,
         delta_epsilon_arcseconds / 3600.0,

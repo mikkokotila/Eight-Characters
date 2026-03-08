@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from eight_characters.obliquity import mean_obliquity_arcseconds_iau2006
 from eight_characters.solar_position import (
@@ -10,8 +10,7 @@ from eight_characters.solar_position import (
 )
 from eight_characters.vsop87d import earth_heliocentric_lbr
 
-
-UTC = timezone.utc
+UTC = UTC
 
 
 class TestVsop87dEvaluator(unittest.TestCase):
