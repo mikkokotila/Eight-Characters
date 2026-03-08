@@ -27,7 +27,7 @@ eight_characters = [
   'templates/*.html',
   'static/*.css',
   'static/*.js',
-  'resources/*.csv',
+  'resources/mappings/*.csv',
 ]
 
 [tool.ruff]

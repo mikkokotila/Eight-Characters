@@ -69,6 +69,16 @@
   - `400` with `detail` when a city cannot be resolved
   - `500` for unexpected failures
 
+## Mapping Data
+
+- Canonical mapping assets live in `eight_characters/resources/mappings/`.
+- Current tracked mappings:
+  - `hidden-stems.csv`
+  - `ten-gods.csv`
+  - `stem-map.csv`
+  - `branch-mapping.csv`
+- Runtime hidden stems lookup in `eight_characters/main.py` reads from this directory first.
+
 ## Frontend Flow
 
 Current UI submit flow:
