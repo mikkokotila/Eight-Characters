@@ -92,10 +92,14 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
         with patch(
             'eight_characters.main._resolve_city_location',
             new=AsyncMock(
-                side_effect=CityLookupServiceError('City lookup service request failed.')
+                side_effect=CityLookupServiceError(
+                    'City lookup service request failed.'
+                )
             ),
         ):
-            response = self.client.post('/api/location_search', json={'city': 'Helsinki'})
+            response = self.client.post(
+                '/api/location_search', json={'city': 'Helsinki'}
+            )
         self.assertEqual(response.status_code, 500)
         self.assertEqual(response.json()['detail'], 'City lookup service unavailable.')
 

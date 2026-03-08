@@ -307,7 +307,9 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         with patch(
             'eight_characters.main._search_city_candidates',
             new=AsyncMock(
-                side_effect=CityLookupServiceError('City lookup service request failed.')
+                side_effect=CityLookupServiceError(
+                    'City lookup service request failed.'
+                )
             ),
         ):
             response = self.client.post(
