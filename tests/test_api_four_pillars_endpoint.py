@@ -3,7 +3,12 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
-from eight_characters.main import LocationInput, ResolvedCity, app
+from eight_characters.main import (
+    CityLookupServiceError,
+    LocationInput,
+    ResolvedCity,
+    app,
+)
 
 
 class TestApiFourPillarsEndpoint(unittest.TestCase):
@@ -140,6 +145,24 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_four_pillars_validation_errors_are_normalized(self) -> None:
+        response = self.client.post(
+            '/api/four_pillars',
+            json={
+                'date': '1988-02-04',
+                'location': {
+                    'timezone': 'Asia/Shanghai',
+                    'longitude': 104.066,
+                    'latitude': 30.658,
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn('detail', payload)
+        self.assertIsInstance(payload['detail'], str)
+        self.assertIn('time', payload['detail'])
+
     def test_four_pillars_accepts_time_without_seconds(self) -> None:
         response = self.client.post(
             '/api/four_pillars',
@@ -233,6 +256,29 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_four_pillars_can_embed_chart_and_hidden_stems(self) -> None:
+        response = self.client.post(
+            '/api/four_pillars',
+            json={
+                'date': '1988-02-04',
+                'time': '16:30:00',
+                'location': {
+                    'timezone': 'Asia/Shanghai',
+                    'longitude': 104.066,
+                    'latitude': 30.658,
+                },
+                'include_chart': True,
+                'include_hidden_stems': True,
+                'lang': 'en',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertIn('chart', payload)
+        self.assertIn('hidden_stems', payload)
+        self.assertIn('header', payload['chart'])
+        self.assertIn('year', payload['hidden_stems'])
+
     def test_bazi_endpoint_removed(self) -> None:
         response = self.client.post(
             '/api/bazi',
@@ -256,6 +302,26 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         payload = response.json()
         self.assertIn('suggestions', payload)
         self.assertIsInstance(payload['suggestions'], list)
+
+    def test_location_suggest_returns_500_on_lookup_service_error(self) -> None:
+        with patch(
+            'eight_characters.main._search_city_candidates',
+            new=AsyncMock(
+                side_effect=CityLookupServiceError(
+                    'City lookup service request failed.'
+                )
+            ),
+        ):
+            response = self.client.post(
+                '/api/location_suggest',
+                json={
+                    'query': 'Hels',
+                    'limit': 3,
+                },
+            )
+
+        self.assertEqual(response.status_code, 500)
+        self.assertEqual(response.json()['detail'], 'City lookup service unavailable.')
 
 
 if __name__ == '__main__':

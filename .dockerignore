@@ -8,5 +8,4 @@ __pycache__/
 .gitignore
 tests/
 artefacts/*
-!artefacts/hidden-stems.csv
 docs/

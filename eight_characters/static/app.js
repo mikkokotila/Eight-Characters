@@ -251,6 +251,9 @@ document.addEventListener('DOMContentLoaded', () => {
       time: form.time.value,
       city: resolvedLocation.city,
       country: resolvedLocation.country,
+      include_chart: true,
+      include_hidden_stems: true,
+      lang: currentLanguage,
     };
 
     try {
@@ -264,29 +267,9 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(pillarsData.detail || t('pillars_error'));
       }
 
-      const pillars = pillarsData.four_pillars;
-      const chartPayload = {
-        date: form.date.value,
-        time: form.time.value,
-        hour_stem: pillars.hour.stem.chinese,
-        hour_branch: pillars.hour.branch.chinese,
-        day_stem: pillars.day.stem.chinese,
-        day_branch: pillars.day.branch.chinese,
-        month_stem: pillars.month.stem.chinese,
-        month_branch: pillars.month.branch.chinese,
-        year_stem: pillars.year.stem.chinese,
-        year_branch: pillars.year.branch.chinese,
-        lang: currentLanguage,
-      };
-
-      const chartRes = await fetch('/api/chart', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(chartPayload),
-      });
-      const chartData = await chartRes.json();
-      if (!chartRes.ok || chartData.error) {
-        throw new Error(chartData.error || t('chart_error'));
+      const chartData = pillarsData.chart;
+      if (!chartData) {
+        throw new Error(t('chart_error'));
       }
 
       if (pillarsData.resolved_location) {
@@ -296,26 +279,9 @@ document.addEventListener('DOMContentLoaded', () => {
       renderChart(chartData);
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
-
-      // Fetch hidden stems in background (non-blocking)
-      const hsPayload = {
-        year_pillar: pillars.year.stem.chinese + pillars.year.branch.chinese,
-        month_pillar: pillars.month.stem.chinese + pillars.month.branch.chinese,
-        day_pillar: pillars.day.stem.chinese + pillars.day.branch.chinese,
-        hour_pillar: pillars.hour.stem.chinese + pillars.hour.branch.chinese,
-      };
-      fetch('/api/hidden_stems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(hsPayload),
-      })
-        .then((r) => r.json())
-        .then((hsData) => {
-          if (hsData.hidden_stems) {
-            populateHiddenStems(hsData.hidden_stems);
-          }
-        })
-        .catch((hsErr) => console.warn('Hidden stems:', hsErr));
+      if (pillarsData.hidden_stems) {
+        populateHiddenStems(pillarsData.hidden_stems);
+      }
     } catch (err) {
       console.error(err);
       setLocationStatus(err.message || t('chart_create_error'), 'is-error');

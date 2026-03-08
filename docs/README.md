@@ -6,6 +6,7 @@ This folder contains practical user documentation for running and using the Ba Z
 
 - Setup and first run: `../README.md`
 - API reference and request examples: `api.md`
+- Developer endpoint internals: `Developer/API.md`
 - Convention settings and output shape: `conventions-and-output.md`
 - Validation and quality signals: `validation.md`
 - Common issues and fixes: `troubleshooting.md`
