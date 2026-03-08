@@ -1,101 +1,71 @@
-# Eight Characters
+<h3 align="center">Eight Characters is a deterministic Four Pillars engine and API.</h3>
+<p align="center">
+<a href="#value-proposition">Value Proposition</a> •
+<a href="#quick-start">Quick Start</a> •
+<a href="#contributing">Contributing</a> •
+<a href="#license">License</a>
+</p>
+<hr>
 
-Deterministic Ba Zi backend engine and API for computing:
-- true solar time
-- Four Pillars (year, month, day, hour)
+# Value Proposition
 
-The project includes an implementation roadmap, validation suites, and a production API endpoint.
+Eight Characters computes true solar time and Four Pillars (year, month, day, hour)
+with rigorous deterministic conventions and explicit ambiguity flags. It is designed as a
+reliable backend/API foundation for Ba Zi (Four Pillars) applications, integrations, and testing.
 
-## Quick Start
+# Quick Start
 
-### 1) Install and run
+If your environment is already configured, use these three examples:
+
+1) Running the app
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
-pip install -e .
 uvicorn eight_characters.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`.
-
-### 1b) Run with Docker
-
-Build and run directly:
+2) Checking the service
 
 ```bash
-docker build -t eight-characters:latest .
-docker run --rm -p 8000:8000 eight-characters:latest
+curl http://127.0.0.1:8000/
 ```
 
-Or with compose:
+3) Calling the Four Pillars API
 
 ```bash
-docker compose up --build
+curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "date": "1988-02-04",
+    "time": "16:30:00",
+    "city": "Chengdu",
+    "country": "China"
+  }'
 ```
 
-### 2) Call the Four Pillars API
+For complete setup, configuration, and deployment instructions, see
+[Get Started](docs/Developer/Get-Started.md).
 
-`POST /api/four_pillars`
+# Contributing
 
-Example payload:
+The simplest way to contribute is by joining open discussions or picking up an issue:
 
-```json
-{
-  "date": "1988-02-04",
-  "time": "16:30:00",
-  "location": {
-    "timezone": "Asia/Shanghai",
-    "longitude": 104.066,
-    "latitude": 30.658
-  },
-  "conventions": {
-    "zi_convention": "split_midnight",
-    "hour_basis": "true_solar",
-    "day_boundary_basis": "true_solar"
-  }
-}
-```
+- [Open discussions](https://github.com/mikkokotila/Eight-Characters/discussions)
+- [Open issues](https://github.com/mikkokotila/Eight-Characters/issues)
 
-Returns:
-- solar-time fields (`utc_time`, `local_mean_solar_time`, `true_solar_time`)
-- four pillars
-- ambiguity and warning flags
+Before contributing, start with [Get Started](docs/Developer/Get-Started.md).
 
-Also available:
-- `POST /api/hidden_stems` to resolve hidden stems from four supplied pillars.
+# Vulnerabilities
 
-### 3) Run validation suite
+Report vulnerabilities privately through
+[GitHub Security Advisories](https://github.com/mikkokotila/Eight-Characters/security/advisories/new).
 
-```bash
-source venv/bin/activate
-python -m unittest discover -s tests -p 'test_*.py'
-```
+# Citations
 
-## Project Docs
+If you use Eight Characters for published work, please cite:
 
-- User docs index: `docs/README.md`
-- API usage: `docs/api.md`
-- Conventions and outputs: `docs/conventions-and-output.md`
-- Validation and quality: `docs/validation.md`
-- Troubleshooting: `docs/troubleshooting.md`
+Eight Characters [Computer software]. (2026). Retrieved from
+https://github.com/mikkokotila/Eight-Characters.
 
-## Engineering and Audit Artifacts
+# License
 
-- Main product spec: `artefacts/spec.md`
-- Task board: `artefacts/backend-task-tree.md`
-- Execution workboard: `artefacts/backend-implementation-workboard.md`
-- Phase reports:
-  - `artefacts/phase1-governance-architecture-baseline.md`
-  - `artefacts/phase2-time-normalization-core.md`
-  - `artefacts/phase3-astronomical-computation-kernel.md`
-  - `artefacts/phase4-boundary-solving-and-pillar-assignment.md`
-  - `artefacts/phase5-integrity-output-verification.md`
-- Final closeout:
-  - `artefacts/tkt028-limitations-and-warning-behavior.md`
-  - `artefacts/tkt029-licensing-and-attribution-checklist.md`
-  - `artefacts/tkt030-release-readiness-audit.md`
-
-## License and Data
-
-See `artefacts/tkt029-licensing-and-attribution-checklist.md` for attribution and data-source compliance requirements.
+[MIT License](LICENSE.md).
