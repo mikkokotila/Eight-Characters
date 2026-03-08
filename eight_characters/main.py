@@ -5,7 +5,8 @@ from typing import Any, TypedDict, cast
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.responses import HTMLResponse
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -31,6 +32,32 @@ MAPPINGS_DIR = BASE_DIR / 'resources' / 'mappings'
 app = FastAPI(title='Eight Characters')
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
+
+
+def _validation_error_message(exc: RequestValidationError) -> str:
+    details: list[str] = []
+    for error in exc.errors():
+        raw_location = error.get('loc', ())
+        location_parts = [str(part) for part in raw_location if str(part) != 'body']
+        location = '.'.join(location_parts)
+        message = str(error.get('msg', 'Invalid request payload.'))
+        if location:
+            details.append(f'{location}: {message}')
+        else:
+            details.append(message)
+    if details:
+        return '; '.join(details)
+    return 'Invalid request payload.'
+
+
+@app.exception_handler(RequestValidationError)
+async def request_validation_exception_handler(
+    _request: Request, exc: RequestValidationError
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=400,
+        content={'detail': _validation_error_message(exc)},
+    )
 
 
 # ── Request / Response models ──
@@ -310,6 +337,54 @@ def _pillar_text_for_hidden_stems(
     return f'{stem_char}{branch_char}'
 
 
+def _chart_components_from_four_pillars(
+    four_pillars: dict[str, Any],
+) -> dict[str, tuple[str, str]]:
+    components: dict[str, tuple[str, str]] = {}
+    for pillar_name in ('year', 'month', 'day', 'hour'):
+        components[pillar_name] = (
+            _pillar_component_from_four_pillars(
+                four_pillars=four_pillars,
+                pillar_name=pillar_name,
+                component_name='stem',
+            ),
+            _pillar_component_from_four_pillars(
+                four_pillars=four_pillars,
+                pillar_name=pillar_name,
+                component_name='branch',
+            ),
+        )
+    return components
+
+
+def _build_chart_from_four_pillars(
+    *,
+    date_value: str,
+    time_value: str,
+    lang: str,
+    four_pillars: dict[str, Any],
+) -> ChartPayload:
+    chart_components = _chart_components_from_four_pillars(four_pillars)
+    hour_stem, hour_branch = chart_components['hour']
+    day_stem, day_branch = chart_components['day']
+    month_stem, month_branch = chart_components['month']
+    year_stem, year_branch = chart_components['year']
+
+    return build_chart(
+        date_value,
+        time_value,
+        hour_stem,
+        hour_branch,
+        day_stem,
+        day_branch,
+        month_stem,
+        month_branch,
+        year_stem,
+        year_branch,
+        lang=lang,
+    )
+
+
 async def _resolve_four_pillars_location(
     payload: FourPillarsRequest,
 ) -> tuple[LocationInput, ResolvedCity | None]:
@@ -467,6 +542,10 @@ async def create_chart(payload: ChartRequest) -> ChartPayload:
                 status_code=400,
                 detail=f'Invalid branch: {getattr(payload, field)}',
             )
+    try:
+        _parse_date_and_time(payload.date, payload.time)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     chart = build_chart(
         payload.date,
@@ -517,50 +596,11 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     four_pillars = cast(dict[str, Any], result['four_pillars'])
     try:
         if payload.include_chart:
-            response['chart'] = build_chart(
-                payload.date,
-                payload.time,
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='hour',
-                    component_name='stem',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='hour',
-                    component_name='branch',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='day',
-                    component_name='stem',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='day',
-                    component_name='branch',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='month',
-                    component_name='stem',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='month',
-                    component_name='branch',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='year',
-                    component_name='stem',
-                ),
-                _pillar_component_from_four_pillars(
-                    four_pillars,
-                    pillar_name='year',
-                    component_name='branch',
-                ),
+            response['chart'] = _build_chart_from_four_pillars(
+                date_value=payload.date,
+                time_value=payload.time,
                 lang=payload.lang,
+                four_pillars=four_pillars,
             )
         if payload.include_hidden_stems:
             hidden_stems_request = HiddenStemsRequest(

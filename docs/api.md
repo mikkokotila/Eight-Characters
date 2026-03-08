@@ -192,7 +192,7 @@ All non-2xx API responses use this shape:
 
 Common status codes:
 
-- `400` invalid input, invalid stem/branch characters, unresolved city, DST ambiguity without `fold`, nonexistent local time, or convention validation errors
+- `400` invalid input, request schema validation errors, invalid stem/branch characters, unresolved city, DST ambiguity without `fold`, nonexistent local time, or convention validation errors
 - `500` unexpected internal errors
 
 ## Example curl

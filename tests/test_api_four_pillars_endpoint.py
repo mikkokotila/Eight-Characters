@@ -140,6 +140,24 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
+    def test_four_pillars_validation_errors_are_normalized(self) -> None:
+        response = self.client.post(
+            '/api/four_pillars',
+            json={
+                'date': '1988-02-04',
+                'location': {
+                    'timezone': 'Asia/Shanghai',
+                    'longitude': 104.066,
+                    'latitude': 30.658,
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        payload = response.json()
+        self.assertIn('detail', payload)
+        self.assertIsInstance(payload['detail'], str)
+        self.assertIn('time', payload['detail'])
+
     def test_four_pillars_accepts_time_without_seconds(self) -> None:
         response = self.client.post(
             '/api/four_pillars',

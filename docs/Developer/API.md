@@ -104,3 +104,7 @@ Non-2xx responses must be:
   "detail": "Human-readable error message"
 }
 ```
+
+FastAPI request validation errors are normalized through a global
+`RequestValidationError` handler and returned as `400` with this same payload
+shape.
