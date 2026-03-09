@@ -2,35 +2,102 @@
   'use strict';
 
   const ELEMENT_COLORS = {
-    Wood: '#57a773',
-    Fire: '#e4572e',
-    Earth: '#caa76b',
-    Metal: '#95a3b3',
-    Water: '#4a90e2',
+    Wood: '#7A9E72',
+    Fire: '#C4857A',
+    Earth: '#BBA862',
+    Metal: '#C8C2B8',
+    Water: '#7A8FA0',
   };
 
   const TEN_GOD_GROUP_COLORS = {
-    Self: '#8b5cf6',
-    Output: '#f97316',
-    Wealth: '#eab308',
-    Authority: '#ef4444',
-    Resource: '#14b8a6',
-    None: '#6b7280',
+    Self: '#8B7DC4',
+    Output: '#C48855',
+    Wealth: '#B8A24E',
+    Authority: '#B87070',
+    Resource: '#4E9888',
+    None: '#9A9389',
   };
 
   const RELATION_COLORS = {
-    production: '#22c55e',
-    control: '#ef4444',
-    drain: '#3b82f6',
+    production: '#6B946B',
+    control: '#B87070',
+    drain: '#6878B0',
   };
 
   const MOTIF_COLORS = {
-    chain: '#f59e0b',
-    loop: '#a855f7',
-    cascade: '#ec4899',
+    chain: '#C4A04E',
+    loop: '#9070B0',
+    cascade: '#B06880',
+    bottleneck: '#B86060',
+    pulse: '#4898A8',
+  };
+
+  const ELEMENT_ORDER = ['Wood', 'Fire', 'Earth', 'Metal', 'Water'];
+  const RESOURCE_BY_ELEMENT = [4, 0, 1, 2, 3];
+  const GOVERNOR_BY_ELEMENT = [3, 4, 0, 1, 2];
+  const BASIN_SEGMENT_COLORS = [
+    '#7A8FA0',
+    '#BBA862',
+    '#8B7DC4',
+    '#B87070',
+    '#7A9E72',
+    '#C48855',
+  ];
+
+  const STEM_INFO = {
+    'Wood|Yang': { char: '甲', roman: 'Jia', archetype: 'Pioneer' },
+    'Wood|Yin': { char: '乙', roman: 'Yi', archetype: 'Cultivator' },
+    'Fire|Yang': { char: '丙', roman: 'Bing', archetype: 'Sun' },
+    'Fire|Yin': { char: '丁', roman: 'Ding', archetype: 'Lamp' },
+    'Earth|Yang': { char: '戊', roman: 'Wu', archetype: 'Mountain' },
+    'Earth|Yin': { char: '己', roman: 'Ji', archetype: 'Field' },
+    'Metal|Yang': { char: '庚', roman: 'Geng', archetype: 'Blade' },
+    'Metal|Yin': { char: '辛', roman: 'Xin', archetype: 'Jewel' },
+    'Water|Yang': { char: '壬', roman: 'Ren', archetype: 'Ocean' },
+    'Water|Yin': { char: '癸', roman: 'Gui', archetype: 'Rain' },
+  };
+
+  const BRANCH_INFO = {
+    1: { char: '子', roman: 'Zi', animal: 'Rat' },
+    2: { char: '丑', roman: 'Chou', animal: 'Ox' },
+    3: { char: '寅', roman: 'Yin', animal: 'Tiger' },
+    4: { char: '卯', roman: 'Mao', animal: 'Rabbit' },
+    5: { char: '辰', roman: 'Chen', animal: 'Dragon' },
+    6: { char: '巳', roman: 'Si', animal: 'Snake' },
+    7: { char: '午', roman: 'Wu', animal: 'Horse' },
+    8: { char: '未', roman: 'Wei', animal: 'Goat' },
+    9: { char: '申', roman: 'Shen', animal: 'Monkey' },
+    10: { char: '酉', roman: 'You', animal: 'Rooster' },
+    11: { char: '戌', roman: 'Xu', animal: 'Dog' },
+    12: { char: '亥', roman: 'Hai', animal: 'Pig' },
+  };
+
+  const LIFE_STAGE_INFO = {
+    1: 'Chang Sheng (Birth)',
+    2: 'Mu Yu (Bath)',
+    3: 'Guan Dai (Crowning)',
+    4: 'Lin Guan (Office)',
+    5: 'Di Wang (Prosperity)',
+    6: 'Shuai (Decline)',
+    7: 'Bing (Sickness)',
+    8: 'Si (Death)',
+    9: 'Mu (Tomb)',
+    10: 'Jue (Extinction)',
+    11: 'Tai (Gestation)',
+    12: 'Yang (Nourishment)',
+  };
+
+  const PILLAR_DOMAIN = {
+    Year: 'Ancestry',
+    Month: 'Career',
+    Day: 'Self',
+    Hour: 'Inner World',
   };
 
   const state = {
+    basinViews: [],
+    basinDistribution: [],
+    activeBasinIndex: 0,
     nodes: [],
     edges: [],
     ghostEdges: [],
@@ -43,7 +110,13 @@
       pulses: [],
       absences: [],
     },
+    topologyModifiers: [],
+    branchIds: [],
     meta: {},
+    views: {
+      graph: true,
+      pillar: true,
+    },
     relationFilters: new Set(['production', 'control', 'drain']),
     motifToggles: {
       chains: true,
@@ -55,6 +128,7 @@
     },
     searchQuery: '',
     minFlux: 0.0,
+    maxFlux: 0.0,
     selectedNodeId: null,
   };
 
@@ -78,6 +152,8 @@
   let fluxScale;
   let width = 0;
   let height = 0;
+  let boundsForce;
+  let neighborMap = new Map();
 
   const tooltip = document.getElementById("tooltip");
 
@@ -91,34 +167,74 @@
   }
 
   function relationColor(relation) {
-    return RELATION_COLORS[relation] || '#9ca3af';
+    return RELATION_COLORS[relation] || '#9A9389';
   }
 
   function elementColor(name) {
-    return ELEMENT_COLORS[name] || '#8b93a9';
+    return ELEMENT_COLORS[name] || '#9A9389';
   }
 
   function groupColor(name) {
     return TEN_GOD_GROUP_COLORS[name] || TEN_GOD_GROUP_COLORS.None;
   }
 
-  function parseData(raw) {
-    if (!raw || !Array.isArray(raw.nodes) || !Array.isArray(raw.edges)) {
-      throw new Error('GRAPH_DATA must include nodes and edges arrays.');
+  function normalizeDistribution(input, basinViews) {
+    const fromInput = asArray(input)
+      .map((item, index) => {
+        const basinId = Number(item?.basin_id ?? index);
+        const basinIndex = basinViews.findIndex(
+          (view, viewIndex) => Number(view.meta?.basin_id ?? viewIndex) === basinId
+        );
+        return {
+          basin_id: basinId,
+          basin_index: basinIndex >= 0 ? basinIndex : index,
+          mass: Math.max(0, Number(item?.mass ?? 0)),
+          mode: String(item?.mode || 'Unknown'),
+        };
+      })
+      .filter((item) => Number.isFinite(item.mass));
+    if (fromInput.length) {
+      return fromInput;
     }
+    return basinViews.map((view, index) => ({
+      basin_id: Number(view.meta?.basin_id ?? index),
+      basin_index: index,
+      mass: Math.max(0, Number(view.meta?.basin_mass ?? 0)),
+      mode: String(view.meta?.mode || 'Unknown'),
+    }));
+  }
 
-    state.nodes = raw.nodes.map((node) => ({ ...node }));
-    state.edges = raw.edges.map((edge) => ({ ...edge }));
-    state.ghostEdges = asArray(raw.ghost_edges).map((edge) => ({ ...edge }));
+  function findBasinIndexById(basinId) {
+    const target = Number(basinId);
+    if (!Number.isFinite(target)) return -1;
+    return state.basinViews.findIndex(
+      (view, index) => Number(view.meta?.basin_id ?? index) === target
+    );
+  }
+
+  function applyBasinView(view) {
+    state.nodes = asArray(view.nodes).map((node) => ({ ...node }));
+    state.edges = asArray(view.edges).map((edge) => ({ ...edge }));
+    state.ghostEdges = asArray(view.ghost_edges).map((edge) => ({ ...edge }));
     state.motifs = {
-      chains: asArray(raw.motifs?.chains),
-      loops: asArray(raw.motifs?.loops),
-      cascades: asArray(raw.motifs?.cascades),
-      bottlenecks: asArray(raw.motifs?.bottlenecks),
-      pulses: asArray(raw.motifs?.pulses),
-      absences: asArray(raw.motifs?.absences),
+      chains: asArray(view.motifs?.chains),
+      loops: asArray(view.motifs?.loops),
+      cascades: asArray(view.motifs?.cascades),
+      bottlenecks: asArray(view.motifs?.bottlenecks),
+      pulses: asArray(view.motifs?.pulses),
+      absences: asArray(view.motifs?.absences),
     };
-    state.meta = raw.meta || {};
+    state.topologyModifiers = asArray(view.topology_modifiers).map((modifier) => ({
+      ...modifier,
+      pillar_indices: asArray(modifier.pillar_indices).map((value) => Number(value)),
+    }));
+    state.branchIds = asArray(view.meta?.branch_ids).map((value) => Number(value));
+    state.meta = {
+      ...(view.meta || {}),
+      basin_mass_distribution: state.basinDistribution,
+      active_basin_index: state.activeBasinIndex,
+      basin_count: state.basinViews.length,
+    };
 
     state.nodeById = new Map();
     state.nodes.forEach((node) => {
@@ -129,18 +245,56 @@
       state.nodeById.set(node.id, node);
     });
 
-    const maxAbsFlux = Math.max(
+    state.maxFlux = Math.max(
       0,
       ...state.edges.map((edge) => Number(edge.abs_flux || 0))
     );
-    const domainMax = maxAbsFlux > 0 ? maxAbsFlux : 1;
+    const domainMax = state.maxFlux > 0 ? state.maxFlux : 1;
     fluxScale = d3.scaleSqrt().domain([0, domainMax]).range([0.7, 5]);
+  }
+
+  function parseData(raw) {
+    const candidates =
+      raw && Array.isArray(raw.basin_views) && raw.basin_views.length
+        ? raw.basin_views
+        : [raw];
+    state.basinViews = candidates
+      .filter(
+        (view) =>
+          view &&
+          Array.isArray(view.nodes) &&
+          Array.isArray(view.edges)
+      )
+      .map((view, index) => ({
+        ...view,
+        meta: {
+          ...(view.meta || {}),
+          basin_id: Number(view.meta?.basin_id ?? index),
+        },
+      }));
+    if (!state.basinViews.length) {
+      throw new Error('GRAPH_DATA must include nodes and edges arrays.');
+    }
+
+    const requestedIndex = Number(
+      raw?.active_basin_index ?? raw?.meta?.active_basin_index ?? 0
+    );
+    state.activeBasinIndex = Number.isFinite(requestedIndex)
+      ? Math.max(0, Math.min(state.basinViews.length - 1, Math.trunc(requestedIndex)))
+      : 0;
+
+    state.basinDistribution = normalizeDistribution(
+      raw?.meta?.basin_mass_distribution,
+      state.basinViews
+    );
+    applyBasinView(state.basinViews[state.activeBasinIndex]);
   }
 
   function writeMetaLine() {
     const mass = Number(state.meta.basin_mass || 0) * 100;
+    const basinCount = Math.max(1, state.basinViews.length);
     const text = [
-      `Basin ${state.meta.basin_id ?? 0}`,
+      `Basin ${state.activeBasinIndex + 1}/${basinCount} (id ${state.meta.basin_id ?? 0})`,
       `Mass ${mass.toFixed(1)}%`,
       `Mode ${state.meta.mode || 'Unknown'}`,
       `Chart T ${Number(state.meta.chart_temperature || 0).toFixed(3)}`,
@@ -149,11 +303,567 @@
     document.getElementById('metaLine').textContent = text;
   }
 
+  function clamp01(value) {
+    return Math.max(0, Math.min(1, value));
+  }
+
+  function normalizeSigned(value) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return 0.5;
+    return clamp01((number + 1) / 2);
+  }
+
+  function basinSegmentColor(index) {
+    return BASIN_SEGMENT_COLORS[index % BASIN_SEGMENT_COLORS.length];
+  }
+
+  function motifCountsFromView(view) {
+    const motifs = view?.motifs || {};
+    return {
+      chains: asArray(motifs.chains).length,
+      loops: asArray(motifs.loops).length,
+      cascades: asArray(motifs.cascades).length,
+      bottlenecks: asArray(motifs.bottlenecks).length,
+      pulses: asArray(motifs.pulses).length,
+    };
+  }
+
+  function dominantBasinIndex() {
+    if (!state.basinDistribution.length) return 0;
+    let best = state.basinDistribution[0];
+    state.basinDistribution.forEach((item) => {
+      if (Number(item.mass || 0) > Number(best.mass || 0)) {
+        best = item;
+      }
+    });
+    const byDistribution = Number(best.basin_index);
+    if (Number.isFinite(byDistribution) && byDistribution >= 0) {
+      return Math.min(state.basinViews.length - 1, Math.trunc(byDistribution));
+    }
+    const byId = findBasinIndexById(best.basin_id);
+    return byId >= 0 ? byId : 0;
+  }
+
+  function updateFluxControls() {
+    const slider = document.getElementById('fluxThreshold');
+    const output = document.getElementById('fluxThresholdValue');
+    const maxFlux = Math.max(0, Number(state.maxFlux || 0));
+    if (maxFlux <= 0) {
+      state.minFlux = 0;
+      slider.value = '0';
+      output.textContent = '0.00';
+      return;
+    }
+    state.minFlux = Math.max(0, Math.min(state.minFlux, maxFlux));
+    const ratio = clamp01(state.minFlux / maxFlux);
+    slider.value = `${Math.round(ratio * 100)}`;
+    output.textContent = state.minFlux.toFixed(2);
+  }
+
+  function renderBasinTabs() {
+    const tabs = document.getElementById('basinTabs');
+    if (!tabs) return;
+    if (state.basinViews.length <= 1) {
+      tabs.innerHTML = '';
+      return;
+    }
+
+    const totalMass = state.basinDistribution.reduce(
+      (sum, item) => sum + Math.max(0, Number(item.mass || 0)),
+      0
+    );
+    const rows = state.basinDistribution.map((item, index) => {
+      const basinIndex = Number.isFinite(Number(item.basin_index))
+        ? Number(item.basin_index)
+        : findBasinIndexById(item.basin_id);
+      const resolvedIndex =
+        basinIndex >= 0 && basinIndex < state.basinViews.length ? basinIndex : index;
+      const percent = totalMass > 0 ? (Number(item.mass || 0) / totalMass) * 100 : 0;
+      const mode = String(
+        item.mode || state.basinViews[resolvedIndex]?.meta?.mode || 'Unknown'
+      );
+      const activeClass = resolvedIndex === state.activeBasinIndex ? ' active' : '';
+      return `
+        <button class="basin-tab${activeClass}" data-basin-index="${resolvedIndex}" title="Switch to basin ${resolvedIndex + 1}">
+          B${resolvedIndex + 1} · ${percent.toFixed(1)}% · ${mode}
+        </button>
+      `;
+    });
+    tabs.innerHTML = rows.join('');
+    tabs.querySelectorAll('.basin-tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        const index = Number(button.getAttribute('data-basin-index'));
+        if (Number.isFinite(index)) {
+          setActiveBasin(index);
+        }
+      });
+    });
+  }
+
+  function renderBasinMetadata() {
+    const panel = document.getElementById('basinMetaPanel');
+    const mode = String(state.meta.mode || 'Unknown');
+    const chartTemperature = Number(state.meta.chart_temperature || 0);
+    const chartSaturation = Number(state.meta.chart_saturation || 0);
+    const dotX = normalizeSigned(chartTemperature) * 100;
+    const dotY = (1 - normalizeSigned(chartSaturation)) * 100;
+
+    const distribution = state.basinDistribution.length
+      ? state.basinDistribution
+      : [
+        {
+          basin_id: Number(state.meta.basin_id ?? state.activeBasinIndex),
+          basin_index: state.activeBasinIndex,
+          mass: Math.max(0, Number(state.meta.basin_mass || 0)),
+          mode,
+        },
+      ];
+    const totalMass = distribution.reduce(
+      (sum, basin) => sum + Math.max(0, Number(basin.mass || 0)),
+      0
+    );
+    const dominantIndex = dominantBasinIndex();
+    const referenceView =
+      state.basinViews[dominantIndex] || state.basinViews[state.activeBasinIndex];
+    const referenceCounts = motifCountsFromView(referenceView);
+
+    let cumulative = 0;
+    const segmentsHtml = distribution
+      .map((basin, index) => {
+        const mass = Math.max(0, Number(basin.mass || 0));
+        const width = totalMass > 0 ? (mass / totalMass) * 100 : 0;
+        const left = cumulative;
+        cumulative += width;
+        const color = basinSegmentColor(index);
+        const basinIndex = Number.isFinite(Number(basin.basin_index))
+          ? Number(basin.basin_index)
+          : findBasinIndexById(basin.basin_id);
+        const activeClass =
+          basinIndex === state.activeBasinIndex ? ' probability-segment-active' : '';
+        return `
+          <div
+            class="probability-segment${activeClass}"
+            data-basin-index="${basinIndex}"
+            style="left:${left}%; width:${width}%; background:${color};"
+            title="Basin ${basinIndex + 1} — ${(width || 0).toFixed(1)}%"
+          ></div>
+        `;
+      })
+      .join('');
+
+    const probabilityLegend = distribution
+      .map((basin, index) => {
+        const mass = Math.max(0, Number(basin.mass || 0));
+        const percent = totalMass > 0 ? (mass / totalMass) * 100 : 0;
+        const basinIndex = Number.isFinite(Number(basin.basin_index))
+          ? Number(basin.basin_index)
+          : findBasinIndexById(basin.basin_id);
+        const activeClass = basinIndex === state.activeBasinIndex ? ' active' : '';
+        return `
+          <div class="probability-row${activeClass}" data-basin-index="${basinIndex}">
+            <div class="left">
+              <span class="probability-swatch" style="background:${basinSegmentColor(index)}"></span>
+              <span>Basin ${basinIndex + 1} · ${String(basin.mode || 'Unknown')}</span>
+            </div>
+            <span>${percent.toFixed(1)}%</span>
+          </div>
+        `;
+      })
+      .join('');
+
+    const motifRows = [
+      {
+        key: 'chains',
+        colorKey: 'chain',
+        label: 'Chains',
+        count: asArray(state.motifs.chains).length,
+      },
+      {
+        key: 'loops',
+        colorKey: 'loop',
+        label: 'Loops',
+        count: asArray(state.motifs.loops).length,
+      },
+      {
+        key: 'cascades',
+        colorKey: 'cascade',
+        label: 'Cascades',
+        count: asArray(state.motifs.cascades).length,
+      },
+      {
+        key: 'bottlenecks',
+        colorKey: 'bottleneck',
+        label: 'Bottlenecks',
+        count: asArray(state.motifs.bottlenecks).length,
+      },
+      {
+        key: 'pulses',
+        colorKey: 'pulse',
+        label: 'Pulses',
+        count: asArray(state.motifs.pulses).length,
+      },
+    ];
+    const motifHtml = motifRows
+      .map(
+        (row) => {
+          const referenceCount = Number(referenceCounts[row.key] || 0);
+          const delta = row.count - referenceCount;
+          const deltaText = delta === 0 ? '\u00b10' : `${delta > 0 ? '+' : ''}${delta}`;
+          return `
+          <div class="motif-row">
+            <div class="motif-left">
+              <span class="line-swatch" style="background:${MOTIF_COLORS[row.colorKey] || '#9A9389'}"></span>
+              <span>${row.label}</span>
+            </div>
+            <span class="motif-count">${row.count} <span class="k">(${deltaText})</span></span>
+          </div>
+        `;
+        }
+      )
+      .join('');
+
+    const switchRows = asArray(state.topologyModifiers)
+      .map((modifier) => ({
+        rule_index: Number(modifier.rule_index ?? 0),
+        label: String(modifier.label || `r${modifier.rule_index ?? '?'}`),
+        switch_state: Number(modifier.switch_state ?? 0),
+        omega: Number(modifier.omega ?? 0),
+      }))
+      .sort((left, right) => left.rule_index - right.rule_index);
+    const transformationRows = switchRows.filter((row) => row.switch_state > 1);
+    const switchListHtml = switchRows.length
+      ? switchRows
+        .map(
+          (row) => `
+            <div class="switch-row">
+              <span class="switch-label">r${row.rule_index} · ${row.label}</span>
+              <span>s=${row.switch_state}, \u03c9=${row.omega.toFixed(2)}</span>
+            </div>
+          `
+        )
+        .join('')
+      : '<div class="absence-item">No topology switches active in this basin.</div>';
+
+    const transformListHtml = transformationRows.length
+      ? transformationRows
+        .map(
+          (row) => `
+            <div class="switch-row">
+              <span class="switch-label">r${row.rule_index} · ${row.label}</span>
+              <span>state ${row.switch_state}</span>
+            </div>
+          `
+        )
+        .join('')
+      : '<div class="absence-item">No full-state transformations firing.</div>';
+
+    const referenceSwitchSet = new Set(
+      asArray(referenceView?.topology_modifiers).map((modifier) =>
+        Number(modifier.rule_index ?? -1)
+      )
+    );
+    const currentSwitchSet = new Set(
+      asArray(state.topologyModifiers).map((modifier) =>
+        Number(modifier.rule_index ?? -1)
+      )
+    );
+    const flippedOn = [...currentSwitchSet]
+      .filter((ruleIndex) => !referenceSwitchSet.has(ruleIndex))
+      .sort((a, b) => a - b);
+    const flippedOff = [...referenceSwitchSet]
+      .filter((ruleIndex) => !currentSwitchSet.has(ruleIndex))
+      .sort((a, b) => a - b);
+    const switchDeltaText = [
+      flippedOn.length ? `ON: ${flippedOn.map((rule) => `r${rule}`).join(', ')}` : 'ON: none',
+      flippedOff.length ? `OFF: ${flippedOff.map((rule) => `r${rule}`).join(', ')}` : 'OFF: none',
+    ].join(' \u2022 ');
+
+    const dayMasterNode = state.nodes.find(
+      (node) => !node.is_ghost && Boolean(node.is_day_master)
+    );
+    const dayMasterElementIndex = Number(dayMasterNode?.effective_element_index ?? -1);
+    const absences = asArray(state.motifs.absences)
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value) && value >= 0 && value < ELEMENT_ORDER.length);
+
+    let absenceHtml = '<div class="absence-item">No elemental absence in this basin.</div>';
+    if (absences.length) {
+      absenceHtml = absences
+        .map((missingElementIndex) => {
+          const roles = [];
+          if (
+            dayMasterElementIndex >= 0 &&
+            missingElementIndex === RESOURCE_BY_ELEMENT[dayMasterElementIndex]
+          ) {
+            roles.push('Resource');
+          }
+          if (
+            dayMasterElementIndex >= 0 &&
+            missingElementIndex === GOVERNOR_BY_ELEMENT[dayMasterElementIndex]
+          ) {
+            roles.push('Governor');
+          }
+          const roleText = roles.length
+            ? roles.join(', ')
+            : 'No direct Resource/Governor role for current Day Master';
+          return `
+            <div class="absence-item">
+              <strong>${ELEMENT_ORDER[missingElementIndex]}</strong>
+              <div>${roleText}</div>
+            </div>
+          `;
+        })
+        .join('');
+    }
+
+    panel.innerHTML = `
+      <div class="meta-card">
+        <div class="meta-card-title">Global Mode</div>
+        <span class="mode-label">${mode}</span>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Climate Quadrant</div>
+        <div class="climate-quadrant">
+          <div class="climate-midline-x"></div>
+          <div class="climate-midline-y"></div>
+          <div class="climate-dot" style="left:${dotX}%; top:${dotY}%"></div>
+          <div class="climate-axis-label top">Cold · Wet</div>
+          <div class="climate-axis-label right">Hot · Wet</div>
+          <div class="climate-axis-label bottom">Cold · Dry</div>
+          <div class="climate-axis-label left">Hot · Dry</div>
+        </div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Basin Mass</div>
+        <div class="probability-bar">${segmentsHtml}</div>
+        <div class="probability-legend">${probabilityLegend}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Switchboard Delta vs Basin ${dominantIndex + 1}</div>
+        <div class="switch-row">
+          <span class="switch-label">Active switches</span>
+          <span>${switchRows.length}</span>
+        </div>
+        <div class="switch-row">
+          <span class="switch-label">Transformations firing</span>
+          <span>${transformationRows.length}</span>
+        </div>
+        <div class="absence-item">${switchDeltaText}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Active Topology Switches</div>
+        <div class="switch-grid">${switchListHtml}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Firing Transformations</div>
+        <div class="switch-grid">${transformListHtml}</div>
+      </div>
+      <div class="meta-card">
+        <div class="meta-card-title">Motif Inventory (vs Basin ${dominantIndex + 1})</div>
+        <div class="motif-inventory">${motifHtml}</div>
+      </div>
+      <div class="absence-callout">
+        <div class="absence-title">Absence Callout · Missing Element Roles</div>
+        ${absenceHtml}
+      </div>
+    `;
+
+    panel.querySelectorAll('[data-basin-index]').forEach((node) => {
+      node.addEventListener('click', () => {
+        const basinIndex = Number(node.getAttribute('data-basin-index'));
+        if (Number.isFinite(basinIndex)) {
+          setActiveBasin(basinIndex);
+        }
+      });
+    });
+  }
+
+  function applyViewVisibility() {
+    const graphView = document.getElementById('graphView');
+    const pillarView = document.getElementById('pillarView');
+    graphView.style.display = state.views.graph ? '' : 'none';
+    pillarView.style.display = state.views.pillar ? '' : 'none';
+    document.getElementById('fitButton').disabled = !state.views.graph;
+  }
+
+  function stemInfoFromNode(node) {
+    if (!node || node.is_ghost) {
+      return { char: '—', roman: 'Unknown', archetype: 'Unknown' };
+    }
+    const key = `${node.effective_element}|${node.polarity}`;
+    return STEM_INFO[key] || { char: '—', roman: 'Unknown', archetype: 'Unknown' };
+  }
+
+  function branchInfoByPillar(pillarIndex) {
+    const branchId = state.branchIds[pillarIndex - 1];
+    return BRANCH_INFO[branchId] || { char: '—', roman: 'Unknown', animal: 'Unknown' };
+  }
+
+  function renderPillarStrip() {
+    const strip = document.getElementById('pillarStrip');
+    const bands = document.getElementById('modifierBands');
+    const displayPillars = [
+      { name: 'Hour', index: 4 },
+      { name: 'Day', index: 3 },
+      { name: 'Month', index: 2 },
+      { name: 'Year', index: 1 },
+    ];
+    const displayPositionByPillar = new Map(
+      displayPillars.map((pillar, position) => [pillar.index, position])
+    );
+
+    const cardHtml = displayPillars
+      .map((pillar) => {
+        const pillarName = pillar.name;
+        const pillarIndex = pillar.index;
+        const stemNode = state.nodes.find(
+          (node) =>
+            !node.is_ghost &&
+            Number(node.pillar_index) === pillarIndex &&
+            Number(node.hierarchy_index) === 4
+        );
+        const stemInfo = stemInfoFromNode(stemNode);
+        const branchInfo = branchInfoByPillar(pillarIndex);
+        const lifeStageNumber = Number(stemNode?.vitality_stage || 0);
+        const lifeStageLabel = LIFE_STAGE_INFO[lifeStageNumber] || 'Unknown';
+        const tenGod = stemNode?.ten_god || 'Unknown';
+        const domain = PILLAR_DOMAIN[pillarName] || 'Domain';
+
+        return `
+          <article class="pillar-card" data-pillar-index="${pillarIndex}">
+            <div class="pillar-card-head">
+              <div class="pillar-name">${pillarName}</div>
+              <div class="pillar-domain">${domain}</div>
+            </div>
+            <div class="pillar-row">
+              <span class="label">Stem</span>
+              <span class="value">${stemInfo.char} ${stemInfo.roman} · ${stemInfo.archetype}</span>
+            </div>
+            <div class="pillar-row">
+              <span class="label">Branch</span>
+              <span class="value">${branchInfo.char} ${branchInfo.roman} · ${branchInfo.animal}</span>
+            </div>
+            <div class="pillar-row">
+              <span class="label">Life Stage</span>
+              <span class="value">${lifeStageNumber || '—'} · ${lifeStageLabel}</span>
+            </div>
+            <div class="pillar-row">
+              <span class="label">Ten God</span>
+              <span class="value">${tenGod}</span>
+            </div>
+          </article>
+        `;
+      })
+      .join('');
+
+    strip.innerHTML = cardHtml;
+
+    const activeBands = state.topologyModifiers.filter(
+      (modifier) =>
+        Array.isArray(modifier.pillar_indices) &&
+        modifier.pillar_indices.length >= 2
+    );
+
+    if (!activeBands.length) {
+      bands.style.height = '22px';
+      bands.innerHTML = '<div class="modifier-band empty">No active topology modifiers.</div>';
+      return;
+    }
+
+    const stripRect = strip.getBoundingClientRect();
+    const spanByPillar = new Map();
+    Array.from(strip.querySelectorAll('.pillar-card')).forEach((card) => {
+      const pillarIndex = Number(card.dataset.pillarIndex || 0);
+      if (pillarIndex < 1 || pillarIndex > 4) return;
+      const rect = card.getBoundingClientRect();
+      spanByPillar.set(pillarIndex, {
+        left: rect.left - stripRect.left,
+        right: rect.right - stripRect.left,
+      });
+    });
+
+    const positionedBands = activeBands
+      .map((modifier) => {
+        const pillarIndices = modifier.pillar_indices
+          .map((value) => Number(value))
+          .filter((value) => value >= 1 && value <= 4)
+          .sort(
+            (left, right) =>
+              (displayPositionByPillar.get(left) ?? 99) -
+              (displayPositionByPillar.get(right) ?? 99)
+          );
+        if (pillarIndices.length < 2) return null;
+        const startSpan = spanByPillar.get(pillarIndices[0]);
+        const endSpan = spanByPillar.get(pillarIndices[pillarIndices.length - 1]);
+        if (!startSpan || !endSpan) return null;
+        const left = startSpan.left + 6;
+        const right = endSpan.right - 6;
+        const width = Math.max(34, right - left);
+        const connectedPillars = pillarIndices.map((pillarIndex) => {
+          const displayPillar = displayPillars.find((item) => item.index === pillarIndex);
+          return displayPillar ? displayPillar.name : `P${pillarIndex}`;
+        });
+        return {
+          kind: modifier.kind || 'harmony',
+          label: modifier.label || 'Modifier',
+          connector: connectedPillars.join(' ↔ '),
+          left,
+          right,
+          width,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.left - b.left || a.right - b.right);
+
+    if (!positionedBands.length) {
+      bands.style.height = '22px';
+      bands.innerHTML =
+        '<div class="modifier-band empty">No active topology modifiers.</div>';
+      return;
+    }
+
+    const rowGap = 6;
+    const bandHeight = 20;
+    const rowLastRight = [];
+    positionedBands.forEach((band) => {
+      let rowIndex = rowLastRight.findIndex(
+        (lastRight) => band.left > lastRight + rowGap
+      );
+      if (rowIndex < 0) {
+        rowIndex = rowLastRight.length;
+        rowLastRight.push(band.right);
+      } else {
+        rowLastRight[rowIndex] = band.right;
+      }
+      band.rowIndex = rowIndex;
+    });
+
+    const rowCount = Math.max(1, rowLastRight.length);
+    const totalHeight = rowCount * bandHeight + (rowCount - 1) * rowGap;
+    bands.style.height = `${totalHeight}px`;
+
+    const bandHtml = positionedBands
+      .map((band) => {
+        const top = band.rowIndex * (bandHeight + rowGap);
+        return `
+          <div
+            class="modifier-band ${band.kind}"
+            style="left:${band.left}px; width:${band.width}px; top:${top}px;"
+            title="${band.connector} · ${band.label}"
+          >
+            ${band.label}
+          </div>
+        `;
+      })
+      .join('');
+
+    bands.innerHTML = bandHtml;
+  }
+
   function setupControls() {
     const searchInput = document.getElementById('searchInput');
     const fluxSlider = document.getElementById('fluxThreshold');
     const fluxOutput = document.getElementById('fluxThresholdValue');
-    const maxFlux = Math.max(0, ...state.edges.map((edge) => Number(edge.abs_flux || 0)));
 
     searchInput.addEventListener('input', () => {
       state.searchQuery = searchInput.value.trim().toLowerCase();
@@ -162,11 +872,11 @@
 
     fluxSlider.addEventListener('input', () => {
       const ratio = Number(fluxSlider.value) / 100;
-      state.minFlux = ratio * maxFlux;
+      state.minFlux = ratio * Math.max(0, Number(state.maxFlux || 0));
       fluxOutput.textContent = state.minFlux.toFixed(2);
       applyFilters();
     });
-    fluxOutput.textContent = '0.00';
+    updateFluxControls();
 
     document.querySelectorAll('#relationFilters .toggle-btn').forEach((button) => {
       button.addEventListener('click', () => {
@@ -199,13 +909,38 @@
       });
     });
 
+    document.querySelectorAll('#viewMenu .view-tab').forEach((button) => {
+      button.addEventListener('click', () => {
+        const viewKey = button.dataset.view;
+        if (viewKey !== 'graph' && viewKey !== 'pillar') return;
+        const nextValue = !state.views[viewKey];
+        const enabledCount =
+          Number(state.views.graph) + Number(state.views.pillar);
+        if (!nextValue && enabledCount <= 1) return;
+        state.views[viewKey] = nextValue;
+        button.classList.toggle('active', nextValue);
+        applyViewVisibility();
+        if (viewKey === 'graph' && nextValue) {
+          canvasSize();
+          svg.attr('viewBox', `0 0 ${width} ${height}`);
+          boundsForce?.setSize(width, height);
+          simulation.alpha(0.24).restart();
+          fitToView();
+        }
+        if (viewKey === 'pillar' && nextValue) {
+          requestAnimationFrame(() => {
+            renderPillarStrip();
+          });
+        }
+      });
+    });
+
     document.getElementById('fitButton').addEventListener('click', fitToView);
     document.getElementById('resetButton').addEventListener('click', () => {
       state.searchQuery = '';
       searchInput.value = '';
       state.minFlux = 0.0;
-      fluxSlider.value = '0';
-      fluxOutput.textContent = '0.00';
+      updateFluxControls();
       state.relationFilters = new Set(['production', 'control', 'drain']);
       document.querySelectorAll('#relationFilters .toggle-btn').forEach((button) => {
         button.classList.add('active');
@@ -271,7 +1006,7 @@
       <div style="height:8px"></div>
       <div class="legend-item"><span class="k">Motif overlays</span></div>
       ${motifHtml}
-      <div class="legend-item"><span class="swatch" style="background:transparent;border:1px dashed #9ca3af"></span>absent element ghost</div>
+      <div class="legend-item"><span class="swatch" style="background:transparent;border:1px dashed #9A9389"></span>absent element ghost</div>
     `;
   }
 
@@ -302,6 +1037,21 @@
     });
 
     drawAxisGuides(margin, usableWidth, usableHeight);
+  }
+
+  function buildNeighborMap() {
+    neighborMap = new Map();
+    state.nodes.forEach((node) => {
+      neighborMap.set(node.id, new Set());
+    });
+    const allEdges = [...state.edges, ...state.ghostEdges];
+    allEdges.forEach((edge) => {
+      const source = nodeRef(edge.source);
+      const target = nodeRef(edge.target);
+      if (!source || !target) return;
+      neighborMap.get(source.id)?.add(target);
+      neighborMap.get(target.id)?.add(source);
+    });
   }
 
   function drawAxisGuides(margin, usableWidth, usableHeight) {
@@ -398,12 +1148,15 @@
     function addPathSegments(paths, kind, closeLoop) {
       paths.forEach((path, pathIndex) => {
         if (!Array.isArray(path) || path.length < 2) return;
+        const pathNodes = path.slice();
         for (let i = 0; i < path.length - 1; i += 1) {
           segments.push({
             id: `${kind}_${pathIndex}_${i}`,
             source: path[i],
             target: path[i + 1],
             kind,
+            path_nodes: pathNodes,
+            path_index: pathIndex,
           });
         }
         if (closeLoop && path.length >= 2) {
@@ -412,6 +1165,8 @@
             source: path[path.length - 1],
             target: path[0],
             kind,
+            path_nodes: pathNodes,
+            path_index: pathIndex,
           });
         }
       });
@@ -446,7 +1201,7 @@
       .data(buildMotifSegments(), (segment) => segment.id)
       .join('line')
       .attr('class', (segment) => `motif-edge ${segment.kind}`)
-      .attr('stroke', (segment) => MOTIF_COLORS[segment.kind] || '#f8fafc')
+      .attr('stroke', (segment) => MOTIF_COLORS[segment.kind] || '#9A9389')
       .attr('marker-end', (segment) =>
         segment.kind === 'cascade' ? 'url(#arrow-cascade)' : null
       );
@@ -472,7 +1227,7 @@
       })
       .attr('r', (node) => node.radius)
       .attr('fill', (node) => elementColor(node.effective_element))
-      .attr('stroke', (node) => groupColor(node.ten_god_group))
+      .attr('stroke', 'none')
       .attr('opacity', (node) => (node.is_ghost ? 0.58 : 1));
 
     nodeSel
@@ -513,6 +1268,7 @@
       .attr('r', (node) => node.radius + 6);
 
     setupNodeInteractions();
+    setupDrag();
   }
 
   function linkDistance(edge) {
@@ -529,8 +1285,66 @@
     return 0.08 + norm * 0.42;
   }
 
+  function createWanderForce() {
+    let nodes = [];
+    return Object.assign(
+      function force(alpha) {
+        const t = performance.now() * 0.0011;
+        for (const node of nodes) {
+          if (node.fx != null || node.fy != null) continue;
+          if (node._phaseA == null) {
+            node._phaseA = Math.random() * Math.PI * 2;
+            node._phaseB = Math.random() * Math.PI * 2;
+          }
+          node.vx += Math.sin(t + node._phaseA) * 0.005 * (0.6 + alpha);
+          node.vy += Math.cos(t * 0.9 + node._phaseB) * 0.005 * (0.6 + alpha);
+        }
+      },
+      {
+        initialize(initNodes) {
+          nodes = initNodes;
+        },
+      }
+    );
+  }
+
+  function createBoundsForce(canvasWidth, canvasHeight) {
+    let nodes = [];
+    let w = canvasWidth;
+    let h = canvasHeight;
+    const pad = 20;
+    const strength = 0.09;
+    const force = function apply(alpha) {
+      for (const node of nodes) {
+        if (node.x < pad) node.vx += (pad - node.x) * strength * alpha;
+        if (node.x > w - pad) node.vx -= (node.x - (w - pad)) * strength * alpha;
+        if (node.y < pad) node.vy += (pad - node.y) * strength * alpha;
+        if (node.y > h - pad) node.vy -= (node.y - (h - pad)) * strength * alpha;
+      }
+    };
+    force.initialize = function initialize(initNodes) {
+      nodes = initNodes;
+    };
+    force.setSize = function setSize(nextWidth, nextHeight) {
+      w = nextWidth;
+      h = nextHeight;
+    };
+    return force;
+  }
+
   function setupSimulation() {
     const allLinks = [...state.edges, ...state.ghostEdges];
+    state.nodes.forEach((node) => {
+      if (typeof node.x !== 'number') {
+        node.x = node.anchorX + (Math.random() - 0.5) * 28;
+      }
+      if (typeof node.y !== 'number') {
+        node.y = node.anchorY + (Math.random() - 0.5) * 28;
+      }
+      node.vx = (node.vx || 0) + (Math.random() - 0.5) * 0.08;
+      node.vy = (node.vy || 0) + (Math.random() - 0.5) * 0.08;
+    });
+    boundsForce = createBoundsForce(width, height);
     simulation = d3
       .forceSimulation(state.nodes)
       .force(
@@ -539,13 +1353,28 @@
       )
       .force(
         'charge',
-        d3.forceManyBody().strength((node) => (node.is_ghost ? -80 : -210))
+        d3.forceManyBody().strength((node) => (node.is_ghost ? -34 : -95))
       )
-      .force('collision', d3.forceCollide().radius((node) => node.radius + 8))
-      .force('x', d3.forceX((node) => node.anchorX).strength((node) => (node.is_ghost ? 0.62 : 0.4)))
-      .force('y', d3.forceY((node) => node.anchorY).strength((node) => (node.is_ghost ? 0.62 : 0.4)))
-      .alpha(0.95)
-      .alphaDecay(0.07)
+      .force('collision', d3.forceCollide().radius((node) => node.radius + 6))
+      .force(
+        'x',
+        d3
+          .forceX((node) => node.anchorX)
+          .strength((node) => (node.is_ghost ? 0.03 : 0.014))
+      )
+      .force(
+        'y',
+        d3
+          .forceY((node) => node.anchorY)
+          .strength((node) => (node.is_ghost ? 0.03 : 0.014))
+      )
+      .force('wander', createWanderForce())
+      .force('bounds', boundsForce)
+      .alpha(0.78)
+      .alphaMin(0.003)
+      .alphaDecay(0.013)
+      .velocityDecay(0.28)
+      .alphaTarget(0.02)
       .on('tick', ticked);
   }
 
@@ -696,7 +1525,7 @@
       state.selectedNodeId = null;
     }
     if (state.selectedNodeId) {
-      renderDetail(state.nodeById.get(state.selectedNodeId));
+      renderDetail({ type: 'node', payload: state.nodeById.get(state.selectedNodeId) });
     }
 
     updateStatus();
@@ -753,6 +1582,230 @@
     tooltip.classList.remove('visible');
   }
 
+  function formatNumber(value, digits = 3) {
+    const number = Number(value);
+    if (!Number.isFinite(number)) return '—';
+    return number.toFixed(digits);
+  }
+
+  function nodeCaption(nodeId) {
+    const node = state.nodeById.get(nodeId);
+    if (!node) return nodeId;
+    return `${node.id} (${node.pillar} ${node.hierarchy})`;
+  }
+
+  function edgeBetween(sourceId, targetId) {
+    return state.edges.find((edge) => {
+      const source = nodeRef(edge.source);
+      const target = nodeRef(edge.target);
+      if (!source || !target) return false;
+      return source.id === sourceId && target.id === targetId;
+    });
+  }
+
+  function motifNarrative(kind, pathNodes) {
+    const captions = pathNodes.map((nodeId) => nodeCaption(String(nodeId)));
+    if (kind === 'chain') {
+      return `Chain flow: ${captions.join(' → ')}. Energy is handed forward step by step across the topology.`;
+    }
+    if (kind === 'loop') {
+      return `Loop circulation: ${captions.join(' → ')} → ${captions[0]}. Current feeds back into its origin, creating a self-reinforcing circuit.`;
+    }
+    return `Cascade amplification: ${captions.join(' → ')}. Upstream flux propagates downstream and tends to magnify pressure at the tail.`;
+  }
+
+  function renderEdgeDetail(edge) {
+    const panel = document.getElementById('detailPanel');
+    const source = nodeRef(edge.source);
+    const target = nodeRef(edge.target);
+    if (!source || !target) {
+      panel.innerHTML = 'Edge data unavailable.';
+      return;
+    }
+    panel.innerHTML = `
+      <div><strong>Flux Edge</strong> ${source.id} → ${target.id}</div>
+      <div class="k">${source.label} → ${target.label}</div>
+      <hr>
+      <div class="detail-row"><span>Flux F(i→j)</span><span>${formatNumber(edge.flux)}</span></div>
+      <div class="detail-row"><span>|Flux|</span><span>${formatNumber(edge.abs_flux)}</span></div>
+      <div class="detail-row"><span>Elemental relationship</span><span>${edge.elemental_relationship || edge.relation || '—'}</span></div>
+      <div class="detail-row"><span>Elemental interaction</span><span>${formatNumber(edge.elemental_interaction)}</span></div>
+      <div class="detail-row"><span>Polarity modifier</span><span>${formatNumber(edge.polarity_modifier)}</span></div>
+      <div class="detail-row"><span>Vitality differential</span><span>${formatNumber(edge.vitality_differential)}</span></div>
+      <div class="detail-row"><span>Proximity weight</span><span>${formatNumber(edge.proximity_weight)}</span></div>
+      <div class="detail-row"><span>Hierarchy coupling</span><span>${formatNumber(edge.hierarchy_coupling, 2)}</span></div>
+      <div class="detail-row"><span>Transport capacity term</span><span>${formatNumber(edge.transport_capacity_component)}</span></div>
+    `;
+  }
+
+  function renderMotifDetail(segment) {
+    const panel = document.getElementById('detailPanel');
+    const pathNodes = asArray(segment.path_nodes).map((nodeId) => String(nodeId));
+    if (pathNodes.length < 2) {
+      panel.innerHTML = 'Motif path unavailable.';
+      return;
+    }
+
+    const stepRows = [];
+    for (let index = 0; index < pathNodes.length - 1; index += 1) {
+      const sourceId = pathNodes[index];
+      const targetId = pathNodes[index + 1];
+      const edge = edgeBetween(sourceId, targetId);
+      stepRows.push(`
+        <div class="detail-row">
+          <span>${nodeCaption(sourceId)} → ${nodeCaption(targetId)}</span>
+          <span>${edge ? formatNumber(edge.flux) : 'n/a'}</span>
+        </div>
+      `);
+    }
+    if (segment.kind === 'loop') {
+      const sourceId = pathNodes[pathNodes.length - 1];
+      const targetId = pathNodes[0];
+      const edge = edgeBetween(sourceId, targetId);
+      stepRows.push(`
+        <div class="detail-row">
+          <span>${nodeCaption(sourceId)} → ${nodeCaption(targetId)}</span>
+          <span>${edge ? formatNumber(edge.flux) : 'n/a'}</span>
+        </div>
+      `);
+    }
+
+    panel.innerHTML = `
+      <div><strong>Motif Highlight</strong> · ${String(segment.kind || 'motif').toUpperCase()}</div>
+      <div class="k">${motifNarrative(segment.kind, pathNodes)}</div>
+      <hr>
+      <div><strong>Path Flux Steps</strong></div>
+      ${stepRows.join('')}
+    `;
+  }
+
+  function renderGhostDetail(node) {
+    const panel = document.getElementById('detailPanel');
+    const connectsFrom = asArray(node.connects_from).map((nodeId) => String(nodeId));
+    const connectsTo = asArray(node.connects_to).map((nodeId) => String(nodeId));
+    const fromCaption = connectsFrom.length
+      ? connectsFrom.map((nodeId) => nodeCaption(nodeId)).join(', ')
+      : 'none';
+    const toCaption = connectsTo.length
+      ? connectsTo.map((nodeId) => nodeCaption(nodeId)).join(', ')
+      : 'none';
+
+    const dayMaster = state.nodes.find(
+      (candidate) => !candidate.is_ghost && Boolean(candidate.is_day_master)
+    );
+    const missingElementIndex = Number(node.effective_element_index ?? -1);
+    const roles = [];
+    if (
+      dayMaster &&
+      missingElementIndex >= 0 &&
+      missingElementIndex === RESOURCE_BY_ELEMENT[Number(dayMaster.effective_element_index)]
+    ) {
+      roles.push('Resource');
+    }
+    if (
+      dayMaster &&
+      missingElementIndex >= 0 &&
+      missingElementIndex === GOVERNOR_BY_ELEMENT[Number(dayMaster.effective_element_index)]
+    ) {
+      roles.push('Governor');
+    }
+    const roleText = roles.length ? roles.join(' + ') : 'supporting role';
+    const loopHint =
+      state.motifs.loops.length > 0
+        ? 'It may rebalance existing loops by adding a missing transfer branch.'
+        : 'It may close open chains into loops if the new branch completes a return path.';
+    const bottleneckHint =
+      state.motifs.bottlenecks.length > 0
+        ? 'It is likely to relieve pressure around bottleneck nodes by adding alternate routes.'
+        : 'It would still add optional bypass routes for future bottlenecks.';
+
+    panel.innerHTML = `
+      <div><strong>Absence Ghost</strong> · ${node.effective_element || 'Unknown'}</div>
+      <div class="k">This node is not active in the current basin but shown as a structural gap.</div>
+      <hr>
+      <div class="detail-row"><span>Would receive from</span><span>${fromCaption}</span></div>
+      <div class="detail-row"><span>Would feed into</span><span>${toCaption}</span></div>
+      <div class="detail-row"><span>Role if present</span><span>${roleText}</span></div>
+      <hr>
+      <div><strong>Motif Impact (What-if)</strong></div>
+      <div class="k">If present, this missing element would introduce new production bridges from upstream sources to downstream targets.</div>
+      <div class="k">${loopHint}</div>
+      <div class="k">${bottleneckHint}</div>
+    `;
+  }
+
+  function topFluxRows(edges, direction, limit) {
+    return edges
+      .slice()
+      .sort((a, b) => Number(b.abs_flux || 0) - Number(a.abs_flux || 0))
+      .slice(0, limit)
+      .map((edge) => {
+        const source = nodeRef(edge.source);
+        const target = nodeRef(edge.target);
+        if (!source || !target) return '';
+        const label = direction === 'out' ? target.id : source.id;
+        return `
+          <div class="detail-row">
+            <span>${label}</span>
+            <span>${formatNumber(edge.flux)}</span>
+          </div>
+        `;
+      })
+      .join('');
+  }
+
+  function renderNodeDetail(node) {
+    const panel = document.getElementById('detailPanel');
+    const inEdges = state.edges.filter((edge) => nodeRef(edge.target)?.id === node.id);
+    const outEdges = state.edges.filter((edge) => nodeRef(edge.source)?.id === node.id);
+    const absIn = inEdges.reduce((sum, edge) => sum + Number(edge.abs_flux || 0), 0);
+    const absOut = outEdges.reduce((sum, edge) => sum + Number(edge.abs_flux || 0), 0);
+
+    panel.innerHTML = `
+      <div><strong>${node.id}</strong> — ${node.label}</div>
+      <div class="k">${node.pillar} / ${node.hierarchy} / ${node.polarity}</div>
+      <hr>
+      <div class="detail-row"><span>Element</span><span>${node.effective_element}</span></div>
+      <div class="detail-row"><span>Ten God</span><span>${node.ten_god} (${node.ten_god_group})</span></div>
+      <div class="detail-row"><span>Life Stage</span><span>${node.vitality_stage}</span></div>
+      <div class="detail-row"><span>Vitality</span><span>${formatNumber(node.dynamic_vitality)}</span></div>
+      <div class="detail-row"><span>Climate T contribution</span><span>${formatNumber(node.climate_temperature_component, 2)} (weighted ${formatNumber(node.climate_temperature_weighted, 2)})</span></div>
+      <div class="detail-row"><span>Climate S contribution</span><span>${formatNumber(node.climate_moisture_component, 2)} (weighted ${formatNumber(node.climate_moisture_weighted, 2)})</span></div>
+      <hr>
+      <div class="detail-row"><span>Total |in flux|</span><span>${formatNumber(absIn)}</span></div>
+      <div class="detail-row"><span>Total |out flux|</span><span>${formatNumber(absOut)}</span></div>
+      <hr>
+      <div><strong>Top Outgoing</strong></div>
+      ${topFluxRows(outEdges, 'out', 5) || '<div class="k">none</div>'}
+      <hr>
+      <div><strong>Top Incoming</strong></div>
+      ${topFluxRows(inEdges, 'in', 5) || '<div class="k">none</div>'}
+    `;
+  }
+
+  function renderDetail(item) {
+    const panel = document.getElementById('detailPanel');
+    if (!item) {
+      panel.innerHTML = 'Tap a node, edge, motif, or absence ghost to inspect flow details.';
+      return;
+    }
+    if (item.type === 'edge') {
+      renderEdgeDetail(item.payload);
+      return;
+    }
+    if (item.type === 'motif') {
+      renderMotifDetail(item.payload);
+      return;
+    }
+    if (item.type === 'node') {
+      if (item.payload?.is_ghost) {
+        renderGhostDetail(item.payload);
+        return;
+      }
+      renderNodeDetail(item.payload);
+    }
+  }
+
   function setupNodeInteractions() {
     nodeSel
       .on('mouseenter', (event, node) => {
@@ -778,7 +1831,13 @@
       .on('click', (event, node) => {
         event.stopPropagation();
         state.selectedNodeId = node.id;
-        renderDetail(node);
+        renderDetail({ type: 'node', payload: node });
+      })
+      .on('dblclick', (event, node) => {
+        event.stopPropagation();
+        node.fx = null;
+        node.fy = null;
+        simulation.alphaTarget(0.08).restart();
       });
 
     edgeSel
@@ -800,7 +1859,34 @@
         tooltip.style.left = `${event.clientX + 14}px`;
         tooltip.style.top = `${event.clientY + 14}px`;
       })
-      .on('mouseleave', hideTooltip);
+      .on('mouseleave', hideTooltip)
+      .on('click', (event, edge) => {
+        event.stopPropagation();
+        state.selectedNodeId = null;
+        renderDetail({ type: 'edge', payload: edge });
+      });
+
+    motifSel
+      .on('mouseenter', (event, segment) => {
+        showTooltip(
+          `
+            <div><strong>${String(segment.kind || 'motif').toUpperCase()}</strong></div>
+            <div>${motifNarrative(segment.kind, asArray(segment.path_nodes).map((nodeId) => String(nodeId)))}</div>
+          `,
+          event.clientX,
+          event.clientY
+        );
+      })
+      .on('mousemove', (event) => {
+        tooltip.style.left = `${event.clientX + 14}px`;
+        tooltip.style.top = `${event.clientY + 14}px`;
+      })
+      .on('mouseleave', hideTooltip)
+      .on('click', (event, segment) => {
+        event.stopPropagation();
+        state.selectedNodeId = null;
+        renderDetail({ type: 'motif', payload: segment });
+      });
 
     svg.on('click', () => {
       state.selectedNodeId = null;
@@ -809,54 +1895,49 @@
     });
   }
 
-  function topFluxRows(edges, direction, limit) {
-    return edges
-      .slice()
-      .sort((a, b) => Number(b.abs_flux || 0) - Number(a.abs_flux || 0))
-      .slice(0, limit)
-      .map((edge) => {
-        const source = nodeRef(edge.source);
-        const target = nodeRef(edge.target);
-        if (!source || !target) return '';
-        const label = direction === 'out' ? target.id : source.id;
-        return `
-          <div class="detail-row">
-            <span>${label}</span>
-            <span>${Number(edge.flux || 0).toFixed(3)}</span>
-          </div>
-        `;
+  function nudgeConnectedNeighbors(node, targetX, targetY) {
+    const neighbors = neighborMap.get(node.id);
+    if (!neighbors) return;
+    neighbors.forEach((other) => {
+      if (!other || other.id === node.id) return;
+      if (other.fx != null || other.fy != null) return;
+      const ox = typeof other.x === 'number' ? other.x : targetX;
+      const oy = typeof other.y === 'number' ? other.y : targetY;
+      const dx = targetX - ox;
+      const dy = targetY - oy;
+      other.vx = (other.vx || 0) + dx * 0.0026;
+      other.vy = (other.vy || 0) + dy * 0.0026;
+    });
+  }
+
+  function setupDrag() {
+    const dragBehavior = d3
+      .drag()
+      .on('start', (event, node) => {
+        event.sourceEvent?.stopPropagation();
+        if (!event.active) {
+          simulation.alphaTarget(0.16).restart();
+        }
+        node.fx = node.x;
+        node.fy = node.y;
       })
-      .join('');
+      .on('drag', (event, node) => {
+        node.fx = event.x;
+        node.fy = event.y;
+        nudgeConnectedNeighbors(node, event.x, event.y);
+        simulation.alphaTarget(0.22).restart();
+      })
+      .on('end', (event, node) => {
+        node.fx = event.x;
+        node.fy = event.y;
+        if (!event.active) {
+          simulation.alphaTarget(0.03);
+        }
+      });
+
+    nodeSel.call(dragBehavior);
   }
 
-  function renderDetail(node) {
-    const panel = document.getElementById('detailPanel');
-    if (!node) {
-      panel.innerHTML = 'Select a node to inspect flux details.';
-      return;
-    }
-
-    const inEdges = state.edges.filter((edge) => nodeRef(edge.target)?.id === node.id);
-    const outEdges = state.edges.filter((edge) => nodeRef(edge.source)?.id === node.id);
-    const absIn = inEdges.reduce((sum, edge) => sum + Number(edge.abs_flux || 0), 0);
-    const absOut = outEdges.reduce((sum, edge) => sum + Number(edge.abs_flux || 0), 0);
-
-    panel.innerHTML = `
-      <div><strong>${node.id}</strong> \u2014 ${node.label}</div>
-      <div class="k">${node.pillar} / ${node.hierarchy} / ${node.polarity}</div>
-      <div class="k">${node.effective_element} \u2022 ${node.ten_god} (${node.ten_god_group})</div>
-      <div class="k">Vitality amplitude A = ${Number(node.dynamic_vitality || 0).toFixed(3)}</div>
-      <hr>
-      <div class="detail-row"><span>Total |in flux|</span><span>${absIn.toFixed(3)}</span></div>
-      <div class="detail-row"><span>Total |out flux|</span><span>${absOut.toFixed(3)}</span></div>
-      <hr>
-      <div><strong>Top Outgoing</strong></div>
-      ${topFluxRows(outEdges, 'out', 5) || '<div class="k">none</div>'}
-      <hr>
-      <div><strong>Top Incoming</strong></div>
-      ${topFluxRows(inEdges, 'in', 5) || '<div class="k">none</div>'}
-    `;
-  }
 
   function updateStatus() {
     const visibleNodes = state.nodes.filter((node) => !nodeSel.filter((d) => d.id === node.id).classed('node-faded')).length;
@@ -864,12 +1945,14 @@
       state.edges.filter((edge) => edgeVisible(edge, false)).length +
       state.ghostEdges.filter((edge) => edgeVisible(edge, true)).length;
     const motifSegmentsVisible = buildMotifSegments().filter((segment) => motifVisible(segment)).length;
+    const activeModifiers = state.topologyModifiers.length;
 
     document.getElementById('statusBar').textContent =
-      `${visibleNodes} nodes visible \u2022 ${visibleEdges} directed edges visible \u2022 ${motifSegmentsVisible} motif segments`;
+      `${visibleNodes} nodes visible \u2022 ${visibleEdges} directed edges visible \u2022 ${motifSegmentsVisible} motif segments \u2022 ${activeModifiers} topology modifiers`;
   }
 
   function fitToView() {
+    if (!state.views.graph) return;
     const visibleNodes = state.nodes.filter((node) => {
       if (node.is_ghost && !state.motifToggles.ghosts) return false;
       return true;
@@ -892,32 +1975,66 @@
     svg.transition().duration(420).call(zoomBehavior.transform, transform);
   }
 
-  function boot() {
-    parseData(GRAPH_DATA);
-    writeMetaLine();
-    setupControls();
-    renderLegend();
+  function rebuildGraph(shouldFit = true) {
+    if (simulation) {
+      simulation.stop();
+    }
     canvasSize();
     createSvg();
     setAnchors();
+    buildNeighborMap();
     createGraphLayers();
     setupSimulation();
     applyFilters();
     renderDetail(null);
 
     setTimeout(() => {
+      if (!simulation) return;
       for (let i = 0; i < 160; i += 1) simulation.tick();
       ticked();
-      fitToView();
+      if (shouldFit) {
+        fitToView();
+      }
     }, 0);
+  }
+
+  function setActiveBasin(index) {
+    if (!state.basinViews.length) return;
+    const nextIndex = Math.max(
+      0,
+      Math.min(state.basinViews.length - 1, Math.trunc(Number(index) || 0))
+    );
+    state.activeBasinIndex = nextIndex;
+    applyBasinView(state.basinViews[nextIndex]);
+    writeMetaLine();
+    renderBasinTabs();
+    renderBasinMetadata();
+    renderPillarStrip();
+    updateFluxControls();
+    rebuildGraph(true);
+  }
+
+  function boot() {
+    parseData(GRAPH_DATA);
+    setupControls();
+    applyViewVisibility();
+    renderLegend();
+    renderBasinTabs();
+    writeMetaLine();
+    renderBasinMetadata();
+    renderPillarStrip();
+    updateFluxControls();
+    rebuildGraph(true);
 
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(() => {
+        renderPillarStrip();
         canvasSize();
         svg.attr('viewBox', `0 0 ${width} ${height}`);
         setAnchors();
+        boundsForce?.setSize(width, height);
         simulation.alpha(0.45).restart();
         fitToView();
       }, 120);

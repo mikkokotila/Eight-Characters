@@ -3,14 +3,24 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eight Characters Evolution Explorer</title>
+  <title>Eight Characters — Evolution Explorer</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="topbar">
-    <div class="title-wrap">
-      <h1>Eight Characters Evolution Explorer</h1>
-      <div id="metaLine" class="meta-line"></div>
+    <div class="topbar-head">
+      <div class="title-wrap">
+        <h1>Evolution Explorer</h1>
+        <div class="title">Eight Characters</div>
+        <div id="metaLine" class="meta-line"></div>
+      </div>
+      <div class="topbar-navs">
+        <nav class="view-menu" id="viewMenu" aria-label="Explorer views">
+          <button class="view-tab active" data-view="graph">Layer 1 · Flux Graph</button>
+          <button class="view-tab active" data-view="pillar">Layer 2 · Pillar Strip</button>
+        </nav>
+        <nav class="basin-tabs" id="basinTabs" aria-label="Basin views"></nav>
+      </div>
     </div>
     <div class="control-row">
       <label class="ctrl">
@@ -55,14 +65,32 @@
       </section>
     </aside>
 
-    <section class="canvas-wrap">
-      <svg id="graph"></svg>
-      <div id="tooltip" class="tooltip"></div>
+    <section class="center-column">
+      <section class="canvas-wrap" id="graphView">
+        <svg id="graph"></svg>
+        <div id="tooltip" class="tooltip"></div>
+      </section>
+      <section class="pillar-strip-wrap" id="pillarView">
+        <div class="pillar-strip-title">Classical Pillar Strip</div>
+        <div class="pillar-strip-subtitle">
+          Stem / Branch / Life Stage / Ten God / Domain
+        </div>
+        <div class="pillar-strip-stage">
+          <div id="pillarStrip" class="pillar-strip"></div>
+          <div id="modifierBands" class="modifier-bands"></div>
+        </div>
+      </section>
     </section>
 
     <aside class="panel right-panel">
-      <h2>Node Detail</h2>
-      <div id="detailPanel" class="detail">Select a node to inspect flux details.</div>
+      <section class="meta-section">
+        <h2>Basin Metadata</h2>
+        <div id="basinMetaPanel" class="basin-meta">Loading basin metadata...</div>
+      </section>
+      <section class="detail-section">
+        <h2>Node Detail</h2>
+        <div id="detailPanel" class="detail">Select a node to inspect flux details.</div>
+      </section>
     </aside>
   </main>
 

@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 from typing import Any, cast
 
-from eight_characters.evolution.families import evaluate_all_families
+from eight_characters.evolution.families import evaluate_all_families, family_spec
 from eight_characters.evolution.mechanics import (
     compute_dynamic_vitality_amplitudes,
     realized_flux,
@@ -15,9 +15,13 @@ from eight_characters.evolution.primitives import (
     TEN_GOD_GROUP_LABELS,
     TEN_GOD_LABELS,
     authority_element,
+    moisture_contribution,
     output_element,
+    polarity_multiplier,
     resource_element,
+    temperature_contribution,
     ten_god_group,
+    wuxing_interaction,
     wealth_element,
 )
 from eight_characters.evolution.state import (
@@ -262,6 +266,18 @@ def _pulse_nodes(pulses_value: Any, active_node_ids: set[str]) -> list[str]:
     return sorted(pulse_set, key=lambda node_id: int(node_id[1:]))
 
 
+def _modifier_kind(rule_index: int) -> str:
+    if 12 <= rule_index <= 17:
+        return 'clash'
+    if 22 <= rule_index <= 28:
+        return 'punishment'
+    if 29 <= rule_index <= 34:
+        return 'harm'
+    if (1 <= rule_index <= 11) or (18 <= rule_index <= 21):
+        return 'harmony'
+    return 'harmony'
+
+
 def build_graph_data(
     payload: dict[str, Any], basin_index: int = 0, flux_threshold: float = 0.0
 ) -> dict[str, Any]:
@@ -306,6 +322,10 @@ def build_graph_data(
         position = int(observed_state.positions[entity_index])
         hierarchy = int(observed_state.hierarchy_levels[entity_index])
         polarity = int(observed_state.polarities[entity_index])
+        dynamic_vitality = float(dynamic_amplitudes[entity_index])
+        climate_temperature = float(temperature_contribution(element_index, polarity))
+        climate_moisture = float(moisture_contribution(element_index, polarity))
+        climate_weight = float(observed_state.masks[entity_index] * hierarchy)
 
         nodes.append(
             {
@@ -326,8 +346,12 @@ def build_graph_data(
                 'ten_god_index': ten_god_index_value,
                 'ten_god_group': TEN_GOD_GROUP_NAMES[ten_god_group_index],
                 'ten_god_group_index': ten_god_group_index,
-                'dynamic_vitality': float(dynamic_amplitudes[entity_index]),
+                'dynamic_vitality': dynamic_vitality,
                 'vitality_stage': int(observed_state.vitality_stages[entity_index]),
+                'climate_temperature_component': climate_temperature,
+                'climate_moisture_component': climate_moisture,
+                'climate_temperature_weighted': climate_temperature * climate_weight,
+                'climate_moisture_weighted': climate_moisture * climate_weight,
                 'is_day_master': entity_index == observed_state.day_master_index,
                 'is_ghost': False,
             }
@@ -336,10 +360,31 @@ def build_graph_data(
     edges: list[dict[str, Any]] = []
     for source_index in active_indices:
         source_element = _one_hot_index(list(effective_elements[source_index]))
+        source_polarity = int(observed_state.polarities[source_index])
+        source_hierarchy = int(observed_state.hierarchy_levels[source_index])
+        source_position = int(observed_state.positions[source_index])
+        source_vitality = float(dynamic_amplitudes[source_index])
         for target_index in active_indices:
             if source_index == target_index:
                 continue
             target_element = _one_hot_index(list(effective_elements[target_index]))
+            target_polarity = int(observed_state.polarities[target_index])
+            target_hierarchy = int(observed_state.hierarchy_levels[target_index])
+            target_position = int(observed_state.positions[target_index])
+            target_vitality = float(dynamic_amplitudes[target_index])
+
+            relationship = _relation_class(source_element, target_element)
+            polarity_mod = float(polarity_multiplier(source_polarity, target_polarity))
+            proximity_weight = float(1.0 / (1.0 + abs(source_position - target_position)))
+            vitality_differential = float(source_vitality - target_vitality)
+            vitality_product = float(source_vitality * target_vitality)
+            hierarchy_coupling = float(source_hierarchy * target_hierarchy)
+            elemental_interaction = float(
+                wuxing_interaction(source_element, target_element)
+            )
+            transport_capacity_component = float(
+                vitality_product * hierarchy_coupling * proximity_weight
+            )
             flux_value = float(flux_matrix[source_index][target_index])
             abs_flux = abs(flux_value)
             if abs_flux < flux_threshold:
@@ -351,9 +396,21 @@ def build_graph_data(
                     'target': f'E{target_index}',
                     'flux': flux_value,
                     'abs_flux': abs_flux,
-                    'relation': _relation_class(source_element, target_element),
+                    'relation': relationship,
+                    'elemental_relationship': relationship,
                     'source_element_index': source_element,
                     'target_element_index': target_element,
+                    'polarity_modifier': polarity_mod,
+                    'vitality_differential': vitality_differential,
+                    'proximity_weight': proximity_weight,
+                    'elemental_interaction': elemental_interaction,
+                    'transport_capacity_component': transport_capacity_component,
+                    'hierarchy_coupling': hierarchy_coupling,
+                    'vitality_product': vitality_product,
+                    'source_position_index': source_position,
+                    'target_position_index': target_position,
+                    'source_hierarchy_index': source_hierarchy,
+                    'target_hierarchy_index': target_hierarchy,
                     'is_ghost': False,
                 }
             )
@@ -394,6 +451,34 @@ def build_graph_data(
         for idx in _as_int_list(motifs_raw.get('absences'))
         if 0 <= idx < len(ELEMENT_NAMES)
     ]
+
+    topology_modifiers: list[dict[str, Any]] = []
+    for evaluation in evaluations:
+        rule_index = int(evaluation.rule_index)
+        switch_state = int(latent_state.switches[rule_index - 1])
+        if switch_state <= 0:
+            continue
+        if not evaluation.selected_positions:
+            continue
+        pillar_indices = sorted({int(value) for value in evaluation.selected_positions})
+        if len(pillar_indices) < 2:
+            continue
+        spec = family_spec(rule_index)
+        topology_modifiers.append(
+            {
+                'id': f'r{rule_index}',
+                'rule_index': rule_index,
+                'label': spec.name,
+                'kind': _modifier_kind(rule_index),
+                'pillar_indices': pillar_indices,
+                'pillars': [
+                    PILLAR_NAMES.get(pillar_index, 'Unknown')
+                    for pillar_index in pillar_indices
+                ],
+                'switch_state': switch_state,
+                'omega': float(latent_state.omegas[rule_index - 1]),
+            }
+        )
 
     ghost_nodes: list[dict[str, Any]] = []
     ghost_edges: list[dict[str, Any]] = []
@@ -470,6 +555,14 @@ def build_graph_data(
 
     all_nodes = nodes + ghost_nodes
     max_abs_flux = max((edge['abs_flux'] for edge in edges), default=0.0)
+    basin_mass_distribution = [
+        {
+            'basin_id': _as_int(_as_dict(item, field='basin').get('basin_id'), default=index),
+            'mass': _as_float(_as_dict(item, field='basin').get('mass'), default=0.0),
+            'mode': _as_str(_as_dict(item, field='basin').get('mode'), default='Unknown'),
+        }
+        for index, item in enumerate(basins)
+    ]
 
     return {
         'meta': {
@@ -479,7 +572,9 @@ def build_graph_data(
             'chart_temperature': _as_float(basin.get('chart_temperature')),
             'chart_saturation': _as_float(basin.get('chart_saturation')),
             'day_master_index': observed_state.day_master_index,
+            'branch_ids': [int(value) for value in observed_state.branch_ids],
             'max_abs_flux': max_abs_flux,
+            'basin_mass_distribution': basin_mass_distribution,
         },
         'layout': {
             'pillars': ['Year', 'Month', 'Day', 'Hour'],
@@ -496,6 +591,7 @@ def build_graph_data(
         ),
         'edges': sorted(edges, key=lambda edge: edge['abs_flux'], reverse=True),
         'ghost_edges': ghost_edges,
+        'topology_modifiers': topology_modifiers,
         'motifs': {
             'chains': chains,
             'loops': loops,
@@ -505,6 +601,38 @@ def build_graph_data(
             'absences': absences,
         },
     }
+
+
+def build_multi_basin_graph_data(
+    payload: dict[str, Any], basin_index: int = 0, flux_threshold: float = 0.0
+) -> dict[str, Any]:
+    basins = _as_list(payload.get('basins'))
+    if not basins:
+        raise ValueError('payload.basins must contain at least one basin.')
+
+    clamped_index = max(0, min(int(basin_index), len(basins) - 1))
+    basin_views = [
+        build_graph_data(payload, basin_index=index, flux_threshold=flux_threshold)
+        for index in range(len(basins))
+    ]
+    active_view = basin_views[clamped_index]
+    active_meta = _as_dict(active_view.get('meta'), field='active_view.meta')
+    active_meta.update(
+        {
+            'active_basin_index': clamped_index,
+            'basin_count': len(basin_views),
+        }
+    )
+
+    combined = dict(active_view)
+    combined.update(
+        {
+            'meta': active_meta,
+            'active_basin_index': clamped_index,
+            'basin_views': basin_views,
+        }
+    )
+    return combined
 
 
 def write_data_js(graph_data: dict[str, Any], output_path: Path) -> None:
@@ -521,7 +649,7 @@ def main() -> None:
     parser.add_argument(
         '--payload',
         type=Path,
-        default=script_dir / 'chart1_evolution_payload.json',
+        default=script_dir / 'chart3_evolution_payload.json',
         help='Path to evolution payload JSON.',
     )
     parser.add_argument(
@@ -542,21 +670,35 @@ def main() -> None:
         default=0.0,
         help='Minimum |flux| for emitting direct F(i->j) edges.',
     )
+    parser.add_argument(
+        '--single-basin',
+        action='store_true',
+        help='Emit only the selected basin in data.js.',
+    )
     args = parser.parse_args()
 
     payload_data = json.loads(args.payload.read_text(encoding='utf-8'))
-    graph_data = build_graph_data(
-        payload_data,
-        basin_index=args.basin_index,
-        flux_threshold=max(0.0, float(args.flux_threshold)),
-    )
+    flux_threshold = max(0.0, float(args.flux_threshold))
+    if args.single_basin:
+        graph_data = build_graph_data(
+            payload_data,
+            basin_index=args.basin_index,
+            flux_threshold=flux_threshold,
+        )
+    else:
+        graph_data = build_multi_basin_graph_data(
+            payload_data,
+            basin_index=args.basin_index,
+            flux_threshold=flux_threshold,
+        )
     write_data_js(graph_data, args.output)
 
     print(
         f'Wrote {args.output} with '
         f'{len(graph_data["nodes"])} nodes, '
         f'{len(graph_data["edges"])} flux edges, '
-        f'{len(graph_data["ghost_edges"])} ghost edges.'
+        f'{len(graph_data["ghost_edges"])} ghost edges, '
+        f'{len(_as_list(graph_data.get("basin_views")))} basin view(s).'
     )
 
 
