@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eight Characters Evolution Explorer</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="title-wrap">
+      <h1>Eight Characters Evolution Explorer</h1>
+      <div id="metaLine" class="meta-line"></div>
+    </div>
+    <div class="control-row">
+      <label class="ctrl">
+        <span>Search</span>
+        <input id="searchInput" type="text" placeholder="Entity, element, Ten God...">
+      </label>
+      <label class="ctrl slider-ctrl">
+        <span>Min |F(i→j)|</span>
+        <input id="fluxThreshold" type="range" min="0" max="100" step="1" value="0">
+        <output id="fluxThresholdValue">0.00</output>
+      </label>
+      <button id="fitButton" class="btn">Fit</button>
+      <button id="resetButton" class="btn">Reset Filters</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel left-panel">
+      <section>
+        <h2>Edge Relations</h2>
+        <div class="btn-group" id="relationFilters">
+          <button class="toggle-btn active" data-relation="production">Production</button>
+          <button class="toggle-btn active" data-relation="control">Control</button>
+          <button class="toggle-btn active" data-relation="drain">Drain</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Motif Overlays</h2>
+        <div class="check-grid">
+          <label><input id="toggleChains" type="checkbox" checked> Chains</label>
+          <label><input id="toggleLoops" type="checkbox" checked> Loops</label>
+          <label><input id="toggleCascades" type="checkbox" checked> Cascades</label>
+          <label><input id="toggleBottlenecks" type="checkbox" checked> Bottlenecks</label>
+          <label><input id="togglePulses" type="checkbox" checked> Pulses</label>
+          <label><input id="toggleGhosts" type="checkbox" checked> Absent Ghosts</label>
+        </div>
+      </section>
+
+      <section id="legendPanel">
+        <h2>Legend</h2>
+      </section>
+    </aside>
+
+    <section class="canvas-wrap">
+      <svg id="graph"></svg>
+      <div id="tooltip" class="tooltip"></div>
+    </section>
+
+    <aside class="panel right-panel">
+      <h2>Node Detail</h2>
+      <div id="detailPanel" class="detail">Select a node to inspect flux details.</div>
+    </aside>
+  </main>
+
+  <footer class="status-bar" id="statusBar"></footer>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
