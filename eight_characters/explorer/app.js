@@ -995,18 +995,23 @@
 
     legendPanel.innerHTML = `
       <h2>Legend</h2>
-      <div class="legend-item"><span class="k">Node fill</span></div>
-      ${elementHtml}
-      <div style="height:8px"></div>
-      <div class="legend-item"><span class="k">Node border (Ten God group)</span></div>
-      ${groupHtml}
-      <div style="height:8px"></div>
-      <div class="legend-item"><span class="k">Flux edge relation</span></div>
-      ${relationHtml}
-      <div style="height:8px"></div>
-      <div class="legend-item"><span class="k">Motif overlays</span></div>
-      ${motifHtml}
-      <div class="legend-item"><span class="swatch" style="background:transparent;border:1px dashed #9A9389"></span>absent element ghost</div>
+      <div class="legend-group">
+        <div class="legend-label">Element</div>
+        ${elementHtml}
+      </div>
+      <div class="legend-group">
+        <div class="legend-label">Ten God Group</div>
+        ${groupHtml}
+      </div>
+      <div class="legend-group">
+        <div class="legend-label">Flux Relation</div>
+        ${relationHtml}
+      </div>
+      <div class="legend-group">
+        <div class="legend-label">Motif Overlay</div>
+        ${motifHtml}
+        <div class="legend-item"><span class="swatch" style="background:transparent;border:1px dashed rgba(42,37,32,0.2)"></span>absent ghost</div>
+      </div>
     `;
   }
 
