@@ -178,6 +178,35 @@
     return TEN_GOD_GROUP_COLORS[name] || TEN_GOD_GROUP_COLORS.None;
   }
 
+  function queryInputPayload() {
+    const params = new URLSearchParams(window.location.search);
+    const date = (params.get('date') || '').trim();
+    const time = (params.get('time') || '').trim();
+    const city = (params.get('city') || '').trim();
+    const country = (params.get('country') || '').trim();
+    if (!date || !time || !city || !country) {
+      return null;
+    }
+    return { date, time, city, country };
+  }
+
+  async function loadGraphData(queryPayload) {
+    const response = await fetch('/api/evolution_explorer', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(queryPayload),
+    });
+    const payload = await response.json();
+    if (!response.ok) {
+      const detail = payload && payload.detail ? String(payload.detail) : 'Evolution load failed.';
+      throw new Error(detail);
+    }
+    if (!payload || !payload.graph_data) {
+      throw new Error('Evolution load returned no graph_data.');
+    }
+    return payload.graph_data;
+  }
+
   function normalizeDistribution(input, basinViews) {
     const fromInput = asArray(input)
       .map((item, index) => {
@@ -2019,8 +2048,22 @@
     rebuildGraph(true);
   }
 
-  function boot() {
-    parseData(GRAPH_DATA);
+  async function boot() {
+    const queryPayload = queryInputPayload();
+    let graphData = GRAPH_DATA;
+    if (queryPayload) {
+      try {
+        graphData = await loadGraphData(queryPayload);
+      } catch (error) {
+        console.error(error);
+        const statusBar = document.getElementById('statusBar');
+        if (statusBar) {
+          statusBar.textContent = `Failed to load evolution data: ${error?.message || 'unknown error'}`;
+        }
+        return;
+      }
+    }
+    parseData(graphData);
     setupControls();
     applyViewVisibility();
     renderLegend();
@@ -2046,5 +2089,7 @@
     });
   }
 
-  document.addEventListener('DOMContentLoaded', boot);
+  document.addEventListener('DOMContentLoaded', () => {
+    void boot();
+  });
 })();

@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const locationSuggestions = document.getElementById('location-suggestions');
   const locationStatus = document.getElementById('location-status');
   const languageButtons = [...document.querySelectorAll('.lang-btn')];
+  const modeButtons = [...document.querySelectorAll('.mode-btn')];
   if (
     !inputView ||
     !chartView ||
@@ -34,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let latestSuggestions = [];
   let activeSuggestionIndex = -1;
   let currentLanguage = i18n.getLanguage();
+  let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
 
   const setLocationStatus = (text, state) => {
@@ -66,6 +68,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!resolvedLocation && !locationStatus.textContent) {
       setLocationStatus('', '');
     }
+  };
+
+  const applyModeSelection = () => {
+    modeButtons.forEach((button) => {
+      button.classList.toggle('is-active', button.dataset.mode === selectedMode);
+    });
   };
 
   const hideSuggestions = () => {
@@ -256,6 +264,18 @@ document.addEventListener('DOMContentLoaded', () => {
       lang: currentLanguage,
     };
 
+    if (selectedMode === 'evolution') {
+      const query = new URLSearchParams({
+        date: String(fourPillarsPayload.date || ''),
+        time: String(fourPillarsPayload.time || ''),
+        city: String(resolvedLocation.city || ''),
+        country: String(resolvedLocation.country || ''),
+        lang: currentLanguage,
+      });
+      window.location.assign(`/explorer?${query.toString()}`);
+      return;
+    }
+
     try {
       const pillarsRes = await fetch('/api/four_pillars', {
         method: 'POST',
@@ -363,7 +383,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  modeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+      selectedMode = button.dataset.mode === 'evolution' ? 'evolution' : 'standard';
+      applyModeSelection();
+    });
+  });
+
   applyLanguage();
+  applyModeSelection();
 });
 
 

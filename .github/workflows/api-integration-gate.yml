@@ -29,4 +29,5 @@ jobs:
             tests.test_api_four_pillars_endpoint \
             tests.test_api_chart_endpoint \
             tests.test_api_hidden_stems_endpoint \
-            tests.test_api_location_search_endpoint
+            tests.test_api_location_search_endpoint \
+            tests.test_api_evolution_explorer_endpoint
