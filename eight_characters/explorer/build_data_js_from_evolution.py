@@ -21,8 +21,8 @@ from eight_characters.evolution.primitives import (
     resource_element,
     temperature_contribution,
     ten_god_group,
-    wuxing_interaction,
     wealth_element,
+    wuxing_interaction,
 )
 from eight_characters.evolution.state import (
     RULE_COUNT,
@@ -104,27 +104,21 @@ def _build_observed_state(input_shape: dict[str, Any]) -> ObservedState:
     branch_ids_raw = _as_int_list(input_shape.get('branch_ids'))
     if len(branch_ids_raw) < 4:
         raise ValueError('input_shape.branch_ids must contain 4 values')
-    branch_ids = cast(
-        tuple[int, int, int, int],
-        (
-            branch_ids_raw[0],
-            branch_ids_raw[1],
-            branch_ids_raw[2],
-            branch_ids_raw[3],
-        ),
+    branch_ids = (
+        branch_ids_raw[0],
+        branch_ids_raw[1],
+        branch_ids_raw[2],
+        branch_ids_raw[3],
     )
 
     base_elements_raw = _as_int_matrix(input_shape.get('base_elements'))
     base_elements = tuple(
-        cast(
-            tuple[int, int, int, int, int],
-            (
-                row[0] if len(row) > 0 else 0,
-                row[1] if len(row) > 1 else 0,
-                row[2] if len(row) > 2 else 0,
-                row[3] if len(row) > 3 else 0,
-                row[4] if len(row) > 4 else 0,
-            ),
+        (
+            row[0] if len(row) > 0 else 0,
+            row[1] if len(row) > 1 else 0,
+            row[2] if len(row) > 2 else 0,
+            row[3] if len(row) > 3 else 0,
+            row[4] if len(row) > 4 else 0,
         )
         for row in base_elements_raw
     )
@@ -177,15 +171,12 @@ def _build_effective_elements(
     if len(matrix) != len(observed_state.base_elements):
         return observed_state.base_elements
     return tuple(
-        cast(
-            tuple[int, int, int, int, int],
-            (
-                row[0] if len(row) > 0 else 0,
-                row[1] if len(row) > 1 else 0,
-                row[2] if len(row) > 2 else 0,
-                row[3] if len(row) > 3 else 0,
-                row[4] if len(row) > 4 else 0,
-            ),
+        (
+            row[0] if len(row) > 0 else 0,
+            row[1] if len(row) > 1 else 0,
+            row[2] if len(row) > 2 else 0,
+            row[3] if len(row) > 3 else 0,
+            row[4] if len(row) > 4 else 0,
         )
         for row in matrix
     )
@@ -197,14 +188,11 @@ def _build_effective_ten_gods(
     matrix = _as_int_matrix(basin.get('map_effective_ten_gods'))
     if len(matrix) != len(observed_state.base_elements):
         return tuple(
-            cast(tuple[int, ...], (1, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            (1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
             for _ in observed_state.base_elements
         )
     return tuple(
-        cast(
-            tuple[int, ...],
-            tuple((row[idx] if idx < len(row) else 0) for idx in range(10)),
-        )
+        tuple((row[idx] if idx < len(row) else 0) for idx in range(10))
         for row in matrix
     )
 
