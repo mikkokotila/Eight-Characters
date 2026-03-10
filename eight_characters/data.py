@@ -1,4 +1,6 @@
-from typing import Literal, TypedDict
+from typing import Literal
+
+from typing_extensions import TypedDict
 
 # ── Trigram line patterns (top-to-bottom: line3, line2, line1) ──
 # L = solid, B = broken
