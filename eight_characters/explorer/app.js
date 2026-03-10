@@ -1263,7 +1263,15 @@
       })
       .attr('r', (node) => node.radius)
       .attr('fill', (node) => elementColor(node.effective_element))
-      .attr('stroke', 'none')
+      .attr('stroke', (node) =>
+        node.is_ghost ? 'rgba(42, 37, 32, 0.25)' : groupColor(node.ten_god_group)
+      )
+      .attr('stroke-width', (node) => {
+        if (node.is_ghost) return 1.2;
+        if (node.is_day_master) return 2.8;
+        return 2.0;
+      })
+      .attr('stroke-opacity', (node) => (node.is_ghost ? 0.55 : 0.95))
       .attr('opacity', (node) => (node.is_ghost ? 0.58 : 1));
 
     nodeSel
