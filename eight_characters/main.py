@@ -4,7 +4,7 @@ from dataclasses import asdict
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
-from typing import Any, TypedDict, cast
+from typing import Any, cast
 
 import httpx
 from fastapi import FastAPI, HTTPException, Request
@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
+from typing_extensions import TypedDict
 
 from eight_characters import __version__
 from eight_characters.conventions import ConventionSettings

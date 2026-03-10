@@ -1,6 +1,8 @@
 from dataclasses import asdict
 from datetime import datetime
-from typing import Any, TypedDict
+from typing import Any
+
+from typing_extensions import TypedDict
 
 from eight_characters import __version__
 from eight_characters.conventions import (
