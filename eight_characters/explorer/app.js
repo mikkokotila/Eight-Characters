@@ -43,6 +43,8 @@
     '#7A9E72',
     '#C48855',
   ];
+  const FLUX_SLIDER_MAX = 1000;
+  const FLUX_OUTPUT_DECIMALS = 3;
 
   const STEM_INFO = {
     'Wood|Yang': { char: '甲', roman: 'Jia', archetype: 'Pioneer' },
@@ -380,13 +382,13 @@
     if (maxFlux <= 0) {
       state.minFlux = 0;
       slider.value = '0';
-      output.textContent = '0.00';
+      output.textContent = `0.${'0'.repeat(FLUX_OUTPUT_DECIMALS)}`;
       return;
     }
     state.minFlux = Math.max(0, Math.min(state.minFlux, maxFlux));
     const ratio = clamp01(state.minFlux / maxFlux);
-    slider.value = `${Math.round(ratio * 100)}`;
-    output.textContent = state.minFlux.toFixed(2);
+    slider.value = `${Math.round(ratio * FLUX_SLIDER_MAX)}`;
+    output.textContent = state.minFlux.toFixed(FLUX_OUTPUT_DECIMALS);
   }
 
   function renderBasinTabs() {
@@ -900,9 +902,9 @@
     });
 
     fluxSlider.addEventListener('input', () => {
-      const ratio = Number(fluxSlider.value) / 100;
+      const ratio = Number(fluxSlider.value) / FLUX_SLIDER_MAX;
       state.minFlux = ratio * Math.max(0, Number(state.maxFlux || 0));
-      fluxOutput.textContent = state.minFlux.toFixed(2);
+      fluxOutput.textContent = state.minFlux.toFixed(FLUX_OUTPUT_DECIMALS);
       applyFilters();
     });
     updateFluxControls();
