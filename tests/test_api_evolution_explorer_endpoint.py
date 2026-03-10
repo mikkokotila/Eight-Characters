@@ -57,46 +57,54 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
             day_master_index=2,
         )
 
-        with patch(
-            'eight_characters.main._resolve_four_pillars_location',
-            new=AsyncMock(
-                return_value=(
-                    LocationInput(
-                        timezone='Europe/Helsinki',
-                        longitude=24.9384,
-                        latitude=60.1699,
-                    ),
-                    ResolvedCity(
-                        city='Helsinki',
-                        country='Finland',
-                        timezone='Europe/Helsinki',
-                    ),
-                )
+        with (
+            patch(
+                'eight_characters.main._resolve_four_pillars_location',
+                new=AsyncMock(
+                    return_value=(
+                        LocationInput(
+                            timezone='Europe/Helsinki',
+                            longitude=24.9384,
+                            latitude=60.1699,
+                        ),
+                        ResolvedCity(
+                            city='Helsinki',
+                            country='Finland',
+                            timezone='Europe/Helsinki',
+                        ),
+                    )
+                ),
+            ) as resolve_mock,
+            patch(
+                'eight_characters.main._build_four_pillars_result',
+                return_value={
+                    'solar_time': {},
+                    'four_pillars': fake_four_pillars,
+                    'flags': {},
+                    'engine': {},
+                },
             ),
-        ) as resolve_mock, patch(
-            'eight_characters.main._build_four_pillars_result',
-            return_value={
-                'solar_time': {},
-                'four_pillars': fake_four_pillars,
-                'flags': {},
-                'engine': {},
-            },
-        ), patch(
-            'eight_characters.main._build_hidden_stems_result',
-            return_value=fake_hidden_stems,
-        ), patch(
-            'eight_characters.main._build_evolution_input_from_four_pillars',
-            return_value=fake_evolution_input,
-        ), patch(
-            'eight_characters.main.run_natal_mvp',
-            return_value=object(),
-        ) as evolution_mock, patch(
-            'eight_characters.main.asdict',
-            return_value={},
-        ), patch(
-            'eight_characters.main.build_multi_basin_graph_data',
-            return_value=fake_graph_data,
-        ) as graph_mock:
+            patch(
+                'eight_characters.main._build_hidden_stems_result',
+                return_value=fake_hidden_stems,
+            ),
+            patch(
+                'eight_characters.main._build_evolution_input_from_four_pillars',
+                return_value=fake_evolution_input,
+            ),
+            patch(
+                'eight_characters.main.run_natal_mvp',
+                return_value=object(),
+            ) as evolution_mock,
+            patch(
+                'eight_characters.main.asdict',
+                return_value={},
+            ),
+            patch(
+                'eight_characters.main.build_multi_basin_graph_data',
+                return_value=fake_graph_data,
+            ) as graph_mock,
+        ):
             response = self.client.post(
                 '/api/evolution_explorer',
                 json={

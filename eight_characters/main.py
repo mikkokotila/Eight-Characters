@@ -586,7 +586,9 @@ def _build_evolution_input_from_four_pillars(
     day_master_index = -1
     entity_index = 0
 
-    for pillar_position, pillar_name in enumerate(('year', 'month', 'day', 'hour'), start=1):
+    for pillar_position, pillar_name in enumerate(
+        ('year', 'month', 'day', 'hour'), start=1
+    ):
         stem_char = _pillar_component_from_four_pillars(
             four_pillars=four_pillars,
             pillar_name=pillar_name,

@@ -188,8 +188,7 @@ def _build_effective_ten_gods(
     matrix = _as_int_matrix(basin.get('map_effective_ten_gods'))
     if len(matrix) != len(observed_state.base_elements):
         return tuple(
-            (1, 0, 0, 0, 0, 0, 0, 0, 0, 0)
-            for _ in observed_state.base_elements
+            (1, 0, 0, 0, 0, 0, 0, 0, 0, 0) for _ in observed_state.base_elements
         )
     return tuple(
         tuple((row[idx] if idx < len(row) else 0) for idx in range(10))
@@ -218,7 +217,10 @@ def _damage_participation_maps(
 
 
 def _relation_class(source_element: int, target_element: int) -> str:
-    if target_element == output_element(source_element) or target_element == source_element:
+    if (
+        target_element == output_element(source_element)
+        or target_element == source_element
+    ):
         return 'production'
     if target_element == wealth_element(source_element):
         return 'control'
@@ -363,7 +365,9 @@ def build_graph_data(
 
             relationship = _relation_class(source_element, target_element)
             polarity_mod = float(polarity_multiplier(source_polarity, target_polarity))
-            proximity_weight = float(1.0 / (1.0 + abs(source_position - target_position)))
+            proximity_weight = float(
+                1.0 / (1.0 + abs(source_position - target_position))
+            )
             vitality_differential = float(source_vitality - target_vitality)
             vitality_product = float(source_vitality * target_vitality)
             hierarchy_coupling = float(source_hierarchy * target_hierarchy)
@@ -430,7 +434,9 @@ def build_graph_data(
     ]
     bottlenecks = [
         node_id
-        for node_id in (f'E{idx}' for idx in _as_int_list(motifs_raw.get('bottlenecks')))
+        for node_id in (
+            f'E{idx}' for idx in _as_int_list(motifs_raw.get('bottlenecks'))
+        )
         if node_id in active_node_ids
     ]
     pulses = _pulse_nodes(motifs_raw.get('pulses'), active_node_ids)
@@ -545,9 +551,13 @@ def build_graph_data(
     max_abs_flux = max((edge['abs_flux'] for edge in edges), default=0.0)
     basin_mass_distribution = [
         {
-            'basin_id': _as_int(_as_dict(item, field='basin').get('basin_id'), default=index),
+            'basin_id': _as_int(
+                _as_dict(item, field='basin').get('basin_id'), default=index
+            ),
             'mass': _as_float(_as_dict(item, field='basin').get('mass'), default=0.0),
-            'mode': _as_str(_as_dict(item, field='basin').get('mode'), default='Unknown'),
+            'mode': _as_str(
+                _as_dict(item, field='basin').get('mode'), default='Unknown'
+            ),
         }
         for index, item in enumerate(basins)
     ]
