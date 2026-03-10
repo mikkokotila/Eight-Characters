@@ -696,7 +696,7 @@ input[type='range']::-moz-range-thumb {
 }
 
 .node-core {
-  stroke: none;
+  /* Stroke is set dynamically in app.js for Ten God group encoding. */
 }
 
 .node-core.ghost {
