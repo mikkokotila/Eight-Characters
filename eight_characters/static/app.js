@@ -272,7 +272,7 @@ document.addEventListener('DOMContentLoaded', () => {
         country: String(resolvedLocation.country || ''),
         lang: currentLanguage,
       });
-      window.location.assign(`/explorer?${query.toString()}`);
+      window.location.assign(`/explorer/?${query.toString()}`);
       return;
     }
 

@@ -13,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from eight_characters import __version__
 from eight_characters.conventions import ConventionSettings
@@ -735,6 +736,37 @@ def _ensure_evolution_basins(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _build_evolution_explorer_graph_data(
+    evolution_input: EvolutionInput,
+    basin_index: int,
+    flux_threshold: float,
+) -> dict[str, Any]:
+    # Keep API latency reasonable for interactive explorer navigation.
+    evolution_output = run_natal_mvp(
+        evolution_input=evolution_input,
+        inference_config=InferenceConfig(
+            particles=24,
+            temperature_steps=2,
+            sweeps_per_step=1,
+            seed=42,
+        ),
+        postprocess_config=PostprocessConfig(
+            discrete_relax_max_passes=1,
+            continuous_passes=1,
+            dbscan_eps=0.08,
+            dbscan_min_samples=1,
+        ),
+    )
+    evolution_payload = _ensure_evolution_basins(
+        cast(dict[str, Any], json.loads(json.dumps(asdict(evolution_output))))
+    )
+    return build_multi_basin_graph_data(
+        evolution_payload,
+        basin_index=max(0, basin_index),
+        flux_threshold=max(0.0, flux_threshold),
+    )
+
+
 # ── Routes ──
 
 
@@ -899,29 +931,11 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
             four_pillars=four_pillars,
             hidden_stems=hidden_stems_payload,
         )
-        # Keep API latency reasonable for interactive explorer navigation.
-        evolution_output = run_natal_mvp(
-            evolution_input=evolution_input,
-            inference_config=InferenceConfig(
-                particles=24,
-                temperature_steps=2,
-                sweeps_per_step=1,
-                seed=42,
-            ),
-            postprocess_config=PostprocessConfig(
-                discrete_relax_max_passes=1,
-                continuous_passes=1,
-                dbscan_eps=0.08,
-                dbscan_min_samples=1,
-            ),
-        )
-        evolution_payload = _ensure_evolution_basins(
-            cast(dict[str, Any], json.loads(json.dumps(asdict(evolution_output))))
-        )
-        graph_data = build_multi_basin_graph_data(
-            evolution_payload,
-            basin_index=max(0, payload.basin_index),
-            flux_threshold=max(0.0, payload.flux_threshold),
+        graph_data = await run_in_threadpool(
+            _build_evolution_explorer_graph_data,
+            evolution_input,
+            payload.basin_index,
+            payload.flux_threshold,
         )
     except CityLookupServiceError as exc:
         raise HTTPException(
