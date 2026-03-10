@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Eight Characters — Evolution Explorer</title>
+  <link rel="stylesheet" href="/explorer/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-head">
+      <div class="title-wrap">
+        <h1>Evolution Explorer</h1>
+        <div class="title">Eight Characters</div>
+        <div id="metaLine" class="meta-line"></div>
+      </div>
+      <div class="topbar-navs">
+        <nav class="view-menu" id="viewMenu" aria-label="Explorer views">
+          <button class="view-tab active" data-view="graph">Layer 1 · Flux Graph</button>
+          <button class="view-tab active" data-view="pillar">Layer 2 · Pillar Strip</button>
+        </nav>
+        <nav class="basin-tabs" id="basinTabs" aria-label="Basin views"></nav>
+      </div>
+    </div>
+    <div class="control-row">
+      <label class="ctrl">
+        <span>Search</span>
+        <input id="searchInput" type="text" placeholder="Entity, element, Ten God...">
+      </label>
+      <label class="ctrl slider-ctrl">
+        <span>Min |F(i→j)|</span>
+        <input id="fluxThreshold" type="range" min="0" max="1000" step="1" value="0">
+        <output id="fluxThresholdValue">0.00</output>
+      </label>
+      <button id="fitButton" class="btn">Fit</button>
+      <button id="resetButton" class="btn">Reset Filters</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <aside class="panel left-panel">
+      <section>
+        <h2>Edge Relations</h2>
+        <div class="btn-group" id="relationFilters">
+          <button class="toggle-btn active" data-relation="production">Production</button>
+          <button class="toggle-btn active" data-relation="control">Control</button>
+          <button class="toggle-btn active" data-relation="drain">Drain</button>
+        </div>
+      </section>
+
+      <section>
+        <h2>Motif Overlays</h2>
+        <div class="check-grid">
+          <label><input id="toggleChains" type="checkbox" checked> Chains</label>
+          <label><input id="toggleLoops" type="checkbox" checked> Loops</label>
+          <label><input id="toggleCascades" type="checkbox" checked> Cascades</label>
+          <label><input id="toggleBottlenecks" type="checkbox" checked> Bottlenecks</label>
+          <label><input id="togglePulses" type="checkbox" checked> Pulses</label>
+          <label><input id="toggleGhosts" type="checkbox" checked> Absent Ghosts</label>
+        </div>
+      </section>
+
+      <section id="legendPanel">
+        <h2>Legend</h2>
+      </section>
+    </aside>
+
+    <section class="center-column">
+      <section class="canvas-wrap" id="graphView">
+        <svg id="graph"></svg>
+        <div id="tooltip" class="tooltip"></div>
+      </section>
+      <section class="pillar-strip-wrap" id="pillarView">
+        <div class="pillar-strip-title">Classical Pillar Strip</div>
+        <div class="pillar-strip-subtitle">
+          Stem / Branch / Life Stage / Ten God / Domain
+        </div>
+        <div class="pillar-strip-stage">
+          <div id="pillarStrip" class="pillar-strip"></div>
+          <div id="modifierBands" class="modifier-bands"></div>
+        </div>
+      </section>
+    </section>
+
+    <aside class="panel right-panel">
+      <section class="meta-section">
+        <h2>Basin Metadata</h2>
+        <div id="basinMetaPanel" class="basin-meta">Loading basin metadata...</div>
+      </section>
+      <section class="detail-section">
+        <h2>Node Detail</h2>
+        <div id="detailPanel" class="detail">Select a node to inspect flux details.</div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="status-bar" id="statusBar"></footer>
+
+  <script src="/explorer/vendor/d3.v7.min.js"></script>
+  <script src="/explorer/data.js"></script>
+  <script src="/explorer/app.js"></script>
+</body>
+</html>

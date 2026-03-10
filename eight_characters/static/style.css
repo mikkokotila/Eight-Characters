@@ -58,11 +58,12 @@ body {
   margin-bottom: 48px;
 }
 
-.language-switch {
+.language-switch,
+.mode-switch {
   display: flex;
   justify-content: center;
   width: fit-content;
-  margin: 0 auto 14px auto;
+  margin: 0 auto;
   gap: 6px;
   padding: 4px;
   border: 1px solid rgba(42, 37, 32, 0.12);
@@ -70,7 +71,16 @@ body {
   background: rgba(255, 255, 255, 0.35);
 }
 
-.lang-btn {
+.language-switch {
+  margin-bottom: 8px;
+}
+
+.mode-switch {
+  margin-bottom: 14px;
+}
+
+.lang-btn,
+.mode-btn {
   border: none;
   background: transparent;
   color: var(--text-light);
@@ -82,7 +92,8 @@ body {
   transition: all 0.2s ease;
 }
 
-.lang-btn.is-active {
+.lang-btn.is-active,
+.mode-btn.is-active {
   background: rgba(255, 255, 255, 0.8);
   color: var(--text);
 }

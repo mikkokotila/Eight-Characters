@@ -1,4 +1,6 @@
 import csv
+import json
+from dataclasses import asdict
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -11,6 +13,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
+from starlette.concurrency import run_in_threadpool
 
 from eight_characters import __version__
 from eight_characters.conventions import ConventionSettings
@@ -21,6 +24,21 @@ from eight_characters.data import (
     build_chart,
 )
 from eight_characters.engine import compute_engine_payload
+from eight_characters.evolution.inference import InferenceConfig
+from eight_characters.evolution.pipeline import EvolutionInput, run_natal_mvp
+from eight_characters.evolution.postprocess import PostprocessConfig
+from eight_characters.evolution.primitives import (
+    ELEMENT_EARTH,
+    ELEMENT_FIRE,
+    ELEMENT_METAL,
+    ELEMENT_WATER,
+    ELEMENT_WOOD,
+    life_stage_anchor,
+)
+from eight_characters.evolution.state import RULE_COUNT
+from eight_characters.explorer.build_data_js_from_evolution import (
+    build_multi_basin_graph_data,
+)
 from eight_characters.time_convert import (
     AmbiguousTimeError,
     BirthInput,
@@ -29,9 +47,26 @@ from eight_characters.time_convert import (
 
 BASE_DIR = Path(__file__).resolve().parent
 MAPPINGS_DIR = BASE_DIR / 'resources' / 'mappings'
+EXPLORER_DIR = BASE_DIR / 'explorer'
+
+BRANCH_ID_BY_CHAR: dict[str, int] = {
+    char: index + 1
+    for index, char in enumerate(
+        ('子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥')
+    )
+}
+ELEMENT_INDEX_BY_NAME: dict[str, int] = {
+    'wood': ELEMENT_WOOD,
+    'fire': ELEMENT_FIRE,
+    'earth': ELEMENT_EARTH,
+    'metal': ELEMENT_METAL,
+    'water': ELEMENT_WATER,
+}
+QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
 app = FastAPI(title='Eight Characters')
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
+app.mount('/explorer', StaticFiles(directory=EXPLORER_DIR, html=True), name='explorer')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
 
@@ -102,6 +137,18 @@ class FourPillarsRequest(BaseModel):
     include_chart: bool = False
     include_hidden_stems: bool = False
     lang: str = 'fi'
+
+
+class EvolutionExplorerRequest(BaseModel):
+    date: str
+    time: str
+    location: LocationInput | None = None
+    city: str | None = None
+    country: str | None = None
+    conventions: ConventionInput = Field(default_factory=ConventionInput)
+    birth_time_uncertainty_seconds: float | None = None
+    basin_index: int = 0
+    flux_threshold: float = 0.0
 
 
 class LocationSearchRequest(BaseModel):
@@ -498,6 +545,230 @@ def _build_hidden_stems_result(
     return result
 
 
+def _stem_profile(stem_char: str) -> tuple[tuple[int, int, int, int, int], int, int]:
+    stem_info = STEMS.get(stem_char)
+    if stem_info is None:
+        raise ValueError(f'Unknown stem in evolution input: {stem_char}')
+
+    element_name_raw = stem_info.get('element')
+    element_name = element_name_raw.strip().lower()
+    element_index = ELEMENT_INDEX_BY_NAME.get(element_name)
+    if element_index is None:
+        raise ValueError(f'Unknown element for stem {stem_char}: {element_name_raw}')
+
+    polarity_raw = stem_info.get('polarity')
+    polarity_name = polarity_raw.strip().lower()
+    if polarity_name == 'yang':
+        polarity = 1
+    elif polarity_name == 'yin':
+        polarity = 0
+    else:
+        raise ValueError(f'Unknown polarity for stem {stem_char}: {polarity_raw}')
+
+    one_hot = [0, 0, 0, 0, 0]
+    one_hot[element_index] = 1
+    one_hot_tuple = cast(tuple[int, int, int, int, int], tuple(one_hot))
+    return one_hot_tuple, element_index, polarity
+
+
+def _build_evolution_input_from_four_pillars(
+    *,
+    four_pillars: dict[str, Any],
+    hidden_stems: dict[str, dict[str, Any]],
+) -> EvolutionInput:
+    branch_ids: list[int] = []
+    base_elements: list[tuple[int, int, int, int, int]] = []
+    polarities: list[int] = []
+    hierarchy_levels: list[int] = []
+    positions: list[int] = []
+    masks: list[int] = []
+    vitality_stages: list[int] = []
+    day_master_index = -1
+    entity_index = 0
+
+    for pillar_position, pillar_name in enumerate(
+        ('year', 'month', 'day', 'hour'), start=1
+    ):
+        stem_char = _pillar_component_from_four_pillars(
+            four_pillars=four_pillars,
+            pillar_name=pillar_name,
+            component_name='stem',
+        )
+        branch_char = _pillar_component_from_four_pillars(
+            four_pillars=four_pillars,
+            pillar_name=pillar_name,
+            component_name='branch',
+        )
+        branch_id = BRANCH_ID_BY_CHAR.get(branch_char)
+        if branch_id is None:
+            raise ValueError(f'Unknown branch in evolution input: {branch_char}')
+        branch_ids.append(branch_id)
+
+        stem_one_hot, stem_element_index, stem_polarity = _stem_profile(stem_char)
+        base_elements.append(stem_one_hot)
+        polarities.append(stem_polarity)
+        hierarchy_levels.append(4)
+        positions.append(pillar_position)
+        masks.append(1)
+        vitality_stages.append(
+            life_stage_anchor(stem_element_index, stem_polarity, branch_id)
+        )
+
+        if pillar_name == 'day':
+            day_master_index = entity_index
+        entity_index += 1
+
+        pillar_hidden_raw = hidden_stems.get(pillar_name)
+        if not isinstance(pillar_hidden_raw, dict):
+            continue
+        pillar_hidden = pillar_hidden_raw
+        hidden_entries_raw = pillar_hidden.get('hidden_stems')
+        if not isinstance(hidden_entries_raw, list):
+            continue
+        hidden_entries = cast(list[object], hidden_entries_raw)
+        for hidden_entry_raw in hidden_entries:
+            if not isinstance(hidden_entry_raw, dict):
+                continue
+            hidden_entry = cast(dict[str, Any], hidden_entry_raw)
+            hidden_char_raw = hidden_entry.get('char')
+            if not isinstance(hidden_char_raw, str) or not hidden_char_raw:
+                continue
+            qi_type_raw = hidden_entry.get('qi_type')
+            qi_type = (
+                qi_type_raw.strip().lower()
+                if isinstance(qi_type_raw, str)
+                else 'residual'
+            )
+            hierarchy = QI_HIERARCHY_BY_TYPE.get(qi_type, 1)
+
+            hidden_one_hot, hidden_element_index, hidden_polarity = _stem_profile(
+                hidden_char_raw
+            )
+            base_elements.append(hidden_one_hot)
+            polarities.append(hidden_polarity)
+            hierarchy_levels.append(hierarchy)
+            positions.append(pillar_position)
+            masks.append(1)
+            vitality_stages.append(
+                life_stage_anchor(hidden_element_index, hidden_polarity, branch_id)
+            )
+            entity_index += 1
+
+    if len(branch_ids) != 4:
+        raise ValueError('Evolution input requires four branch ids.')
+    if day_master_index < 0:
+        raise ValueError('Evolution input requires a valid Day Master index.')
+    branch_ids_tuple: tuple[int, int, int, int] = (
+        branch_ids[0],
+        branch_ids[1],
+        branch_ids[2],
+        branch_ids[3],
+    )
+
+    return EvolutionInput(
+        branch_ids=branch_ids_tuple,
+        base_elements=tuple(base_elements),
+        polarities=tuple(polarities),
+        hierarchy_levels=tuple(hierarchy_levels),
+        positions=tuple(positions),
+        masks=tuple(masks),
+        vitality_stages=tuple(vitality_stages),
+        day_master_index=day_master_index,
+    )
+
+
+def _ensure_evolution_basins(payload: dict[str, Any]) -> dict[str, Any]:
+    basins_raw = payload.get('basins')
+    if isinstance(basins_raw, list) and basins_raw:
+        return payload
+
+    input_shape_raw = payload.get('input_shape')
+    if not isinstance(input_shape_raw, dict):
+        return payload
+    input_shape = cast(dict[str, Any], input_shape_raw)
+    base_elements_raw = input_shape.get('base_elements')
+    if isinstance(base_elements_raw, list):
+        base_elements: list[list[int]] = []
+        for row_raw in cast(list[object], base_elements_raw):
+            if not isinstance(row_raw, list):
+                continue
+            row_values = cast(list[object], row_raw)
+            normalized_row: list[int] = []
+            for value_raw in row_values[:5]:
+                if isinstance(value_raw, bool):
+                    normalized_row.append(int(value_raw))
+                elif isinstance(value_raw, int):
+                    normalized_row.append(value_raw)
+                elif isinstance(value_raw, float):
+                    normalized_row.append(int(value_raw))
+                else:
+                    normalized_row.append(0)
+            while len(normalized_row) < 5:
+                normalized_row.append(0)
+            base_elements.append(normalized_row)
+    else:
+        base_elements = []
+    entity_count = len(base_elements)
+
+    payload['basins'] = [
+        {
+            'basin_id': 0,
+            'mass': 1.0,
+            'mode': 'Standard',
+            'chart_temperature': 0.0,
+            'chart_saturation': 0.0,
+            'motifs': {
+                'chains': [],
+                'loops': [],
+                'pulses': [],
+                'cascades': [],
+                'absences': [],
+                'bottlenecks': [],
+            },
+            'map_total_energy': 0.0,
+            'map_switches': [0 for _ in range(RULE_COUNT)],
+            'map_omegas': [0.5 for _ in range(RULE_COUNT)],
+            'map_effective_elements': base_elements,
+            'map_effective_ten_gods': [
+                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(entity_count)
+            ],
+        }
+    ]
+    payload['noise_probability'] = 0.0
+    return payload
+
+
+def _build_evolution_explorer_graph_data(
+    evolution_input: EvolutionInput,
+    basin_index: int,
+    flux_threshold: float,
+) -> dict[str, Any]:
+    # Keep API latency reasonable for interactive explorer navigation.
+    evolution_output = run_natal_mvp(
+        evolution_input=evolution_input,
+        inference_config=InferenceConfig(
+            particles=24,
+            temperature_steps=2,
+            sweeps_per_step=1,
+            seed=42,
+        ),
+        postprocess_config=PostprocessConfig(
+            discrete_relax_max_passes=1,
+            continuous_passes=1,
+            dbscan_eps=0.08,
+            dbscan_min_samples=1,
+        ),
+    )
+    evolution_payload = _ensure_evolution_basins(
+        cast(dict[str, Any], json.loads(json.dumps(asdict(evolution_output))))
+    )
+    return build_multi_basin_graph_data(
+        evolution_payload,
+        basin_index=max(0, basin_index),
+        flux_threshold=max(0.0, flux_threshold),
+    )
+
+
 # ── Routes ──
 
 
@@ -621,6 +892,70 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     except ValueError as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
+    return response
+
+
+@app.post('/api/evolution_explorer')
+async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any]:
+    """Build explorer graph data from date/time and city/location input."""
+    resolved_city: ResolvedCity | None = None
+    try:
+        location_payload = FourPillarsRequest(
+            date=payload.date,
+            time=payload.time,
+            location=payload.location,
+            city=payload.city,
+            country=payload.country,
+            conventions=payload.conventions,
+            birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
+            include_chart=False,
+            include_hidden_stems=False,
+            lang='fi',
+        )
+        location, resolved_city = await _resolve_four_pillars_location(location_payload)
+        four_pillars_result = _build_four_pillars_result(
+            date_value=payload.date,
+            time_value=payload.time,
+            location=location,
+            conventions_input=payload.conventions,
+            birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
+        )
+        four_pillars = cast(dict[str, Any], four_pillars_result['four_pillars'])
+        hidden_stems_payload = _build_hidden_stems_result(
+            HiddenStemsRequest(
+                year_pillar=_pillar_text_for_hidden_stems(four_pillars, 'year'),
+                month_pillar=_pillar_text_for_hidden_stems(four_pillars, 'month'),
+                day_pillar=_pillar_text_for_hidden_stems(four_pillars, 'day'),
+                hour_pillar=_pillar_text_for_hidden_stems(four_pillars, 'hour'),
+            )
+        )
+        evolution_input = _build_evolution_input_from_four_pillars(
+            four_pillars=four_pillars,
+            hidden_stems=hidden_stems_payload,
+        )
+        graph_data = await run_in_threadpool(
+            _build_evolution_explorer_graph_data,
+            evolution_input,
+            payload.basin_index,
+            payload.flux_threshold,
+        )
+    except CityLookupServiceError as exc:
+        raise HTTPException(
+            status_code=500,
+            detail='City lookup service unavailable.',
+        ) from exc
+    except (ValueError, AmbiguousTimeError, NonexistentTimeError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail='Internal engine error.') from exc
+
+    response: dict[str, Any] = {'graph_data': graph_data}
+    if resolved_city is not None:
+        response['resolved_location'] = {
+            'city': resolved_city.city,
+            'country': resolved_city.country,
+            'timezone': resolved_city.timezone,
+        }
     return response
 
 
