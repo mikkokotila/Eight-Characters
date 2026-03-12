@@ -29,6 +29,12 @@ from eight_characters.evolution.state import (
     ObservedState,
 )
 
+ACTIVE_EDGE_FRACTION_OF_MAX_FLUX = 0.25
+PULSE_BALANCE_RATIO_MIN = 0.5
+PULSE_BALANCE_RATIO_MAX = 2.0
+CASCADE_GAIN_MIN = 1.25
+BOTTLENECK_QUANTILE = 0.75
+
 
 @dataclass(frozen=True)
 class PostprocessConfig:
@@ -206,7 +212,7 @@ def _active_edges(
     nonzero = [abs(value) for row in flux_matrix for value in row if value != 0.0]
     if not nonzero:
         return 0.0, []
-    threshold = 0.25 * max(nonzero)
+    threshold = ACTIVE_EDGE_FRACTION_OF_MAX_FLUX * max(nonzero)
     edges: list[tuple[int, int, float]] = []
     for source in range(len(flux_matrix)):
         for target in range(len(flux_matrix)):
@@ -318,7 +324,9 @@ def _motifs_for_particle(
         for idx in range(len(flux))
         if inbound[idx] > med
         and outbound[idx] > med
-        and 0.5 <= inbound[idx] / (outbound[idx] + EPSILON) <= 2.0
+        and PULSE_BALANCE_RATIO_MIN
+        <= inbound[idx] / (outbound[idx] + EPSILON)
+        <= PULSE_BALANCE_RATIO_MAX
     )
 
     cascades: list[tuple[int, ...]] = []
@@ -332,7 +340,7 @@ def _motifs_for_particle(
                 magnitudes[idx + 1] >= magnitudes[idx]
                 for idx in range(len(magnitudes) - 1)
             )
-            and magnitudes[-1] / (magnitudes[0] + EPSILON) >= 1.25
+            and magnitudes[-1] / (magnitudes[0] + EPSILON) >= CASCADE_GAIN_MIN
         ):
             cascades.append(chain)
 
@@ -342,7 +350,9 @@ def _motifs_for_particle(
             particle.dynamic_amplitudes[idx] + EPSILON
         )
         b_values.append(score)
-    quartile = float(np.quantile(np.array(b_values, dtype=np.float64), 0.75))
+    quartile = float(
+        np.quantile(np.array(b_values, dtype=np.float64), BOTTLENECK_QUANTILE)
+    )
     bottlenecks = tuple(idx for idx, value in enumerate(b_values) if value >= quartile)
 
     return MotifInventory(

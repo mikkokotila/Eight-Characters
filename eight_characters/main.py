@@ -1,6 +1,9 @@
 import csv
 import json
-from dataclasses import asdict
+import secrets
+import threading
+from contextlib import contextmanager
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -25,6 +28,11 @@ from eight_characters.data import (
     build_chart,
 )
 from eight_characters.engine import compute_engine_payload
+from eight_characters.evolution import energy as evolution_energy
+from eight_characters.evolution import inference as evolution_inference
+from eight_characters.evolution import mechanics as evolution_mechanics
+from eight_characters.evolution import postprocess as evolution_postprocess
+from eight_characters.evolution import primitives as evolution_primitives
 from eight_characters.evolution.inference import InferenceConfig
 from eight_characters.evolution.pipeline import EvolutionInput, run_natal_mvp
 from eight_characters.evolution.postprocess import PostprocessConfig
@@ -64,6 +72,15 @@ ELEMENT_INDEX_BY_NAME: dict[str, int] = {
     'water': ELEMENT_WATER,
 }
 QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
+
+EVOLUTION_DEFAULT_PARTICLES = 24
+EVOLUTION_DEFAULT_TEMPERATURE_STEPS = 2
+EVOLUTION_DEFAULT_SWEEPS_PER_STEP = 1
+EVOLUTION_DEFAULT_DBSCAN_EPS = 0.08
+EVOLUTION_DEFAULT_DBSCAN_MIN_SAMPLES = 1
+EVOLUTION_DEFAULT_SEED_MODE = 'fixed_42'
+EVOLUTION_FIXED_SEED = 42
+EVOLUTION_CONSTANT_PATCH_LOCK = threading.Lock()
 
 app = FastAPI(title='Eight Characters')
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
@@ -148,8 +165,15 @@ class EvolutionExplorerRequest(BaseModel):
     country: str | None = None
     conventions: ConventionInput = Field(default_factory=ConventionInput)
     birth_time_uncertainty_seconds: float | None = None
+    particles: int = EVOLUTION_DEFAULT_PARTICLES
+    temperature_steps: int = EVOLUTION_DEFAULT_TEMPERATURE_STEPS
+    sweeps_per_step: int = EVOLUTION_DEFAULT_SWEEPS_PER_STEP
+    dbscan_eps: float = EVOLUTION_DEFAULT_DBSCAN_EPS
+    dbscan_min_samples: int = EVOLUTION_DEFAULT_DBSCAN_MIN_SAMPLES
+    seed_mode: str = EVOLUTION_DEFAULT_SEED_MODE
     basin_index: int = 0
     flux_threshold: float = 0.0
+    controls: dict[str, Any] | None = None
 
 
 class LocationSearchRequest(BaseModel):
@@ -739,27 +763,1059 @@ def _ensure_evolution_basins(payload: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _resolve_evolution_seed(seed_mode: str) -> int:
+    normalized_mode = seed_mode.strip().lower()
+    if normalized_mode == 'fixed_42':
+        return EVOLUTION_FIXED_SEED
+    if normalized_mode == 'random':
+        return secrets.randbelow(2_147_483_648)
+    raise ValueError("seed_mode must be 'fixed_42' or 'random'.")
+
+
+def _json_compatible(value: Any) -> Any:
+    if isinstance(value, tuple):
+        tuple_values = cast(tuple[Any, ...], value)
+        return [_json_compatible(item) for item in tuple_values]
+    if isinstance(value, list):
+        list_values = cast(list[Any], value)
+        return [_json_compatible(item) for item in list_values]
+    if isinstance(value, dict):
+        value_dict = cast(dict[object, Any], value)
+        normalized: dict[str, Any] = {}
+        for raw_key, item in value_dict.items():
+            normalized[str(raw_key)] = _json_compatible(item)
+        return normalized
+    return value
+
+
+@dataclass(frozen=True)
+class ResolvedEvolutionControls:
+    flux_threshold: float
+    particles: int
+    temperature_steps: int
+    sweeps_per_step: int
+    dbscan_eps: float
+    dbscan_min_samples: int
+    seed_mode: str
+    conventions: ConventionInput
+    birth_time_uncertainty_seconds: float | None
+    scalar_constants: dict[str, float]
+    vector_matrix_constants: dict[str, Any]
+
+
+def _control_payload(
+    *,
+    value: Any,
+    ui_label: str,
+    ui_type: str,
+    min_value: float | int | None = None,
+    max_value: float | int | None = None,
+    distribution: str | None = None,
+    options: list[str] | None = None,
+) -> dict[str, Any]:
+    payload: dict[str, Any] = {
+        'value': _json_compatible(value),
+        'ui_label': ui_label,
+        'ui_type': ui_type,
+    }
+    if min_value is not None:
+        payload['min'] = min_value
+    if max_value is not None:
+        payload['max'] = max_value
+    if distribution is not None:
+        payload['distribution'] = distribution
+    if options is not None:
+        payload['options'] = options
+    return payload
+
+
+def _default_evolution_scalar_constants() -> dict[str, float]:
+    return {
+        'SAME_POLARITY_MULTIPLIER': float(
+            evolution_primitives.SAME_POLARITY_MULTIPLIER
+        ),
+        'DIFF_POLARITY_MULTIPLIER': float(
+            evolution_primitives.DIFF_POLARITY_MULTIPLIER
+        ),
+        'OMEGA_MIN_R': float(evolution_primitives.OMEGA_MIN_R),
+        'TAU_R': float(evolution_primitives.TAU_R),
+        'TAU_STD': float(evolution_primitives.TAU_STD),
+        'TAU_FOLLOW': float(evolution_primitives.TAU_FOLLOW),
+        'DELTA_CLASH': float(evolution_primitives.DELTA_CLASH),
+        'DELTA_PUN': float(evolution_primitives.DELTA_PUN),
+        'DELTA_V_R': float(evolution_primitives.DELTA_V_R),
+        'OMEGA_SEASON': float(evolution_primitives.OMEGA_SEASON),
+        'LAMBDA_INTRA': float(evolution_primitives.LAMBDA_INTRA),
+        'LAMBDA_INTER': float(evolution_primitives.LAMBDA_INTER),
+        'LAMBDA_V': float(evolution_primitives.LAMBDA_V),
+        'LAMBDA_CLIM': float(evolution_primitives.LAMBDA_CLIM),
+        'LAMBDA_DOM': float(evolution_primitives.LAMBDA_DOM),
+        'LAMBDA_MODE': float(evolution_primitives.LAMBDA_MODE),
+        'LAMBDA_ACT': float(evolution_primitives.LAMBDA_ACT),
+        'LAMBDA_CLASH': float(evolution_primitives.LAMBDA_CLASH),
+        'LAMBDA_SCATTER': float(evolution_primitives.LAMBDA_SCATTER),
+        'LAMBDA_FRAME': float(evolution_primitives.LAMBDA_FRAME),
+        'LAMBDA_PUN': float(evolution_primitives.LAMBDA_PUN),
+        'LAMBDA_COR': float(evolution_primitives.LAMBDA_COR),
+        'LAMBDA_CROSS': float(evolution_primitives.LAMBDA_CROSS),
+        'active_edge_fraction_of_max_flux': float(
+            evolution_postprocess.ACTIVE_EDGE_FRACTION_OF_MAX_FLUX
+        ),
+        'pulse_balance_ratio_min': float(evolution_postprocess.PULSE_BALANCE_RATIO_MIN),
+        'pulse_balance_ratio_max': float(evolution_postprocess.PULSE_BALANCE_RATIO_MAX),
+        'cascade_gain_min': float(evolution_postprocess.CASCADE_GAIN_MIN),
+        'bottleneck_quantile': float(evolution_postprocess.BOTTLENECK_QUANTILE),
+    }
+
+
+def _default_evolution_vector_matrix_constants() -> dict[str, Any]:
+    return {
+        'WUXING_MATRIX': evolution_primitives.WUXING_MATRIX,
+        'DOMAIN_RESONANCE_MATRIX': evolution_primitives.DOMAIN_RESONANCE_MATRIX,
+        'STAGE_AMPLITUDE_BY_STAGE': evolution_primitives.STAGE_AMPLITUDE_BY_STAGE,
+        'PARTIAL_STATE_WEIGHT_BY_S': evolution_primitives.PARTIAL_STATE_WEIGHT_BY_S,
+        'PROXIMITY_WEIGHT_BY_GAP': evolution_primitives.PROXIMITY_WEIGHT_BY_GAP,
+        'CLUSTER_ALPHA': float(evolution_primitives.CLUSTER_ALPHA),
+        'CLUSTER_BETA': float(evolution_primitives.CLUSTER_BETA),
+        'CLUSTER_GAMMA': float(evolution_primitives.CLUSTER_GAMMA),
+    }
+
+
+def _controls_root(controls: dict[str, Any] | None) -> dict[str, Any] | None:
+    if controls is None:
+        return None
+    if 'controls' in controls and isinstance(controls['controls'], dict):
+        return cast(dict[str, Any], controls['controls'])
+    return controls
+
+
+def _control_entry_value(entry: Any) -> Any:
+    if isinstance(entry, dict):
+        mapping = cast(dict[str, Any], entry)
+        if 'value' in mapping:
+            return mapping['value']
+        return mapping
+    return entry
+
+
+def _lookup_control_value(
+    controls: dict[str, Any] | None,
+    group_path: tuple[str, ...],
+    key: str,
+) -> Any | None:
+    controls_map = _controls_root(controls)
+    if controls_map is None:
+        return None
+
+    if key in controls_map:
+        return _control_entry_value(controls_map[key])
+
+    current: Any = controls_map
+    for path_key in group_path:
+        if not isinstance(current, dict):
+            return None
+        current = cast(dict[str, Any], current).get(path_key)
+    if not isinstance(current, dict):
+        return None
+
+    section = cast(dict[str, Any], current)
+    if key not in section:
+        return None
+    return _control_entry_value(section[key])
+
+
+def _coerce_float(value: Any, key: str) -> float:
+    if isinstance(value, bool):
+        raise ValueError(f'{key} must be numeric.')
+    if isinstance(value, (int, float)):
+        number = float(value)
+    elif isinstance(value, str):
+        try:
+            number = float(value.strip())
+        except ValueError as exc:
+            raise ValueError(f'{key} must be numeric.') from exc
+    else:
+        raise ValueError(f'{key} must be numeric.')
+    if number != number or number in (float('inf'), float('-inf')):
+        raise ValueError(f'{key} must be finite.')
+    return number
+
+
+def _coerce_int(value: Any, key: str) -> int:
+    number = _coerce_float(value, key)
+    if not number.is_integer():
+        raise ValueError(f'{key} must be an integer.')
+    return int(number)
+
+
+def _coerce_choice(value: Any, key: str, options: tuple[str, ...]) -> str:
+    if not isinstance(value, str):
+        raise ValueError(f'{key} must be one of: {", ".join(options)}.')
+    normalized = value.strip()
+    if normalized not in options:
+        raise ValueError(f'{key} must be one of: {", ".join(options)}.')
+    return normalized
+
+
+def _coerce_float_vector(value: Any, key: str, expected_length: int) -> tuple[float, ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(f'{key} must be a sequence with length {expected_length}.')
+    sequence = list(cast(list[Any] | tuple[Any, ...], value))
+    if len(sequence) != expected_length:
+        raise ValueError(f'{key} must have length {expected_length}.')
+    return tuple(_coerce_float(item, key) for item in sequence)
+
+
+def _coerce_float_matrix(
+    value: Any,
+    key: str,
+    expected_rows: int,
+    expected_cols: int,
+) -> tuple[tuple[float, ...], ...]:
+    if not isinstance(value, (list, tuple)):
+        raise ValueError(
+            f'{key} must be a matrix with shape {expected_rows}x{expected_cols}.'
+        )
+    rows = list(cast(list[Any] | tuple[Any, ...], value))
+    if len(rows) != expected_rows:
+        raise ValueError(
+            f'{key} must be a matrix with shape {expected_rows}x{expected_cols}.'
+        )
+    normalized_rows: list[tuple[float, ...]] = []
+    for row in rows:
+        if not isinstance(row, (list, tuple)):
+            raise ValueError(
+                f'{key} must be a matrix with shape {expected_rows}x{expected_cols}.'
+            )
+        row_items = list(cast(list[Any] | tuple[Any, ...], row))
+        if len(row_items) != expected_cols:
+            raise ValueError(
+                f'{key} must be a matrix with shape {expected_rows}x{expected_cols}.'
+            )
+        normalized_rows.append(tuple(_coerce_float(item, key) for item in row_items))
+    return tuple(normalized_rows)
+
+
+def _resolve_evolution_controls(
+    payload: EvolutionExplorerRequest,
+) -> ResolvedEvolutionControls:
+    flux_threshold = max(0.0, float(payload.flux_threshold))
+    particles = int(payload.particles)
+    temperature_steps = int(payload.temperature_steps)
+    sweeps_per_step = int(payload.sweeps_per_step)
+    dbscan_eps = float(payload.dbscan_eps)
+    dbscan_min_samples = int(payload.dbscan_min_samples)
+    seed_mode = payload.seed_mode
+    zi_convention = payload.conventions.zi_convention
+    hour_basis = payload.conventions.hour_basis
+    day_boundary_basis = payload.conventions.day_boundary_basis
+    birth_time_uncertainty_seconds = payload.birth_time_uncertainty_seconds
+
+    scalar_constants = _default_evolution_scalar_constants()
+    vector_matrix_constants = _default_evolution_vector_matrix_constants()
+
+    controls = payload.controls
+    flux_threshold_override = _lookup_control_value(
+        controls, ('main_view_controls',), 'flux_threshold'
+    )
+    if flux_threshold_override is not None:
+        flux_threshold = max(0.0, _coerce_float(flux_threshold_override, 'flux_threshold'))
+
+    particles_override = _lookup_control_value(
+        controls, ('main_view_controls',), 'particles'
+    )
+    if particles_override is not None:
+        particles = _coerce_int(particles_override, 'particles')
+
+    temperature_steps_override = _lookup_control_value(
+        controls, ('main_view_controls',), 'temperature_steps'
+    )
+    if temperature_steps_override is not None:
+        temperature_steps = _coerce_int(temperature_steps_override, 'temperature_steps')
+
+    sweeps_override = _lookup_control_value(
+        controls, ('main_view_controls',), 'sweeps_per_step'
+    )
+    if sweeps_override is not None:
+        sweeps_per_step = _coerce_int(sweeps_override, 'sweeps_per_step')
+
+    dbscan_eps_override = _lookup_control_value(controls, ('main_view_controls',), 'dbscan_eps')
+    if dbscan_eps_override is not None:
+        dbscan_eps = _coerce_float(dbscan_eps_override, 'dbscan_eps')
+
+    dbscan_min_samples_override = _lookup_control_value(
+        controls, ('main_view_controls',), 'dbscan_min_samples'
+    )
+    if dbscan_min_samples_override is not None:
+        dbscan_min_samples = _coerce_int(
+            dbscan_min_samples_override, 'dbscan_min_samples'
+        )
+
+    seed_mode_override = _lookup_control_value(controls, ('main_view_controls',), 'seed_mode')
+    if seed_mode_override is not None:
+        seed_mode = _coerce_choice(
+            seed_mode_override, 'seed_mode', ('fixed_42', 'random')
+        )
+
+    zi_override = _lookup_control_value(
+        controls, ('input_convention_controls',), 'zi_convention'
+    )
+    if zi_override is not None:
+        zi_convention = _coerce_choice(
+            zi_override,
+            'zi_convention',
+            ('split_midnight', 'whole_zi_23'),
+        )
+
+    hour_override = _lookup_control_value(
+        controls, ('input_convention_controls',), 'hour_basis'
+    )
+    if hour_override is not None:
+        hour_basis = _coerce_choice(hour_override, 'hour_basis', ('true_solar', 'civil'))
+
+    day_boundary_override = _lookup_control_value(
+        controls, ('input_convention_controls',), 'day_boundary_basis'
+    )
+    if day_boundary_override is not None:
+        day_boundary_basis = _coerce_choice(
+            day_boundary_override, 'day_boundary_basis', ('true_solar', 'civil')
+        )
+
+    uncertainty_override = _lookup_control_value(
+        controls,
+        ('input_convention_controls',),
+        'birth_time_uncertainty_seconds',
+    )
+    if uncertainty_override is not None:
+        birth_time_uncertainty_seconds = _coerce_float(
+            uncertainty_override, 'birth_time_uncertainty_seconds'
+        )
+
+    for key in tuple(scalar_constants.keys()):
+        override = _lookup_control_value(
+            controls, ('evolution_reading_controls', 'scalar_constants'), key
+        )
+        if override is not None:
+            scalar_constants[key] = _coerce_float(override, key)
+
+    wuxing_override = _lookup_control_value(
+        controls, ('evolution_reading_controls', 'vector_matrix_constants'), 'WUXING_MATRIX'
+    )
+    if wuxing_override is not None:
+        vector_matrix_constants['WUXING_MATRIX'] = _coerce_float_matrix(
+            wuxing_override, 'WUXING_MATRIX', expected_rows=5, expected_cols=5
+        )
+
+    domain_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'DOMAIN_RESONANCE_MATRIX',
+    )
+    if domain_override is not None:
+        vector_matrix_constants['DOMAIN_RESONANCE_MATRIX'] = _coerce_float_matrix(
+            domain_override,
+            'DOMAIN_RESONANCE_MATRIX',
+            expected_rows=4,
+            expected_cols=5,
+        )
+
+    stage_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'STAGE_AMPLITUDE_BY_STAGE',
+    )
+    if stage_override is not None:
+        vector_matrix_constants['STAGE_AMPLITUDE_BY_STAGE'] = _coerce_float_vector(
+            stage_override, 'STAGE_AMPLITUDE_BY_STAGE', expected_length=12
+        )
+
+    partial_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'PARTIAL_STATE_WEIGHT_BY_S',
+    )
+    if partial_override is not None:
+        vector_matrix_constants['PARTIAL_STATE_WEIGHT_BY_S'] = _coerce_float_vector(
+            partial_override, 'PARTIAL_STATE_WEIGHT_BY_S', expected_length=4
+        )
+
+    proximity_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'PROXIMITY_WEIGHT_BY_GAP',
+    )
+    if proximity_override is not None:
+        vector_matrix_constants['PROXIMITY_WEIGHT_BY_GAP'] = _coerce_float_vector(
+            proximity_override, 'PROXIMITY_WEIGHT_BY_GAP', expected_length=3
+        )
+
+    cluster_alpha_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'CLUSTER_ALPHA',
+    )
+    if cluster_alpha_override is not None:
+        vector_matrix_constants['CLUSTER_ALPHA'] = _coerce_float(
+            cluster_alpha_override, 'CLUSTER_ALPHA'
+        )
+
+    cluster_beta_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'CLUSTER_BETA',
+    )
+    if cluster_beta_override is not None:
+        vector_matrix_constants['CLUSTER_BETA'] = _coerce_float(
+            cluster_beta_override, 'CLUSTER_BETA'
+        )
+
+    cluster_gamma_override = _lookup_control_value(
+        controls,
+        ('evolution_reading_controls', 'vector_matrix_constants'),
+        'CLUSTER_GAMMA',
+    )
+    if cluster_gamma_override is not None:
+        vector_matrix_constants['CLUSTER_GAMMA'] = _coerce_float(
+            cluster_gamma_override, 'CLUSTER_GAMMA'
+        )
+
+    if particles <= 0:
+        raise ValueError('particles must be positive.')
+    if temperature_steps <= 0:
+        raise ValueError('temperature_steps must be positive.')
+    if sweeps_per_step <= 0:
+        raise ValueError('sweeps_per_step must be positive.')
+    if dbscan_eps <= 0.0:
+        raise ValueError('dbscan_eps must be positive.')
+    if dbscan_min_samples <= 0:
+        raise ValueError('dbscan_min_samples must be positive.')
+    if birth_time_uncertainty_seconds is not None and birth_time_uncertainty_seconds < 0.0:
+        raise ValueError('birth_time_uncertainty_seconds must be non-negative.')
+    if scalar_constants['pulse_balance_ratio_max'] < scalar_constants['pulse_balance_ratio_min']:
+        raise ValueError(
+            'pulse_balance_ratio_max must be greater than or equal to pulse_balance_ratio_min.'
+        )
+    if not 0.0 <= scalar_constants['bottleneck_quantile'] <= 1.0:
+        raise ValueError('bottleneck_quantile must be between 0.0 and 1.0.')
+
+    conventions = ConventionInput(
+        zi_convention=zi_convention,
+        hour_basis=hour_basis,
+        day_boundary_basis=day_boundary_basis,
+    )
+    return ResolvedEvolutionControls(
+        flux_threshold=flux_threshold,
+        particles=particles,
+        temperature_steps=temperature_steps,
+        sweeps_per_step=sweeps_per_step,
+        dbscan_eps=dbscan_eps,
+        dbscan_min_samples=dbscan_min_samples,
+        seed_mode=seed_mode,
+        conventions=conventions,
+        birth_time_uncertainty_seconds=birth_time_uncertainty_seconds,
+        scalar_constants=scalar_constants,
+        vector_matrix_constants=vector_matrix_constants,
+    )
+
+
+_EVOLUTION_SCALAR_PATCH_TARGETS: dict[str, tuple[tuple[object, str], ...]] = {
+    'SAME_POLARITY_MULTIPLIER': (
+        (evolution_primitives, 'SAME_POLARITY_MULTIPLIER'),
+    ),
+    'DIFF_POLARITY_MULTIPLIER': (
+        (evolution_primitives, 'DIFF_POLARITY_MULTIPLIER'),
+    ),
+    'OMEGA_MIN_R': (
+        (evolution_primitives, 'OMEGA_MIN_R'),
+        (evolution_inference, 'OMEGA_MIN_R'),
+        (evolution_postprocess, 'OMEGA_MIN_R'),
+    ),
+    'TAU_R': (
+        (evolution_primitives, 'TAU_R'),
+        (evolution_energy, 'TAU_R'),
+    ),
+    'TAU_STD': (
+        (evolution_primitives, 'TAU_STD'),
+        (evolution_energy, 'TAU_STD'),
+    ),
+    'TAU_FOLLOW': (
+        (evolution_primitives, 'TAU_FOLLOW'),
+        (evolution_energy, 'TAU_FOLLOW'),
+    ),
+    'DELTA_CLASH': (
+        (evolution_primitives, 'DELTA_CLASH'),
+        (evolution_mechanics, 'DELTA_CLASH'),
+    ),
+    'DELTA_PUN': (
+        (evolution_primitives, 'DELTA_PUN'),
+        (evolution_mechanics, 'DELTA_PUN'),
+    ),
+    'DELTA_V_R': (
+        (evolution_primitives, 'DELTA_V_R'),
+        (evolution_energy, 'DELTA_V_R'),
+    ),
+    'OMEGA_SEASON': (
+        (evolution_primitives, 'OMEGA_SEASON'),
+        (evolution_energy, 'OMEGA_SEASON'),
+    ),
+    'LAMBDA_INTRA': (
+        (evolution_primitives, 'LAMBDA_INTRA'),
+        (evolution_energy, 'LAMBDA_INTRA'),
+    ),
+    'LAMBDA_INTER': (
+        (evolution_primitives, 'LAMBDA_INTER'),
+        (evolution_energy, 'LAMBDA_INTER'),
+    ),
+    'LAMBDA_V': (
+        (evolution_primitives, 'LAMBDA_V'),
+        (evolution_energy, 'LAMBDA_V'),
+    ),
+    'LAMBDA_CLIM': (
+        (evolution_primitives, 'LAMBDA_CLIM'),
+        (evolution_energy, 'LAMBDA_CLIM'),
+    ),
+    'LAMBDA_DOM': (
+        (evolution_primitives, 'LAMBDA_DOM'),
+        (evolution_energy, 'LAMBDA_DOM'),
+    ),
+    'LAMBDA_MODE': (
+        (evolution_primitives, 'LAMBDA_MODE'),
+        (evolution_energy, 'LAMBDA_MODE'),
+    ),
+    'LAMBDA_ACT': (
+        (evolution_primitives, 'LAMBDA_ACT'),
+        (evolution_energy, 'LAMBDA_ACT'),
+    ),
+    'LAMBDA_CLASH': (
+        (evolution_primitives, 'LAMBDA_CLASH'),
+        (evolution_energy, 'LAMBDA_CLASH'),
+    ),
+    'LAMBDA_SCATTER': (
+        (evolution_primitives, 'LAMBDA_SCATTER'),
+        (evolution_energy, 'LAMBDA_SCATTER'),
+    ),
+    'LAMBDA_FRAME': (
+        (evolution_primitives, 'LAMBDA_FRAME'),
+        (evolution_energy, 'LAMBDA_FRAME'),
+    ),
+    'LAMBDA_PUN': (
+        (evolution_primitives, 'LAMBDA_PUN'),
+        (evolution_energy, 'LAMBDA_PUN'),
+    ),
+    'LAMBDA_COR': (
+        (evolution_primitives, 'LAMBDA_COR'),
+        (evolution_energy, 'LAMBDA_COR'),
+    ),
+    'LAMBDA_CROSS': (
+        (evolution_primitives, 'LAMBDA_CROSS'),
+        (evolution_energy, 'LAMBDA_CROSS'),
+    ),
+    'active_edge_fraction_of_max_flux': (
+        (evolution_postprocess, 'ACTIVE_EDGE_FRACTION_OF_MAX_FLUX'),
+    ),
+    'pulse_balance_ratio_min': (
+        (evolution_postprocess, 'PULSE_BALANCE_RATIO_MIN'),
+    ),
+    'pulse_balance_ratio_max': (
+        (evolution_postprocess, 'PULSE_BALANCE_RATIO_MAX'),
+    ),
+    'cascade_gain_min': (
+        (evolution_postprocess, 'CASCADE_GAIN_MIN'),
+    ),
+    'bottleneck_quantile': (
+        (evolution_postprocess, 'BOTTLENECK_QUANTILE'),
+    ),
+}
+
+_EVOLUTION_VECTOR_MATRIX_PATCH_TARGETS: dict[str, tuple[tuple[object, str], ...]] = {
+    'WUXING_MATRIX': ((evolution_primitives, 'WUXING_MATRIX'),),
+    'DOMAIN_RESONANCE_MATRIX': ((evolution_primitives, 'DOMAIN_RESONANCE_MATRIX'),),
+    'STAGE_AMPLITUDE_BY_STAGE': ((evolution_primitives, 'STAGE_AMPLITUDE_BY_STAGE'),),
+    'PARTIAL_STATE_WEIGHT_BY_S': ((evolution_primitives, 'PARTIAL_STATE_WEIGHT_BY_S'),),
+    'PROXIMITY_WEIGHT_BY_GAP': ((evolution_primitives, 'PROXIMITY_WEIGHT_BY_GAP'),),
+    'CLUSTER_ALPHA': (
+        (evolution_primitives, 'CLUSTER_ALPHA'),
+        (evolution_postprocess, 'CLUSTER_ALPHA'),
+    ),
+    'CLUSTER_BETA': (
+        (evolution_primitives, 'CLUSTER_BETA'),
+        (evolution_postprocess, 'CLUSTER_BETA'),
+    ),
+    'CLUSTER_GAMMA': (
+        (evolution_primitives, 'CLUSTER_GAMMA'),
+        (evolution_postprocess, 'CLUSTER_GAMMA'),
+    ),
+}
+
+
+@contextmanager
+def _temporary_evolution_control_overrides(
+    scalar_constants: dict[str, float],
+    vector_matrix_constants: dict[str, Any],
+):
+    original_values: list[tuple[object, str, Any]] = []
+    with EVOLUTION_CONSTANT_PATCH_LOCK:
+        try:
+            for key, value in scalar_constants.items():
+                for target_module, target_name in _EVOLUTION_SCALAR_PATCH_TARGETS.get(
+                    key, ()
+                ):
+                    original_values.append(
+                        (target_module, target_name, getattr(target_module, target_name))
+                    )
+                    setattr(target_module, target_name, value)
+
+            for key, value in vector_matrix_constants.items():
+                for target_module, target_name in _EVOLUTION_VECTOR_MATRIX_PATCH_TARGETS.get(
+                    key, ()
+                ):
+                    original_values.append(
+                        (target_module, target_name, getattr(target_module, target_name))
+                    )
+                    setattr(target_module, target_name, value)
+            yield
+        finally:
+            for target_module, target_name, original in reversed(original_values):
+                setattr(target_module, target_name, original)
+
+def _build_evolution_controls_payload(
+    *,
+    flux_threshold: float,
+    particles: int,
+    temperature_steps: int,
+    sweeps_per_step: int,
+    dbscan_eps: float,
+    dbscan_min_samples: int,
+    seed_mode: str,
+    conventions: ConventionInput,
+    birth_time_uncertainty_seconds: float | None,
+    scalar_constants: dict[str, float],
+    vector_matrix_constants: dict[str, Any],
+) -> dict[str, Any]:
+    main_view_controls = {
+        'flux_threshold': _control_payload(
+            value=flux_threshold,
+            ui_label='Min |F(i→j)| Display Threshold',
+            ui_type='slider',
+            min_value=0.0,
+            distribution='linear',
+        ),
+        'particles': _control_payload(
+            value=particles,
+            ui_label='Particles',
+            ui_type='slider',
+            min_value=8,
+            max_value=4096,
+            distribution='discrete_log_uniform',
+        ),
+        'temperature_steps': _control_payload(
+            value=temperature_steps,
+            ui_label='Temperature Steps',
+            ui_type='slider',
+            min_value=1,
+            max_value=200,
+            distribution='discrete_log_uniform',
+        ),
+        'sweeps_per_step': _control_payload(
+            value=sweeps_per_step,
+            ui_label='Sweeps Per Step',
+            ui_type='slider',
+            min_value=1,
+            max_value=20,
+            distribution='discrete_log_uniform',
+        ),
+        'dbscan_eps': _control_payload(
+            value=dbscan_eps,
+            ui_label='Basin Clustering Radius',
+            ui_type='slider',
+            min_value=0.01,
+            max_value=1.0,
+            distribution='log_uniform',
+        ),
+        'dbscan_min_samples': _control_payload(
+            value=dbscan_min_samples,
+            ui_label='Basin Clustering Min Samples',
+            ui_type='slider',
+            min_value=1,
+            max_value=64,
+            distribution='discrete_log_uniform',
+        ),
+        'seed_mode': _control_payload(
+            value=seed_mode,
+            ui_label='Seed Mode',
+            ui_type='toggle',
+            options=['fixed_42', 'random'],
+        ),
+    }
+
+    evolution_scalar_controls = {
+        'SAME_POLARITY_MULTIPLIER': _control_payload(
+            value=scalar_constants['SAME_POLARITY_MULTIPLIER'],
+            ui_label='Yin-Yang Same-Polarity Resonance',
+            ui_type='slider',
+            min_value=0.8,
+            max_value=1.6,
+            distribution='log_normal',
+        ),
+        'DIFF_POLARITY_MULTIPLIER': _control_payload(
+            value=scalar_constants['DIFF_POLARITY_MULTIPLIER'],
+            ui_label='Yin-Yang Cross-Polarity Resonance',
+            ui_type='slider',
+            min_value=0.6,
+            max_value=1.4,
+            distribution='log_normal',
+        ),
+        'OMEGA_MIN_R': _control_payload(
+            value=scalar_constants['OMEGA_MIN_R'],
+            ui_label='Minimum Rule Qi Activation',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=2.0,
+            distribution='log_uniform',
+        ),
+        'TAU_R': _control_payload(
+            value=scalar_constants['TAU_R'],
+            ui_label='Rule Support Gate',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=1.0,
+            distribution='beta',
+        ),
+        'TAU_STD': _control_payload(
+            value=scalar_constants['TAU_STD'],
+            ui_label='Standard Structure Tolerance',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='beta',
+        ),
+        'TAU_FOLLOW': _control_payload(
+            value=scalar_constants['TAU_FOLLOW'],
+            ui_label='Follow-Pattern Tolerance',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='beta',
+        ),
+        'DELTA_CLASH': _control_payload(
+            value=scalar_constants['DELTA_CLASH'],
+            ui_label='Clash Damage Intensity',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='log_normal',
+        ),
+        'DELTA_PUN': _control_payload(
+            value=scalar_constants['DELTA_PUN'],
+            ui_label='Punishment Damage Intensity',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=0.8,
+            distribution='log_normal',
+        ),
+        'DELTA_V_R': _control_payload(
+            value=scalar_constants['DELTA_V_R'],
+            ui_label='Clash Vitality Displacement',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='log_normal',
+        ),
+        'OMEGA_SEASON': _control_payload(
+            value=scalar_constants['OMEGA_SEASON'],
+            ui_label='Seasonal Qi Boost',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=2.0,
+            distribution='beta',
+        ),
+        'LAMBDA_INTRA': _control_payload(
+            value=scalar_constants['LAMBDA_INTRA'],
+            ui_label='Intra-Pillar Coherence Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=10.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_INTER': _control_payload(
+            value=scalar_constants['LAMBDA_INTER'],
+            ui_label='Inter-Pillar Flow Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=10.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_V': _control_payload(
+            value=scalar_constants['LAMBDA_V'],
+            ui_label='Life-Stage Anchor Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=20.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_CLIM': _control_payload(
+            value=scalar_constants['LAMBDA_CLIM'],
+            ui_label='Climate Balance Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=10.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_DOM': _control_payload(
+            value=scalar_constants['LAMBDA_DOM'],
+            ui_label='Pillar Domain Resonance Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=12.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_MODE': _control_payload(
+            value=scalar_constants['LAMBDA_MODE'],
+            ui_label='Structure-Mode Fidelity Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=20.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_ACT': _control_payload(
+            value=scalar_constants['LAMBDA_ACT'],
+            ui_label='Activated Rule Penalty Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=12.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_CLASH': _control_payload(
+            value=scalar_constants['LAMBDA_CLASH'],
+            ui_label='Clash Penalty Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=20.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_SCATTER': _control_payload(
+            value=scalar_constants['LAMBDA_SCATTER'],
+            ui_label='Clash Scatter Penalty Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=12.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_FRAME': _control_payload(
+            value=scalar_constants['LAMBDA_FRAME'],
+            ui_label='Three-Frame Conversion Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=20.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_PUN': _control_payload(
+            value=scalar_constants['LAMBDA_PUN'],
+            ui_label='Punishment Retention Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=16.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_COR': _control_payload(
+            value=scalar_constants['LAMBDA_COR'],
+            ui_label='Harmony Corruption Weight',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=16.0,
+            distribution='log_uniform',
+        ),
+        'LAMBDA_CROSS': _control_payload(
+            value=scalar_constants['LAMBDA_CROSS'],
+            ui_label='Ten-God Reassignment Cost',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=24.0,
+            distribution='log_uniform',
+        ),
+        'active_edge_fraction_of_max_flux': _control_payload(
+            value=scalar_constants['active_edge_fraction_of_max_flux'],
+            ui_label='Qi Current Activation Threshold',
+            ui_type='slider',
+            min_value=0.05,
+            max_value=0.8,
+            distribution='beta',
+        ),
+        'pulse_balance_ratio_min': _control_payload(
+            value=scalar_constants['pulse_balance_ratio_min'],
+            ui_label='Pulse Balance Lower Bound',
+            ui_type='slider',
+            min_value=0.1,
+            max_value=1.0,
+            distribution='beta',
+        ),
+        'pulse_balance_ratio_max': _control_payload(
+            value=scalar_constants['pulse_balance_ratio_max'],
+            ui_label='Pulse Balance Upper Bound',
+            ui_type='slider',
+            min_value=1.0,
+            max_value=10.0,
+            distribution='log_uniform',
+        ),
+        'cascade_gain_min': _control_payload(
+            value=scalar_constants['cascade_gain_min'],
+            ui_label='Cascade Amplification Gate',
+            ui_type='slider',
+            min_value=1.0,
+            max_value=3.0,
+            distribution='log_uniform',
+        ),
+        'bottleneck_quantile': _control_payload(
+            value=scalar_constants['bottleneck_quantile'],
+            ui_label='Pressure Node Cutoff',
+            ui_type='slider',
+            min_value=0.5,
+            max_value=0.99,
+            distribution='beta',
+        ),
+    }
+
+    evolution_vector_matrix_controls = {
+        'WUXING_MATRIX': _control_payload(
+            value=vector_matrix_constants['WUXING_MATRIX'],
+            ui_label='Element Interaction Matrix',
+            ui_type='matrix',
+            min_value=-2.0,
+            max_value=2.0,
+            distribution='component_wise_truncated_normal',
+        ),
+        'DOMAIN_RESONANCE_MATRIX': _control_payload(
+            value=vector_matrix_constants['DOMAIN_RESONANCE_MATRIX'],
+            ui_label='Pillar Domain Resonance Matrix',
+            ui_type='matrix',
+            min_value=-1.5,
+            max_value=1.5,
+            distribution='component_wise_truncated_normal',
+        ),
+        'STAGE_AMPLITUDE_BY_STAGE': _control_payload(
+            value=vector_matrix_constants['STAGE_AMPLITUDE_BY_STAGE'],
+            ui_label='Life-Stage Vitality Profile',
+            ui_type='vector',
+            min_value=0.0,
+            max_value=1.5,
+            distribution='component_wise_beta',
+        ),
+        'PARTIAL_STATE_WEIGHT_BY_S': _control_payload(
+            value=vector_matrix_constants['PARTIAL_STATE_WEIGHT_BY_S'],
+            ui_label='Partial-State Weight Curve',
+            ui_type='vector',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='constrained_beta',
+        ),
+        'PROXIMITY_WEIGHT_BY_GAP': _control_payload(
+            value=vector_matrix_constants['PROXIMITY_WEIGHT_BY_GAP'],
+            ui_label='Pillar Distance Decay Curve',
+            ui_type='vector',
+            min_value=0.0,
+            max_value=1.5,
+            distribution='monotonic_constrained_beta',
+        ),
+        'CLUSTER_ALPHA': _control_payload(
+            value=vector_matrix_constants['CLUSTER_ALPHA'],
+            ui_label='Cluster Distance Weight Alpha',
+            ui_type='simplex',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='dirichlet',
+        ),
+        'CLUSTER_BETA': _control_payload(
+            value=vector_matrix_constants['CLUSTER_BETA'],
+            ui_label='Cluster Distance Weight Beta',
+            ui_type='simplex',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='dirichlet',
+        ),
+        'CLUSTER_GAMMA': _control_payload(
+            value=vector_matrix_constants['CLUSTER_GAMMA'],
+            ui_label='Cluster Distance Weight Gamma',
+            ui_type='simplex',
+            min_value=0.0,
+            max_value=1.0,
+            distribution='dirichlet',
+        ),
+    }
+
+    optional_input_conventions = {
+        'zi_convention': _control_payload(
+            value=conventions.zi_convention,
+            ui_label='Zi Convention',
+            ui_type='segmented',
+            options=['split_midnight', 'whole_zi_23'],
+        ),
+        'hour_basis': _control_payload(
+            value=conventions.hour_basis,
+            ui_label='Hour Basis',
+            ui_type='segmented',
+            options=['true_solar', 'civil'],
+        ),
+        'day_boundary_basis': _control_payload(
+            value=conventions.day_boundary_basis,
+            ui_label='Day Boundary Basis',
+            ui_type='segmented',
+            options=['true_solar', 'civil'],
+        ),
+        'birth_time_uncertainty_seconds': _control_payload(
+            value=0.0
+            if birth_time_uncertainty_seconds is None
+            else float(birth_time_uncertainty_seconds),
+            ui_label='Birth Time Uncertainty (Seconds)',
+            ui_type='slider',
+            min_value=0.0,
+            max_value=7200.0,
+            distribution='linear',
+        ),
+    }
+
+    return {
+        'main_view_controls': main_view_controls,
+        'evolution_reading_controls': {
+            'scalar_constants': evolution_scalar_controls,
+            'vector_matrix_constants': evolution_vector_matrix_controls,
+        },
+        'input_convention_controls': optional_input_conventions,
+    }
+
+
 def _build_evolution_explorer_graph_data(
     evolution_input: EvolutionInput,
     basin_index: int,
     flux_threshold: float,
+    particles: int,
+    temperature_steps: int,
+    sweeps_per_step: int,
+    seed: int,
+    dbscan_eps: float,
+    dbscan_min_samples: int,
+    scalar_constants: dict[str, float],
+    vector_matrix_constants: dict[str, Any],
 ) -> dict[str, Any]:
     # Keep API latency reasonable for interactive explorer navigation.
-    evolution_output = run_natal_mvp(
-        evolution_input=evolution_input,
-        inference_config=InferenceConfig(
-            particles=24,
-            temperature_steps=2,
-            sweeps_per_step=1,
-            seed=42,
-        ),
-        postprocess_config=PostprocessConfig(
-            discrete_relax_max_passes=1,
-            continuous_passes=1,
-            dbscan_eps=0.08,
-            dbscan_min_samples=1,
-        ),
-    )
+    with _temporary_evolution_control_overrides(
+        scalar_constants=scalar_constants,
+        vector_matrix_constants=vector_matrix_constants,
+    ):
+        evolution_output = run_natal_mvp(
+            evolution_input=evolution_input,
+            inference_config=InferenceConfig(
+                particles=particles,
+                temperature_steps=temperature_steps,
+                sweeps_per_step=sweeps_per_step,
+                seed=seed,
+            ),
+            postprocess_config=PostprocessConfig(
+                discrete_relax_max_passes=1,
+                continuous_passes=1,
+                dbscan_eps=dbscan_eps,
+                dbscan_min_samples=dbscan_min_samples,
+            ),
+        )
     evolution_payload = _ensure_evolution_basins(
         cast(dict[str, Any], json.loads(json.dumps(asdict(evolution_output))))
     )
@@ -901,14 +1957,16 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
     """Build explorer graph data from date/time and city/location input."""
     resolved_city: ResolvedCity | None = None
     try:
+        resolved_controls = _resolve_evolution_controls(payload)
+        resolved_seed = _resolve_evolution_seed(resolved_controls.seed_mode)
         location_payload = FourPillarsRequest(
             date=payload.date,
             time=payload.time,
             location=payload.location,
             city=payload.city,
             country=payload.country,
-            conventions=payload.conventions,
-            birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
+            conventions=resolved_controls.conventions,
+            birth_time_uncertainty_seconds=resolved_controls.birth_time_uncertainty_seconds,
             include_chart=False,
             include_hidden_stems=False,
             lang='fi',
@@ -918,8 +1976,8 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
             date_value=payload.date,
             time_value=payload.time,
             location=location,
-            conventions_input=payload.conventions,
-            birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
+            conventions_input=resolved_controls.conventions,
+            birth_time_uncertainty_seconds=resolved_controls.birth_time_uncertainty_seconds,
         )
         four_pillars = cast(dict[str, Any], four_pillars_result['four_pillars'])
         hidden_stems_payload = _build_hidden_stems_result(
@@ -938,7 +1996,15 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
             _build_evolution_explorer_graph_data,
             evolution_input,
             payload.basin_index,
-            payload.flux_threshold,
+            resolved_controls.flux_threshold,
+            resolved_controls.particles,
+            resolved_controls.temperature_steps,
+            resolved_controls.sweeps_per_step,
+            resolved_seed,
+            resolved_controls.dbscan_eps,
+            resolved_controls.dbscan_min_samples,
+            resolved_controls.scalar_constants,
+            resolved_controls.vector_matrix_constants,
         )
     except CityLookupServiceError as exc:
         raise HTTPException(
@@ -950,7 +2016,23 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    response: dict[str, Any] = {'graph_data': graph_data}
+    response: dict[str, Any] = {
+        'graph_data': graph_data,
+        'resolved_seed': resolved_seed,
+        'controls': _build_evolution_controls_payload(
+            flux_threshold=resolved_controls.flux_threshold,
+            particles=resolved_controls.particles,
+            temperature_steps=resolved_controls.temperature_steps,
+            sweeps_per_step=resolved_controls.sweeps_per_step,
+            dbscan_eps=resolved_controls.dbscan_eps,
+            dbscan_min_samples=resolved_controls.dbscan_min_samples,
+            seed_mode=resolved_controls.seed_mode,
+            conventions=resolved_controls.conventions,
+            birth_time_uncertainty_seconds=resolved_controls.birth_time_uncertainty_seconds,
+            scalar_constants=resolved_controls.scalar_constants,
+            vector_matrix_constants=resolved_controls.vector_matrix_constants,
+        ),
+    }
     if resolved_city is not None:
         response['resolved_location'] = {
             'city': resolved_city.city,
@@ -958,6 +2040,29 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
             'timezone': resolved_city.timezone,
         }
     return response
+
+
+@app.get('/api/evolution_controls')
+async def evolution_controls() -> dict[str, Any]:
+    """Expose evolution control metadata and default values for UI."""
+    default_conventions = ConventionInput()
+    default_scalar_constants = _default_evolution_scalar_constants()
+    default_vector_matrix_constants = _default_evolution_vector_matrix_constants()
+    return {
+        'controls': _build_evolution_controls_payload(
+            flux_threshold=0.0,
+            particles=EVOLUTION_DEFAULT_PARTICLES,
+            temperature_steps=EVOLUTION_DEFAULT_TEMPERATURE_STEPS,
+            sweeps_per_step=EVOLUTION_DEFAULT_SWEEPS_PER_STEP,
+            dbscan_eps=EVOLUTION_DEFAULT_DBSCAN_EPS,
+            dbscan_min_samples=EVOLUTION_DEFAULT_DBSCAN_MIN_SAMPLES,
+            seed_mode=EVOLUTION_DEFAULT_SEED_MODE,
+            conventions=default_conventions,
+            birth_time_uncertainty_seconds=None,
+            scalar_constants=default_scalar_constants,
+            vector_matrix_constants=default_vector_matrix_constants,
+        )
+    }
 
 
 @app.post('/api/location_search')
