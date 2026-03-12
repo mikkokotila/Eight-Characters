@@ -132,6 +132,10 @@
     minFlux: 0.0,
     maxFlux: 0.0,
     selectedNodeId: null,
+    panels: { basin: true, controls: false },
+    controlDefaults: null,
+    editedControls: {},
+    advancedRevealed: false,
   };
 
   let svg;
@@ -891,6 +895,573 @@
     bands.innerHTML = bandHtml;
   }
 
+
+  /* ─── Panel management ─── */
+
+  function updateLayoutGrid() {
+    const layout = document.getElementById('mainLayout');
+    layout.classList.remove('panels-basin', 'panels-controls', 'panels-both');
+    const b = state.panels.basin;
+    const c = state.panels.controls;
+    if (b && c) layout.classList.add('panels-both');
+    else if (b) layout.classList.add('panels-basin');
+    else if (c) layout.classList.add('panels-controls');
+  }
+
+  function togglePanel(panelKey) {
+    state.panels[panelKey] = !state.panels[panelKey];
+    const basinEl = document.getElementById('basinPanel');
+    const ctrlEl = document.getElementById('controlPane');
+    basinEl.classList.toggle('open', state.panels.basin);
+    ctrlEl.classList.toggle('open', state.panels.controls);
+    document.getElementById('toggleBasinPanel').classList.toggle('active', state.panels.basin);
+    document.getElementById('toggleControlPane').classList.toggle('active', state.panels.controls);
+    updateLayoutGrid();
+
+    if (state.panels.basin || state.panels.controls) {
+      requestAnimationFrame(() => {
+        canvasSize();
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
+        boundsForce?.setSize(width, height);
+        simulation.alpha(0.2).restart();
+      });
+    }
+  }
+
+
+  /* ─── API: fetch control defaults ─── */
+
+  async function fetchControlDefaults() {
+    try {
+      const res = await fetch('/api/evolution_controls');
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      state.controlDefaults = data.controls || data;
+      return state.controlDefaults;
+    } catch (err) {
+      console.error('Failed to fetch control defaults:', err);
+      return null;
+    }
+  }
+
+  function controlValue(groupPath, key) {
+    const edited = nestedGet(state.editedControls, groupPath, key);
+    if (edited !== undefined) return edited;
+    const def = nestedGet(state.controlDefaults, groupPath, key);
+    return def;
+  }
+
+  function nestedGet(obj, groupPath, key) {
+    if (!obj) return undefined;
+    const parts = groupPath.split('.');
+    let cursor = obj;
+    for (const part of parts) {
+      cursor = cursor?.[part];
+      if (!cursor) return undefined;
+    }
+    const entry = cursor[key];
+    if (!entry) return undefined;
+    return entry.value !== undefined ? entry.value : entry;
+  }
+
+  function setEditedControl(groupPath, key, value) {
+    const parts = groupPath.split('.');
+    let cursor = state.editedControls;
+    for (const part of parts) {
+      if (!cursor[part]) cursor[part] = {};
+      cursor = cursor[part];
+    }
+    if (!cursor[key]) cursor[key] = {};
+    cursor[key].value = value;
+  }
+
+  function buildControlsPayload() {
+    return Object.keys(state.editedControls).length > 0
+      ? state.editedControls
+      : undefined;
+  }
+
+
+  /* ─── Render recompute controls in topbar ─── */
+
+  function renderRecomputeControls() {
+    const container = document.getElementById('recomputeControls');
+    if (!state.controlDefaults) { container.innerHTML = ''; return; }
+
+    const mvc = state.controlDefaults.main_view_controls;
+    if (!mvc) { container.innerHTML = ''; return; }
+
+    const sliderKeys = ['particles', 'temperature_steps', 'sweeps_per_step', 'dbscan_eps', 'dbscan_min_samples'];
+    let html = '';
+
+    for (const key of sliderKeys) {
+      const ctrl = mvc[key];
+      if (!ctrl) continue;
+      const val = controlValue('main_view_controls', key) ?? ctrl.value;
+      const min = ctrl.min ?? 0;
+      const max = ctrl.max ?? 100;
+      const step = Number.isInteger(ctrl.value) ? 1 : 0.01;
+      html += `
+        <div class="recompute-slider">
+          <span class="rc-label">${ctrl.ui_label}</span>
+          <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+                 data-group="main_view_controls" data-key="${key}">
+          <span class="rc-value">${formatControlValue(val)}</span>
+        </div>`;
+    }
+
+    const seedCtrl = mvc.seed_mode;
+    if (seedCtrl) {
+      const seedVal = controlValue('main_view_controls', 'seed_mode') ?? seedCtrl.value;
+      const isFixed = String(seedVal).startsWith('fixed');
+      html += `
+        <div class="recompute-toggle">
+          <span class="rc-label">${seedCtrl.ui_label}</span>
+          <div class="seed-toggle${isFixed ? ' active' : ''}" id="seedModeToggle"
+               data-group="main_view_controls" data-key="seed_mode"
+               data-options='${JSON.stringify(seedCtrl.options || [])}'
+               title="${seedVal}"></div>
+        </div>`;
+    }
+
+    container.innerHTML = html;
+
+    container.querySelectorAll('input[type="range"]').forEach((slider) => {
+      slider.addEventListener('input', () => {
+        const group = slider.dataset.group;
+        const key = slider.dataset.key;
+        const val = Number(slider.value);
+        slider.nextElementSibling.textContent = formatControlValue(val);
+        setEditedControl(group, key, val);
+      });
+    });
+
+    const seedToggle = document.getElementById('seedModeToggle');
+    if (seedToggle) {
+      seedToggle.addEventListener('click', () => {
+        const opts = JSON.parse(seedToggle.dataset.options || '[]');
+        const isActive = seedToggle.classList.toggle('active');
+        const newVal = opts.length >= 2
+          ? (isActive ? opts.find((o) => String(o).startsWith('fixed')) || opts[1] : opts[0])
+          : (isActive ? 'fixed_42' : 'random');
+        seedToggle.title = newVal;
+        setEditedControl(seedToggle.dataset.group, seedToggle.dataset.key, newVal);
+      });
+    }
+  }
+
+
+  /* ─── Render control pane (scalars, conventions, advanced) ─── */
+
+  function renderControlPane() {
+    if (!state.controlDefaults) return;
+    renderScalarConstants();
+    renderConventionControls();
+    renderAdvancedSection();
+  }
+
+  function renderScalarConstants() {
+    const section = document.getElementById('scalarSection');
+    const scalars = state.controlDefaults?.evolution_reading_controls?.scalar_constants;
+    if (!scalars) { section.innerHTML = ''; return; }
+
+    const groups = {};
+    for (const [key, ctrl] of Object.entries(scalars)) {
+      const prefix = key.split('_')[0];
+      if (!groups[prefix]) groups[prefix] = [];
+      groups[prefix].push({ key, ctrl });
+    }
+
+    let html = '<h3>Scalar Constants</h3>';
+    for (const [prefix, items] of Object.entries(groups)) {
+      html += `<div class="scalar-group"><div class="scalar-group-label">${prefix}</div>`;
+      for (const { key, ctrl } of items) {
+        const val = controlValue('evolution_reading_controls.scalar_constants', key) ?? ctrl.value;
+        const min = ctrl.min ?? 0;
+        const max = ctrl.max ?? (val * 3 || 10);
+        const step = Number.isInteger(val) ? 1 : 0.01;
+        html += `
+          <div class="scalar-slider">
+            <span class="sc-label">${ctrl.ui_label}</span>
+            <span class="sc-value">${formatControlValue(val)}</span>
+            <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+                   data-group="evolution_reading_controls.scalar_constants" data-key="${key}">
+          </div>`;
+      }
+      html += '</div>';
+    }
+    section.innerHTML = html;
+
+    section.querySelectorAll('input[type="range"]').forEach((slider) => {
+      slider.addEventListener('input', () => {
+        const val = Number(slider.value);
+        slider.parentElement.querySelector('.sc-value').textContent = formatControlValue(val);
+        setEditedControl(slider.dataset.group, slider.dataset.key, val);
+      });
+    });
+  }
+
+  function renderConventionControls() {
+    const section = document.getElementById('conventionSection');
+    const conventions = state.controlDefaults?.input_convention_controls;
+    if (!conventions) { section.innerHTML = ''; return; }
+
+    let html = '<h3>Input Conventions</h3>';
+
+    for (const [key, ctrl] of Object.entries(conventions)) {
+      if (ctrl.ui_type === 'segmented' && ctrl.options) {
+        const currentVal = controlValue('input_convention_controls', key) ?? ctrl.value;
+        html += `
+          <div class="segmented-control">
+            <div class="seg-label">${ctrl.ui_label}</div>
+            <div class="segmented-pills" data-group="input_convention_controls" data-key="${key}">
+              ${ctrl.options.map((opt) =>
+                `<button${opt === currentVal ? ' class="active"' : ''} data-val="${opt}">${opt}</button>`
+              ).join('')}
+            </div>
+          </div>`;
+      } else if (ctrl.ui_type === 'slider') {
+        const val = controlValue('input_convention_controls', key) ?? ctrl.value;
+        const min = ctrl.min ?? 0;
+        const max = ctrl.max ?? 7200;
+        const step = Number.isInteger(val) ? 1 : 0.01;
+        html += `
+          <div class="scalar-slider">
+            <span class="sc-label">${ctrl.ui_label}</span>
+            <span class="sc-value">${formatControlValue(val)}</span>
+            <input type="range" min="${min}" max="${max}" step="${step}" value="${val}"
+                   data-group="input_convention_controls" data-key="${key}">
+          </div>`;
+      }
+    }
+    section.innerHTML = html;
+
+    section.querySelectorAll('.segmented-pills').forEach((pillGroup) => {
+      pillGroup.querySelectorAll('button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          pillGroup.querySelectorAll('button').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+          setEditedControl(pillGroup.dataset.group, pillGroup.dataset.key, btn.dataset.val);
+        });
+      });
+    });
+
+    section.querySelectorAll('input[type="range"]').forEach((slider) => {
+      slider.addEventListener('input', () => {
+        const val = Number(slider.value);
+        slider.parentElement.querySelector('.sc-value').textContent = formatControlValue(val);
+        setEditedControl(slider.dataset.group, slider.dataset.key, val);
+      });
+    });
+  }
+
+  function renderAdvancedSection() {
+    const content = document.getElementById('advancedContent');
+    const vmc = state.controlDefaults?.evolution_reading_controls?.vector_matrix_constants;
+    if (!vmc) { content.innerHTML = ''; return; }
+
+    let html = '<div class="advanced-inner">';
+
+    const matrixKeys = ['WUXING_MATRIX', 'DOMAIN_RESONANCE_MATRIX'];
+    for (const key of matrixKeys) {
+      const ctrl = vmc[key];
+      if (!ctrl || !Array.isArray(ctrl.value)) continue;
+      html += renderMatrixEditor(key, ctrl);
+    }
+
+    const vectorKeys = ['STAGE_AMPLITUDE_BY_STAGE', 'PARTIAL_STATE_WEIGHT_BY_S', 'PROXIMITY_WEIGHT_BY_GAP'];
+    for (const key of vectorKeys) {
+      const ctrl = vmc[key];
+      if (!ctrl || !Array.isArray(ctrl.value)) continue;
+      html += renderVectorEditor(key, ctrl);
+    }
+
+    const simplexKeys = ['CLUSTER_ALPHA', 'CLUSTER_BETA', 'CLUSTER_GAMMA'];
+    const simplexCtrls = simplexKeys.map((k) => ({ key: k, ctrl: vmc[k] })).filter((x) => x.ctrl);
+    if (simplexCtrls.length === 3) {
+      html += renderSimplexEditor(simplexCtrls);
+    }
+
+    html += '</div>';
+    content.innerHTML = html;
+    wireAdvancedInteractions();
+  }
+
+  function renderMatrixEditor(key, ctrl) {
+    const matrix = ctrl.value;
+    const rows = matrix.length;
+    const cols = matrix[0]?.length || matrix.length;
+    const isSquare5 = rows === 5 && cols === 5;
+    const elementLabels = isSquare5 ? ['W', 'F', 'E', 'M', 'Wa'] : null;
+    const domainLabels = rows === 4 ? ['Y', 'M', 'D', 'H'] : null;
+    const colLabels = cols === 5 ? ['W', 'F', 'E', 'M', 'Wa'] : null;
+
+    let html = `<div class="matrix-section">
+      <div class="matrix-title">${ctrl.ui_label}</div>
+      <div class="matrix-grid" style="grid-template-columns: ${domainLabels || elementLabels ? '28px ' : ''}repeat(${cols}, 36px)"
+           data-key="${key}" data-rows="${rows}" data-cols="${cols}">`;
+
+    if (colLabels || elementLabels) {
+      if (domainLabels || elementLabels) html += '<div></div>';
+      const labels = colLabels || elementLabels;
+      for (let c = 0; c < cols; c++) {
+        html += `<div class="matrix-header-cell">${labels[c] || c}</div>`;
+      }
+    }
+
+    for (let r = 0; r < rows; r++) {
+      const rowLabel = domainLabels ? domainLabels[r] : elementLabels ? elementLabels[r] : null;
+      if (rowLabel !== null) {
+        html += `<div class="matrix-row-header">${rowLabel}</div>`;
+      }
+      for (let c = 0; c < cols; c++) {
+        const val = matrix[r][c];
+        const bg = matrixCellColor(val);
+        const fg = Math.abs(val) > 0.7 ? 'rgba(255,255,255,0.85)' : 'var(--text)';
+        html += `<div class="matrix-cell" style="background:${bg};color:${fg}" data-r="${r}" data-c="${c}">
+          <input type="text" value="${val}" data-r="${r}" data-c="${c}">
+        </div>`;
+      }
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function matrixCellColor(val) {
+    const v = Number(val);
+    if (v < -0.5) return 'rgba(122, 143, 160, 0.55)';
+    if (v < -0.1) return 'rgba(122, 143, 160, 0.28)';
+    if (v < 0.1) return 'rgba(245, 240, 232, 0.6)';
+    if (v < 0.5) return 'rgba(196, 133, 122, 0.22)';
+    return 'rgba(196, 133, 122, 0.48)';
+  }
+
+  function renderVectorEditor(key, ctrl) {
+    const vec = ctrl.value;
+    const maxVal = Math.max(...vec.map(Math.abs), 0.001);
+    const colors = ['var(--wood)', 'var(--fire)', 'var(--earth)', 'var(--metal)', 'var(--water)'];
+
+    let html = `<div class="vector-section">
+      <div class="vector-title">${ctrl.ui_label}</div>
+      <div class="vector-bars" data-key="${key}">`;
+
+    for (let i = 0; i < vec.length; i++) {
+      const val = vec[i];
+      const pct = Math.max(0, (Math.abs(val) / maxVal) * 100);
+      const color = colors[i % colors.length];
+      html += `
+        <div class="vector-bar-row" data-index="${i}">
+          <span class="vb-index">${i}</span>
+          <div class="vb-track">
+            <div class="vb-fill" style="width:${pct}%;background:${color};opacity:0.55"></div>
+          </div>
+          <input class="vb-value" type="text" value="${formatControlValue(val)}" data-index="${i}" style="
+            font-family:'Manrope',sans-serif;font-size:10px;font-weight:300;color:var(--text-muted);
+            font-variant-numeric:tabular-nums;text-align:right;border:none;background:none;
+            outline:none;width:36px;padding:0;">
+        </div>`;
+    }
+    html += '</div></div>';
+    return html;
+  }
+
+  function renderSimplexEditor(simplexCtrls) {
+    const vals = simplexCtrls.map((x) => Number(controlValue('evolution_reading_controls.vector_matrix_constants', x.key) ?? x.ctrl.value));
+    const colors = ['var(--group-self)', 'var(--group-output)', 'var(--group-wealth)'];
+
+    let html = `<div class="simplex-section">
+      <div class="simplex-title">Cluster Weights (sum = 1.0)</div>
+      <div class="simplex-controls">`;
+
+    for (let i = 0; i < simplexCtrls.length; i++) {
+      const { key, ctrl } = simplexCtrls[i];
+      html += `
+        <div class="simplex-row" data-key="${key}" data-index="${i}">
+          <span class="sx-label">${ctrl.ui_label}</span>
+          <input type="range" min="0" max="1" step="0.01" value="${vals[i]}"
+                 data-group="evolution_reading_controls.vector_matrix_constants" data-key="${key}">
+          <span class="sx-value">${vals[i].toFixed(2)}</span>
+        </div>`;
+    }
+
+    const pcts = vals.map((v) => (v * 100).toFixed(1));
+    html += `</div>
+      <div class="simplex-balance">
+        <span style="width:${pcts[0]}%;background:${colors[0]};opacity:0.45"></span>
+        <span style="width:${pcts[1]}%;background:${colors[1]};opacity:0.45"></span>
+        <span style="width:${pcts[2]}%;background:${colors[2]};opacity:0.45"></span>
+      </div>
+    </div>`;
+    return html;
+  }
+
+  function wireAdvancedInteractions() {
+    const content = document.getElementById('advancedContent');
+
+    content.querySelectorAll('.matrix-grid').forEach((grid) => {
+      const key = grid.dataset.key;
+      grid.querySelectorAll('input').forEach((input) => {
+        input.addEventListener('change', () => {
+          const r = Number(input.dataset.r);
+          const c = Number(input.dataset.c);
+          const val = Number(input.value);
+          if (!Number.isFinite(val)) return;
+          const current = getMatrixValue(key);
+          if (current) {
+            current[r][c] = val;
+            setEditedControl('evolution_reading_controls.vector_matrix_constants', key, current);
+            input.parentElement.style.background = matrixCellColor(val);
+            const fg = Math.abs(val) > 0.7 ? 'rgba(255,255,255,0.85)' : 'var(--text)';
+            input.parentElement.style.color = fg;
+          }
+        });
+      });
+    });
+
+    content.querySelectorAll('.vector-bars').forEach((container) => {
+      const key = container.dataset.key;
+      container.querySelectorAll('input.vb-value').forEach((input) => {
+        input.addEventListener('change', () => {
+          const idx = Number(input.dataset.index);
+          const val = Number(input.value);
+          if (!Number.isFinite(val)) return;
+          const current = getVectorValue(key);
+          if (current) {
+            current[idx] = val;
+            setEditedControl('evolution_reading_controls.vector_matrix_constants', key, current);
+            const bar = input.parentElement.querySelector('.vb-fill');
+            const maxVal = Math.max(...current.map(Math.abs), 0.001);
+            bar.style.width = `${(Math.abs(val) / maxVal) * 100}%`;
+          }
+        });
+      });
+    });
+
+    const simplexSliders = content.querySelectorAll('.simplex-row input[type="range"]');
+    simplexSliders.forEach((slider) => {
+      slider.addEventListener('input', () => {
+        handleSimplexChange(slider, simplexSliders);
+      });
+    });
+  }
+
+  function handleSimplexChange(changedSlider, allSliders) {
+    const sliders = Array.from(allSliders);
+    const changedIdx = sliders.indexOf(changedSlider);
+    const newVal = Number(changedSlider.value);
+    const remaining = 1.0 - newVal;
+
+    const others = sliders.filter((_, i) => i !== changedIdx);
+    const otherSum = others.reduce((s, sl) => s + Number(sl.value), 0);
+
+    others.forEach((sl) => {
+      const oldVal = Number(sl.value);
+      const proportion = otherSum > 0.001 ? oldVal / otherSum : 1.0 / others.length;
+      const redistributed = Math.max(0, Math.min(1, remaining * proportion));
+      sl.value = redistributed;
+      sl.parentElement.querySelector('.sx-value').textContent = redistributed.toFixed(2);
+      setEditedControl(sl.dataset.group, sl.dataset.key, redistributed);
+    });
+
+    changedSlider.parentElement.querySelector('.sx-value').textContent = newVal.toFixed(2);
+    setEditedControl(changedSlider.dataset.group, changedSlider.dataset.key, newVal);
+
+    const balanceBar = changedSlider.closest('.simplex-section')?.querySelector('.simplex-balance');
+    if (balanceBar) {
+      const spans = balanceBar.querySelectorAll('span');
+      sliders.forEach((sl, i) => {
+        if (spans[i]) spans[i].style.width = `${Number(sl.value) * 100}%`;
+      });
+    }
+  }
+
+  function getMatrixValue(key) {
+    const edited = state.editedControls?.evolution_reading_controls?.vector_matrix_constants?.[key]?.value;
+    if (edited) return edited.map((row) => [...row]);
+    const def = state.controlDefaults?.evolution_reading_controls?.vector_matrix_constants?.[key]?.value;
+    if (def) return def.map((row) => [...row]);
+    return null;
+  }
+
+  function getVectorValue(key) {
+    const edited = state.editedControls?.evolution_reading_controls?.vector_matrix_constants?.[key]?.value;
+    if (edited) return [...edited];
+    const def = state.controlDefaults?.evolution_reading_controls?.vector_matrix_constants?.[key]?.value;
+    if (def) return [...def];
+    return null;
+  }
+
+  function formatControlValue(val) {
+    const n = Number(val);
+    if (!Number.isFinite(n)) return String(val);
+    if (Number.isInteger(n)) return String(n);
+    if (Math.abs(n) >= 100) return n.toFixed(0);
+    if (Math.abs(n) >= 1) return n.toFixed(2);
+    return n.toFixed(3);
+  }
+
+
+  /* ─── Recompute flow ─── */
+
+  async function recomputeWithControls() {
+    const queryPayload = queryInputPayload();
+    if (!queryPayload) {
+      console.warn('No birth data in URL, cannot recompute.');
+      return;
+    }
+
+    const refreshBtn = document.getElementById('refreshButton');
+    refreshBtn.classList.add('recomputing');
+
+    const body = {
+      ...queryPayload,
+      basin_index: state.activeBasinIndex,
+      controls: buildControlsPayload(),
+    };
+
+    try {
+      const res = await fetch('/api/evolution_explorer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.detail || 'Recompute failed');
+      if (!payload?.graph_data) throw new Error('No graph_data in response');
+
+      if (payload.controls) {
+        state.controlDefaults = payload.controls;
+      }
+
+      state.editedControls = {};
+      parseData(payload.graph_data);
+      renderRecomputeControls();
+      renderControlPane();
+      applyViewVisibility();
+      renderLegend();
+      renderBasinTabs();
+      writeMetaLine();
+      renderBasinMetadata();
+      renderPillarStrip();
+      updateFluxControls();
+      rebuildGraph(true);
+    } catch (err) {
+      console.error('Recompute failed:', err);
+      document.getElementById('statusBar').textContent = `Recompute failed: ${err.message}`;
+    } finally {
+      refreshBtn.classList.remove('recomputing');
+    }
+  }
+
+  function resetControlsToDefaults() {
+    state.editedControls = {};
+    fetchControlDefaults().then(() => {
+      renderRecomputeControls();
+      renderControlPane();
+    });
+  }
+
+
   function setupControls() {
     const searchInput = document.getElementById('searchInput');
     const fluxSlider = document.getElementById('fluxThreshold');
@@ -991,6 +1562,24 @@
       applyFilters();
       fitToView();
     });
+
+    document.getElementById('toggleBasinPanel').addEventListener('click', () => togglePanel('basin'));
+    document.getElementById('toggleControlPane').addEventListener('click', () => togglePanel('controls'));
+    document.getElementById('refreshButton').addEventListener('click', () => {
+      void recomputeWithControls();
+    });
+
+    document.getElementById('advancedTrigger').addEventListener('click', () => {
+      state.advancedRevealed = !state.advancedRevealed;
+      document.getElementById('advancedContent').classList.toggle('revealed', state.advancedRevealed);
+    });
+
+    document.getElementById('resetControlsBtn').addEventListener('click', () => {
+      resetControlsToDefaults();
+    });
+
+    document.getElementById('basinPanel').classList.add('open');
+    updateLayoutGrid();
   }
 
   function renderLegend() {
@@ -2083,6 +2672,11 @@
     renderPillarStrip();
     updateFluxControls();
     rebuildGraph(true);
+
+    fetchControlDefaults().then(() => {
+      renderRecomputeControls();
+      renderControlPane();
+    });
 
     let resizeTimer;
     window.addEventListener('resize', () => {

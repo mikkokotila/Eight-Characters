@@ -180,6 +180,58 @@ Success response:
 }
 ```
 
+### `POST /api/evolution_explorer`
+
+Builds evolution explorer graph data from birth input and returns control metadata.
+
+Request (example):
+
+```json
+{
+  "date": "1988-02-04",
+  "time": "16:30",
+  "city": "Helsinki",
+  "country": "Finland",
+  "particles": 24,
+  "temperature_steps": 2,
+  "sweeps_per_step": 1,
+  "dbscan_eps": 0.08,
+  "dbscan_min_samples": 1,
+  "seed_mode": "fixed_42",
+  "basin_index": 0,
+  "flux_threshold": 0.0,
+  "controls": {
+    "main_view_controls": {
+      "particles": { "value": 64 }
+    },
+    "evolution_reading_controls": {
+      "scalar_constants": {
+        "LAMBDA_MODE": { "value": 6.5 }
+      }
+    }
+  }
+}
+```
+
+Success response includes:
+
+- `graph_data`
+- `controls` (includes `ui_label` for each control)
+- `resolved_seed`
+- `resolved_location` (when city resolution mode is used)
+
+### `GET /api/evolution_controls`
+
+Returns evolution controls and defaults without running chart computation.
+
+Success response includes:
+
+- `controls.main_view_controls`
+- `controls.evolution_reading_controls`
+- `controls.input_convention_controls`
+
+All controls returned by this endpoint are tunable through `POST /api/evolution_explorer`.
+
 ## Error Contract
 
 All non-2xx API responses use this shape:

@@ -69,6 +69,40 @@
   - `400` with `detail` when a city cannot be resolved
   - `500` for unexpected failures
 
+### `POST /api/evolution_explorer`
+
+- **Purpose**: compute evolution graph payload from birth input and return explorer-ready data.
+- **Primary callers**: evolution explorer frontend.
+- **Input**:
+  - same birth input contract as `/api/four_pillars` (`date`, `time`, plus either `location` or `city`+`country`)
+  - runtime knobs (safe defaults): `particles`, `temperature_steps`, `sweeps_per_step`, `dbscan_eps`, `dbscan_min_samples`, `seed_mode`
+  - view knobs: `basin_index`, `flux_threshold`
+  - optional `controls` object with per-knob overrides (same shape as response `controls`)
+- **Internal calls**:
+  - `_resolve_four_pillars_location`
+  - `_build_four_pillars_result`
+  - `_build_hidden_stems_result`
+  - `_build_evolution_input_from_four_pillars`
+  - `run_natal_mvp` (threadpool)
+  - `build_multi_basin_graph_data`
+- **Response**:
+  - `graph_data` (explorer graph payload)
+  - `controls` (control metadata + effective values, each entry includes `ui_label`)
+  - `resolved_seed` (actual seed used for this run)
+  - `resolved_location` (when city resolution mode is used)
+
+### `GET /api/evolution_controls`
+
+- **Purpose**: expose control metadata and defaults for evolution UI without computing a chart.
+- **Primary callers**: frontend boot/settings panel.
+- **Response**:
+  - `controls.main_view_controls`
+  - `controls.evolution_reading_controls`
+  - `controls.input_convention_controls`
+- **Contract note**:
+  - every control object includes `ui_label` plus `value`, and optionally `min`, `max`, `distribution`, `options`.
+  - scalar and vector/matrix evolution controls are editable via `POST /api/evolution_explorer` using the `controls` object.
+
 ## Mapping Data
 
 - Canonical mapping assets live in `eight_characters/resources/mappings/`.
@@ -89,6 +123,13 @@ Current UI submit flow:
    - `include_hidden_stems=true`
 2. Render chart from `response.chart`.
 3. Render hidden stems from `response.hidden_stems`.
+
+Evolution explorer flow:
+
+1. Optional preload: `GET /api/evolution_controls`.
+2. Compute graph: `POST /api/evolution_explorer`.
+3. Render graph from `response.graph_data`.
+4. Render control values/labels from `response.controls`.
 
 Location typing flow remains:
 
