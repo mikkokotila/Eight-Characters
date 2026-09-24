@@ -412,6 +412,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const pillarsContainer = document.getElementById('pillars');
   const LONG_PRESS_MS = 1000;
   const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+  // A press lasts until its pointer is released; its timer is null once the card flipped.
   let activePress = null;
   let suppressNextClick = false;
 
@@ -452,23 +453,27 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!e.isPrimary || e.button !== 0) return;
     const card = e.target.closest('.card');
     if (!card) return;
-    activePress = {
+    const press = {
       pointerId: e.pointerId,
+      pointerType: e.pointerType,
       startX: e.clientX,
       startY: e.clientY,
-      timer: setTimeout(() => {
-        activePress = null;
-        // The release that ends this press must not also toggle hidden stems.
-        suppressNextClick = true;
-        flipCard(card);
-      }, LONG_PRESS_MS),
+      timer: null,
     };
+    press.timer = setTimeout(() => {
+      press.timer = null;
+      // The release that ends this press must not also toggle hidden stems.
+      suppressNextClick = true;
+      flipCard(card);
+    }, LONG_PRESS_MS);
+    activePress = press;
   });
 
   document.addEventListener('pointermove', (e) => {
-    if (!activePress || e.pointerId !== activePress.pointerId) return;
+    if (!activePress || !activePress.timer || e.pointerId !== activePress.pointerId) return;
     const moved = Math.hypot(e.clientX - activePress.startX, e.clientY - activePress.startY);
-    if (moved > LONG_PRESS_MOVE_TOLERANCE_PX) {
+    // A drag, or another button pressed during the hold, is not a long press.
+    if (moved > LONG_PRESS_MOVE_TOLERANCE_PX || e.button !== -1) {
       cancelPress();
     }
   });
@@ -483,11 +488,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('blur', cancelPress);
 
-  // Touch browsers open a context menu on long press; the hold belongs to the card.
   pillarsContainer.addEventListener('contextmenu', (e) => {
-    if (activePress) {
-      e.preventDefault();
+    if (!activePress) return;
+    // A mouse context menu (right click, ctrl+click) is its own gesture: let it open.
+    if (activePress.pointerType === 'mouse') {
+      cancelPress();
+      return;
     }
+    // Touch and pen open a context menu on long press; this hold belongs to the card.
+    e.preventDefault();
   });
 
   pillarsContainer.addEventListener('click', (e) => {
