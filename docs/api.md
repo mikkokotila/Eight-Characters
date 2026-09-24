@@ -44,6 +44,7 @@ Optional request fields:
 - `birth_time_uncertainty_seconds`
 - `include_chart` (`false` by default)
 - `include_hidden_stems` (`false` by default)
+- `include_ten_gods` (`false` by default)
 - `lang` (`fi` by default, used when `include_chart=true`)
 
 Response always includes:
@@ -58,6 +59,40 @@ Response conditionally includes:
 - `resolved_location` (when city resolution mode is used)
 - `chart` (when `include_chart=true`)
 - `hidden_stems` (when `include_hidden_stems=true`)
+- `ten_gods` (when `include_ten_gods=true`)
+
+`ten_gods` gives, for each pillar, the ten god of its stem and of every
+hidden stem of its branch, relative to the Day Master (the day stem). Hidden
+stems keep the order and `qi_type` of the `hidden_stems` payload. Values are
+`friend`, `rob_wealth`, `eating_god`, `hurting_officer`, `indirect_wealth`,
+`direct_wealth`, `seven_killings`, `direct_officer`, `indirect_resource` and
+`direct_resource`; the day stem itself is `day_master`. Example for the
+`1988-02-04 16:30:00` Chengdu chart (month and day pillars omitted):
+
+```json
+{
+  "ten_gods": {
+    "year": {
+      "pillar": "丁卯",
+      "stem": { "char": "丁", "element": "fire", "polarity": "Yin", "ten_god": "indirect_resource" },
+      "branch": "卯",
+      "hidden_stems": [
+        { "char": "乙", "element": "wood", "polarity": "Yin", "qi_type": "main", "ten_god": "seven_killings" }
+      ]
+    },
+    "hour": {
+      "pillar": "壬申",
+      "stem": { "char": "壬", "element": "water", "polarity": "Yang", "ten_god": "direct_wealth" },
+      "branch": "申",
+      "hidden_stems": [
+        { "char": "庚", "element": "metal", "polarity": "Yang", "qi_type": "main", "ten_god": "hurting_officer" },
+        { "char": "壬", "element": "water", "polarity": "Yang", "qi_type": "middle", "ten_god": "direct_wealth" },
+        { "char": "戊", "element": "earth", "polarity": "Yang", "qi_type": "residual", "ten_god": "rob_wealth" }
+      ]
+    }
+  }
+}
+```
 
 ### `POST /api/chart`
 
@@ -207,6 +242,7 @@ curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
     "country": "China",
     "include_chart": true,
     "include_hidden_stems": true,
+    "include_ten_gods": true,
     "lang": "en"
   }'
 ```

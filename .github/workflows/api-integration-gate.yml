@@ -32,4 +32,5 @@ jobs:
             tests.test_api_hidden_stems_endpoint \
             tests.test_api_index_route \
             tests.test_api_location_search_endpoint \
+            tests.test_api_ten_gods \
             tests.test_api_evolution_explorer_endpoint

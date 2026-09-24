@@ -18,11 +18,14 @@
 - **Optional enrichments**:
   - `include_chart=true` adds chart payload from `build_chart`
   - `include_hidden_stems=true` adds hidden stems payload from `_build_hidden_stems_result`
+  - `include_ten_gods=true` adds ten gods payload from `_build_ten_gods_result`
+    (stem and hidden stem ten gods relative to the Day Master)
 - **Internal calls**:
   - `_resolve_four_pillars_location`
   - `_build_four_pillars_result`
   - (optional) `build_chart`
   - (optional) `_build_hidden_stems_result`
+  - (optional) `_build_ten_gods_result`
 - **Error behavior**:
   - `400` for user/input/time-validation errors
   - `500` for unexpected internal errors
@@ -78,6 +81,11 @@
   - `stem-map.csv`
   - `branch-mapping.csv`
 - Runtime hidden stems lookup in `eight_characters/main.py` reads from this directory first.
+- Runtime ten gods lookup in `eight_characters/main.py` reads `ten-gods.csv`
+  through `parse_ten_gods_mapping` (`eight_characters/ten_gods.py`), which
+  rejects any malformed, incomplete or contradictory table instead of skipping
+  it. `tests/test_api_ten_gods.py` cross-verifies the table against
+  `evolution.primitives.ten_god_index` and the `lunar-python` reference.
 
 ## Frontend Flow
 
