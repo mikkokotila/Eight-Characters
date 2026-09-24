@@ -95,8 +95,17 @@ Current UI submit flow:
    - `city`, `country`, `date`, `time`
    - `include_chart=true`
    - `include_hidden_stems=true`
+   - `include_ten_gods=true`
 2. Render chart from `response.chart`.
-3. Render hidden stems from `response.hidden_stems`.
+3. Render ten gods on the card backs from `response.ten_gods`.
+4. Render hidden stems from `response.hidden_stems`.
+
+Chart card interactions:
+
+- Quick click on a branch card toggles its hidden stems panel.
+- Holding any card for at least one second flips it to its ten god; branch
+  cards list the ten god of every hidden stem, with their qi type. Holding
+  again flips it back.
 
 Location typing flow remains:
 

@@ -261,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
       country: resolvedLocation.country,
       include_chart: true,
       include_hidden_stems: true,
+      include_ten_gods: true,
       lang: currentLanguage,
     };
 
@@ -291,12 +292,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!chartData) {
         throw new Error(t('chart_error'));
       }
+      const tenGodsData = pillarsData.ten_gods;
+      if (!tenGodsData) {
+        throw new Error(t('ten_gods_error'));
+      }
 
       if (pillarsData.resolved_location) {
         chartData.header = `${chartData.header} · ${pillarsData.resolved_location.city}`;
       }
 
       renderChart(chartData);
+      populateTenGods(tenGodsData);
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
       if (pillarsData.hidden_stems) {
@@ -341,6 +347,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // ── Ten gods: populate card backs ──
+
+  const requiredTranslation = (key) => {
+    if (!Object.prototype.hasOwnProperty.call(i18n.dictionaries[currentLanguage], key)) {
+      throw new Error(`Missing ${currentLanguage} translation: ${key}`);
+    }
+    return t(key);
+  };
+
+  const populateTenGods = (data) => {
+    document.querySelectorAll('#pillars .card').forEach((card) => {
+      const pillarName = card.dataset.pillar;
+      const pillarData = data[pillarName];
+      if (!pillarData) {
+        throw new Error(`Ten gods missing for the ${pillarName} pillar.`);
+      }
+      const back = card.querySelector('.card-back');
+
+      if (card.classList.contains('stem')) {
+        if (pillarData.stem.char !== card.dataset.char) {
+          throw new Error(`Ten gods do not match the ${pillarName} stem.`);
+        }
+        back.querySelector('.ten-god-name').textContent = requiredTranslation(
+          'ten_god_' + pillarData.stem.ten_god
+        );
+        return;
+      }
+
+      if (pillarData.branch !== card.dataset.char) {
+        throw new Error(`Ten gods do not match the ${pillarName} branch.`);
+      }
+      back.querySelector('.ten-god-list').innerHTML = pillarData.hidden_stems
+        .map((hs) => {
+          const tenGodName = requiredTranslation('ten_god_' + hs.ten_god);
+          const qiLabel = requiredTranslation('qi_' + hs.qi_type);
+          return `
+            <div class='hidden-stem-item'>
+              <span class='hidden-stem-dot ${esc(hs.element)}'></span>
+              <span class='hidden-stem-label'>${esc(tenGodName)}</span>
+              <span class='hidden-stem-type'>${esc(qiLabel)}</span>
+            </div>`;
+        })
+        .join('');
+    });
+  };
+
   const expandPanel = (panel, branchCard) => {
     branchCard.classList.add('is-expanded');
     panel.classList.add('is-expanded');
@@ -355,7 +407,95 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.style.height = '0';
   };
 
-  document.getElementById('pillars').addEventListener('click', (e) => {
+  // ── Cards: long press flips to ten gods, quick click toggles hidden stems ──
+
+  const pillarsContainer = document.getElementById('pillars');
+  const LONG_PRESS_MS = 1000;
+  const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+  let activePress = null;
+  let suppressNextClick = false;
+
+  const cancelPress = () => {
+    if (!activePress) return;
+    clearTimeout(activePress.timer);
+    activePress = null;
+  };
+
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // The facing side sizes the card, so a taller back grows the card as it turns.
+  const flipCard = (card) => {
+    const inner = card.querySelector('.card-inner');
+    inner.getAnimations().forEach((animation) => animation.cancel());
+    card.classList.remove('is-turning');
+    const fromHeight = inner.getBoundingClientRect().height;
+    const flipped = card.classList.toggle('is-flipped');
+    if (reducedMotion.matches) return;
+    const toHeight = inner.getBoundingClientRect().height;
+    card.classList.add('is-turning');
+    const turn = inner.animate(
+      [
+        { height: `${fromHeight}px`, transform: `rotateY(${flipped ? 0 : 180}deg)` },
+        { height: `${toHeight}px`, transform: `rotateY(${flipped ? 180 : 360}deg)` },
+      ],
+      { duration: 600, easing: 'cubic-bezier(0.4, 0, 0.2, 1)', fill: 'forwards' }
+    );
+    turn.onfinish = () => {
+      card.classList.remove('is-turning');
+      turn.cancel();
+    };
+  };
+
+  pillarsContainer.addEventListener('pointerdown', (e) => {
+    cancelPress();
+    suppressNextClick = false;
+    if (!e.isPrimary || e.button !== 0) return;
+    const card = e.target.closest('.card');
+    if (!card) return;
+    activePress = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      timer: setTimeout(() => {
+        activePress = null;
+        // The release that ends this press must not also toggle hidden stems.
+        suppressNextClick = true;
+        flipCard(card);
+      }, LONG_PRESS_MS),
+    };
+  });
+
+  document.addEventListener('pointermove', (e) => {
+    if (!activePress || e.pointerId !== activePress.pointerId) return;
+    const moved = Math.hypot(e.clientX - activePress.startX, e.clientY - activePress.startY);
+    if (moved > LONG_PRESS_MOVE_TOLERANCE_PX) {
+      cancelPress();
+    }
+  });
+
+  ['pointerup', 'pointercancel'].forEach((type) => {
+    document.addEventListener(type, (e) => {
+      if (activePress && e.pointerId === activePress.pointerId) {
+        cancelPress();
+      }
+    });
+  });
+
+  window.addEventListener('blur', cancelPress);
+
+  // Touch browsers open a context menu on long press; the hold belongs to the card.
+  pillarsContainer.addEventListener('contextmenu', (e) => {
+    if (activePress) {
+      e.preventDefault();
+    }
+  });
+
+  pillarsContainer.addEventListener('click', (e) => {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
+
     const branchCard = e.target.closest('.card.branch');
     if (!branchCard) return;
 
@@ -404,6 +544,7 @@ function renderChart(data) {
   container.innerHTML = '';
 
   const pillarKeys = ['hour', 'day', 'month', 'year'];
+  const expandHint = `<svg class='branch-expand-hint' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>`;
 
   data.pillars.forEach((p, i) => {
     const pillar = document.createElement('div');
@@ -416,15 +557,30 @@ function renderChart(data) {
         <div class='pillar-value'>${esc(p.value)}</div>
       </div>
       <div class='pillar-cards'>
-        <div class='card ${p.stem.element} stem'>
-          <div class='gua'>${renderLines(p.stem.lines)}</div>
-          <div class='element-name'>${esc(p.stem.label)}</div>
+        <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'>
+          <div class='card-inner'>
+            <div class='card-face card-front'>
+              <div class='gua'>${renderLines(p.stem.lines)}</div>
+              <div class='element-name'>${esc(p.stem.label)}</div>
+            </div>
+            <div class='card-face card-back'>
+              <div class='ten-god-name'></div>
+            </div>
+          </div>
         </div>
-        <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}'>
-          <div class='gua'>${renderLines(p.branch.lines)}</div>
-          <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
-          <div class='animal-element'>${esc(p.branch.element_label)}</div>
-          <svg class='branch-expand-hint' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>
+        <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}' data-char='${esc(p.branch.char)}'>
+          <div class='card-inner'>
+            <div class='card-face card-front'>
+              <div class='gua'>${renderLines(p.branch.lines)}</div>
+              <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
+              <div class='animal-element'>${esc(p.branch.element_label)}</div>
+              ${expandHint}
+            </div>
+            <div class='card-face card-back'>
+              <div class='ten-god-list'></div>
+              ${expandHint}
+            </div>
+          </div>
         </div>
         <div class='hidden-stems-panel ${p.branch.element}' data-pillar='${pillarKeys[i]}'>
           <div class='hidden-stems-list'></div>

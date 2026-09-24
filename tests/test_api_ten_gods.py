@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from lunar_python import Solar
 from lunar_python.util import LunarUtil
 
+import eight_characters
 from eight_characters.data import STEMS
 from eight_characters.evolution.primitives import TEN_GOD_LABELS, ten_god_index
 from eight_characters.main import (
@@ -122,6 +123,19 @@ class TestTenGodsMapping(unittest.TestCase):
                         [entry['char'] for entry in pillar_payload['hidden_stems']],
                         LunarUtil.ZHI_HIDE_GAN[branch_char],
                     )
+
+
+class TestTenGodsTranslations(unittest.TestCase):
+    def test_every_ten_god_has_finnish_and_english_labels(self) -> None:
+        localization_path = (
+            Path(eight_characters.__file__).parent / 'static' / 'localization.js'
+        )
+        source = localization_path.read_text(encoding='utf-8')
+        fi_block, en_block = source.split('\n    en: {\n', 1)
+        for name in (*TEN_GOD_NAMES, DAY_MASTER):
+            for lang, block in (('fi', fi_block), ('en', en_block)):
+                with self.subTest(lang=lang, ten_god=name):
+                    self.assertRegex(block, rf"\n\s+ten_god_{name}: '[^']+',\n")
 
 
 class TestTenGodsMappingValidation(unittest.TestCase):
