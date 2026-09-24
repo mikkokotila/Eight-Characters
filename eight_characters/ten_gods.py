@@ -4,6 +4,14 @@ from pathlib import Path
 from typing import Literal
 
 from eight_characters.data import STEMS
+from eight_characters.evolution.primitives import (
+    ELEMENT_EARTH,
+    ELEMENT_FIRE,
+    ELEMENT_METAL,
+    ELEMENT_WATER,
+    ELEMENT_WOOD,
+    ten_god_index,
+)
 
 # ── Ten Gods (十神) of a stem relative to the Day Master ──
 
@@ -22,6 +30,7 @@ TenGodName = Literal[
 # The day stem is the Day Master (日主) itself, not one of its ten gods.
 DayMasterName = Literal['day_master']
 
+# In the index order of evolution.primitives.ten_god_index.
 TEN_GOD_NAMES: tuple[TenGodName, ...] = (
     'friend',
     'rob_wealth',
@@ -55,6 +64,13 @@ _STEM_HEADER_PATTERN = re.compile(
 )
 _POLARITY_BY_SIGN = {'+': 'Yang', '-': 'Yin'}
 _STEM_CHAR_BY_PINYIN = {stem['pinyin']: char for char, stem in STEMS.items()}
+_ELEMENT_INDEX_BY_NAME = {
+    'wood': ELEMENT_WOOD,
+    'fire': ELEMENT_FIRE,
+    'earth': ELEMENT_EARTH,
+    'metal': ELEMENT_METAL,
+    'water': ELEMENT_WATER,
+}
 
 
 def parse_ten_gods_mapping(csv_path: Path) -> dict[tuple[str, str], TenGodName]:
@@ -84,22 +100,33 @@ def parse_ten_gods_mapping(csv_path: Path) -> dict[tuple[str, str], TenGodName]:
             )
         day_master_char = _stem_char_from_header(row[0])
         day_master_chars.append(day_master_char)
-        row_ten_gods: list[TenGodName] = []
         for target_char, cell in zip(target_chars, row[1:], strict=True):
             ten_god = _TEN_GOD_BY_MAPPING_LABEL.get(cell.strip())
             if ten_god is None:
                 raise RuntimeError(
                     f'Unknown ten god label in ten gods mapping: {cell!r}'
                 )
+            if ten_god != _derived_ten_god(day_master_char, target_char):
+                raise RuntimeError(
+                    'Ten gods mapping contradicts the element cycles for day master '
+                    f'{day_master_char} and stem {target_char}: {cell!r}'
+                )
             lookup[(day_master_char, target_char)] = ten_god
-            row_ten_gods.append(ten_god)
-        if sorted(row_ten_gods) != sorted(TEN_GOD_NAMES):
-            raise RuntimeError(
-                'Ten gods mapping row must assign each ten god exactly once: '
-                f'{row[0]!r}'
-            )
     _require_every_stem_once(day_master_chars, axis='rows', csv_path=csv_path)
     return lookup
+
+
+def _derived_ten_god(day_master_char: str, target_char: str) -> TenGodName:
+    day_master = STEMS[day_master_char]
+    target = STEMS[target_char]
+    return TEN_GOD_NAMES[
+        ten_god_index(
+            entity_element_index=_ELEMENT_INDEX_BY_NAME[target['element']],
+            entity_polarity=1 if target['polarity'] == 'Yang' else 0,
+            center_element_index=_ELEMENT_INDEX_BY_NAME[day_master['element']],
+            center_polarity=1 if day_master['polarity'] == 'Yang' else 0,
+        )
+    ]
 
 
 def _stem_char_from_header(cell: str) -> str:

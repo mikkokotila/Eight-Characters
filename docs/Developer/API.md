@@ -82,10 +82,12 @@
   - `branch-mapping.csv`
 - Runtime hidden stems lookup in `eight_characters/main.py` reads from this directory first.
 - Runtime ten gods lookup in `eight_characters/main.py` reads `ten-gods.csv`
-  through `parse_ten_gods_mapping` (`eight_characters/ten_gods.py`), which
-  rejects any malformed, incomplete or contradictory table instead of skipping
-  it. `tests/test_api_ten_gods.py` cross-verifies the table against
-  `evolution.primitives.ten_god_index` and the `lunar-python` reference.
+  through `parse_ten_gods_mapping` (`eight_characters/ten_gods.py`). It rejects
+  a malformed or incomplete table, and any cell that disagrees with the
+  element-cycle derivation in `evolution.primitives.ten_god_index`, instead of
+  skipping it. Both mappings load when `main` is imported, so a broken table
+  stops the app at startup. `tests/test_api_ten_gods.py` also checks the table
+  against the `lunar-python` reference.
 
 ## Frontend Flow
 

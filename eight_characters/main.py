@@ -558,6 +558,12 @@ def _load_ten_gods_lookup() -> dict[tuple[str, str], TenGodName]:
     return parse_ten_gods_mapping(MAPPINGS_DIR / 'ten-gods.csv')
 
 
+# Every chart request needs both mappings: a broken table stops the app at startup
+# instead of failing requests one by one.
+_load_hidden_stems_lookup()
+_load_ten_gods_lookup()
+
+
 def _build_ten_gods_result(
     payload: HiddenStemsRequest,
 ) -> dict[str, dict[str, Any]]:

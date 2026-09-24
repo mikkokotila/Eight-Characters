@@ -197,9 +197,27 @@ class TestTenGodsMappingValidation(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, 'rows must list every stem'):
             self._parse(self.rows)
 
-    def test_rejects_row_repeating_a_ten_god(self) -> None:
+    def test_rejects_cell_contradicting_element_cycles(self) -> None:
         self.rows[1][2] = self.rows[1][1]
-        with self.assertRaisesRegex(RuntimeError, 'each ten god exactly once'):
+        with self.assertRaisesRegex(RuntimeError, 'contradicts the element cycles'):
+            self._parse(self.rows)
+
+    def test_rejects_transposed_table(self) -> None:
+        body = [row[1:] for row in self.rows[1:]]
+        for index, row in enumerate(self.rows[1:]):
+            row[1:] = [body_row[index] for body_row in body]
+        with self.assertRaisesRegex(RuntimeError, 'contradicts the element cycles'):
+            self._parse(self.rows)
+
+    def test_rejects_swapped_cells_within_row(self) -> None:
+        jia_row = self.rows[1]
+        jia_row[5], jia_row[6] = jia_row[6], jia_row[5]
+        with self.assertRaisesRegex(RuntimeError, 'contradicts the element cycles'):
+            self._parse(self.rows)
+
+    def test_rejects_swapped_row_contents(self) -> None:
+        self.rows[1][1:], self.rows[2][1:] = self.rows[2][1:], self.rows[1][1:]
+        with self.assertRaisesRegex(RuntimeError, 'contradicts the element cycles'):
             self._parse(self.rows)
 
 
