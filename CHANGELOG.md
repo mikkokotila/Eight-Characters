@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.12.0
+
+### Added
+- **Ten gods API enrichment**: `POST /api/four_pillars` accepts `include_ten_gods` and returns a `ten_gods` section with the ten god of each pillar's stem and of every hidden stem, relative to the Day Master (the day stem itself is `day_master`).
+- **Ten gods chart interaction**: holding any chart card for one second flips it to its ten god; branch cards list the ten gods of all hidden stems with their qi type, in the same format as the hidden stems panel. Holding again flips the card back.
+- **Ten gods mapping loader** (`eight_characters/ten_gods.py`): `ten-gods.csv` is now the runtime source and is validated strictly on load.
+- **Ten gods test suite** (`tests/test_api_ten_gods.py`): cross-verifies the mapping against `evolution.primitives.ten_god_index` and the `lunar-python` reference, and 300 random charts end to end.
+- **Index route test** (`tests/test_api_index_route.py`).
+- Ten god names in `localization.js` (Finnish and English).
+
+### Changed
+- A quick click on a branch card still toggles its hidden stems panel; the release that ends a long press does not.
+- Chart cards are no longer text-selectable, so a long press on touch devices flips the card instead of selecting text.
+- Version bumped to `0.12.0`.
+
+### Fixed
+- `GET /` returned 500 with Starlette 1.x, which removed the `TemplateResponse(name, context)` signature; the index now uses the request-first signature.
+
 ## 0.11.0
 
 ### Added
