@@ -398,6 +398,62 @@ body {
   color: var(--text-muted);
 }
 
+/* Where the Zi-hour conventions disagree: both, the chart's own pressed. */
+.zi-switch { margin: 16px auto 0; max-width: 560px; }
+.zi-switch-note {
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.zi-switch-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  margin-top: 8px;
+  padding: 3px;
+  border: 1px solid rgba(42, 37, 32, 0.18);
+  border-radius: 20px;
+}
+.zi-switch-options button {
+  min-height: 32px;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 16px;
+  background: none;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.zi-switch-options button:hover { color: var(--text); background: rgba(255, 255, 255, 0.4); }
+.zi-switch-options button[aria-pressed='true'] { background: var(--text); color: var(--bg); cursor: default; }
+.zi-switch-options button:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 2px; }
+.zi-switch[aria-busy='true'] button { cursor: progress; }
+
+/* Flags the engine raised for this chart. */
+.chart-notices {
+  list-style: none;
+  max-width: 620px;
+  margin: 16px auto 0;
+  padding: 0;
+  text-align: left;
+}
+.chart-notices li {
+  padding: 8px 14px;
+  border-left: 2px solid var(--text-muted);
+  background: rgba(255, 255, 255, 0.35);
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.chart-notices li + li { margin-top: 6px; }
+
 .pillars {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -1183,6 +1239,7 @@ body {
   .reading-toggle { min-height: 44px; }
   .relationship-members { grid-template-columns: 1fr; }
   .pillar-change-sides { grid-template-columns: 1fr; }
+  .zi-switch-options button { min-height: 44px; }
   .relationship-detail h3 { font-size: 20px; }
 }
 

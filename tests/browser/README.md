@@ -78,5 +78,11 @@ within 30 minutes of a change is marked, before or after the birth; that every
 pillar's exact changes open on demand, naming the solar term or the clock and its
 date; that Escape returns focus; and that one detail is open at a time. A chart
 whose true solar time cannot be read, or whose pillar changes are missing or
-contradict the chart, is not shown. The foundations audits also walk the pillar
-change details.
+contradict the chart, is not shown. On the Helsinki 00:50 chart (true solar
+23:29) the Zi-hour switch appears, sends the other convention, and the Day Master,
+pillars, marks, Ten Gods, roots, relationships and roles all follow it and return
+with it; charts whose conventions agree show no switch, and a switched chart that
+cannot be read sends the form back with the reason. The high-latitude and
+solar-term notices appear, and flags that contradict the chart stop it. The
+foundations audits also walk the pillar change details, a Zi-hour chart and a
+high-latitude chart.

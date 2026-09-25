@@ -1,6 +1,8 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Page foundations of the Standard view: typography, contrast, form, location list, identity.
-import { assert, describe, it, engineName, profiles, openChart, settled, withPage } from './chart-helpers.mjs';
+import {
+  assert, describe, it, engineName, profiles, openChart, settled, withPage, HELSINKI, TROMSO,
+} from './chart-helpers.mjs';
 
 const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond', 'Noto Serif TC'];
 // The characters the page's own CJK font carries (static/fonts/README.md).
@@ -152,6 +154,10 @@ async function visitStates(page, inspect) {
       await inspect(`${lang} ${pillar} changes`);
       await page.keyboard.press('Escape');
     }
+    await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+    await inspect(`${lang} Zi-hour chart`);
+    await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+    await inspect(`${lang} high-latitude chart`);
   }
 }
 
@@ -213,6 +219,10 @@ for (const profile of profiles) {
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
         await page.locator('.pillar-identity[data-pillar="year"]').click();
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with a pillar's changes`);
+        await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} Zi-hour chart`);
+        await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} high-latitude chart`);
       }
     });
 
@@ -256,6 +266,10 @@ for (const profile of profiles) {
           failures.push(...await systemGlyphFailures(page, cdp, `${lang} ${pillar} changes`));
           await page.keyboard.press('Escape');
         }
+        await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} Zi-hour chart`));
+        await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} high-latitude chart`));
       }
       assert.deepEqual(failures, []);
     }));

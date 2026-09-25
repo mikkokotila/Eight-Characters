@@ -20,6 +20,16 @@ const CHENGDU = {
   city: 'Chengdu', region: 'Sichuan', country: 'China', display: 'Chengdu, Sichuan, China',
   timezone: 'Asia/Shanghai', longitude: 104.066, latitude: 30.658,
 };
+// Summer clock 00:50 here is true solar 23:29 the evening before: the Zi-hour conventions disagree.
+const HELSINKI = {
+  city: 'Helsinki', region: 'Uusimaa', country: 'Finland', display: 'Helsinki, Uusimaa, Finland',
+  timezone: 'Europe/Helsinki', longitude: 24.94, latitude: 60.17,
+};
+// Above latitude 66°.
+const TROMSO = {
+  city: 'Tromsø', region: 'Troms', country: 'Norway', display: 'Tromsø, Troms, Norway',
+  timezone: 'Europe/Oslo', longitude: 18.96, latitude: 69.65,
+};
 const profiles = [
   { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
   { name: 'mobile', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
@@ -109,7 +119,10 @@ async function screenshot(page, name) {
   await page.screenshot({ path: join(process.env.EC_SCREENSHOT_DIR, `${engineName}-${name}.png`), fullPage: true });
 }
 
-export { assert, describe, it, engineName, profiles, openChart, fillChart, count, settled, geometry, natalColors, longPress, screenshot };
+export {
+  assert, describe, it, engineName, profiles, openChart, fillChart, count, settled, geometry, natalColors, longPress,
+  screenshot, HELSINKI, TROMSO,
+};
 export async function withPage(profile, run) {
   const { name, ...options } = profile;
   const page = await browser.newPage(options);

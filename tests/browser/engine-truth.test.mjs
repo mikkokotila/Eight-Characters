@@ -1,11 +1,8 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Stage 2 of the Standard view (#17): the chart shows what the engine computed.
-import { assert, describe, it, engineName, profiles, openChart, withPage } from './chart-helpers.mjs';
-
-const HELSINKI = {
-  city: 'Helsinki', region: 'Uusimaa', country: 'Finland', display: 'Helsinki, Uusimaa, Finland',
-  timezone: 'Europe/Helsinki', longitude: 24.94, latitude: 60.17,
-};
+import {
+  assert, describe, it, engineName, profiles, openChart, withPage, HELSINKI, TROMSO,
+} from './chart-helpers.mjs';
 
 async function identities(page) {
   return page.locator('.pillar').evaluateAll((pillars) => Object.fromEntries(pillars.map((pillar) => [
@@ -29,6 +26,40 @@ async function changes(page, pillar) {
     sides: [...detail.querySelectorAll('.pillar-change')].map((side) => [...side.children].map((line) => line.textContent)),
   }));
 }
+
+// What follows the Day Master: the chart, its Ten Gods, roots, relationships and roles.
+async function reading(page) {
+  const pillars = await identities(page);
+  const state = {
+    dayMaster: await page.locator('#day-master-heading').textContent(),
+    day: pillars.day,
+    hour: pillars.hour,
+    marks: await marks(page),
+    yearStemTenGod: await page.locator('.card.stem[data-pillar="year"] .ten-god-name').textContent(),
+    roots: await page.locator('button[data-context="roots"]').textContent(),
+    // WebKit's innerText ends a chip with a line break; Chromium's does not.
+    relationships: (await page.locator('.relationship-chip').allInnerTexts()).map((text) => text.trim()),
+  };
+  await page.locator('button[data-context="roles"]').click();
+  state.roles = await page.locator('#context-detail').innerText();
+  await page.keyboard.press('Escape');
+  return state;
+}
+
+async function pressConvention(page, convention) {
+  const request = page.waitForRequest('**/api/four_pillars');
+  await page.locator(`#zi-switch button[data-zi-convention="${convention}"]`).click();
+  const conventions = (await request).postDataJSON().conventions;
+  await page.waitForFunction((convention) => document.querySelector('#zi-switch button[aria-pressed="true"]')
+    ?.dataset.ziConvention === convention, convention);
+  return conventions;
+}
+
+// Flags that contradict the chart they came with.
+const FLAG_CONTRADICTIONS = {
+  'a Zi-hour window without the other convention': (payload) => { payload.flags.zi_hour_window = true; },
+  'an ambiguous solar term hours from any jie': (payload) => { payload.flags.solar_term_ambiguous = true; },
+};
 
 // Each response is the real API's, contradicted in one way.
 const CONTRADICTIONS = {
@@ -132,6 +163,98 @@ for (const profile of profiles) {
       check(`a chart ${name} is not shown`, async (page) => {
         await openChart(page, { success: false }, mutate);
         assert.equal(await page.locator('#form-error').textContent(), 'Could not read when the pillars change.');
+        assert.equal(await page.locator('#chart-view').isHidden(), true);
+      });
+    }
+
+    check('the Zi-hour chart offers the other convention, and the whole chart follows it', async (page) => {
+      await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '00:50' });
+      assert.deepEqual(await page.locator('#zi-switch button').allTextContents(),
+        ['Day changes at midnight', 'Day changes at 23:00']);
+      assert.equal(await page.locator('#zi-switch button[aria-pressed="true"]').textContent(), 'Day changes at midnight');
+      const geng = {
+        dayMaster: 'Day Master · Geng — Yang Metal',
+        day: '庚子 Geng Zi',
+        hour: '丙子 Bing Zi',
+        // The Zi hour began at true solar 23:00 under either convention; this day at midnight.
+        marks: { hour: 'changed 29 min 24 s ago', day: '', month: '', year: '' },
+        yearStemTenGod: 'Indirect Resource',
+        roots: 'No roots detected',
+        relationships: ['Month–Day · Branch clash', 'Month–Hour · Branch clash'],
+      };
+      const before = await reading(page);
+      assert.deepEqual({ ...before, roles: undefined }, { ...geng, roles: undefined });
+      assert.deepEqual(await pressConvention(page, 'whole_zi_23'), { zi_convention: 'whole_zi_23' });
+      assert.equal(await page.locator('#zi-switch button[aria-pressed="true"]').evaluate(
+        (button) => button === document.activeElement), true);
+      const after = await reading(page);
+      assert.deepEqual({ ...after, roles: undefined }, {
+        dayMaster: 'Day Master · Xin — Yin Metal',
+        day: '辛丑 Xin Chou',
+        hour: '戊子 Wu Zi',
+        // Under this convention the day and the hour both began at true solar 23:00.
+        marks: { hour: 'changed 29 min 24 s ago', day: 'changed 29 min 24 s ago', month: '', year: '' },
+        yearStemTenGod: 'Direct Resource',
+        roots: 'Root in one branch',
+        relationships: ['Day–Hour · Branch combination', 'Month–Hour · Branch clash'],
+        roles: undefined,
+      });
+      assert.notEqual(after.roles, before.roles);
+      // And back: the chart is the first one again.
+      assert.deepEqual(await pressConvention(page, 'split_midnight'), { zi_convention: 'split_midnight' });
+      assert.deepEqual(await reading(page), before);
+    });
+
+    check('no switch is offered where both conventions give the same pillars', async (page) => {
+      await openChart(page, { lang: 'en' });
+      assert.equal(await page.locator('#zi-switch').isHidden(), true);
+      await page.locator('#back-btn').click();
+      // Clock 01:45 is true solar 00:24: in the Zi hour, but the same day under either convention.
+      const payload = await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '01:45' });
+      assert.equal(payload.flags.zi_hour_window, true);
+      assert.equal(await page.locator('#zi-switch').isHidden(), true);
+    });
+
+    check('a switched chart that cannot be read sends the form back with the reason', async (page) => {
+      await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '00:50' }, (payload) => {
+        if (payload.flags.alternative_pillars?.conventions.zi_convention === 'split_midnight') {
+          delete payload.solar_time.true_solar_time;
+        }
+      });
+      await page.locator('#zi-switch button[data-zi-convention="whole_zi_23"]').click();
+      await page.locator('#form-error').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#form-error').textContent(), 'Could not read the true solar time.');
+      assert.equal(await page.locator('#chart-view').isHidden(), true);
+    });
+
+    check('a birthplace above latitude 66° carries a notice', async (page) => {
+      await openChart(page, { lang: 'en', place: TROMSO, date: '1988-06-15', time: '12:00' });
+      assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [
+        'The birthplace lies above latitude 66°, near the polar circle, where the Sun can stay above or below'
+          + ' the horizon for days. True solar time is calculated as usual.',
+      ]);
+      await page.locator('#back-btn').click();
+      await openChart(page, { lang: 'en' });
+      assert.equal(await page.locator('#chart-notices').isHidden(), true);
+    });
+
+    check('a birth within the uncertainty of Lichun says both pillars could differ', async (page) => {
+      // The engine's own flag, with the month and year changes moved to agree with it.
+      await openChart(page, { lang: 'en' }, (payload) => {
+        payload.flags.solar_term_ambiguous = true;
+        payload.four_pillars.month.changes.next.seconds = 0.3;
+        payload.four_pillars.year.changes.next.seconds = 0.3;
+      });
+      assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [
+        "The birth lies within the calculation's uncertainty (0.5 s) of Lichun, so the year and month pillars"
+          + ' could be the other ones.',
+      ]);
+    });
+
+    for (const [name, mutate] of Object.entries(FLAG_CONTRADICTIONS)) {
+      check(`a chart with ${name} is not shown`, async (page) => {
+        await openChart(page, { success: false }, mutate);
+        assert.equal(await page.locator('#form-error').textContent(), "Could not read the chart's notices.");
         assert.equal(await page.locator('#chart-view').isHidden(), true);
       });
     }
