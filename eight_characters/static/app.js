@@ -264,6 +264,7 @@ document.addEventListener('DOMContentLoaded', () => {
       include_ten_gods: true,
       include_interactions: true,
       include_day_master_context: true,
+      include_role_profile: true,
       lang: currentLanguage,
     };
 
@@ -308,7 +309,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
       populateHiddenStems(pillarsData.hidden_stems);
       relationships.render(pillarsData.interactions, chartData, tenGodsData);
-      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems);
+      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
       syncTenGodsToggle();
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');

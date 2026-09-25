@@ -765,6 +765,55 @@ body {
   .context-support-groups { grid-template-columns: 1fr; gap: 28px; }
 }
 
+/* ── Roles: the existing detail surface, not another dashboard ── */
+.role-overview { margin-top: 28px; }
+.role-group {
+  display: grid;
+  grid-template-columns: minmax(0, 0.85fr) repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  padding: 18px 0;
+  align-items: stretch;
+}
+.role-group + .role-group { border-top: 1px solid rgba(42, 37, 32, 0.10); }
+.role-group-heading { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
+.role-group-heading .relationship-element { margin-top: 5px; }
+.role-choice {
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
+  color: var(--text);
+  text-align: left;
+  padding: 8px 12px;
+  min-width: 0;
+  min-height: 54px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.role-choice:hover { background: rgba(255, 255, 255, 0.3); border-color: rgba(42, 37, 32, 0.12); }
+.role-choice:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 3px; }
+.role-choice-name { display: block; font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 500; line-height: 1.4; }
+.role-presence { display: block; margin-top: 4px; font-family: 'Manrope', sans-serif; font-weight: 300; font-size: 11px; line-height: 1.7; color: var(--text-muted); }
+.role-visible-stems { margin-top: 28px; border-top: 1px solid rgba(42, 37, 32, 0.12); padding-top: 24px; text-align: center; }
+.role-stem-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
+.role-stem-entry { min-width: 0; }
+.role-stem-entry .reading-toggle { margin-top: 8px; }
+.roles-back { display: block; width: fit-content; max-width: 100%; margin: 20px auto 0; }
+.role-sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 36px; margin-top: 28px; }
+.role-source-kind { min-width: 0; text-align: center; }
+.role-occurrence + .role-occurrence { border-top: 1px solid rgba(42, 37, 32, 0.08); padding-top: 16px; }
+.role-exact { font-size: 11px; font-weight: 300; line-height: 1.8; color: var(--text-muted); margin-top: 8px; }
+.role-exact .reading-toggle { margin-left: 4px; }
+.context-detail .role-exact-summary { margin-top: 24px; }
+.card.is-context-reference { outline: 1px dotted var(--text-muted); outline-offset: 5px; }
+@media (max-width: 640px) {
+  .role-group { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
+  .role-group-heading { grid-column: 1 / -1; text-align: center; }
+  .role-choice { padding: 10px 8px; text-align: center; }
+  .role-stem-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px 16px; }
+  .role-sources { grid-template-columns: 1fr; gap: 28px; }
+}
+@media (prefers-reduced-motion: reduce) { .role-choice { transition: none; } }
+
 /* ── Relationships: quiet annotations, never a second colour system ── */
 .relationships {
   margin-bottom: 36px;
