@@ -61,10 +61,17 @@ as documented.
 The foundations suite checks the page as a whole, on the landing page, the chart
 with hidden stems and Ten Gods, and every detail page, in English and Finnish:
 every visible text is set in the self-hosted page fonts (and, in Chromium, the
-DevTools protocol confirms which font drew every glyph; only CJK characters may
-come from a system font), text meets WCAG AA contrast with backgrounds and
+DevTools protocol confirms which font drew every glyph; the stems and branches
+must come from the page's own CJK font, and only other CJK characters may come
+from a system font), text meets WCAG AA contrast with backgrounds and
 opacity composited through every ancestor, the expand chevron and element dots
 meet 3:1, card highlights stay within the gap between cards, the page loads
 nothing from another origin and nothing fails to load, and the form's date
 range, field messages, error region, progress state, headings, mode labels and
 tab titles behave as documented.
+
+The engine-truth suite checks what the chart shows of the engine's own results:
+each pillar's identity and characters, the header built from the birth as entered
+(in Finnish, times such as 16.30), and the true solar time with its offset from
+clock time, dated when it falls on another day. A chart whose true solar time
+cannot be read is not shown.

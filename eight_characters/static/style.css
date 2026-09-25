@@ -388,6 +388,16 @@ body {
   letter-spacing: 1px;
 }
 
+/* The clock the day and hour pillars are read from. */
+.chart-header .solar-time {
+  margin-top: 8px;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
 .pillars {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

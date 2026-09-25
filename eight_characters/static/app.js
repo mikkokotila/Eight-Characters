@@ -58,6 +58,55 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
 
+  // ── The chart header: the birth moment as entered, and the true solar time ──
+  const chartDate = document.getElementById('chart-date');
+  const chartSolarTime = document.getElementById('chart-solar-time');
+  if (!chartDate || !chartSolarTime) throw new Error('Chart header is incomplete.');
+  const locale = () => (currentLanguage === 'en' ? 'en' : 'fi');
+  // A clock reading, held as a UTC date so that formatting never moves it into the
+  // viewer's own time zone. Readings no calendar has, such as 24:10, give null.
+  const parseWallClock = (text) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(text);
+    if (!match) return null;
+    const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part || 0));
+    const reading = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    const exact = reading.getUTCFullYear() === year && reading.getUTCMonth() === month - 1
+      && reading.getUTCDate() === day && reading.getUTCHours() === hour
+      && reading.getUTCMinutes() === minute && reading.getUTCSeconds() === second;
+    return exact ? reading : null;
+  };
+  const formatDate = (reading) => new Intl.DateTimeFormat(locale(), { dateStyle: 'long', timeZone: 'UTC' })
+    .format(reading);
+  // Finnish writes 16.30, English 16:30; both on a 24-hour clock.
+  const formatTime = (reading, withSeconds) => new Intl.DateTimeFormat(locale(), {
+    timeStyle: withSeconds ? 'medium' : 'short', hourCycle: 'h23', timeZone: 'UTC',
+  }).format(reading);
+  const formatDuration = (totalSeconds) => {
+    let remaining = Math.round(totalSeconds);
+    const parts = [];
+    for (const [size, unit] of [[86400, 'unit_days'], [3600, 'unit_hours'], [60, 'unit_minutes'], [1, 'unit_seconds']]) {
+      const amount = Math.floor(remaining / size);
+      remaining -= amount * size;
+      if (amount || (size === 1 && !parts.length)) parts.push(`${amount} ${requiredTranslation(unit)}`);
+    }
+    return parts.join(' ');
+  };
+  // True solar time, and how far it lies from the clock the birth was recorded on.
+  const describeSolarTime = (solarTime, birth) => {
+    const reading = solarTime && typeof solarTime.true_solar_time === 'string'
+      ? parseWallClock(solarTime.true_solar_time) : null;
+    if (!reading) throw new Error(requiredTranslation('solar_time_error'));
+    const time = formatTime(reading, true);
+    const sameDay = reading.toISOString().slice(0, 10) === birth.toISOString().slice(0, 10);
+    const shown = sameDay ? time : requiredTranslation('date_and_time', { date: formatDate(reading), time });
+    const offset = Math.round((reading - birth) / 1000);
+    const difference = offset === 0
+      ? requiredTranslation('clock_offset_none')
+      : requiredTranslation(offset < 0 ? 'clock_offset_behind' : 'clock_offset_ahead',
+        { duration: formatDuration(Math.abs(offset)) });
+    return `${requiredTranslation('true_solar_time', { time: shown })} · ${difference}`;
+  };
+
   const setFieldStatus = (status, text, state) => {
     status.textContent = text || '';
     status.classList.remove('is-found', 'is-error');
@@ -428,9 +477,17 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(t('ten_gods_error'));
       }
 
-      chartData.header = `${chartData.header} · ${resolvedLocation.city}`;
+      // The header shows the birth as it was entered; the API's header text is not used.
+      const birth = parseWallClock(`${fourPillarsPayload.date}T${fourPillarsPayload.time}`);
+      if (!birth) throw new Error(t('chart_error'));
+      const heading = [
+        formatDate(birth), formatTime(birth, fourPillarsPayload.time.length > 5), resolvedLocation.city,
+      ].join(' · ');
+      const solarTime = describeSolarTime(pillarsData.solar_time, birth);
 
       renderChart(chartData);
+      chartDate.textContent = heading;
+      chartSolarTime.textContent = solarTime;
       populateTenGods(tenGodsData);
       if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
       populateHiddenStems(pillarsData.hidden_stems);
@@ -438,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
       syncTenGodsToggle();
       // Open charts are told apart by their tab.
-      document.title = t('chart_page_title', { chart: chartData.header });
+      document.title = t('chart_page_title', { chart: heading });
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
     } catch (err) {
@@ -708,10 +765,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 function renderChart(data) {
-  // Header
-  document.getElementById('chart-date').textContent = data.header;
-
-  // Pillars
   const container = document.getElementById('pillars');
   container.innerHTML = '';
 
@@ -721,6 +774,7 @@ function renderChart(data) {
   data.pillars.forEach((p, i) => {
     const pillar = document.createElement('div');
     pillar.className = 'pillar';
+    pillar.dataset.pillar = pillarKeys[i];
     pillar.style.animationDelay = [0.5, 0.35, 0.2, 0.05][i] + 's';
 
     pillar.innerHTML = `
