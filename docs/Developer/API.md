@@ -14,7 +14,9 @@
 - **Primary callers**: frontend submit flow and external API clients.
 - **Input modes**:
   - explicit `location` (`timezone`, `longitude`, `latitude`, optional `fold`)
-  - `city` + `country` (resolved through geocoding)
+  - `city` + `country` (resolved through geocoding to the first match in that
+    country; the response's `resolved_location` names the place used,
+    including its `region`, `latitude` and `longitude`)
 - **Optional enrichments**:
   - `include_chart=true` adds chart payload from `build_chart`
   - `include_hidden_stems=true` adds hidden stems payload from `_build_hidden_stems_result`
@@ -56,8 +58,15 @@
 - **Internal calls**:
   - `_search_city_candidates`
   - `_city_models_from_result`
+  - `_resolved_place`
 - **Notes**:
   - empty query returns `{"suggestions": []}` without error
+  - each suggestion is one geocoded place: `city`, `region`, `country`,
+    `timezone`, `latitude`, `longitude` and a `display` label joining city,
+    region and country
+  - names repeat (four places called Chengdu in China, two per province), so
+    only the coordinates identify a place; callers compute with the chosen
+    suggestion's coordinates as `location`, never by re-resolving its name
 - **Error behavior**:
   - `400` for invalid query params
   - `500` for unexpected failures
@@ -67,7 +76,9 @@
 - **Purpose**: deterministic city resolution endpoint.
 - **Primary callers**: currently external/programmatic clients (not required by current frontend flow).
 - **Input**: `city` and optional `country`.
-- **Internal calls**: `_resolve_city_location`.
+- **Output**: `resolved_location` with the first match's `city`, `region`,
+  `country`, `timezone`, `latitude` and `longitude`.
+- **Internal calls**: `_resolve_city_location`, `_resolved_place`.
 - **Error behavior**:
   - `400` with `detail` when a city cannot be resolved
   - `500` for unexpected failures

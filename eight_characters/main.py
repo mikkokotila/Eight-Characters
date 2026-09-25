@@ -182,16 +182,33 @@ class HiddenStemsRequest(BaseModel):
 
 class ResolvedCity(BaseModel):
     city: str
+    region: str
     country: str
     timezone: str
 
 
 class GeocodeResult(TypedDict, total=False):
     name: str
+    admin1: str
     country: str
     timezone: str
     longitude: float
     latitude: float
+
+
+class ResolvedPlace(TypedDict):
+    """A geocoded place together with the coordinates the engine computes for."""
+
+    city: str
+    region: str
+    country: str
+    timezone: str
+    latitude: float
+    longitude: float
+
+
+class LocationSuggestion(ResolvedPlace):
+    display: str
 
 
 class CityLookupServiceError(RuntimeError):
@@ -306,10 +323,24 @@ def _city_models_from_result(
     )
     resolved_city = ResolvedCity(
         city=str(top_match.get('name') or city_fallback),
+        region=str(top_match.get('admin1') or ''),
         country=str(top_match.get('country') or ''),
         timezone=str(timezone_name),
     )
     return resolved_location, resolved_city
+
+
+def _resolved_place(
+    location: LocationInput, resolved_city: ResolvedCity
+) -> ResolvedPlace:
+    return {
+        'city': resolved_city.city,
+        'region': resolved_city.region,
+        'country': resolved_city.country,
+        'timezone': resolved_city.timezone,
+        'latitude': location.latitude,
+        'longitude': location.longitude,
+    }
 
 
 def _build_four_pillars_result(
@@ -938,11 +969,7 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
         'engine': result['engine'],
     }
     if resolved_city is not None:
-        response['resolved_location'] = {
-            'city': resolved_city.city,
-            'country': resolved_city.country,
-            'timezone': resolved_city.timezone,
-        }
+        response['resolved_location'] = _resolved_place(location, resolved_city)
 
     four_pillars = cast(dict[str, Any], result['four_pillars'])
     try:
@@ -1038,19 +1065,17 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
 
     response: dict[str, Any] = {'graph_data': graph_data}
     if resolved_city is not None:
-        response['resolved_location'] = {
-            'city': resolved_city.city,
-            'country': resolved_city.country,
-            'timezone': resolved_city.timezone,
-        }
+        response['resolved_location'] = _resolved_place(location, resolved_city)
     return response
 
 
 @app.post('/api/location_search')
-async def location_search(payload: LocationSearchRequest) -> dict[str, dict[str, str]]:
+async def location_search(payload: LocationSearchRequest) -> dict[str, ResolvedPlace]:
     """Resolve a free-text city query and return canonical city metadata."""
     try:
-        _, resolved_city = await _resolve_city_location(payload.city, payload.country)
+        location, resolved_city = await _resolve_city_location(
+            payload.city, payload.country
+        )
     except CityLookupServiceError as exc:
         raise HTTPException(
             status_code=500,
@@ -1061,19 +1086,13 @@ async def location_search(payload: LocationSearchRequest) -> dict[str, dict[str,
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    return {
-        'resolved_location': {
-            'city': resolved_city.city,
-            'country': resolved_city.country,
-            'timezone': resolved_city.timezone,
-        },
-    }
+    return {'resolved_location': _resolved_place(location, resolved_city)}
 
 
 @app.post('/api/location_suggest')
 async def location_suggest(
     payload: LocationSuggestRequest,
-) -> dict[str, list[dict[str, str]]]:
+) -> dict[str, list[LocationSuggestion]]:
     """Return city suggestions for autosuggest input."""
     query = payload.query.strip()
     if not query:
@@ -1091,19 +1110,18 @@ async def location_suggest(
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    suggestions: list[dict[str, str]] = []
+    suggestions: list[LocationSuggestion] = []
     for result in results:
         try:
-            _, resolved_city = _city_models_from_result(result, query)
+            location, resolved_city = _city_models_from_result(result, query)
         except ValueError:
             continue
+        place = _resolved_place(location, resolved_city)
+        # Places often share a name, so the label carries the region; the coordinates
+        # tell apart the ones that share a region too.
+        label_parts = (place['city'], place['region'], place['country'])
         suggestions.append(
-            {
-                'city': resolved_city.city,
-                'country': resolved_city.country,
-                'timezone': resolved_city.timezone,
-                'display': f'{resolved_city.city}, {resolved_city.country}',
-            }
+            {**place, 'display': ', '.join(part for part in label_parts if part)}
         )
 
     return {'suggestions': suggestions}

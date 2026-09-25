@@ -28,6 +28,7 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
                     ),
                     ResolvedCity(
                         city='Helsinki',
+                        region='Uusimaa',
                         country='Finland',
                         timezone='Europe/Helsinki',
                     ),
@@ -45,8 +46,11 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
             {
                 'resolved_location': {
                     'city': 'Helsinki',
+                    'region': 'Uusimaa',
                     'country': 'Finland',
                     'timezone': 'Europe/Helsinki',
+                    'latitude': 60.1699,
+                    'longitude': 24.9384,
                 }
             },
         )
@@ -64,6 +68,7 @@ class TestApiLocationSearchEndpoint(unittest.TestCase):
                     ),
                     ResolvedCity(
                         city='Helsinki',
+                        region='Uusimaa',
                         country='Finland',
                         timezone='Europe/Helsinki',
                     ),

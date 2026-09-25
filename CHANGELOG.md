@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+- **`POST /api/location_suggest` identifies each place**: every suggestion also carries `region` (the geocoder's first-level region, such as a province or state), `latitude` and `longitude`, and `display` names the region: `Chengdu, Sichuan, China` rather than `Chengdu, China`. Empty parts are left out, so a place without a country reads `Hong Kong`, not `Hong Kong, `. Names repeat even within a region (two places called Chengdu in Sichuan, two in Jiangxi), so the coordinates are what identify a suggestion.
+- `resolved_location` (city/country mode of `POST /api/four_pillars` and `POST /api/evolution_explorer`, and `POST /api/location_search`) also reports `region`, `latitude` and `longitude`, so a caller can see which place a name was resolved to. A name still resolves to the first geocoder match in the given country; send `location` to compute for a particular place.
+
 ### Fixed
 - **Location suggestions only ever list results for the current input**: responses were applied in the order they arrived, so a slow response for a partial query could replace the list for the full query. Typing `Chengdu` could list `Zhengzhou, China` first (the top result for `Che`, `Chen` and `Cheng`), and picking the top entry gave the wrong birthplace, longitude and true solar time. A lookup is now cancelled as soon as the input changes, and a response for anything other than the current input is discarded.
 - The previous list is hidden as soon as the input changes, so Enter or a click can no longer pick a result for an earlier query while the new lookup runs.

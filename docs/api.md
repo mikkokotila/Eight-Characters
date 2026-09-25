@@ -38,6 +38,13 @@ Request mode B (`city` + `country` provided):
 }
 ```
 
+Mode B resolves the name to the first geocoder match in that country, and
+reports the place it used in `resolved_location`. Many places share a name
+(the geocoder knows four places called Chengdu in China, two in Sichuan and two
+in Jiangxi, up to 13° of longitude apart: about 53 minutes of true solar time),
+so to compute for one particular place, send its coordinates in mode A, for
+example a suggestion from `POST /api/location_suggest`.
+
 Optional request fields:
 
 - `conventions`
@@ -58,7 +65,9 @@ Response always includes:
 
 Response conditionally includes:
 
-- `resolved_location` (when city resolution mode is used)
+- `resolved_location` (when city resolution mode is used): the place the name
+  was resolved to, with the same `city`, `region`, `country`, `timezone`,
+  `latitude` and `longitude` fields as a `POST /api/location_search` result
 - `chart` (when `include_chart=true`)
 - `hidden_stems` (when `include_hidden_stems=true`)
 - `ten_gods` (when `include_ten_gods=true`)
@@ -268,19 +277,46 @@ Request:
 }
 ```
 
-Success response:
+Success response (query `Chengdu`, first two of three suggestions):
 
 ```json
 {
   "suggestions": [
     {
-      "city": "Helsinki",
-      "country": "Finland",
-      "timezone": "Europe/Helsinki"
+      "city": "Chengdu",
+      "region": "Sichuan",
+      "country": "China",
+      "timezone": "Asia/Shanghai",
+      "latitude": 30.66667,
+      "longitude": 104.06667,
+      "display": "Chengdu, Sichuan, China"
+    },
+    {
+      "city": "Chengdu",
+      "region": "Jiangxi",
+      "country": "China",
+      "timezone": "Asia/Shanghai",
+      "latitude": 26.36828,
+      "longitude": 115.34289,
+      "display": "Chengdu, Jiangxi, China"
     }
   ]
 }
 ```
+
+Each suggestion is one geocoded place:
+
+- `region` is the geocoder's first-level administrative region (province,
+  state); `region` and `country` are empty strings when the geocoder has none.
+- `display` joins `city`, `region` and `country`, leaving out empty parts
+  (`Hong Kong` has neither).
+- Places can share a name and a region (the third suggestion above is another
+  `Chengdu, Jiangxi, China`, at 26.983, 114.207), so show the coordinates as
+  well when the difference matters.
+- To compute for the chosen place, send its `timezone`, `latitude` and
+  `longitude` to `POST /api/four_pillars` or `POST /api/evolution_explorer` as
+  `location`. Sending its `city` and `country` instead resolves the name again,
+  and the first match may be a different place.
 
 ### `POST /api/location_search`
 
@@ -295,7 +331,9 @@ Request:
 }
 ```
 
-`country` is optional but recommended for disambiguation.
+`country` is optional but recommended for disambiguation. The name resolves to
+the first geocoder match (in `country`, when given); the response names the
+place that was used.
 
 Success response:
 
@@ -303,8 +341,11 @@ Success response:
 {
   "resolved_location": {
     "city": "Helsinki",
+    "region": "Uusimaa",
     "country": "Finland",
-    "timezone": "Europe/Helsinki"
+    "timezone": "Europe/Helsinki",
+    "latitude": 60.16952,
+    "longitude": 24.93545
   }
 }
 ```
