@@ -25,7 +25,8 @@ This is advisory behavior and not a hard error.
 
 If output seems inconsistent:
 - confirm same engine version
-- confirm same timezone data version
+- confirm same timezone data version (`engine.tzdb_version`, set by the
+  `tzdata` pin in `pyproject.toml`)
 - rerun regression tests:
 
 ```bash

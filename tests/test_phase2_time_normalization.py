@@ -1,5 +1,10 @@
+import tempfile
 import unittest
+import zoneinfo
 from datetime import UTC, datetime
+from importlib import resources
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from eight_characters.conventions import ConventionSettings
 from eight_characters.embedded_data import (
@@ -132,6 +137,76 @@ class TestInputAndTimeResolution(unittest.TestCase):
             )
         )
         self.assertNotEqual(first.utc_datetime, second.utc_datetime)
+
+
+class TestTimezoneData(unittest.TestCase):
+    def test_zones_come_from_pinned_tzdata_package(self) -> None:
+        # tzdata 2026.4 (IANA 2026d) puts America/Inuvik on UTC-6 (CST) in
+        # December 2026; IANA 2026c and older, as found on many hosts, say UTC-7.
+        normalized = normalize_birth_input(
+            BirthInput(
+                year=2026,
+                month=12,
+                day=1,
+                hour=12,
+                minute=0,
+                second=0,
+                timezone_name='America/Inuvik',
+                longitude=-133.72,
+                latitude=68.36,
+            )
+        )
+        self.assertEqual(normalized.utc_datetime, datetime(2026, 12, 1, 18, tzinfo=UTC))
+
+    def test_host_zoneinfo_database_is_never_consulted(self) -> None:
+        temp_dir = tempfile.TemporaryDirectory()
+        self.addCleanup(temp_dir.cleanup)
+        self.addCleanup(ZoneInfo.clear_cache)
+        self.addCleanup(zoneinfo.reset_tzpath)
+        # A host database whose Asia/Shanghai is really UTC.
+        utc_zone = resources.files('tzdata.zoneinfo').joinpath('UTC').read_bytes()
+        host_zone = Path(temp_dir.name) / 'Asia' / 'Shanghai'
+        host_zone.parent.mkdir()
+        host_zone.write_bytes(utc_zone)
+        zoneinfo.reset_tzpath(to=[temp_dir.name])
+        ZoneInfo.clear_cache()
+
+        normalized = normalize_birth_input(
+            BirthInput(
+                year=1988,
+                month=2,
+                day=4,
+                hour=16,
+                minute=30,
+                second=0,
+                timezone_name='Asia/Shanghai',
+                longitude=104.066,
+                latitude=30.658,
+            )
+        )
+        self.assertEqual(
+            normalized.utc_datetime, datetime(1988, 2, 4, 8, 30, tzinfo=UTC)
+        )
+
+    def test_unrecognized_timezone_rejected(self) -> None:
+        for timezone_name in ('Not/AZone', '../../etc/passwd', 'asia/shanghai', ''):
+            with self.subTest(timezone_name=timezone_name):
+                with self.assertRaisesRegex(
+                    ValueError, '^Unrecognized timezone identifier.$'
+                ):
+                    normalize_birth_input(
+                        BirthInput(
+                            year=1988,
+                            month=2,
+                            day=4,
+                            hour=16,
+                            minute=30,
+                            second=0,
+                            timezone_name=timezone_name,
+                            longitude=104.066,
+                            latitude=30.658,
+                        )
+                    )
 
 
 class TestTTConversion(unittest.TestCase):

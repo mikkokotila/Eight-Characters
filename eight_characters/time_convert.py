@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
-from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+from functools import cache
+from importlib import resources
+from zoneinfo import ZoneInfo
 
 from eight_characters.conventions import ConventionSettings
 from eight_characters.embedded_data import (
@@ -72,6 +74,24 @@ def _parse_utc_timestamp(utc_timestamp: str) -> datetime:
     return parsed.astimezone(UTC)
 
 
+@cache
+def _tzdata_zone_names() -> frozenset[str]:
+    zones = resources.files('tzdata').joinpath('zones').read_text(encoding='utf-8')
+    return frozenset(line.strip() for line in zones.splitlines() if line.strip())
+
+
+@cache
+def _load_timezone(timezone_name: str) -> ZoneInfo:
+    # Zones come only from the pinned tzdata package, never the host's system
+    # database, so conversions are reproducible and match the reported tzdb_version.
+    if timezone_name not in _tzdata_zone_names():
+        raise ValueError('Unrecognized timezone identifier.')
+    *directories, file_name = timezone_name.split('/')
+    zone_package = '.'.join(('tzdata', 'zoneinfo', *directories))
+    with resources.files(zone_package).joinpath(file_name).open('rb') as zone_file:
+        return ZoneInfo.from_file(zone_file, key=timezone_name)
+
+
 def _resolve_local_time(
     year: int,
     month: int,
@@ -82,10 +102,7 @@ def _resolve_local_time(
     timezone_name: str,
     fold: int | None,
 ) -> datetime:
-    try:
-        tz = ZoneInfo(timezone_name)
-    except ZoneInfoNotFoundError as exc:
-        raise ValueError('Unrecognized timezone identifier.') from exc
+    tz = _load_timezone(timezone_name)
 
     wall = datetime(year, month, day, hour, minute, second)
     dt0 = wall.replace(tzinfo=tz, fold=0)

@@ -118,10 +118,8 @@ _LEAP_THRESHOLDS = tuple(item[0] for item in LEAP_SECOND_OFFSETS)
 
 
 def get_tzdb_version() -> str:
-    try:
-        return metadata.version('tzdata')
-    except metadata.PackageNotFoundError:
-        return 'system'
+    # The version of the pinned tzdata package that time_convert loads zones from.
+    return metadata.version('tzdata')
 
 
 def get_leap_second_offset_seconds(utc_datetime: datetime) -> int:
