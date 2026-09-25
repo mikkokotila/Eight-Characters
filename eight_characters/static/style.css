@@ -426,13 +426,47 @@ body {
   margin-bottom: 6px;
 }
 
-/* The pillar's own name: its characters, then their pinyin. */
+/* The pillar's own name: its characters, then their pinyin. It opens the
+   pillar's exact changes. */
 .pillar-identity {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
+  margin: 0 auto;
+  padding: 4px 14px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: none;
   color: var(--text);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.pillar-identity:hover { background: rgba(255, 255, 255, 0.3); border-color: rgba(42, 37, 32, 0.12); }
+.pillar-identity:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 3px; }
+.pillar-identity[aria-expanded='true'] { background: rgba(255, 255, 255, 0.35); border-color: rgba(42, 37, 32, 0.28); }
+
+/* A pillar at most 30 minutes from a change. Every header keeps the line, so the
+   cards stay level across the columns. */
+.pillar-mark {
+  min-height: 18px;
+  margin-top: 6px;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+  letter-spacing: 0.2px;
+  color: var(--text);
+}
+.pillar-mark:not(:empty)::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 8px;
+  background: currentColor;
+  transform: rotate(45deg);
+  vertical-align: 1px;
 }
 .pillar-chars {
   font-family: 'Noto Serif TC', serif;
@@ -1084,6 +1118,51 @@ body {
 }
 .relationship-roles .hidden-stem-label { font-size: 12px; overflow-wrap: break-word; }
 .relationship-note { margin-top: 24px; }
+
+/* ── A pillar's changes: the one before the birth and the one after ── */
+.pillar-change-sides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+.pillar-change { min-width: 0; text-align: center; }
+.pillar-change-side {
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+  font-size: 13px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-light);
+}
+.pillar-change-distance {
+  margin-top: 8px;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+  font-size: 22px;
+  font-weight: 500;
+}
+.pillar-change-where {
+  margin-top: 4px;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
+  font-size: 12px;
+  font-weight: 300;
+  color: var(--text-muted);
+}
+.pillar-change-pillars {
+  margin-top: 10px;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+  font-size: 18px;
+}
+/* Drawn rather than typed, like the back arrow: the page fonts have no arrow glyphs. */
+.pillar-change-arrow::before {
+  content: '';
+  display: inline-block;
+  width: 0.9em;
+  height: 0.9em;
+  vertical-align: -0.1em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 8h11M9.5 4l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 8h11M9.5 4l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+}
 .relationship-detail:not(.hidden) ~ .back-row { margin-top: 28px; }
 
 .sr-only {
@@ -1103,6 +1182,7 @@ body {
   .relationship-chip { min-height: 44px; }
   .reading-toggle { min-height: 44px; }
   .relationship-members { grid-template-columns: 1fr; }
+  .pillar-change-sides { grid-template-columns: 1fr; }
   .relationship-detail h3 { font-size: 20px; }
 }
 

@@ -147,6 +147,11 @@ async function visitStates(page, inspect) {
     await page.locator('.relationship-chip').first().click();
     await inspect(`${lang} relationship`);
     await page.keyboard.press('Escape');
+    for (const pillar of ['hour', 'year']) {
+      await page.locator(`.pillar-identity[data-pillar="${pillar}"]`).click();
+      await inspect(`${lang} ${pillar} changes`);
+      await page.keyboard.press('Escape');
+    }
   }
 }
 
@@ -206,6 +211,8 @@ for (const profile of profiles) {
         await page.locator('#chart-view').waitFor({ state: 'visible' });
         await page.locator('button[data-context="roles"]').click();
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
+        await page.locator('.pillar-identity[data-pillar="year"]').click();
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with a pillar's changes`);
       }
     });
 
@@ -244,6 +251,11 @@ for (const profile of profiles) {
         await page.locator('.relationship-chip').first().click();
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} relationship`));
         await page.keyboard.press('Escape');
+        for (const pillar of ['hour', 'year']) {
+          await page.locator(`.pillar-identity[data-pillar="${pillar}"]`).click();
+          failures.push(...await systemGlyphFailures(page, cdp, `${lang} ${pillar} changes`));
+          await page.keyboard.press('Escape');
+        }
       }
       assert.deepEqual(failures, []);
     }));

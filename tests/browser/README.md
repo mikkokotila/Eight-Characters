@@ -73,5 +73,10 @@ tab titles behave as documented.
 The engine-truth suite checks what the chart shows of the engine's own results:
 each pillar's identity and characters, the header built from the birth as entered
 (in Finnish, times such as 16.30), and the true solar time with its offset from
-clock time, dated when it falls on another day. A chart whose true solar time
-cannot be read is not shown.
+clock time, dated when it falls on another day. It checks that only a pillar
+within 30 minutes of a change is marked, before or after the birth; that every
+pillar's exact changes open on demand, naming the solar term or the clock and its
+date; that Escape returns focus; and that one detail is open at a time. A chart
+whose true solar time cannot be read, or whose pillar changes are missing or
+contradict the chart, is not shown. The foundations audits also walk the pillar
+change details.

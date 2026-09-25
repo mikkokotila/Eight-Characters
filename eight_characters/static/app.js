@@ -81,13 +81,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const formatTime = (reading, withSeconds) => new Intl.DateTimeFormat(locale(), {
     timeStyle: withSeconds ? 'medium' : 'short', hourCycle: 'h23', timeZone: 'UTC',
   }).format(reading);
-  const formatDuration = (totalSeconds) => {
-    let remaining = Math.round(totalSeconds);
+  // Whole seconds, or with `tenths` to a tenth of a second (the exact values on demand).
+  const formatDuration = (totalSeconds, tenths = false) => {
+    const scale = tenths ? 10 : 1;
+    let remaining = Math.round(totalSeconds * scale);
     const parts = [];
-    for (const [size, unit] of [[86400, 'unit_days'], [3600, 'unit_hours'], [60, 'unit_minutes'], [1, 'unit_seconds']]) {
-      const amount = Math.floor(remaining / size);
-      remaining -= amount * size;
-      if (amount || (size === 1 && !parts.length)) parts.push(`${amount} ${requiredTranslation(unit)}`);
+    for (const [size, unit] of [[86400, 'unit_days'], [3600, 'unit_hours'], [60, 'unit_minutes']]) {
+      const amount = Math.floor(remaining / (size * scale));
+      remaining -= amount * size * scale;
+      if (amount) parts.push(`${amount} ${requiredTranslation(unit)}`);
+    }
+    if (remaining || tenths || !parts.length) {
+      const digits = tenths ? 1 : 0;
+      const seconds = new Intl.NumberFormat(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+        .format(remaining / scale);
+      parts.push(`${seconds} ${requiredTranslation('unit_seconds')}`);
     }
     return parts.join(' ');
   };
@@ -104,7 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
       ? requiredTranslation('clock_offset_none')
       : requiredTranslation(offset < 0 ? 'clock_offset_behind' : 'clock_offset_ahead',
         { duration: formatDuration(Math.abs(offset)) });
-    return `${requiredTranslation('true_solar_time', { time: shown })} · ${difference}`;
+    return { reading, text: `${requiredTranslation('true_solar_time', { time: shown })} · ${difference}` };
   };
 
   const setFieldStatus = (status, text, state) => {
@@ -487,7 +495,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderChart(chartData);
       chartDate.textContent = heading;
-      chartSolarTime.textContent = solarTime;
+      chartSolarTime.textContent = solarTime.text;
+      pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
       populateTenGods(tenGodsData);
       if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
       populateHiddenStems(pillarsData.hidden_stems);
@@ -510,6 +519,7 @@ document.addEventListener('DOMContentLoaded', () => {
   backBtn.addEventListener('click', () => {
     relationships.clear();
     dayMasterContext.clear();
+    pillarChanges.clear();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
     document.title = t('page_title');
@@ -551,13 +561,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return t(key, vars);
   };
 
+  // One detail is open at a time: a relationship, the Day Master context, or a pillar's changes.
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc,
-    beforeSelect: () => dayMasterContext.clear(),
+    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
     root: chartView, translate: requiredTranslation, escape: esc,
-    beforeSelect: () => relationships.clear(),
+    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); },
+  });
+  const pillarChanges = window.EC_PILLAR_CHANGES.create({
+    root: chartView, translate: requiredTranslation, escape: esc,
+    format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); },
   });
   const tenGodsToggle = document.getElementById('ten-gods-toggle');
   const syncTenGodsToggle = () => {
@@ -780,10 +796,12 @@ function renderChart(data) {
     pillar.innerHTML = `
       <div class='pillar-header'>
         <div class='pillar-label'>${esc(p.label)}</div>
-        <div class='pillar-identity'>
+        <button type='button' class='pillar-identity' data-pillar='${pillarKeys[i]}'
+          aria-expanded='false' aria-controls='pillar-detail'>
           <span class='pillar-chars' lang='zh-Hant'>${esc(p.stem.char + p.branch.char)}</span>
           <span class='pillar-pinyin'>${esc(`${p.stem.pinyin} ${p.branch.pinyin}`)}</span>
-        </div>
+        </button>
+        <p class='pillar-mark'></p>
       </div>
       <div class='pillar-cards'>
         <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'>

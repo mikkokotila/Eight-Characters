@@ -1,9 +1,12 @@
 import hashlib
+import re
 import unittest
 
 from fastapi.testclient import TestClient
 
 from eight_characters import __version__
+from eight_characters.data import BRANCHES, STEMS
+from eight_characters.engine import TERM_LABEL_BY_TARGET
 from eight_characters.main import app
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 
@@ -112,6 +115,31 @@ class TestApiIndexRoute(unittest.TestCase):
         licence = self.client.get('/static/fonts/NotoSerifTC-OFL.txt')
         self.assertEqual(licence.status_code, 200)
         self.assertIn('SIL OPEN FONT LICENSE Version 1.1', licence.text)
+
+    def test_pillar_change_view_names_what_the_engine_names(self) -> None:
+        # The view names a change's far-side pillar and its solar term from its own
+        # tables; both must match the engine's.
+        script = self.client.get('/static/pillar-changes.js').text
+        pinyin_block = re.search(r'const PINYIN = \{(.*?)\};', script, re.S)
+        terms_block = re.search(r'const TERMS = \{(.*?)\};', script, re.S)
+        if pinyin_block is None or terms_block is None:
+            self.fail('pillar-changes.js has no PINYIN or TERMS table')
+        pinyin = dict(re.findall(r"(\S): '([A-Za-z]+)'", pinyin_block.group(1)))
+        self.assertEqual(
+            pinyin,
+            {
+                char: info['pinyin']
+                for char, info in (*STEMS.items(), *BRANCHES.items())
+            },
+        )
+        terms = dict(re.findall(r"(\w+): '([A-Za-z]+)'", terms_block.group(1)))
+        self.assertEqual(
+            terms,
+            {
+                label: label.split('_')[0].capitalize()
+                for label in TERM_LABEL_BY_TARGET.values()
+            },
+        )
 
     def test_tab_icon_is_linked_and_served(self) -> None:
         response = self.client.get('/')
