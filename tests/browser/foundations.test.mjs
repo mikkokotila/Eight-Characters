@@ -77,7 +77,30 @@ const AUDIT = () => {
       const card = hint.closest('.card');
       return got < 3 ? [`chevron on ${card.dataset.pillar} ${[...card.classList].join('.')} ${got.toFixed(2)}:1`] : [];
     });
-  window.__ecAudit = { textElements, describe, firstFamily, contrastFailures, chevronFailures, parse, backdrop, inkOn };
+  // Hidden-stem dots encode the element: its own colour, and a ring of 3:1 on the surface.
+  const dotFailures = () => {
+    const root = getComputedStyle(document.documentElement);
+    const hex = (value) => {
+      const digits = value.trim().replace('#', '');
+      return [0, 2, 4].map((i) => parseInt(digits.slice(i, i + 2), 16));
+    };
+    return [...document.querySelectorAll('.hidden-stem-dot')]
+      .filter((dot) => dot.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })
+        && !dot.closest('.hidden-stems-panel:not(.is-expanded)'))
+      .flatMap((dot) => {
+        const element = ['metal', 'fire', 'wood', 'earth', 'water'].find((name) => dot.classList.contains(name));
+        const style = getComputedStyle(dot);
+        const fill = parse(style.backgroundColor).slice(0, 3);
+        const expected = hex(root.getPropertyValue(`--${element}-bg`));
+        const ring = style.boxShadow.match(/rgba?\([^)]+\)/);
+        const where = `${element} dot in ${describe(dot.parentElement)}`;
+        if (fill.join() !== expected.join()) return [`${where}: fill ${fill} is not the ${element} colour ${expected}`];
+        if (!ring) return [`${where}: no ring`];
+        const got = inkOn(dot, ring[0], backdrop(dot.parentElement));
+        return got < 3 ? [`${where}: ring ${got.toFixed(2)}:1`] : [];
+      });
+  };
+  window.__ecAudit = { textElements, describe, firstFamily, contrastFailures, chevronFailures, dotFailures, parse, backdrop, inkOn };
 };
 
 // Every chart state and detail page, in both languages; `inspect` runs in each.
@@ -221,14 +244,14 @@ for (const profile of profiles) {
       assert.deepEqual(failures, []);
     }));
 
-    check('text meets WCAG AA contrast and the expand chevron 3:1, in every state', async (page) => {
+    check('text meets WCAG AA contrast, and the chevron and element dots 3:1, in every state', async (page) => {
       await installAudit(page);
       const failures = [];
       await visitStates(page, async (state) => {
         // Measure settled colours, not a fade or a flip in progress.
         await settled(page);
-        const found = await page.evaluate(() => [
-          ...window.__ecAudit.contrastFailures(), ...window.__ecAudit.chevronFailures()]);
+        const found = await page.evaluate(() => [...window.__ecAudit.contrastFailures(),
+          ...window.__ecAudit.chevronFailures(), ...window.__ecAudit.dotFailures()]);
         failures.push(...found.map((failure) => `${state}: ${failure}`));
       });
       assert.deepEqual([...new Set(failures)], []);

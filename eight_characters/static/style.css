@@ -579,11 +579,13 @@ body {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.hidden-stem-dot.metal { background: var(--metal-text); opacity: 0.45; }
-.hidden-stem-dot.fire  { background: var(--fire-text);  opacity: 0.55; }
-.hidden-stem-dot.wood  { background: var(--wood-text);  opacity: 0.55; }
-.hidden-stem-dot.earth { background: var(--earth-text); opacity: 0.50; }
-.hidden-stem-dot.water { background: var(--water-text); opacity: 0.55; }
+/* The element's own colour, ringed in its ink: the ring keeps the dot at 3:1 or
+   more on every surface, including a card of the same element. */
+.hidden-stem-dot.metal { background: var(--metal-bg); box-shadow: 0 0 0 1px var(--metal-text); }
+.hidden-stem-dot.fire  { background: var(--fire-bg);  box-shadow: 0 0 0 1px var(--fire-text); }
+.hidden-stem-dot.wood  { background: var(--wood-bg);  box-shadow: 0 0 0 1px var(--wood-text); }
+.hidden-stem-dot.earth { background: var(--earth-bg); box-shadow: 0 0 0 1px var(--earth-text); }
+.hidden-stem-dot.water { background: var(--water-bg); box-shadow: 0 0 0 1px var(--water-text); }
 
 .hidden-stem-label {
   font-family: 'Manrope', sans-serif;
