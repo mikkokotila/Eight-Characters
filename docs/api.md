@@ -47,6 +47,7 @@ Optional request fields:
 - `include_ten_gods` (`false` by default)
 - `include_interactions` (`false` by default)
 - `include_day_master_context` (`false` by default)
+- `include_role_profile` (`false` by default)
 - `lang` (`fi` by default, used when `include_chart=true`)
 
 Response always includes:
@@ -64,6 +65,7 @@ Response conditionally includes:
 - `ten_gods` (when `include_ten_gods=true`)
 - `interactions` (when `include_interactions=true`)
 - `day_master_context` (when `include_day_master_context=true`)
+- `role_profile` (when `include_role_profile=true`)
 
 `ten_gods` gives, for each pillar, the ten god of its stem and of every
 hidden stem of its branch, relative to the Day Master (the day stem). Hidden
@@ -187,6 +189,44 @@ element, branch element, and hidden stems are deliberately distinct.
 These are natal occurrence records, not strength weights, favorability ratings,
 or applied transformations. See [Day Master context](Standard-Day-Master-Context.md)
 for the policy and Standard-mode controls.
+
+#### Role profile
+
+Set `include_role_profile: true` to receive the independent `role_profile` section.
+The policy is `natal_roles_v1`. It contains:
+
+- `day_master`: natal identity (`char`, `pinyin`, `element`, `polarity`).
+- `groups`: Companion, Output, Wealth, Authority, Resource in that order, each
+  with `group`, `element`, `presence`, and two individual `roles`.
+- Each role has `ten_god`, `presence`, `visible`, and `hidden` occurrence arrays.
+- `visible_stems`: all four stems in year/month/day/hour order, including the
+  separately labeled Day Master. Each has identity, `id`, `pillar`, `ten_god`,
+  `roots`, and `exact_hidden_matches` (a list of occurrence IDs).
+
+`presence` is `visible_only`, `hidden_only`, `visible_and_hidden`, or `absent`.
+Every role is returned even when absent. An absent role has empty occurrence
+arrays; a group can be present while one of its roles is absent.
+
+Occurrence records retain the Day Master context evidence fields and add `id`:
+`visible:<pillar>` or `hidden:<pillar>:<stem-character>`. IDs are stable within a
+chart, not identifiers across different charts. Each non-Day-Master visible and
+each hidden occurrence belongs to exactly one role. The Day Master itself is not
+counted as another visible Companion.
+
+Each visible stem's `roots` lists same-element hidden occurrences, with the same
+IDs and `match: exact_stem` or `opposite_polarity`. `exact_hidden_matches` includes
+only character-identical hidden records. Opposite-polarity roots never qualify
+as exact matches. `ten_god` remains relative to the natal Day Master even when
+another visible stem is being inspected. These links do not add new occurrences.
+
+For the canonical chart, the visible Hour Ren stem has three Water root records
+but only `hidden:hour:壬` as an exact match. The Month Gui stem's exact matches
+are `hidden:month:癸` and `hidden:day:癸`. Year Ding has empty roots and exact
+matches; it still appears as visible-only Indirect Resource.
+
+No strength, favorability, or transformation is inferred. This flag does not
+implicitly include any other enrichment. The existing `day_master_context`
+response, including `support`, remains unchanged. See [Roles](Standard-Roles.md).
 
 ### `POST /api/chart`
 
@@ -339,6 +379,7 @@ curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
     "include_ten_gods": true,
     "include_interactions": true,
     "include_day_master_context": true,
+    "include_role_profile": true,
     "lang": "en"
   }'
 ```
