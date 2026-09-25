@@ -796,9 +796,9 @@ async def index(request: Request):
         for ch, b in BRANCHES.items()
     ]
     return templates.TemplateResponse(
+        request,
         'index.html',
         {
-            'request': request,
             'stem_options': stem_options,
             'branch_options': branch_options,
             'app_version': __version__,
