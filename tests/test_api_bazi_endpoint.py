@@ -152,6 +152,7 @@ class TestApiBaziCompatibility(unittest.TestCase):
                         'timezone': 'Europe/Helsinki',
                         'longitude': 24.9384,
                         'latitude': 60.1699,
+                        'feature_code': 'PPLC',
                     }
                 ]
             ),

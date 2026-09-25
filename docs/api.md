@@ -378,8 +378,15 @@ Success response (query `Chengdu`, first two of three suggestions):
 }
 ```
 
-Each suggestion is one geocoded place:
+Each suggestion is one geocoded settlement:
 
+- Only settlements are suggested: GeoNames populated places (feature codes
+  `PPL…`) and administrative areas (`ADM…`). Airports, glaciers, islands, parks,
+  mountains and whole countries are left out, because a chart computed for their
+  coordinates is for the wrong place; the first geocoder match for `Luxembourg`,
+  for example, is the country's centre, 16 km from the city. Every city-state,
+  such as Hong Kong, has its own settlement entry. `limit` (1–20, default 6)
+  counts settlements.
 - `region` is the geocoder's first-level administrative region (province,
   state); `region` and `country` are empty strings when the geocoder has none.
 - `display` joins `city`, `region` and `country`, leaving out empty parts

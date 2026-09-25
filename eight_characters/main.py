@@ -196,6 +196,22 @@ class GeocodeResult(TypedDict, total=False):
     timezone: str
     longitude: float
     latitude: float
+    feature_code: str
+
+
+# Birthplaces are settlements: GeoNames populated places (PPL*) and administrative
+# areas (ADM*). Airports, glaciers, islands, parks, mountains and whole countries
+# are not offered, since a chart computed for their coordinates is for the wrong
+# place. Every city-state (Hong Kong, Singapore, Monaco) has its own PPLC entry.
+SETTLEMENT_FEATURE_CODE_PREFIXES = ('PPL', 'ADM')
+# Asked of the geocoder so that the settlements left after filtering can still fill
+# the requested number of suggestions.
+SUGGEST_CANDIDATE_COUNT = 20
+
+
+def _is_settlement(result: GeocodeResult) -> bool:
+    feature_code = result.get('feature_code') or ''
+    return feature_code.startswith(SETTLEMENT_FEATURE_CODE_PREFIXES)
 
 
 class ResolvedPlace(TypedDict):
@@ -1116,13 +1132,14 @@ async def location_search(payload: LocationSearchRequest) -> dict[str, ResolvedP
 async def location_suggest(
     payload: LocationSuggestRequest,
 ) -> dict[str, list[LocationSuggestion]]:
-    """Return city suggestions for autosuggest input."""
+    """Return settlement suggestions for autosuggest input."""
     query = payload.query.strip()
     if not query:
         return {'suggestions': []}
+    limit = max(1, min(payload.limit, SUGGEST_CANDIDATE_COUNT))
 
     try:
-        results = await _search_city_candidates(query, count=payload.limit)
+        results = await _search_city_candidates(query, count=SUGGEST_CANDIDATE_COUNT)
     except CityLookupServiceError as exc:
         raise HTTPException(
             status_code=500,
@@ -1135,6 +1152,10 @@ async def location_suggest(
 
     suggestions: list[LocationSuggestion] = []
     for result in results:
+        if len(suggestions) == limit:
+            break
+        if not _is_settlement(result):
+            continue
         try:
             location, resolved_city = _city_models_from_result(result, query)
         except ValueError:
