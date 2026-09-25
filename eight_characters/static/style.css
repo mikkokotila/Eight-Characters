@@ -106,6 +106,7 @@ body {
   color: var(--text-light);
   font-size: 11px;
   letter-spacing: 0.8px;
+  text-transform: uppercase;
   padding: 5px 9px;
   border-radius: 999px;
   cursor: pointer;

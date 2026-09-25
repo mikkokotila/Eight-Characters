@@ -420,6 +420,16 @@ for (const profile of profiles) {
       }
     });
 
+    check('the mode switch speaks the page language', async (page) => {
+      await page.goto(process.env.EC_BASE_URL);
+      const modes = () => page.locator('.mode-btn').evaluateAll((buttons) => buttons.map((button) =>
+        `${button.textContent} ${getComputedStyle(button).textTransform}`));
+      await page.locator('[data-lang="fi"]').click();
+      assert.deepEqual(await modes(), ['Standardi uppercase', 'Evoluutio uppercase']);
+      await page.locator('[data-lang="en"]').click();
+      assert.deepEqual(await modes(), ['Standard uppercase', 'Evolution uppercase']);
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];

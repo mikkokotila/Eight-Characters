@@ -119,6 +119,8 @@
       ten_god_day_master: 'Päivän mestari',
       lang_fi: 'FI',
       lang_en: 'EN',
+      mode_standard: 'Standardi',
+      mode_evolution: 'Evoluutio',
     },
     en: {
       roles_title: "Roles",
@@ -239,6 +241,8 @@
       ten_god_day_master: 'Day Master',
       lang_fi: 'FI',
       lang_en: 'EN',
+      mode_standard: 'Standard',
+      mode_evolution: 'Evolution',
     },
   };
 
