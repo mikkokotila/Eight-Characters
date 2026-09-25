@@ -40,6 +40,7 @@ from eight_characters.evolution.state import RULE_COUNT
 from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
 )
+from eight_characters.interactions import detect_interactions
 from eight_characters.ten_gods import (
     DAY_MASTER,
     DayMasterName,
@@ -144,6 +145,7 @@ class FourPillarsRequest(BaseModel):
     include_chart: bool = False
     include_hidden_stems: bool = False
     include_ten_gods: bool = False
+    include_interactions: bool = False
     lang: str = 'fi'
 
 
@@ -948,6 +950,10 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
                 time_value=payload.time,
                 lang=payload.lang,
                 four_pillars=four_pillars,
+            )
+        if payload.include_interactions:
+            response['interactions'] = detect_interactions(
+                _chart_components_from_four_pillars(four_pillars)
             )
         if payload.include_hidden_stems or payload.include_ten_gods:
             hidden_stems_request = HiddenStemsRequest(
