@@ -20,7 +20,7 @@ value: `tests/test_api_index_route.py`
 | `--line-1`, `--line-2` | ink at 12%, 30% | a hairline at rest; hover, focus, a current choice |
 | `--surface-1`, `--surface-2`, `--surface-3` | white at 30%, 50%, 80% | at rest; raised or pressed; floating over content |
 | `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% | an option under the pointer; the active option |
-| `--shadow-1`, `--shadow-2` | | a focused field; anything raised |
+| `--shadow-1`, `--shadow-2`, `--shadow-sheet` | | a focused field; anything raised; the sheet over the foot of the page |
 | `--sheen` | | the light across a card's face |
 | `--<element>-bg`, `--<element>-text`, `--<element>-tint` | | each element's cards, their ink, and its hidden-stem panels |
 
@@ -53,16 +53,20 @@ and gaps use only these, or `calc()` of them.
   so they follow the size.
 - Weight 300 is not used below display sizes.
 
-## The pillars
+## The pillars and the panel
 
 - One grid holds all four pillars: four columns, two up to 640px wide. Each
-  pillar spans five shared rows (label, name, mark, stem, branch) as a subgrid,
-  with its header and its cards as nested subgrids. The rows line up across the
-  pillars, and the cards of a row share one height, front and back.
-  `tests/browser/design-system.test.mjs` checks this from 641px to 1440px, in
-  both languages.
+  pillar spans six shared rows (label, name, mark, stem, branch, hidden stems)
+  as a subgrid, with its header and its cards as nested subgrids. The rows line
+  up across the pillars, and the cards of a row share one height, front and
+  back. Opened hidden stems grow their own row, in the flow: nothing hangs over
+  what follows. `tests/browser/design-system.test.mjs` checks this from 641px to
+  1440px, in both languages.
 - `--card-min-height`: a card's least height (160px up to 640px wide).
-- `--hidden-stem-row` and `--hidden-stems-max`: a hidden-stem row, and the
-  tallest panel (three rows, with its padding and gaps).
-- `--below-pillars`: the room the chart keeps below the pillars. The hidden-stem
-  panels hang over what follows, so this is the tallest panel and a step more.
+- `--hidden-stem-row`: the line of a hidden stem in its panel.
+- `--chart-width`: the chart column, 960px.
+- `--panel-width`: the panel that explains a topic beside the chart, from 1200px
+  wide: 420px.
+- `--sheet-height`: narrower, the panel is a sheet over the foot of the page, at
+  most half the screen tall. The chart keeps as much room below it to scroll
+  clear of the sheet.

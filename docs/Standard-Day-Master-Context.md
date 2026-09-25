@@ -1,15 +1,18 @@
 # Day Master context in Standard mode
 
-The line beneath the date identifies the Day Master and provides three controls:
-the resolved solar month, Roots, and Roles. Select a control to inspect its
-evidence below the chart. Select it again, press Escape, or use Clear to dismiss
-it. Keyboard activation and focus return work the same way as Relationships.
+The row of topics above the pillars starts with the Day Master and its three
+controls: the resolved solar month, Roots, and Roles. Select a control to inspect
+its evidence in the panel beside the chart (from 1200px wide; narrower, a sheet
+over the foot of the page). Select it again, press Escape, or use Close to
+dismiss it. Keyboard activation and focus return work the same way as
+Relationships.
 
 Only one relationship or context detail is open at a time. Switching topics
 clears the previous highlights without moving the pillars, changing their natal
-elements, flipping cards, or opening hidden-stem panels. The five-element palette,
-card faces, and existing long-press, quick-click, and chart-wide Ten Gods gestures
-are unchanged.
+elements, flipping cards, or opening hidden-stem panels. From 1200px wide the chart
+moves over once, when the panel first opens. The five-element palette, card faces,
+and the long-press, quick-click, and chart-wide display gestures are unchanged by
+a topic.
 
 ## What the controls mean
 

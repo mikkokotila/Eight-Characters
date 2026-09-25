@@ -86,7 +86,7 @@
         </div>`;
     };
 
-    const titleFor = (name) => t('pillar_changes_title', { pillar: entries[name].label, identity: identity(entries[name].natal) });
+    const titleFor = (name) => t('pillar_changes_title', { pillar: t('pillar_' + name), identity: identity(entries[name].natal) });
 
     const buttonFor = (name) => root.querySelector(`.pillar-identity[data-pillar="${name}"]`);
 
@@ -111,7 +111,6 @@
       detail.innerHTML = `
         <div class="relationship-detail-heading">
           <h3 id="pillar-detail-title">${esc(titleFor(name))}</h3>
-          <button type="button" class="reading-toggle" data-clear-pillar>${esc(t('pillar_changes_close'))}</button>
         </div>
         <div class="pillar-change-sides">
           ${sideMarkup(entry, 'previous')}
@@ -133,9 +132,6 @@
       clear();
       if (button) button.focus();
     };
-    detail.addEventListener('click', (event) => {
-      if (event.target.closest('[data-clear-pillar]')) clearAndReturnFocus();
-    });
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && selected !== null) {
         event.preventDefault();
@@ -157,7 +153,6 @@
           || `${chartPillar.stem.pinyin} ${chartPillar.branch.pinyin}` !== natal.names) fail();
         const changes = fourPillars[name].changes;
         const entry = {
-          label: chartPillar.label,
           natal,
           previous: readChange(name, changes?.previous),
           next: readChange(name, changes?.next),

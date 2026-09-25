@@ -1,6 +1,6 @@
 import {
-  assert, describe, it, engineName, profiles, openChart, fillChart, count, settled,
-  geometry, natalColors, longPress, screenshot, withPage,
+  assert, describe, it, engineName, profiles, openChart, fillChart, count,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
 } from './chart-helpers.mjs';
 
 for (const profile of profiles) {
@@ -64,6 +64,7 @@ for (const profile of profiles) {
       await openChart(page);
       const before = await geometry(page);
       await page.locator('[data-context="roots"]').click();
+      await openRelationships(page);
       await page.locator('.relationship-chip').click();
       await count(page, '.card.is-context-source, #pillars .is-context-evidence', 0);
       assert.equal(await page.locator('#context-detail').isVisible(), false);
@@ -80,18 +81,18 @@ for (const profile of profiles) {
       assert.deepEqual(await geometry(page), before);
     });
 
-    check('keyboard, clear and Escape preserve focus and announce the selected topic', async (page) => {
+    check('keyboard, close and Escape preserve focus and announce the selected topic', async (page) => {
       await openChart(page);
       const roots = page.locator('[data-context="roots"]');
       await roots.focus(); await page.keyboard.press('Enter');
       assert.equal(await roots.getAttribute('aria-controls'), 'context-detail');
       assert.equal(await roots.getAttribute('aria-expanded'), 'true');
       assert.match(await page.locator('#context-status').textContent(), /Highlighted: Roots/);
-      await page.locator('[data-clear-context]').focus(); await page.keyboard.press('Escape');
+      await page.locator('[data-close-panel]').focus(); await page.keyboard.press('Escape');
       assert.equal(await roots.evaluate(n => n === document.activeElement), true);
       assert.equal(await roots.getAttribute('aria-expanded'), 'false');
       await page.keyboard.press('Space');
-      await page.locator('[data-clear-context]').click();
+      await page.locator('[data-close-panel]').click();
       assert.equal(await roots.evaluate(n => n === document.activeElement), true);
       await count(page, '.card.is-context-source, #pillars .is-context-evidence', 0);
       assert.equal(await page.locator('#context-status').textContent(), '');
@@ -108,14 +109,17 @@ for (const profile of profiles) {
       const hourBranch = page.locator('.card.branch[data-pillar="hour"]');
       await longPress(page, hourBranch);
       await count(page, '.hidden-stems-panel.is-expanded', 1);
-      assert.equal(await page.locator('#ten-gods-toggle').getAttribute('aria-pressed'), 'mixed');
-      await page.locator('#ten-gods-toggle').click(); await settled(page);
+      assert.equal(await page.locator('#display-switch button[data-display="characters"]').getAttribute('aria-pressed'), 'mixed');
+      // Ten Gods on every card: all of them turn, and the opened hidden stems close.
+      await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
+      await count(page, '.hidden-stems-panel.is-expanded', 0);
       await count(page, '.card.is-context-source', 3);
       await count(page, '#pillars .is-context-evidence', 6);
-      await count(page, '.hidden-stems-panel.is-expanded', 1);
       if (profile.hasTouch) await dayBranch.tap(); else await dayBranch.click();
-      await count(page, '.hidden-stems-panel.is-expanded', 0);
+      await count(page, '.hidden-stems-panel.is-expanded', 1);
+      await count(page, '.hidden-stems-panel[data-pillar="day"] .is-context-evidence', 1);
+      await count(page, '.card.is-context-source', 3);
       await screenshot(page, `${profile.name}-context-flipped`);
     });
 
@@ -191,7 +195,7 @@ for (const profile of profiles) {
       }
       await page.setViewportSize(profile.viewport);
       await page.locator('[data-context="roots"]').click();
-      await page.locator('#ten-gods-toggle').click(); await settled(page);
+      await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await screenshot(page, `${profile.name}-context-finnish`);
@@ -201,7 +205,7 @@ for (const profile of profiles) {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await openChart(page);
       await page.locator('[data-context="roots"]').click();
-      await page.locator('#ten-gods-toggle').click();
+      await page.locator('#display-switch button[data-display="ten-gods"]').click();
       await count(page, '.card.is-flipped', 8);
       await count(page, '.card.is-turning', 0);
       assert.equal(await page.locator('[data-context="roots"]').evaluate(n => getComputedStyle(n).transitionDuration), '0s');
@@ -212,7 +216,7 @@ for (const profile of profiles) {
     check('new charts reset detail, highlights and card state without stale root evidence', async (page) => {
       await openChart(page);
       await page.locator('[data-context="roots"]').click();
-      await page.locator('#ten-gods-toggle').click(); await settled(page);
+      await showDisplay(page, 'ten-gods');
       await page.locator('#back-btn').click();
       await fillChart(page, { date: '1990-05-09', time: '12:00' });
       await count(page, '.card.is-context-source, #pillars .is-context-evidence, .card.is-flipped', 0);

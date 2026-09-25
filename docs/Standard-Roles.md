@@ -54,10 +54,10 @@ evidence in this view.
 
 ## Navigation and design
 
-Roles uses the existing below-chart detail surface, fonts, palette, and card
-interactions. Role and root detail pages replace one another. Their back control
-returns keyboard focus to the originating entry. Clear or Escape dismisses the
-whole selection and returns focus to Roles. Selecting Month, Day Master Roots,
+Roles uses the panel beside the chart (a sheet below 1200px wide), and the
+existing fonts, palette, and card interactions. Role and root detail pages replace
+one another. Their back control returns keyboard focus to the originating entry.
+Close or Escape dismisses the whole selection and returns focus to Roles. Selecting Month, Day Master Roots,
 or a relationship clears Roles and its highlights. No panels are stacked.
 
 Finnish and English labels, narrow layouts, reduced motion, and screen-reader

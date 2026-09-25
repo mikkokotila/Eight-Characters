@@ -1,23 +1,30 @@
 # Relationships in Standard mode
 
-The strip above the pillars lists detected natal relationships. Select an entry
-to outline its participating cards. Select it again, press Escape, or use Clear
-to remove the selection. The controls work with a pointer, touch, or keyboard.
+Relationships, in the row of topics above the pillars, says how many natal
+relationships were detected and opens their list in the panel: beside the chart
+from 1200px wide, and as a sheet over the foot of the page when narrower. Select
+an entry to outline its participating cards. Select it again or press Escape to
+remove the selection; a second Escape, Close, or Relationships again closes the
+list. The controls work with a pointer, touch, or keyboard.
 
-Details appear below the chart, leaving the pillars in place. They identify the
-stems or branches, their natal elements, and the relevant Ten Gods. Branch details
-show every hidden stem's role and qi type. Detail columns follow the chart's display
-order; the API retains chronological pillar order.
+The selected relationship's details open below the list, and the pillars stay in
+place: from 1200px wide the chart moves over once, when the panel first opens,
+and a sheet only lies over the page. The details identify the stems or branches,
+their natal elements, and the relevant Ten Gods. Branch details show every hidden
+stem's role and qi type. Entries and details name the pillars plainly (Hour, Day,
+Month, Year) in the chart's display order, as in "Hour–Year"; the API retains
+chronological pillar order.
 
 Solid marks identify combination pairs, dashed marks identify clashes, and double
 marks identify complete three-harmony frames. These are line styles, not ratings.
 The existing five-element colors, card faces, fonts, and element assignments remain
 unchanged. A relationship does not repaint a card as a transformed element.
 
-Show Ten Gods turns all eight cards over together. Hide Ten Gods returns them.
-Individual one-second holds still work, and the toggle reflects a mixed state when
-only some cards are turned. A quick click or tap on a branch still toggles its
-hidden-stem panel; releasing a long press does not also expand it.
+The display switch above the chart shows characters, Ten Gods or hidden stems on
+all eight cards together. Individual half-second holds still turn one card, and a
+quick click or tap on a branch still toggles its hidden-stem panel; releasing a
+long press does not also expand it. After such a change the switch's choice reads
+mixed, and pressing it again shows it on every card.
 
 ## Recognition policy
 
@@ -29,7 +36,7 @@ Overlapping matches are shown independently, without declaring a winner.
 
 Only visible stems participate in stem combinations. Punishments, harms, breaks,
 directional combinations, incomplete frames, and temporal/luck pillars are outside
-this first release. An empty strip explicitly describes the supported scope.
+this first release. An empty list explicitly describes the supported scope.
 
 Recognition is not an assertion of activation, transformation, strength, or life
 outcomes. Potential elements are shown for stem combinations and complete frames,
@@ -60,7 +67,7 @@ See [API Reference](api.md) and [browser regression tests](../tests/browser/READ
 
 ## Day Master context
 
-The summary above Relationships opens season, root, or role evidence in the
-same below-chart detail area. Selecting one clears the other selection and its
+The Day Master's topics, in the same row as Relationships, open season, root, or
+role evidence in the same panel. Selecting one clears the other selection and its
 highlights; details never accumulate into stacked panels. See
 [Day Master context](Standard-Day-Master-Context.md).

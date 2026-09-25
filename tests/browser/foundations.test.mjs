@@ -1,7 +1,8 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Page foundations of the Standard view: typography, contrast, form, location list, identity.
 import {
-  assert, describe, it, engineName, profiles, openChart, settled, withPage, HELSINKI, TROMSO,
+  assert, describe, it, engineName, profiles, openChart, count, settled, withPage, showDisplay, openRelationships,
+  HELSINKI, TROMSO,
 } from './chart-helpers.mjs';
 
 const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond', 'Noto Serif TC'];
@@ -126,16 +127,17 @@ async function visitStates(page, inspect) {
     await page.locator('#chart-view').waitFor({ state: 'visible' });
     await settled(page);
     await inspect(`${lang} chart`);
-    const pillars = ['hour', 'day', 'month', 'year'];
-    for (const pillar of pillars) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
-    await settled(page);
+    await page.locator('.card.stem[data-pillar="day"]').hover();
+    await page.locator('.card-hint').waitFor({ state: 'visible' });
+    await inspect(`${lang} chart with the long-press hint`);
+    await showDisplay(page, 'hidden-stems');
     await inspect(`${lang} chart with hidden stems`);
-    await page.locator('#ten-gods-toggle').click();
+    // Ten Gods, and each branch's hidden stems opened by hand: the display reads mixed.
+    await showDisplay(page, 'ten-gods');
+    for (const pillar of ['hour', 'day', 'month', 'year']) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
     await settled(page);
     await inspect(`${lang} Ten Gods with hidden stems`);
-    for (const pillar of pillars) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
-    await page.locator('#ten-gods-toggle').click();
-    await settled(page);
+    await showDisplay(page, 'characters');
     for (const topic of ['season', 'roots', 'roles']) {
       await page.locator(`button[data-context="${topic}"]`).click();
       await inspect(`${lang} ${topic}`);
@@ -146,6 +148,8 @@ async function visitStates(page, inspect) {
     await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
     await inspect(`${lang} stem roots`);
     await page.keyboard.press('Escape');
+    await openRelationships(page);
+    await inspect(`${lang} relationships`);
     await page.locator('.relationship-chip').first().click();
     await inspect(`${lang} relationship`);
     await page.keyboard.press('Escape');
@@ -244,9 +248,11 @@ for (const profile of profiles) {
         await page.locator('.location-suggestion').first().click();
         await page.locator('#create-chart-btn').click();
         await page.locator('#chart-view').waitFor({ state: 'visible' });
+        await showDisplay(page, 'ten-gods');
         for (const pillar of ['hour', 'day', 'month', 'year']) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
-        await page.locator('#ten-gods-toggle').click();
         await settled(page);
+        await page.locator('.card.stem[data-pillar="day"]').hover();
+        await page.locator('.card-hint').waitFor({ state: 'visible' });
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} chart`));
         for (const topic of ['season', 'roots', 'roles']) {
           await page.locator(`button[data-context="${topic}"]`).click();
@@ -258,6 +264,7 @@ for (const profile of profiles) {
         await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} stem roots`));
         await page.keyboard.press('Escape');
+        await openRelationships(page);
         await page.locator('.relationship-chip').first().click();
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} relationship`));
         await page.keyboard.press('Escape');
@@ -387,16 +394,18 @@ for (const profile of profiles) {
       await page.locator('[data-lang="en"]').click();
       assert.deepEqual(await headings(), ['H1 Eight characters']);
       await openChart(page, { lang: 'en' });
-      assert.deepEqual(await headings(), [
-        'H1 February 4, 1988 · 16:30 · Chengdu', 'H2 Day Master · Ji — Yin Earth', 'H2 Relationships']);
+      assert.deepEqual(await headings(), ['H1 February 4, 1988 · 16:30 · Chengdu', 'H2 Day Master · Ji — Yin Earth']);
     });
 
     check('card highlights stay within half the gap between stacked cards', async (page) => {
       const intrusions = (state) => page.evaluate((state) => {
-        const gap = parseFloat(getComputedStyle(document.querySelector('.pillar-cards')).rowGap);
         const highlighted = [...document.querySelectorAll('.card.is-related, .card.is-context-source, .card.is-context-reference')];
         if (!highlighted.length) throw new Error(`${state}: nothing highlighted`);
         return highlighted.flatMap((card) => {
+          const cards = card.closest('.pillar-cards');
+          // The gap as drawn, from the stem card's foot to the branch card's top.
+          const gap = cards.querySelector('.card.branch').getBoundingClientRect().top
+            - cards.querySelector('.card.stem').getBoundingClientRect().bottom;
           const style = getComputedStyle(card);
           const reach = parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth);
           return reach > gap / 2
@@ -405,6 +414,7 @@ for (const profile of profiles) {
       }, state);
       const found = [];
       await openChart(page, { lang: 'en' });
+      await openRelationships(page);
       await page.locator('[data-kind="stem_combination"]').click();
       found.push(...await intrusions('stem combination'));
       await page.locator('button[data-context="roots"]').click();
@@ -413,9 +423,11 @@ for (const profile of profiles) {
       await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
       found.push(...await intrusions('stem roots'));
       await openChart(page, { date: '1990-01-05', time: '12:00' });
+      await openRelationships(page);
       await page.locator('[data-kind="branch_clash"]').first().click();
       found.push(...await intrusions('branch clash'));
       await openChart(page, { date: '1990-01-08', time: '12:00' });
+      await openRelationships(page);
       await page.locator('[data-kind="harmony_frame"]').first().click();
       found.push(...await intrusions('harmony frame'));
       assert.deepEqual(found, []);
@@ -437,27 +449,31 @@ for (const profile of profiles) {
       assert.notEqual(branch.shadow, 'none');
     });
 
-    check('the Ten Gods toggle names what it does', async (page) => {
-      const labels = { en: ['Show Ten Gods', 'Hide Ten Gods'], fi: ['Näytä kymmenen jumalaa', 'Piilota kymmenen jumalaa'] };
-      for (const [lang, [show, hide]] of Object.entries(labels)) {
+    check('the display switch names each view in the page language', async (page) => {
+      const labels = {
+        en: ['Show', 'Characters', 'Ten Gods', 'Hidden stems'],
+        fi: ['Näytä', 'Merkit', 'Kymmenen jumalaa', 'Piilorungot'],
+      };
+      for (const [lang, [group, ...choices]] of Object.entries(labels)) {
         await openChart(page, { lang });
-        const toggle = page.locator('#ten-gods-toggle');
-        assert.equal(await toggle.textContent(), show);
-        await toggle.click();
-        await settled(page);
-        assert.equal(await toggle.textContent(), hide);
-        assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+        assert.equal(await page.locator('#display-switch').getAttribute('role'), 'group');
+        assert.equal(await page.locator('#display-switch-label').textContent(), group);
+        assert.deepEqual(await page.locator('#display-switch button').allTextContents(), choices);
+        await showDisplay(page, 'ten-gods');
+        await count(page, '.card.is-flipped', 8);
+        assert.deepEqual(await page.locator('#display-switch button').evaluateAll((buttons) =>
+          buttons.map((button) => button.getAttribute('aria-pressed'))), ['false', 'true', 'false']);
       }
     });
 
-    check('the mode switch speaks the page language', async (page) => {
+    check('the chart, not the landing page, chooses its view, in the page language', async (page) => {
       await page.goto(process.env.EC_BASE_URL);
-      const modes = () => page.locator('.mode-btn').evaluateAll((buttons) => buttons.map((button) =>
-        `${button.textContent} ${getComputedStyle(button).textTransform}`));
-      await page.locator('[data-lang="fi"]').click();
-      assert.deepEqual(await modes(), ['Standardi uppercase', 'Evoluutio uppercase']);
-      await page.locator('[data-lang="en"]').click();
-      assert.deepEqual(await modes(), ['Standard uppercase', 'Evolution uppercase']);
+      assert.equal(await page.locator('#input-view button[data-view], #input-view [data-mode]').count(), 0);
+      for (const [lang, views] of Object.entries({ fi: ['Standardi', 'Evoluutio'], en: ['Standard', 'Evolution'] })) {
+        await openChart(page, { lang });
+        assert.deepEqual(await page.locator('#view-switch button').allTextContents(), views);
+        assert.equal(await page.locator('#view-switch button[data-view="standard"]').getAttribute('aria-pressed'), 'true');
+      }
     });
 
     check('the tab names the page in its language, and the open chart by date and place', async (page) => {

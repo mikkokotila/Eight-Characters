@@ -62,6 +62,7 @@
   --surface-page-2: rgba(245, 240, 232, 0.92);
   --shadow-1: 0 2px 16px rgba(42, 37, 32, 0.06);
   --shadow-2: 0 8px 24px rgba(42, 37, 32, 0.08);
+  --shadow-sheet: 0 -8px 24px rgba(42, 37, 32, 0.08);
   --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
 
   --metal-bg: #C8C2B8;
@@ -105,13 +106,12 @@
   --tracking-2: 0.18em;  /* capitals */
   --tracking-3: 0.3em;   /* the eyebrow above a title */
 
-  /* ── The pillars ── */
+  /* ── The pillars and the panel beside them ── */
+  --chart-width: 960px;
   --card-min-height: 180px;
-  /* A hidden-stem row, and the tallest panel of them (three rows). The panels
-     hang over what follows the pillars, so the chart keeps that much room. */
   --hidden-stem-row: 20px;
-  --hidden-stems-max: calc(var(--space-3) + 3 * var(--hidden-stem-row) + 2 * var(--space-2) + var(--space-4));
-  --below-pillars: calc(var(--hidden-stems-max) + var(--space-4));
+  --panel-width: 420px;
+  --sheet-height: 50vh;
 
   /* Gua line dimensions */
   --line-w: 54px;
@@ -152,12 +152,11 @@ body {
   margin-bottom: var(--space-7);
 }
 
-.language-switch,
-.mode-switch {
+.language-switch {
   display: flex;
   justify-content: center;
   width: fit-content;
-  margin: 0 auto;
+  margin: 0 auto var(--space-4);
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line-1);
@@ -165,16 +164,7 @@ body {
   background: var(--surface-1);
 }
 
-.language-switch {
-  margin-bottom: var(--space-2);
-}
-
-.mode-switch {
-  margin-bottom: var(--space-4);
-}
-
-.lang-btn,
-.mode-btn {
+.lang-btn {
   border: none;
   background: transparent;
   color: var(--ink-2);
@@ -187,8 +177,7 @@ body {
   transition: all 0.2s ease;
 }
 
-.lang-btn.is-active,
-.mode-btn.is-active {
+.lang-btn.is-active {
   background: var(--surface-3);
   color: var(--ink-1);
 }
@@ -420,66 +409,64 @@ body {
    ═══════════════════════════════════════════════════════ */
 
 .chart-container {
-  max-width: 960px;
   width: 100%;
+  max-width: var(--chart-width);
   align-self: flex-start;
 }
 
-.chart-header {
-  text-align: center;
-  margin-bottom: var(--space-5);
+/* ── The top bar: what the chart is on the left; how to see it, and what to do,
+   on the right ── */
+.chart-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4) var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--line-1);
 }
-
-.chart-header .eyebrow {
+.chart-identity { min-width: 0; }
+.chart-bar .name {
   font-family: var(--font-serif);
   font-weight: 400;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-3);
-  text-transform: uppercase;
-  color: var(--ink-2);
-  margin-bottom: var(--space-2);
-}
-
-.chart-header .name {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: var(--text-5);
-  color: var(--ink-1);
+  font-size: var(--text-4);
   letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
 }
-
 /* The clock the day and hour pillars are read from. */
-.chart-header .solar-time {
-  margin-top: var(--space-2);
+.chart-bar .solar-time {
+  margin-top: var(--space-1);
   font-family: var(--font-serif);
   font-weight: 500;
-  font-size: var(--text-3);
+  font-size: var(--text-2);
   letter-spacing: var(--tracking-1);
   color: var(--ink-2);
 }
-
-/* Where the Zi-hour conventions disagree: both, the chart's own pressed. */
-.zi-switch { margin: var(--space-4) auto 0; max-width: 560px; }
-.zi-switch-note {
-  font-family: var(--font-sans);
-  font-size: var(--text-1);
-  font-weight: 400;
-  line-height: 1.6;
-  color: var(--ink-2);
+.chart-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2) var(--space-3);
 }
-.zi-switch-options {
+/* The Zi-hour switch and the notices take the bar's full width. */
+.chart-bar > .zi-switch,
+.chart-bar > .chart-notices { flex-basis: 100%; }
+
+/* One pill of mutually exclusive choices; the current one is pressed. */
+.segmented {
   display: inline-flex;
   flex-wrap: wrap;
-  justify-content: center;
+  align-items: center;
   gap: var(--space-1);
-  margin-top: var(--space-2);
   padding: var(--space-1);
   border: 1px solid var(--line-1);
   border-radius: 20px;
+  background: var(--surface-1);
 }
-.zi-switch-options button {
+.segmented button {
   min-height: 32px;
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-1) var(--space-3);
   border: none;
   border-radius: 16px;
   background: none;
@@ -490,16 +477,45 @@ body {
   cursor: pointer;
   transition: background 0.2s ease, color 0.2s ease;
 }
-.zi-switch-options button:hover { color: var(--ink-1); background: var(--surface-2); }
-.zi-switch-options button[aria-pressed='true'] { background: var(--ink-1); color: var(--bg); cursor: default; }
-.zi-switch-options button:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
-.zi-switch[aria-busy='true'] button { cursor: progress; }
+.segmented button:hover { color: var(--ink-1); background: var(--surface-2); }
+.segmented button[aria-pressed='true'] { background: var(--ink-1); color: var(--bg); cursor: default; }
+/* Chosen, but a card shows something else; pressing it again applies it to all. */
+.segmented button[aria-pressed='mixed'] { color: var(--ink-1); box-shadow: inset 0 0 0 1px var(--ink-1); }
+.segmented button:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
+.bar-action {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 16px;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.bar-action:hover { background: var(--surface-2); border-color: var(--line-2); }
+.bar-action:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
+/* Where the Zi-hour conventions disagree: both, the chart's own pressed. */
+.zi-switch { max-width: 560px; }
+.zi-switch-note {
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+.zi-switch-options { margin-top: var(--space-2); }
+/* While the chart is asked for again (another convention or language). */
+.chart-container[aria-busy='true'] button { cursor: progress; }
 
 /* Flags the engine raised for this chart. */
 .chart-notices {
   list-style: none;
   max-width: 620px;
-  margin: var(--space-4) auto 0;
   padding: 0;
   text-align: left;
 }
@@ -514,17 +530,59 @@ body {
 }
 .chart-notices li + li { margin-top: var(--space-2); }
 
-/* One grid for all four pillars. Each pillar spans five shared rows (label,
-   name, mark, stem, branch) as a subgrid, so every row lines up across the
-   pillars and the cards of a row share one height, whatever their text. */
+/* ── The chart's topics: each opens its explanation in the panel ── */
+.chart-topics {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  padding: var(--space-4) 0 var(--space-5);
+}
+.day-master-line {
+  margin-right: var(--space-3);
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 500;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+}
+/* The Day Master's own topics sit in the row with the relationships. */
+.chart-topics .context-controls { display: contents; }
+.topic-button,
+.chart-topics .context-toggle {
+  min-height: 36px;
+  padding: var(--space-1) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 18px;
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-2);
+  font-weight: 500;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.topic-button:hover,
+.chart-topics .context-toggle:hover { background: var(--surface-2); border-color: var(--line-2); }
+.topic-button[aria-expanded='true'],
+.chart-topics .context-toggle[aria-expanded='true'] { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
+.topic-button:focus-visible,
+.chart-topics .context-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
+/* One grid for all four pillars. Each pillar spans six shared rows (label,
+   name, mark, stem, branch, hidden stems) as a subgrid, so every row lines up
+   across the pillars and the cards of a row share one height, whatever their
+   text. Opened hidden stems grow their row, in the flow. */
 .pillars {
+  position: relative;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   column-gap: var(--space-5);
 }
 
 .pillar {
-  grid-row: span 5;
+  grid-row: span 6;
   display: grid;
   grid-template-rows: subgrid;
   animation: fadeUp 0.6s ease both;
@@ -544,15 +602,26 @@ body {
   padding-bottom: var(--space-4);
 }
 
-/* A label that wraps grows its row; the others sit at its foot, above the names. */
+/* The pillar's plain name over its poetic one. A label that wraps grows its
+   row; the others sit at its foot, above the names. */
 .pillar-label {
   align-self: end;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   font-family: var(--font-serif);
-  font-weight: 400;
+  color: var(--ink-2);
+}
+.pillar-plain {
+  font-weight: 500;
   font-size: var(--text-1);
   letter-spacing: var(--tracking-2);
   text-transform: uppercase;
-  color: var(--ink-2);
+}
+.pillar-poetic {
+  font-weight: 400;
+  font-size: var(--text-2);
+  letter-spacing: var(--tracking-1);
 }
 
 /* The pillar's own name: its characters, then their pinyin. It opens the
@@ -613,14 +682,16 @@ body {
   color: var(--ink-2);
 }
 
-/* The stem and branch rows of the pillar's subgrid; the hidden stems hang below. */
+/* The stem, branch and hidden-stem rows of the pillar's subgrid. */
 .pillar-cards {
-  grid-row: span 2;
+  grid-row: span 3;
   display: grid;
   grid-template-rows: subgrid;
-  row-gap: var(--space-1);
+  row-gap: 0;
   position: relative;
 }
+/* Stem and branch stand 4px apart; the hidden stems join the branch. */
+.pillar-cards > .card.branch { margin-top: var(--space-1); }
 
 /* A card fills its row, and its face fills the card. */
 .card {
@@ -724,6 +795,21 @@ body {
 .card.earth .card-face { background: var(--earth-bg); }
 .card.water .card-face { background: var(--water-bg); }
 
+/* ── The long-press hint, over the card under the pointer ── */
+.card-hint {
+  position: fixed;
+  z-index: 20;
+  padding: var(--space-1) var(--space-2);
+  border-radius: 6px;
+  background: var(--ink-1);
+  color: var(--bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  white-space: nowrap;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - var(--space-2)));
+}
+
 /* ── Branch expand hint ── */
 .branch-expand-hint {
   position: absolute;
@@ -745,11 +831,7 @@ body {
 
 /* ── Hidden stems panel ── */
 .hidden-stems-panel {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  right: 0;
-  z-index: 10;
+  align-self: start;
   height: 0;
   opacity: 0;
   overflow: hidden;
@@ -770,7 +852,6 @@ body {
 .hidden-stems-panel.earth { background: var(--earth-tint); }
 .hidden-stems-panel.water { background: var(--water-tint); }
 
-/* Its padding, rows and gaps add up to --hidden-stems-max for three rows. */
 .hidden-stems-list {
   padding: var(--space-3) var(--space-4) var(--space-4);
   display: flex;
@@ -938,30 +1019,6 @@ body {
 }
 
 /* ── Day Master context: evidence in the existing chart's ink ── */
-.day-master-context {
-  margin: 0 auto var(--space-5);
-  text-align: center;
-}
-.day-master-context h2 {
-  font-family: var(--font-serif);
-  font-size: var(--text-3);
-  font-weight: 400;
-  letter-spacing: var(--tracking-1);
-  line-height: 1.5;
-  color: var(--ink-1);
-}
-.context-controls {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-1) var(--space-5);
-  margin-top: var(--space-1);
-}
-.context-toggle[aria-expanded="true"] {
-  color: var(--ink-1);
-  border-bottom-color: var(--ink-2);
-}
 /* Highlights stay within half the 4px gap between a pillar's stem and branch. */
 .card.is-context-source {
   outline: 1px solid var(--ink-2);
@@ -1023,8 +1080,7 @@ body {
   border-top: 1px solid var(--line-1);
   padding-top: var(--space-3);
 }
-@media (max-width: 640px) {
-  .context-controls { gap: var(--space-1) var(--space-4); }
+@container panel (max-width: 640px) {
   .context-support-groups { grid-template-columns: 1fr; }
 }
 
@@ -1068,7 +1124,7 @@ body {
 .role-exact .reading-toggle { margin-left: var(--space-1); }
 .context-detail .role-exact-summary { margin-top: var(--space-5); }
 .card.is-context-reference { outline: 1px dotted var(--ink-2); outline-offset: 1px; }
-@media (max-width: 640px) {
+@container panel (max-width: 640px) {
   .role-group { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
   .role-group-heading { grid-column: 1 / -1; text-align: center; }
   .role-choice { padding: var(--space-3) var(--space-2); text-align: center; }
@@ -1078,22 +1134,6 @@ body {
 @media (prefers-reduced-motion: reduce) { .role-choice { transition: none; } }
 
 /* ── Relationships: quiet annotations, never a second colour system ── */
-.relationships {
-  margin-bottom: var(--space-6);
-  text-align: center;
-}
-
-.reading-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  column-gap: var(--space-5);
-  row-gap: var(--space-1);
-  margin-bottom: var(--space-3);
-}
-
-.reading-toolbar h2,
 .relationship-position {
   font-family: var(--font-serif);
   font-weight: 400;
@@ -1125,9 +1165,9 @@ body {
 
 .relationship-list {
   display: flex;
-  justify-content: center;
   flex-wrap: wrap;
   gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .relationship-chip {
@@ -1193,13 +1233,80 @@ body {
   text-align: center;
 }
 
-/* Details grow below the chart, beyond the room kept for the hidden stems.
-   Selecting a relationship never moves a pillar or covers an expanded panel. */
-.relationship-detail {
-  max-width: 760px;
-  margin: var(--below-pillars) auto 0;
+/* ── The panel: a chosen topic's explanation, beside the chart or as a sheet ── */
+.chart-panel {
+  container: panel / inline-size;
+  background: var(--bg);
+}
+.chart-panel-bar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-3);
+}
+.panel-close {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 16px;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.panel-close:hover { background: var(--surface-2); border-color: var(--line-2); }
+.panel-close:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.panel-heading {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-4);
+  letter-spacing: var(--tracking-1);
+}
+/* A relationship chosen from the list opens below it. */
+.relationships:not(.hidden) ~ .relationship-detail:not(.hidden) {
+  margin-top: var(--space-5);
   padding-top: var(--space-5);
   border-top: 1px solid var(--line-1);
+}
+
+/* From 1200px wide the panel stands beside the chart column and scrolls on its
+   own; the column moves over once, when the panel first opens. From 1436px wide
+   (both beside each other, and the page's gutters) the column keeps its full width. */
+@media (min-width: 1200px) {
+  .chart-container.has-panel {
+    max-width: calc(var(--chart-width) + var(--space-5) + var(--panel-width));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--panel-width);
+    column-gap: var(--space-5);
+    align-items: start;
+  }
+  .chart-panel {
+    position: sticky;
+    top: var(--space-5);
+    max-height: calc(100vh - 2 * var(--space-5));
+    overflow-y: auto;
+    padding: var(--space-5);
+    border: 1px solid var(--line-1);
+    border-radius: 12px;
+  }
+}
+/* Narrower, it is a sheet over the foot of the page; the chart keeps room to
+   scroll clear of it. */
+@media (max-width: 1199px) {
+  .chart-panel {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 30;
+    max-height: var(--sheet-height);
+    overflow-y: auto;
+    padding: var(--space-5) var(--space-4);
+    border-top: 1px solid var(--line-1);
+    box-shadow: var(--shadow-sheet);
+  }
+  .chart-container.has-panel { padding-bottom: var(--sheet-height); }
 }
 
 .relationship-detail-heading {
@@ -1298,7 +1405,6 @@ body {
   -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 8h11M9.5 4l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
   mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M2.5 8h11M9.5 4l4 4-4 4'/%3E%3C/svg%3E") center / contain no-repeat;
 }
-.relationship-detail:not(.hidden) ~ .back-row { margin-top: var(--space-6); }
 
 /* Read by assistive technology, not drawn. */
 .sr-only {
@@ -1313,51 +1419,35 @@ body {
   border: 0;
 }
 
+/* On a phone the tools read from the left, under the chart's identity, and the
+   display switch, the one used most, spans the width. */
 @media (max-width: 640px) {
-  .relationship-chip { min-height: 44px; }
-  .reading-toggle { min-height: 44px; }
+  .chart-tools { justify-content: flex-start; }
+  .display-switch { display: flex; flex-basis: 100%; }
+  .display-switch button { flex: 1 1 auto; }
+}
+/* A touch target at least 44px tall. */
+@media (max-width: 640px) {
+  .relationship-chip,
+  .reading-toggle,
+  .segmented button,
+  .bar-action,
+  .panel-close,
+  .topic-button,
+  .chart-topics .context-toggle { min-height: 44px; }
+}
+@container panel (max-width: 640px) {
   .relationship-members { grid-template-columns: 1fr; }
   .pillar-change-sides { grid-template-columns: 1fr; }
-  .zi-switch-options button { min-height: 44px; }
   .relationship-detail h3 { font-size: var(--text-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .relationship-chip, .reading-toggle { transition: none; }
-}
-
-/* ── Back button ── */
-.back-row {
-  display: flex;
-  justify-content: center;
-  margin-top: var(--below-pillars);
-  position: relative;
-  z-index: 15;
-}
-
-.back-btn {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-  background: none;
-  border: 1px solid var(--line-1);
-  border-radius: 10px;
-  padding: var(--space-3) var(--space-6);
-  cursor: pointer;
-  transition: all 0.3s ease;
-}
-
-.back-btn:hover {
-  color: var(--ink-1);
-  border-color: var(--line-2);
-  background: var(--surface-1);
+  .relationship-chip, .reading-toggle,
+  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle { transition: none; }
 }
 
 /* Drawn rather than typed: the page fonts have no arrow glyphs. */
-.back-btn::before,
 .roles-back::before {
   content: '';
   display: inline-block;

@@ -272,16 +272,16 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#location-status').textContent(), 'Location search failed.');
     });
 
-    check('evolution mode opens the explorer for the picked place', async (page) => {
+    check("the chart's Evolution view opens the explorer for the picked place", async (page) => {
       await stubSuggestions(page);
       await page.goto(baseURL);
-      await page.locator('[data-mode="evolution"]').click();
       await page.locator('#date').fill('1988-02-04');
       await page.locator('#time').fill('15:40');
       await search(page, 'Chengdu', CHENGDU_SICHUAN.display);
       await page.locator('.location-suggestion').nth(1).click();
+      assert.deepEqual((await createChart(page)).location, locationOf(CHENGDU_JIANGXI));
       const request = page.waitForRequest('**/api/evolution_explorer');
-      await page.locator('#create-chart-btn').click();
+      await page.locator('#view-switch button[data-view="evolution"]').click();
       const body = (await request).postDataJSON();
       assert.deepEqual(body, { date: '1988-02-04', time: '15:40', location: locationOf(CHENGDU_JIANGXI) });
       const { lang: _lang, ...link } = Object.fromEntries(new URL(page.url()).searchParams);

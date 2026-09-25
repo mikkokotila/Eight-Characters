@@ -108,7 +108,7 @@
           <div class="role-stem-grid">${DISPLAY.map((pillar) => {
             const s = stemMap[pillar];
             return `<div class="role-stem-entry">
-              <div class="context-source-position">${esc(chart[pillar].label)}</div>
+              <div class="context-source-position">${esc(t('pillar_' + pillar))}</div>
               <div class="relationship-identity">${esc(s.pinyin)} ${esc(s.char)}</div>
               <div class="role-presence">${esc(roleName(s.ten_god))}</div>${rootButton(s)}
             </div>`;
@@ -126,7 +126,7 @@
     };
     const roleSource = (record, name) => `
       <div class="role-occurrence" data-role-occurrence="${esc(record.id)}">
-        <div class="context-source-position">${esc(chart[record.pillar].label)}${record.branch ? ` · ${esc(chart[record.pillar].branch.pinyin)} ${esc(record.branch)}` : ''}</div>
+        <div class="context-source-position">${esc(t('pillar_' + record.pillar))}${record.branch ? ` · ${esc(chart[record.pillar].branch.pinyin)} ${esc(record.branch)}` : ''}</div>
         ${evidenceMarkup(record)}
         ${record.component === 'stem' ? rootButton(stemMap[record.pillar], name) : exactVisibleMarkup(record, name)}
       </div>`;

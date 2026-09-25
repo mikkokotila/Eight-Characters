@@ -1,7 +1,7 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Stage 2 of the Standard view (#17): the chart shows what the engine computed.
 import {
-  assert, describe, it, engineName, profiles, openChart, withPage, HELSINKI, TROMSO,
+  assert, describe, it, engineName, profiles, openChart, withPage, openRelationships, HELSINKI, TROMSO,
 } from './chart-helpers.mjs';
 
 async function identities(page) {
@@ -37,8 +37,8 @@ async function reading(page) {
     marks: await marks(page),
     yearStemTenGod: await page.locator('.card.stem[data-pillar="year"] .ten-god-name').textContent(),
     roots: await page.locator('button[data-context="roots"]').textContent(),
-    // WebKit's innerText ends a chip with a line break; Chromium's does not.
-    relationships: (await page.locator('.relationship-chip').allInnerTexts()).map((text) => text.trim()),
+    // Their list is closed: its chips' text, without the markup's line breaks.
+    relationships: (await page.locator('.relationship-chip').allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
   };
   await page.locator('button[data-context="roles"]').click();
   state.roles = await page.locator('#context-detail').innerText();
@@ -117,7 +117,7 @@ for (const profile of profiles) {
     check("the year's exact changes open on demand: Lichun is 6 h 12 min away", async (page) => {
       await openChart(page, { lang: 'en' });
       assert.deepEqual(await changes(page, 'year'), {
-        title: 'Life field · 丁卯 Ding Mao',
+        title: 'Year · 丁卯 Ding Mao',
         sides: [
           ['Previous change', '364 d 23 h 38 min 21.4 s ago', 'Solar term Lichun', '丙寅 Bing Yin then 丁卯 Ding Mao'],
           ['Next change', 'in 6 h 12 min 49.5 s', 'Solar term Lichun', '丁卯 Ding Mao then 戊辰 Wu Chen'],
@@ -145,6 +145,7 @@ for (const profile of profiles) {
 
     check('one detail is open at a time', async (page) => {
       await openChart(page, { lang: 'en' });
+      await openRelationships(page);
       await page.locator('.relationship-chip').first().click();
       await page.locator('#relationship-detail').waitFor({ state: 'visible' });
       await changes(page, 'year');
@@ -180,7 +181,7 @@ for (const profile of profiles) {
         marks: { hour: 'changed 29 min 24 s ago', day: '', month: '', year: '' },
         yearStemTenGod: 'Indirect Resource',
         roots: 'No roots detected',
-        relationships: ['Month–Day · Branch clash', 'Month–Hour · Branch clash'],
+        relationships: ['Day–Month · Branch clash', 'Hour–Month · Branch clash'],
       };
       const before = await reading(page);
       assert.deepEqual({ ...before, roles: undefined }, { ...geng, roles: undefined });
@@ -196,7 +197,7 @@ for (const profile of profiles) {
         marks: { hour: 'changed 29 min 24 s ago', day: 'changed 29 min 24 s ago', month: '', year: '' },
         yearStemTenGod: 'Direct Resource',
         roots: 'Root in one branch',
-        relationships: ['Day–Hour · Branch combination', 'Month–Hour · Branch clash'],
+        relationships: ['Hour–Day · Branch combination', 'Hour–Month · Branch clash'],
         roles: undefined,
       });
       assert.notEqual(after.roles, before.roles);

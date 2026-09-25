@@ -1,6 +1,6 @@
 import {
-  assert, describe, it, profiles, openChart, fillChart, count, settled,
-  geometry, natalColors, longPress, screenshot, withPage,
+  assert, describe, it, profiles, openChart, fillChart, count,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
 } from './chart-helpers.mjs';
 
 async function openRoles(page, options = {}) {
@@ -147,6 +147,7 @@ for (const profile of profiles) {
       await openRoles(page);
       const before=await geometry(page);
       await page.locator('[data-root-pillar="hour"]').click();
+      await openRelationships(page);
       await page.locator('.relationship-chip').click();
       await count(page,'.card.is-context-reference, .card.is-context-source, #pillars .is-context-evidence',0);
       assert.equal(await page.locator('#context-detail').isVisible(),false);
@@ -172,7 +173,7 @@ for (const profile of profiles) {
       await count(page,'.hidden-stems-panel[data-pillar="day"] .is-context-evidence',1);
       await longPress(page,page.locator('.card.branch[data-pillar="month"]'));
       await count(page,'.hidden-stems-panel.is-expanded',1);
-      await page.locator('#ten-gods-toggle').click(); await settled(page);
+      await showDisplay(page,'ten-gods');
       await count(page,'.card.is-flipped',8);
       await count(page,'.card.is-context-source',3);
       await count(page,'#pillars .is-context-evidence',4);
@@ -216,9 +217,9 @@ for (const profile of profiles) {
       await openRoles(page);
       assert.equal(await page.locator('[data-role]').first().evaluate(n=>getComputedStyle(n).transitionDuration),'0s');
       await page.locator('[data-root-pillar="month"]').click();
-      await page.locator('#ten-gods-toggle').click();
+      await page.locator('#display-switch button[data-display="ten-gods"]').click();
       await count(page,'.card.is-turning',0);
-      await page.locator('[data-clear-context]').click();
+      await page.locator('[data-close-panel]').click();
       await count(page,'.card.is-context-reference, .card.is-context-source, #pillars .is-context-evidence',0);
       assert.equal(await page.locator('[data-context="roles"]').evaluate(n=>n===document.activeElement),true);
     });

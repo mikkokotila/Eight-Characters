@@ -96,7 +96,7 @@
     const branchMarkup = (pillar, evidence, roots = false) => {
       const branch = chart[pillar].branch;
       return `<div class="relationship-member">
-        <div class="relationship-position">${esc(chart[pillar].label)}</div>
+        <div class="relationship-position">${esc(t('pillar_' + pillar))}</div>
         <div class="relationship-identity">${esc(branch.pinyin)} ${esc(branch.char)}</div>
         <div class="relationship-element">${esc(branch.element_label)}</div>
         <div class="context-evidence-list">${evidence.map((e) => evidenceMarkup(e, roots)).join('')}</div>
@@ -105,7 +105,6 @@
     const makePage = (title, meta, content, note) => `
       <div class="relationship-detail-heading">
         <h3 id="context-detail-title">${esc(title)}</h3>
-        <button type="button" class="reading-toggle" data-clear-context>${esc(t('relationship_clear'))}</button>
       </div>
       <p class="relationship-meta">${esc(meta)}</p>
       ${content}
@@ -169,9 +168,6 @@
       clear();
       if (button) button.focus();
     };
-    detail.addEventListener('click', (event) => {
-      if (event.target.closest('[data-clear-context]')) clearAndReturnFocus();
-    });
     // Pointer activation need not move keyboard focus into the chart.
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && selected !== null) {
