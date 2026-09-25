@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.19.0
+
+Stage 4 of the Standard view overhaul (#19), part 1: the chart becomes a workbench. One bar above it, and a panel that explains the chosen topic beside it.
+
+### Changed
+- **One bar above the chart** replaces the rows of controls around it. On the left: the chart's date, time, place and true solar time. On the right:
+  - a display switch, Characters | Ten Gods | Hidden stems (Merkit | Kymmenen jumalaa | Piilorungot), for every card at once. It replaces Show/Hide Ten Gods;
+  - the view, Standard | Evolution. Evolution opens the explorer for this chart's birth, so the landing page no longer asks for a view before there is a chart;
+  - FI | EN, which asks for the same chart again in the other language and keeps its display;
+  - Edit, which returns to the form with the birth kept and replaces the Back button below the chart, and New chart, which returns to an empty form.
+- **The topics in one row above the pillars**: the Day Master, its season, roots and roles, and Relationships (with their number), as buttons rather than the page's faintest text.
+- **A panel explains the chosen topic.** From 1200px wide it stands beside the chart, 420px wide, and scrolls on its own. The chart moves over once, when the panel first opens, and keeps its width from 1436px. Narrower, the panel is a sheet over the foot of the page, at most half the screen tall, and the chart keeps room to scroll clear of it. Close, Escape or the topic's own button closes it; the Clear button inside each detail is gone. At 1440×900 every topic's highlighted cards and its explanation are on screen together.
+- **Relationships** list in the panel, so their number no longer moves the pillars.
+- **Hidden stems join the flow** as a shared row of the pillars' grid: an opened panel moves what follows down instead of hanging over it. The room kept below the pillars and the Back button at the bottom are gone.
+- **Pillar names**: each column header pairs the plain name with the poetic one ("HOUR" over "Action gate"). Everywhere else the plain names come in the chart's order (Hour, Day, Month, Year): "Hour–Year · Stem combination", "Year · 丁卯 Ding Mao".
+- **A card turns after half a second held**, not one. Under the mouse, a hint above the card says so ("Press and hold: Ten Gods"). A card turned or opened by hand makes the display switch read mixed; pressing its choice again applies it to every card.
+- **While the chart is asked for again** (in the other language, or under the other Zi-hour convention), it takes no other clicks.
+- On phones the bar's tools read from the left, the display switch spans the width, and the pillars stay two to a row.
+- **Tests.**
+  - A browser suite for the workbench (`workbench.test.mjs`) checks the acceptance at 1440×900, the one move of the chart, the sheet, the display switch, the half-second hold and its hint, the language switch, Edit and New chart, and the pillar names.
+  - The design-system suite checks that opened hidden stems share a row and cover nothing, and that no text on a card or in its hidden stems is clipped or broken inside a word, in any display, from 320 to 1440px, in both languages.
+  - The browser suites retry a chart request only when a pooled connection resets before any response.
+- Version bumped to `0.19.0`; the static assets' cache keys follow it.
+
 ## 0.18.0
 
 Stage 3 of the Standard view overhaul (#18): spacing, type and ink on scales, and one grid for all four pillars.
