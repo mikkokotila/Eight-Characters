@@ -391,6 +391,22 @@ for (const profile of profiles) {
       assert.deepEqual(found, []);
     });
 
+    check('only cards that open on a click lift under the pointer', async (page) => {
+      await openChart(page, { lang: 'en' });
+      const lift = async (selector) => {
+        await page.locator(selector).hover();
+        await settled(page);
+        return page.locator(selector).evaluate((card) => ({
+          transform: getComputedStyle(card).transform,
+          shadow: getComputedStyle(card.querySelector('.card-front')).boxShadow,
+        }));
+      };
+      assert.deepEqual(await lift('.card.stem[data-pillar="day"]'), { transform: 'none', shadow: 'none' });
+      const branch = await lift('.card.branch[data-pillar="day"]');
+      assert.equal(branch.transform, 'matrix(1, 0, 0, 1, 0, -2)');
+      assert.notEqual(branch.shadow, 'none');
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
