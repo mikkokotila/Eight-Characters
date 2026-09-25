@@ -66,7 +66,19 @@
     <div class="name" id="chart-date"></div>
   </div>
 
+  <section class="relationships" aria-labelledby="relationships-heading">
+    <div class="reading-toolbar">
+      <h2 id="relationships-heading" data-i18n="relationships">Yhteydet</h2>
+      <button type="button" id="ten-gods-toggle" class="reading-toggle" aria-pressed="false" data-i18n="show_ten_gods">Näytä kymmenen jumalaa</button>
+    </div>
+    <div id="relationship-list" class="relationship-list"></div>
+    <p id="relationship-empty" class="relationship-empty hidden" data-i18n="relationship_empty"></p>
+    <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </section>
+
   <div class="pillars" id="pillars"></div>
+
+  <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
 
   <div class="back-row">
     <button id="back-btn" class="back-btn" data-i18n="back">← Takaisin</button>
@@ -75,6 +87,7 @@
 </div>
 
 <script src="/static/localization.js?v={{ app_version }}"></script>
+<script src="/static/relationships.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

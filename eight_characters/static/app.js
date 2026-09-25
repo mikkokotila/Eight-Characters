@@ -262,6 +262,7 @@ document.addEventListener('DOMContentLoaded', () => {
       include_chart: true,
       include_hidden_stems: true,
       include_ten_gods: true,
+      include_interactions: true,
       lang: currentLanguage,
     };
 
@@ -303,6 +304,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderChart(chartData);
       populateTenGods(tenGodsData);
+      relationships.render(pillarsData.interactions, chartData, tenGodsData);
+      syncTenGodsToggle();
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
       if (pillarsData.hidden_stems) {
@@ -315,6 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   backBtn.addEventListener('click', () => {
+    relationships.clear();
     clearResolvedLocation();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
@@ -349,12 +353,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // ── Ten gods: populate card backs ──
 
-  const requiredTranslation = (key) => {
+  const requiredTranslation = (key, vars = {}) => {
     if (!Object.prototype.hasOwnProperty.call(i18n.dictionaries[currentLanguage], key)) {
       throw new Error(`Missing ${currentLanguage} translation: ${key}`);
     }
-    return t(key);
+    return t(key, vars);
   };
+
+  const relationships = window.EC_RELATIONSHIPS.create({
+    root: chartView, translate: requiredTranslation, escape: esc,
+  });
+  const tenGodsToggle = document.getElementById('ten-gods-toggle');
+  const syncTenGodsToggle = () => {
+    const cards = [...document.querySelectorAll('#pillars .card')];
+    const flippedCount = cards.filter((card) => card.classList.contains('is-flipped')).length;
+    const allFlipped = cards.length > 0 && flippedCount === cards.length;
+    tenGodsToggle.setAttribute('aria-pressed', allFlipped ? 'true' : flippedCount ? 'mixed' : 'false');
+    tenGodsToggle.textContent = requiredTranslation(allFlipped ? 'hide_ten_gods' : 'show_ten_gods');
+  };
+  tenGodsToggle.addEventListener('click', () => {
+    const cards = [...document.querySelectorAll('#pillars .card')];
+    const show = !cards.every((card) => card.classList.contains('is-flipped'));
+    cards.forEach((card) => {
+      if (card.classList.contains('is-flipped') !== show) flipCard(card);
+    });
+  });
 
   const populateTenGods = (data) => {
     document.querySelectorAll('#pillars .card').forEach((card) => {
@@ -431,6 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.classList.remove('is-turning');
     const fromHeight = inner.getBoundingClientRect().height;
     const flipped = card.classList.toggle('is-flipped');
+    syncTenGodsToggle();
     if (reducedMotion.matches) return;
     const toHeight = inner.getBoundingClientRect().height;
     card.classList.add('is-turning');

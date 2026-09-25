@@ -18,10 +18,27 @@ class TestApiIndexRoute(unittest.TestCase):
         self.assertIn('id="chart-form"', response.text)
         self.assertIn('id="pillars"', response.text)
 
+    def test_relationship_view_has_accessible_controls(self) -> None:
+        response = self.client.get('/')
+        for element_id in (
+            'relationships-heading',
+            'relationship-list',
+            'relationship-detail',
+            'relationship-status',
+            'ten-gods-toggle',
+        ):
+            self.assertIn(f'id="{element_id}"', response.text)
+        self.assertIn('aria-live="polite"', response.text)
+        self.assertLess(
+            response.text.index('/static/relationships.js'),
+            response.text.index('/static/app.js'),
+        )
+        self.assertEqual(self.client.get('/static/relationships.js').status_code, 200)
+
     def test_index_versions_static_assets(self) -> None:
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        for asset in ('style.css', 'localization.js', 'app.js'):
+        for asset in ('style.css', 'localization.js', 'relationships.js', 'app.js'):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
 
 
