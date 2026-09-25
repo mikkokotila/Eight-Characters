@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let resolvedLocation = null;
   let suggestDebounce = null;
+  let suggestRequest = null;
   let latestSuggestions = [];
   let activeSuggestionIndex = -1;
   let currentLanguage = i18n.getLanguage();
@@ -129,11 +130,22 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const cancelSuggestionLookup = () => {
+    clearTimeout(suggestDebounce);
+    suggestDebounce = null;
+    if (suggestRequest) {
+      suggestRequest.abort();
+      suggestRequest = null;
+    }
+  };
+
   const applySuggestionAtIndex = (indexValue) => {
     const selected = latestSuggestions[indexValue];
     if (!selected) {
       return;
     }
+    // A lookup still pending must not reopen the list or replace the chosen city's status.
+    cancelSuggestionLookup();
     resolvedLocation = {
       city: selected.city || '',
       country: selected.country || '',
@@ -159,37 +171,50 @@ document.addEventListener('DOMContentLoaded', () => {
     setLocationStatus('', '');
   };
 
-  locationInput.addEventListener('input', async () => {
+  const lookUpSuggestions = async (cityQuery) => {
+    const request = new AbortController();
+    suggestRequest = request;
+    // Responses can arrive out of order; only the lookup for the current input may be shown.
+    const isStale = () => request.signal.aborted || locationInput.value.trim() !== cityQuery;
+    try {
+      const res = await fetch('/api/location_suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: cityQuery, limit: 8 }),
+        signal: request.signal,
+      });
+      const data = await res.json();
+      if (isStale()) {
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data.detail || t('suggest_error'));
+      }
+      showSuggestions(data.suggestions || []);
+      setLocationStatus(t('pick_city'), '');
+    } catch (err) {
+      // A cancelled lookup rejects with an AbortError; only the current lookup's failures show.
+      if (isStale()) {
+        return;
+      }
+      hideSuggestions();
+      setLocationStatus(err.message || t('suggest_error'), 'is-error');
+    }
+  };
+
+  locationInput.addEventListener('input', () => {
     if (resolvedLocation) {
       clearResolvedLocation();
     }
+    // The listed cities, and any lookup under way, belong to an earlier query.
+    cancelSuggestionLookup();
+    hideSuggestions();
     const cityQuery = locationInput.value.trim();
     if (!cityQuery) {
-      hideSuggestions();
       setLocationStatus('', '');
       return;
     }
-    if (suggestDebounce) {
-      clearTimeout(suggestDebounce);
-    }
-    suggestDebounce = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/location_suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: cityQuery, limit: 8 }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || t('suggest_error'));
-        }
-        showSuggestions(data.suggestions || []);
-        setLocationStatus(t('pick_city'), '');
-      } catch (err) {
-        hideSuggestions();
-        setLocationStatus(err.message || t('suggest_error'), 'is-error');
-      }
-    }, 180);
+    suggestDebounce = setTimeout(() => lookUpSuggestions(cityQuery), 180);
   });
 
   locationInput.addEventListener('keydown', (event) => {
