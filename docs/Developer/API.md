@@ -158,6 +158,8 @@ Location typing flow:
    its coordinates in the status line. The field stays editable: any edit
    drops the pick and searches again, and Create chart stays disabled until a
    suggestion is picked.
+3. Back from the chart returns to the form with the pick, date and time
+   kept, so another chart for the same place needs no new pick.
 
 ## Error Contract (All Endpoints)
 

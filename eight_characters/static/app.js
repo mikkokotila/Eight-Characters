@@ -346,10 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // The picked place is kept, so another chart for it only needs a new date or time.
   backBtn.addEventListener('click', () => {
     relationships.clear();
     dayMasterContext.clear();
-    clearResolvedLocation();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
   });
