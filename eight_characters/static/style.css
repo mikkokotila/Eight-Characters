@@ -514,15 +514,19 @@ body {
 }
 .chart-notices li + li { margin-top: var(--space-2); }
 
+/* One grid for all four pillars. Each pillar spans five shared rows (label,
+   name, mark, stem, branch) as a subgrid, so every row lines up across the
+   pillars and the cards of a row share one height, whatever their text. */
 .pillars {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-5);
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--space-5);
 }
 
 .pillar {
-  display: flex;
-  flex-direction: column;
+  grid-row: span 5;
+  display: grid;
+  grid-template-rows: subgrid;
   animation: fadeUp 0.6s ease both;
 }
 .pillar:nth-child(1) { animation-delay: 0.5s; }
@@ -530,16 +534,25 @@ body {
 .pillar:nth-child(3) { animation-delay: 0.2s; }
 .pillar:nth-child(4) { animation-delay: 0.05s; }
 
-.pillar-header { text-align: center; padding-bottom: var(--space-4); }
+.pillar-header {
+  grid-row: span 3;
+  display: grid;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-2);
+  justify-items: center;
+  text-align: center;
+  padding-bottom: var(--space-4);
+}
 
+/* A label that wraps grows its row; the others sit at its foot, above the names. */
 .pillar-label {
+  align-self: end;
   font-family: var(--font-serif);
   font-weight: 400;
   font-size: var(--text-1);
   letter-spacing: var(--tracking-2);
   text-transform: uppercase;
   color: var(--ink-2);
-  margin-bottom: var(--space-2);
 }
 
 /* The pillar's own name: its characters, then their pinyin. It opens the
@@ -566,7 +579,6 @@ body {
    cards stay level across the columns. */
 .pillar-mark {
   min-height: 18px;
-  margin-top: var(--space-2);
   font-family: var(--font-sans);
   font-size: var(--text-1);
   font-weight: 500;
@@ -601,14 +613,18 @@ body {
   color: var(--ink-2);
 }
 
+/* The stem and branch rows of the pillar's subgrid; the hidden stems hang below. */
 .pillar-cards {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
+  grid-row: span 2;
+  display: grid;
+  grid-template-rows: subgrid;
+  row-gap: var(--space-1);
   position: relative;
 }
 
+/* A card fills its row, and its face fills the card. */
 .card {
+  display: grid;
   position: relative;
   perspective: 1600px;
   user-select: none;
@@ -624,6 +640,7 @@ body {
 
 /* ── Card flip: a long press turns the card over to its ten gods ── */
 .card-inner {
+  display: grid;
   position: relative;
   border-radius: inherit;
 }
@@ -1370,7 +1387,9 @@ body {
     --text-6: 44px;
     --card-min-height: 160px;
   }
-  .pillars { grid-template-columns: repeat(2, 1fr); gap: var(--space-5) var(--space-4); }
+  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); }
+  /* The second row of pillars. */
+  .pillar:nth-child(n + 3) { margin-top: var(--space-5); }
   /* The bottom padding holds the branch chevron (bottom 8px, 14px tall). */
   .card-face { padding: var(--space-5) var(--space-3); }
   .datetime-row { flex-direction: column; align-items: center; }
