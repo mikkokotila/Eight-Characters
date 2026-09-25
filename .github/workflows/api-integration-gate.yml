@@ -35,4 +35,5 @@ jobs:
             tests.test_api_ten_gods \
             tests.test_api_interactions \
             tests.test_api_day_master_context \
+            tests.test_api_role_profile \
             tests.test_api_evolution_explorer_endpoint
