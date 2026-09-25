@@ -316,7 +316,7 @@ body {
 
 .chart-header {
   text-align: center;
-  margin-bottom: 56px;
+  margin-bottom: 28px;
 }
 
 .chart-header h1 {
@@ -672,6 +672,207 @@ body {
   opacity: 0.75;
   text-align: center;
   margin-top: -4px;
+}
+
+/* ── Relationships: quiet annotations, never a second colour system ── */
+.relationships {
+  margin-bottom: 36px;
+  text-align: center;
+}
+
+.reading-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 24px;
+  row-gap: 4px;
+  margin-bottom: 12px;
+}
+
+.reading-toolbar h2,
+.relationship-position {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+  font-size: 13px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.reading-toggle {
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  border: none;
+  border-bottom: 1px solid rgba(42, 37, 32, 0.15);
+  background: none;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.reading-toggle:hover,
+.reading-toggle[aria-pressed="true"] {
+  color: var(--text);
+  border-color: rgba(42, 37, 32, 0.35);
+}
+
+.relationship-list {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.relationship-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 8px 16px;
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.4;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.25);
+  border: 1px solid rgba(42, 37, 32, 0.12);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.relationship-chip:hover,
+.relationship-chip.is-active {
+  color: var(--text);
+  border-color: rgba(42, 37, 32, 0.3);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.relationship-chip:focus-visible,
+.reading-toggle:focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 4px;
+}
+
+.relationship-mark {
+  width: 16px;
+  flex-shrink: 0;
+  border-top: 1px solid currentColor;
+  opacity: 0.7;
+}
+.relationship-chip[data-kind="branch_clash"] .relationship-mark { border-top-style: dashed; }
+.relationship-chip[data-kind="harmony_frame"] .relationship-mark { border-top: 3px double currentColor; }
+
+.card.is-related {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 5px;
+}
+[data-relationship-kind="branch_clash"] .card.is-related { outline-style: dashed; }
+[data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--text-muted); }
+
+.relationship-empty,
+.relationship-meta,
+.relationship-note {
+  font-family: 'Manrope', sans-serif;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.7;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* Details grow below the chart, beyond the existing hidden-stem clearance.
+   Selecting a relationship never moves a pillar or covers an expanded panel. */
+.relationship-detail {
+  max-width: 760px;
+  margin: 110px auto 0;
+  padding-top: 24px;
+  border-top: 1px solid rgba(42, 37, 32, 0.12);
+}
+
+.relationship-detail-heading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+}
+.relationship-detail h3 {
+  font-family: 'Cormorant Garamond', serif;
+  font-weight: 400;
+  font-size: 22px;
+  letter-spacing: 0.3px;
+  text-align: center;
+}
+.relationship-meta { margin-top: 6px; }
+
+.relationship-members {
+  display: grid;
+  grid-template-columns: repeat(var(--member-count), minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 28px;
+}
+.relationship-member { min-width: 0; text-align: center; }
+.relationship-position { line-height: 1.5; }
+.relationship-identity {
+  margin-top: 8px;
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 22px;
+  font-weight: 400;
+}
+.relationship-element {
+  margin-top: 4px;
+  font-size: 11px;
+  font-weight: 300;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+}
+.relationship-roles {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 240px;
+  margin: 16px auto 0;
+  text-align: left;
+}
+.relationship-roles .hidden-stem-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+}
+.relationship-roles .hidden-stem-label { font-size: 12px; overflow-wrap: break-word; }
+.relationship-note { margin-top: 24px; }
+.relationship-detail:not(.hidden) + .back-row { margin-top: 28px; }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 640px) {
+  .relationships { margin-bottom: 28px; }
+  .relationship-chip { min-height: 44px; }
+  .reading-toggle { min-height: 44px; }
+  .relationship-members { grid-template-columns: 1fr; }
+  .relationship-detail h3 { font-size: 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .relationship-chip, .reading-toggle { transition: none; }
 }
 
 /* ── Back button ── */

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.13.0
+
+### Added
+- **Natal relationships API**: `POST /api/four_pillars` accepts `include_interactions`, independently of all other enrichments. It returns every occurrence of the five stem combinations, six branch combinations, six branch clashes, and four complete three-harmony frames, including repeated and non-adjacent matches.
+- **Standard-mode relationship strip**: selecting an entry outlines the participating cards without moving the pillars or changing their element colors. Details below the chart show identities, natal elements, Ten Gods, and every hidden-stem role. Solid, dashed, and double line styles distinguish pairs, clashes, and complete frames without good/bad color coding.
+- **Chart-wide Ten Gods toggle**: turn all cards together while retaining individual long presses and branch-panel clicks/taps. Mixed card states are exposed accessibly.
+- Keyboard selection, Escape/clear focus return, screen-reader announcements, reduced-motion support for new controls, and Finnish/English relationship labels.
+- Independent reference tests for relationship recognition and API compatibility; API CI includes the new suite. A Node/Playwright browser harness covers desktop/mobile interaction and layout regressions using explicitly configured existing tooling.
+- Relationship policy, API contract, and browser-test documentation.
+
+### Changed
+- Version bumped to `0.13.0`, including static-asset cache keys.
+- Updated only the regression fixture’s `engine.version` metadata; every other engine output field is unchanged.
+- Standard explicitly distinguishes detected presence from transformation: complete frames require all three members; partial frames are not emitted; transformation is never asserted. Potential elements are shown only for stem combinations and complete frames.
+- The shared Evolution catalog remains unchanged; Standard does not use its nearest-pair selection or inference.
+
 ## 0.12.0
 
 ### Added
