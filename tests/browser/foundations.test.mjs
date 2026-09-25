@@ -58,5 +58,22 @@ for (const profile of profiles) {
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
       }
     });
+
+    check('the page requests nothing from other origins and loads one face per font', async (page) => {
+      const origin = new URL(process.env.EC_BASE_URL).origin;
+      const foreign = [];
+      page.on('request', (request) => {
+        const url = new URL(request.url());
+        if (url.protocol !== 'data:' && url.origin !== origin) foreign.push(request.url());
+      });
+      await openChart(page, { lang: 'en' });
+      const loaded = await page.evaluate(async () => {
+        await document.fonts.ready;
+        return [...document.fonts].filter((face) => face.status === 'loaded')
+          .map((face) => face.family.replace(/["']/g, '')).sort();
+      });
+      assert.deepEqual(foreign, []);
+      assert.deepEqual(loaded, ['Cormorant Garamond', 'Manrope']);
+    });
   });
 }

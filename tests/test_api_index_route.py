@@ -78,6 +78,17 @@ class TestApiIndexRoute(unittest.TestCase):
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
 
+    def test_index_serves_its_own_fonts(self) -> None:
+        response = self.client.get('/')
+        for font in ('Manrope-normal-400.woff2', 'CormorantGaramond-normal-400.woff2'):
+            path = f'/explorer/vendor/fonts/{font}'
+            self.assertIn(f'href="{path}"', response.text)
+            self.assertIn(path, self.client.get('/static/style.css').text)
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        self.assertNotIn(
+            'fonts.googleapis.com', self.client.get('/static/style.css').text
+        )
+
     def test_explorer_page_versions_its_assets(self) -> None:
         for path in ('/explorer/', '/explorer'):
             response = self.client.get(path)

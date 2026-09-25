@@ -3,7 +3,22 @@
    Faithfully matches the chart template aesthetic.
    ═══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Manrope:wght@300;400;500;600&display=swap');
+/* The fonts the explorer already serves. Each file is a variable font that
+   covers every weight, so one face per family is enough. */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/explorer/vendor/fonts/Manrope-normal-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/explorer/vendor/fonts/CormorantGaramond-normal-400.woff2') format('woff2');
+}
 
 :root {
   --bg: #F5F0E8;
