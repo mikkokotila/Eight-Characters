@@ -115,7 +115,8 @@
     detail.addEventListener('click', (event) => {
       if (event.target.closest('[data-clear-relationship]')) clearAndReturnFocus();
     });
-    root.addEventListener('keydown', (event) => {
+    // Pointer activation need not move keyboard focus into the chart.
+    document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && selected !== null) {
         event.preventDefault();
         clearAndReturnFocus();

@@ -48,7 +48,7 @@
         if (dm) require(e.match === (e.char === dm.char ? 'exact_stem' : 'opposite_polarity'));
       });
     };
-    const validate = (data, chartData, gods) => {
+    const validate = (data, chartData, gods, hiddenStems) => {
       require(data && data.policy === 'natal_presence_v1' && Array.isArray(chartData.pillars)
         && chartData.pillars.length === 4 && gods);
       chart = Object.fromEntries(DISPLAY.map((name, index) => [name, chartData.pillars[index]]));
@@ -58,6 +58,15 @@
         const g = gods[pillar];
         require(g && g.stem.char === chart[pillar].stem.char && g.branch === chart[pillar].branch.char
           && Array.isArray(g.hidden_stems));
+        // Both rendered hidden-stem surfaces must describe the same natal data.
+        const hidden = hiddenStems?.[pillar];
+        require(hidden && hidden.branch === g.branch && Array.isArray(hidden.hidden_stems)
+          && hidden.hidden_stems.length === g.hidden_stems.length);
+        hidden.hidden_stems.forEach((e, index) => {
+          require(e && ['char', 'element', 'polarity', 'qi_type'].every(
+            (key) => e[key] === g.hidden_stems[index][key]
+          ));
+        });
         if (pillar !== 'day') expected.push({ ...g.stem, pillar, component: 'stem', branch: null, qi_type: null });
         g.hidden_stems.forEach((e) => expected.push({ ...e, pillar, component: 'hidden_stem', branch: g.branch }));
       });
@@ -157,19 +166,20 @@
     detail.addEventListener('click', (event) => {
       if (event.target.closest('[data-clear-context]')) clearAndReturnFocus();
     });
-    root.addEventListener('keydown', (event) => {
+    // Pointer activation need not move keyboard focus into the chart.
+    document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && selected !== null) {
         event.preventDefault();
         clearAndReturnFocus();
       }
     });
 
-    const render = (data, chartData, gods) => {
+    const render = (data, chartData, gods, hiddenStems) => {
       clear();
       pages = {};
       controls.innerHTML = '';
       heading.textContent = '';
-      validate(data, chartData, gods);
+      validate(data, chartData, gods, hiddenStems);
       const dm = data.day_master;
       const season = data.season;
       const rootPillars = DISPLAY.filter((pillar) => data.roots.some((e) => e.pillar === pillar));

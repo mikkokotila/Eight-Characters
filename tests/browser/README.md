@@ -11,7 +11,7 @@ Start the app as usual, then run from the repository root:
 EC_PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 EC_BASE_URL=http://127.0.0.1:8000 \
 EC_BROWSER=chromium \
-node --test tests/browser/relationships.test.mjs
+node --test --test-concurrency=1 tests/browser/*.test.mjs
 ```
 
 `EC_PLAYWRIGHT_MODULE=playwright` also works when that module is resolvable from the
@@ -34,3 +34,11 @@ natal colors, global and individual Ten Gods flips, long-press release suppressi
 quick clicks/taps, cancelled touch holds, repeated combinations, complete frames,
 empty results, Finnish, narrow viewports, reduced motion, chart reset, and explicit
 errors for absent or malformed relationship data.
+
+
+The Day Master context suite additionally checks all three controls, exact versus
+opposite-polarity root evidence on both hidden-stem surfaces, Companion/Resource
+presence, no/one/four-root layouts, explicit support absence, resolved solar-month
+boundaries, mutually exclusive relationship/context details, and rejection of
+missing or inconsistent context. Screenshots include context overview, season,
+roots, support, flipped cards, absence, four roots, and Finnish layouts.

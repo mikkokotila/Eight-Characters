@@ -308,7 +308,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
       populateHiddenStems(pillarsData.hidden_stems);
       relationships.render(pillarsData.interactions, chartData, tenGodsData);
-      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData);
+      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems);
       syncTenGodsToggle();
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
