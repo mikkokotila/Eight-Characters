@@ -27,6 +27,8 @@ eight_characters = [
   'templates/*.html',
   'static/*.css',
   'static/*.js',
+  'static/*.svg',
+  'static/*.ico',
   'resources/mappings/*.csv',
 ]
 

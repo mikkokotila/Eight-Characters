@@ -442,6 +442,22 @@ for (const profile of profiles) {
       assert.equal(await page.title(), 'BaZi — Four pillars');
     });
 
+    check('nothing the landing page or chart loads fails, and both tab icons are served', async (page) => {
+      const failed = [];
+      page.on('response', (response) => { if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`); });
+      page.on('requestfailed', (request) => failed.push(`failed ${request.url()}`));
+      await openChart(page, { lang: 'en' });
+      await page.locator('#back-btn').click();
+      assert.deepEqual(failed, []);
+      // Fetched outside the page: Playwright's routing blocks a page's own /favicon.ico fetch.
+      const icons = [];
+      for (const href of await page.locator('link[rel="icon"]').evaluateAll((links) => links.map((link) => link.href))) {
+        const response = await page.request.get(href);
+        icons.push(`${response.status()} ${response.headers()['content-type'].split(';')[0]}`);
+      }
+      assert.deepEqual(icons, ['200 image/vnd.microsoft.icon', '200 image/svg+xml']);
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];

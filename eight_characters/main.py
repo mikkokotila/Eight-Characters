@@ -9,7 +9,7 @@ from typing import Any, cast
 import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
@@ -926,6 +926,14 @@ async def index(request: Request):
             'birth_date_min': f'{MIN_SUPPORTED_YEAR:04d}-01-01',
             'birth_date_max': f'{MAX_SUPPORTED_YEAR:04d}-12-31',
         },
+    )
+
+
+@app.get('/favicon.ico', include_in_schema=False)
+async def favicon() -> FileResponse:
+    """Serve the tab icon where browsers look for it by default."""
+    return FileResponse(
+        BASE_DIR / 'static' / 'favicon.ico', media_type='image/vnd.microsoft.icon'
     )
 
 

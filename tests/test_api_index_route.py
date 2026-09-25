@@ -97,6 +97,19 @@ class TestApiIndexRoute(unittest.TestCase):
             'fonts.googleapis.com', self.client.get('/static/style.css').text
         )
 
+    def test_tab_icon_is_linked_and_served(self) -> None:
+        response = self.client.get('/')
+        self.assertIn('<link rel="icon" href="/favicon.ico"', response.text)
+        svg_path = f'/static/favicon.svg?v={__version__}'
+        self.assertIn(f'href="{svg_path}" type="image/svg+xml"', response.text)
+        icon = self.client.get('/favicon.ico')
+        self.assertEqual(icon.status_code, 200)
+        self.assertEqual(icon.headers['content-type'], 'image/vnd.microsoft.icon')
+        self.assertTrue(icon.content.startswith(b'\x00\x00\x01\x00'))
+        svg = self.client.get(svg_path)
+        self.assertEqual(svg.status_code, 200)
+        self.assertTrue(svg.headers['content-type'].startswith('image/svg+xml'))
+
     def test_explorer_page_versions_its_assets(self) -> None:
         for path in ('/explorer/', '/explorer'):
             response = self.client.get(path)
