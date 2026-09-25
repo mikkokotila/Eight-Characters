@@ -56,12 +56,20 @@ and gaps use only these, or `calc()` of them.
 ## The pillars and the panel
 
 - One grid holds all four pillars: four columns, two up to 640px wide. Each
-  pillar spans six shared rows (label, name, mark, stem, branch, hidden stems)
-  as a subgrid, with its header and its cards as nested subgrids. The rows line
-  up across the pillars, and the cards of a row share one height, front and
-  back. Opened hidden stems grow their own row, in the flow: nothing hangs over
-  what follows. `tests/browser/design-system.test.mjs` checks this from 641px to
-  1440px, in both languages.
+  pillar spans eight shared rows (label, name, mark, stem arcs, stem, branch,
+  hidden stems, branch arcs) as a subgrid, with its header and its cards as
+  nested subgrids. The rows line up across the pillars, and the cards of a row
+  share one height, front and back. Opened hidden stems grow their own row, in
+  the flow: nothing hangs over what follows. `tests/browser/design-system.test.mjs`
+  checks this from 641px to 1440px, in both languages.
+- The relationship arcs lie in their own rows, under the pillars. Each row keeps
+  one height whatever the arcs in it, so the cards stand in the same place; up
+  to 640px there are no arcs and the rows are empty.
+  - `--arc-base`, `--arc-step`: the rise of the lowest arc, and of each level
+    above it: 6 and 8px.
+  - `--arc-band`: the height of each arcs' row, room for four levels: 40px.
+  - `--arc-spread`: the distance between the feet of arcs that meet on one card:
+    6px.
 - `--card-min-height`: a card's least height (160px up to 640px wide).
 - `--hidden-stem-row`: the line of a hidden stem in its panel.
 - `--chart-width`: the chart column, 960px.
