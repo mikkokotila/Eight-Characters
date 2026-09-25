@@ -200,6 +200,72 @@ class TestInteractionRecognition(unittest.TestCase):
                 detect_interactions(source)
 
 
+# The chart draws each relationship as an arc (static/relationships.js, arcLayout).
+# An arc rises one level for each column it spans, and at least one level above
+# every narrower arc it overlaps; arcs that only meet at a card may share a
+# level. The arcs' rows in the page hold four levels.
+DISPLAY_COLUMNS = {'hour': 0, 'day': 1, 'month': 2, 'year': 3}
+ARC_LEVELS = 4
+
+
+def arc_levels(interactions):
+    arcs = sorted(
+        (
+            sorted(
+                DISPLAY_COLUMNS[member['pillar']] for member in interaction['members']
+            )
+            for interaction in interactions
+        ),
+        key=lambda columns: (columns[-1] - columns[0], columns[0]),
+    )
+    placed: list[tuple[int, int, int]] = []
+    for columns in arcs:
+        start, end = columns[0], columns[-1]
+        overlapped = [
+            level
+            for (other_start, other_end, level) in placed
+            if max(start, other_start) < min(end, other_end)
+        ]
+        placed.append((start, end, max(end - start, 1 + max(overlapped, default=0))))
+    return [level for (_, _, level) in placed]
+
+
+class TestRelationshipArcLevels(unittest.TestCase):
+    def test_every_combination_of_stems_or_branches_fits_four_levels(self):
+        for component, chars in (
+            ('stem', '甲乙丙丁戊己庚辛壬癸'),
+            ('branch', '子丑寅卯辰巳午未申酉戌亥'),
+        ):
+            deepest = 0
+            for combination in itertools.product(chars, repeat=4):
+                stems, branches = (
+                    (''.join(combination), '子子子子')
+                    if component == 'stem'
+                    else ('甲甲甲甲', ''.join(combination))
+                )
+                interactions = [
+                    interaction
+                    for interaction in detect_interactions(pillars(stems, branches))
+                    if interaction['component'] == component
+                ]
+                deepest = max(deepest, *arc_levels(interactions), 0)
+            with self.subTest(component=component):
+                # Reached, and never exceeded.
+                self.assertEqual(deepest, ARC_LEVELS)
+
+    def test_levels_follow_span_and_overlap(self):
+        # Hour, day, month and year: 丁丁壬壬 combine month-day, month-hour,
+        # year-day and year-hour, each arc over the last.
+        interactions = [
+            interaction
+            for interaction in detect_interactions(pillars('壬壬丁丁', '子子子子'))
+            if interaction['component'] == 'stem'
+        ]
+        self.assertEqual(sorted(arc_levels(interactions)), [1, 2, 3, 4])
+        # One arc across all four pillars rises three levels.
+        self.assertEqual(arc_levels(detect_interactions(CANONICAL)), [3])
+
+
 class TestInteractionsAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

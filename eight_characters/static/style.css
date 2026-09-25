@@ -112,6 +112,13 @@
   --hidden-stem-row: 20px;
   --panel-width: 420px;
   --sheet-height: 50vh;
+  /* The relationship arcs: the rise of the lowest arc and of each level above
+     it, the row that holds four levels (no chart needs more), and the distance
+     between feet that meet on one card. */
+  --arc-base: 6px;
+  --arc-step: 8px;
+  --arc-band: 40px;
+  --arc-spread: 6px;
 
   /* Gua line dimensions */
   --line-w: 54px;
@@ -570,19 +577,25 @@ body {
 .topic-button:focus-visible,
 .chart-topics .context-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 
-/* One grid for all four pillars. Each pillar spans six shared rows (label,
-   name, mark, stem, branch, hidden stems) as a subgrid, so every row lines up
-   across the pillars and the cards of a row share one height, whatever their
-   text. Opened hidden stems grow their row, in the flow. */
+/* One grid for all four pillars. Each pillar spans eight shared rows (label,
+   name, mark, stem arcs, stem, branch, hidden stems, branch arcs) as a
+   subgrid, so every row lines up across the pillars and the cards of a row
+   share one height, whatever their text. Opened hidden stems grow their row,
+   in the flow. The arcs' rows keep one height, so the cards stand in the same
+   place whatever the chart's relationships. */
 .pillars {
+  --pillar-gap: var(--space-5);
   position: relative;
+  /* The arcs lie under the pillars and over the page, nowhere else. */
+  isolation: isolate;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  column-gap: var(--space-5);
+  grid-template-rows: repeat(3, auto) var(--arc-band) repeat(3, auto) var(--arc-band);
+  column-gap: var(--pillar-gap);
 }
 
 .pillar {
-  grid-row: span 6;
+  grid-row: span 8;
   display: grid;
   grid-template-rows: subgrid;
   animation: fadeUp 0.6s ease both;
@@ -599,7 +612,8 @@ body {
   row-gap: var(--space-2);
   justify-items: center;
   text-align: center;
-  padding-bottom: var(--space-4);
+  /* The stem arcs' row below keeps its own room above the arcs. */
+  padding-bottom: var(--space-2);
 }
 
 /* The pillar's plain name over its poetic one. A label that wraps grows its
@@ -682,9 +696,10 @@ body {
   color: var(--ink-2);
 }
 
-/* The stem, branch and hidden-stem rows of the pillar's subgrid. */
+/* The stem, branch and hidden-stem rows of the pillar's subgrid, below the
+   stem arcs' row. */
 .pillar-cards {
-  grid-row: span 3;
+  grid-row: 5 / span 3;
   display: grid;
   grid-template-rows: subgrid;
   row-gap: 0;
@@ -845,12 +860,13 @@ body {
               opacity 0.35s ease 0.05s;
 }
 
-/* Element-tinted panel backgrounds */
-.hidden-stems-panel.metal { background: var(--metal-tint); }
-.hidden-stems-panel.fire  { background: var(--fire-tint); }
-.hidden-stems-panel.wood  { background: var(--wood-tint); }
-.hidden-stems-panel.earth { background: var(--earth-tint); }
-.hidden-stems-panel.water { background: var(--water-tint); }
+/* Element-tinted panel backgrounds, laid on the page's own tone: the feet of
+   the branch arcs run down behind an opened panel, and it hides them. */
+.hidden-stems-panel.metal { background: linear-gradient(var(--metal-tint), var(--metal-tint)), var(--bg); }
+.hidden-stems-panel.fire  { background: linear-gradient(var(--fire-tint), var(--fire-tint)), var(--bg); }
+.hidden-stems-panel.wood  { background: linear-gradient(var(--wood-tint), var(--wood-tint)), var(--bg); }
+.hidden-stems-panel.earth { background: linear-gradient(var(--earth-tint), var(--earth-tint)), var(--bg); }
+.hidden-stems-panel.water { background: linear-gradient(var(--water-tint), var(--water-tint)), var(--bg); }
 
 .hidden-stems-list {
   padding: var(--space-3) var(--space-4) var(--space-4);
@@ -1221,6 +1237,96 @@ body {
 /* A double line needs 3px; it starts 1px inside the card to keep within the gap. */
 [data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--ink-2); outline-offset: -1px; }
 
+/* ── Relationship arcs ──
+   Stem combinations arch above the stems, and branch relations hang below the
+   branches, each in its kind's line: solid, dashed for a clash, double for a
+   harmony frame. An arc is half an ellipse from the middle of its first card
+   to the middle of its last, and rises above every arc it spans or crosses. */
+.relationship-arcs {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  column-gap: var(--pillar-gap);
+  pointer-events: none;
+  animation: fadeIn 0.4s ease 0.6s both;
+}
+/* An absolutely placed item needs both lines: a missing end means the grid's edge. */
+.relationship-arcs[data-component='stem'] { grid-row: 4 / span 1; }
+/* The branch arcs also take the hidden stems' row, to reach the cards past it. */
+.relationship-arcs[data-component='branch'] { grid-row: 7 / span 2; }
+
+.relationship-arc {
+  --arc-ink: var(--ink-2);
+  --arc-line: 1px solid;
+  --arc-depth: calc(var(--arc-base) + var(--level) * var(--arc-step));
+  position: relative;
+  grid-row: 1;
+  /* In from each end by half a card. */
+  margin-inline: calc((100% - var(--span) * var(--pillar-gap)) / (2 * (var(--span) + 1)));
+}
+.relationship-arc[data-kind='branch_clash'] { --arc-line: 1px dashed; }
+.relationship-arc[data-kind='harmony_frame'] { --arc-line: 3px double; }
+.relationship-arcs[data-component='stem'] .relationship-arc { align-self: end; height: var(--arc-depth); }
+.relationship-arcs[data-component='branch'] .relationship-arc { margin-bottom: calc(var(--arc-band) - var(--arc-depth)); }
+
+/* The feet that meet on one card stand apart by --arc-spread. */
+.relationship-arc-line,
+.relationship-arc-rise,
+.relationship-arc-foot {
+  position: absolute;
+  transition: border-color 0.2s ease;
+}
+.relationship-arc-line {
+  left: calc(var(--foot-from) * var(--arc-spread));
+  right: calc(var(--foot-to) * var(--arc-spread) * -1);
+  height: var(--arc-depth);
+  border: var(--arc-line) var(--arc-ink);
+}
+.relationship-arcs[data-component='stem'] .relationship-arc-line {
+  top: 0;
+  border-bottom: none;
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+.relationship-arcs[data-component='branch'] .relationship-arc-line {
+  bottom: 0;
+  border-top: none;
+  border-radius: 0 0 50% 50% / 0 0 100% 100%;
+}
+/* A branch arc's feet run up to its cards, behind any opened hidden stems. */
+.relationship-arc-rise {
+  top: 0;
+  bottom: var(--arc-depth);
+}
+.relationship-arc-rise.is-from {
+  left: calc(var(--foot-from) * var(--arc-spread));
+  border-left: var(--arc-line) var(--arc-ink);
+}
+.relationship-arc-rise.is-to {
+  right: calc(var(--foot-to) * var(--arc-spread) * -1);
+  border-right: var(--arc-line) var(--arc-ink);
+}
+/* A harmony frame's middle member: from its card to the arc above it
+   (--reach is the arc's height there, a share of its full rise). */
+.relationship-arc-foot {
+  left: calc(var(--at) * 100% + var(--foot) * var(--arc-spread));
+  border-left: var(--arc-line) var(--arc-ink);
+}
+.relationship-arcs[data-component='stem'] .relationship-arc-foot {
+  top: calc(var(--arc-depth) * (1 - var(--reach)));
+  bottom: 0;
+}
+.relationship-arcs[data-component='branch'] .relationship-arc-foot {
+  top: 0;
+  bottom: calc(var(--arc-depth) * (1 - var(--reach)));
+}
+
+/* A chosen relationship: its arc darkens and the others recede. */
+.relationship-arcs.has-selection .relationship-arc { --arc-ink: var(--line-2); }
+.relationship-arcs .relationship-arc.is-active { --arc-ink: var(--ink-1); }
+
 .relationship-empty,
 .relationship-meta,
 .relationship-note {
@@ -1444,7 +1550,8 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .relationship-chip, .reading-toggle,
-  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle { transition: none; }
+  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle,
+  .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot { transition: none; }
 }
 
 /* Drawn rather than typed: the page fonts have no arrow glyphs. */
@@ -1470,6 +1577,10 @@ body {
   to   { opacity: 1; transform: translateY(0); }
 }
 
+@keyframes fadeIn {
+  from { opacity: 0; }
+}
+
 .hidden { display: none !important; }
 
 @media (max-width: 640px) {
@@ -1477,9 +1588,16 @@ body {
     --text-6: 44px;
     --card-min-height: 160px;
   }
-  .pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-4); }
+  .pillars {
+    --pillar-gap: var(--space-4);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: none;
+  }
   /* The second row of pillars. */
   .pillar:nth-child(n + 3) { margin-top: var(--space-5); }
+  /* Two pillars to a row leave no line for the arcs to span; the relationships
+     are listed in the sheet. Their rows are left empty, so they take no room. */
+  .relationship-arcs { display: none; }
   /* The bottom padding holds the branch chevron (bottom 8px, 14px tall). */
   .card-face { padding: var(--space-5) var(--space-3); }
   .datetime-row { flex-direction: column; align-items: center; }
