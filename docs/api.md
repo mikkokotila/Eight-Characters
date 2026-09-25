@@ -197,6 +197,40 @@ These are natal occurrence records, not strength weights, favorability ratings,
 or applied transformations. See [Day Master context](Standard-Day-Master-Context.md)
 for the policy and Standard-mode controls.
 
+### `POST /api/evolution_explorer`
+
+Builds the evolution explorer's graph data for a birth. The place is given
+the same two ways as for `POST /api/four_pillars`: `location` (mode A) or
+`city` + `country` (mode B, resolved to the first geocoder match).
+
+Request (mode A):
+
+```json
+{
+  "date": "1988-02-04",
+  "time": "15:40",
+  "location": {
+    "timezone": "Asia/Shanghai",
+    "longitude": 115.34289,
+    "latitude": 26.36828
+  }
+}
+```
+
+Optional request fields: `conventions`, `birth_time_uncertainty_seconds`,
+`basin_index` (`0` by default), `flux_threshold` (`0.0` by default).
+
+Response always includes `graph_data`; in mode B it also includes
+`resolved_location`, as described for `POST /api/four_pillars`.
+
+The explorer page reads the birth from its URL and calls this endpoint. The
+start page links to it with the picked place's coordinates:
+`/explorer/?date=1988-02-04&time=15:40&latitude=26.36828&longitude=115.34289&timezone=Asia%2FShanghai`.
+Links with `city` and `country` instead of the coordinates, made before the
+coordinates were passed, still work in mode B. A link with only part of the
+date, time or place, or with both coordinates and a city, shows an error;
+`/explorer/` with no birth in the URL shows a bundled sample chart.
+
 ### `POST /api/chart`
 
 Builds UI-ready chart payload from already computed pillar characters.

@@ -303,8 +303,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const query = new URLSearchParams({
         date: String(fourPillarsPayload.date || ''),
         time: String(fourPillarsPayload.time || ''),
-        city: String(resolvedLocation.city || ''),
-        country: String(resolvedLocation.country || ''),
+        latitude: String(resolvedLocation.latitude),
+        longitude: String(resolvedLocation.longitude),
+        timezone: resolvedLocation.timezone,
         lang: currentLanguage,
       });
       window.location.assign(`/explorer/?${query.toString()}`);

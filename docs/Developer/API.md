@@ -32,6 +32,22 @@
   - `400` for user/input/time-validation errors
   - `500` for unexpected internal errors
 
+### `POST /api/evolution_explorer`
+
+- **Purpose**: graph data for the evolution explorer page.
+- **Primary callers**: `eight_characters/explorer/app.js`.
+- **Input modes**: the same as `POST /api/four_pillars` (`location`, or
+  `city` + `country`), plus `basin_index` and `flux_threshold`.
+- **Internal calls**:
+  - `_resolve_four_pillars_location`
+  - `_build_four_pillars_result`
+  - `_build_hidden_stems_result`
+  - `_build_evolution_input_from_four_pillars`
+  - `_build_evolution_explorer_graph_data` (in a worker thread)
+- **Error behavior**:
+  - `400` for user/input/time-validation errors
+  - `500` when the geocoder is unavailable or for unexpected internal errors
+
 ### `POST /api/chart`
 
 - **Purpose**: render payload endpoint for explicit pillar-character inputs.
@@ -116,6 +132,15 @@ Current UI submit flow:
    appended to the header.
 3. Render ten gods on the card backs from `response.ten_gods`.
 4. Render hidden stems from `response.hidden_stems`.
+
+Evolution mode instead opens the explorer page (`GET /explorer/`, rendered
+from `templates/explorer.html` with versioned asset URLs) with the birth in
+the URL: `date`, `time`, and the picked place's `latitude`, `longitude` and
+`timezone`. The explorer sends them to `POST /api/evolution_explorer` as
+`location`. It still accepts older links that carry `city` and `country`
+instead (resolved by name), shows an error in its status bar for a link with
+only part of the birth or with both kinds of place, and shows the bundled
+sample chart (`explorer/data.js`) only when the URL has no birth at all.
 
 Chart card interactions:
 
