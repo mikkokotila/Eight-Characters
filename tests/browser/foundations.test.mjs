@@ -90,6 +90,11 @@ async function visitStates(page, inspect) {
     await inspect(`${lang} landing with suggestions`);
     await page.locator('.location-suggestion').first().click();
     await inspect(`${lang} landing with a picked place`);
+    await page.locator('#date').fill('1947-10-04');
+    await page.locator('#create-chart-btn').click();
+    await page.locator('#date-status.is-error').waitFor();
+    await inspect(`${lang} landing with a date error`);
+    await page.locator('#date').fill('1988-02-04');
     await page.locator('#create-chart-btn').click();
     await page.locator('#chart-view').waitFor({ state: 'visible' });
     await settled(page);
@@ -237,6 +242,45 @@ for (const profile of profiles) {
       })));
       assert.equal(new Set(fields.map((field) => field.height)).size, 1, JSON.stringify(fields));
       assert.equal(new Set(fields.map((field) => field.align)).size, 1, JSON.stringify(fields));
+    });
+
+    check('dates outside the engine range are refused on the date field, before any request', async (page) => {
+      const sent = [];
+      page.on('request', (request) => {
+        if (request.url().endsWith('/api/four_pillars')) sent.push(request.postDataJSON().date);
+      });
+      const messages = { en: 'Charts can be calculated for 1949–2100.', fi: 'Karttoja voi laskea vuosille 1949–2100.' };
+      for (const [lang, message] of Object.entries(messages)) {
+        await openChart(page, { lang });
+        await page.locator('#back-btn').click();
+        for (const date of ['1948-12-31', '2101-01-01']) {
+          await page.locator('#date').fill(date);
+          await page.locator('#create-chart-btn').click();
+          assert.equal(await page.locator('#date-status.is-error').textContent(), message);
+          assert.equal(await page.locator('#date').getAttribute('aria-invalid'), 'true');
+          assert.equal(await page.evaluate(() => document.activeElement.id), 'date');
+          assert.equal(await page.locator('#input-view').isVisible(), true);
+        }
+        // Editing clears the message; the range's first day is accepted.
+        await page.locator('#date').fill('1949-01-01');
+        assert.equal(await page.locator('#date-status').textContent(), '');
+        assert.equal(await page.locator('#date').getAttribute('aria-invalid'), null);
+        await page.locator('#create-chart-btn').click();
+        await page.locator('#chart-view').waitFor({ state: 'visible' });
+      }
+      assert.deepEqual(sent, ['1988-02-04', '1949-01-01', '1988-02-04', '1949-01-01']);
+    });
+
+    check('a missing date or time is named on its own field', async (page) => {
+      await openChart(page, { lang: 'en' });
+      await page.locator('#back-btn').click();
+      await page.locator('#date').fill('');
+      await page.locator('#time').fill('');
+      await page.locator('#create-chart-btn').click();
+      assert.equal(await page.locator('#date-status.is-error').textContent(), 'Enter the birth date.');
+      assert.equal(await page.locator('#time-status.is-error').textContent(), 'Enter the time of birth.');
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'date');
+      assert.equal(await page.locator('#input-view').isVisible(), true);
     });
 
     check('the page requests nothing from other origins and loads one face per font', async (page) => {

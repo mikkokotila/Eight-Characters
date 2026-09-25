@@ -151,6 +151,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  /* As wide as its field, so a status message wraps beneath it. */
+  width: 180px;
 }
 
 .field-group label {
@@ -267,7 +269,8 @@ body {
   color: var(--text-light);
 }
 
-.location-status {
+/* Each field's own status line: guidance, a picked place, or what to fix. */
+.field-status {
   min-height: 24px;
   width: 100%;
   margin-top: 2px;
@@ -277,11 +280,11 @@ body {
   color: var(--text-light);
 }
 
-.location-status.is-found {
+.field-status.is-found {
   color: #3f6246;
 }
 
-.location-status.is-error {
+.field-status.is-error {
   color: #8b4e45;
 }
 

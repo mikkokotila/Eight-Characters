@@ -42,6 +42,7 @@ from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
 )
 from eight_characters.interactions import detect_interactions
+from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 from eight_characters.role_profile import build_role_profile
 from eight_characters.ten_gods import (
     DAY_MASTER,
@@ -905,6 +906,9 @@ async def index(request: Request):
             'stem_options': stem_options,
             'branch_options': branch_options,
             'app_version': __version__,
+            # The engine accepts any local date within its supported years.
+            'birth_date_min': f'{MIN_SUPPORTED_YEAR:04d}-01-01',
+            'birth_date_max': f'{MAX_SUPPORTED_YEAR:04d}-12-31',
         },
     )
 

@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('chart-form');
   const backBtn = document.getElementById('back-btn');
   const createChartBtn = document.getElementById('create-chart-btn');
+  const dateInput = document.getElementById('date');
+  const dateStatus = document.getElementById('date-status');
+  const timeInput = document.getElementById('time');
+  const timeStatus = document.getElementById('time-status');
   const locationInput = document.getElementById('location');
   const locationSuggestions = document.getElementById('location-suggestions');
   const locationStatus = document.getElementById('location-status');
@@ -23,11 +27,20 @@ document.addEventListener('DOMContentLoaded', () => {
     !form ||
     !backBtn ||
     !createChartBtn ||
+    !dateInput ||
+    !dateStatus ||
+    !timeInput ||
+    !timeStatus ||
     !locationInput ||
     !locationSuggestions ||
     !locationStatus
   ) {
     return;
+  }
+  // The engine's supported years, rendered from its policy into the date field's bounds.
+  const supportedYears = [dateInput.min, dateInput.max].map((bound) => Number(bound.slice(0, 4)));
+  if (!supportedYears.every((year) => Number.isInteger(year) && year > 0)) {
+    throw new Error('The birth date field has no supported range.');
   }
 
   let resolvedLocation = null;
@@ -39,13 +52,44 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
 
-  const setLocationStatus = (text, state) => {
-    locationStatus.textContent = text || '';
-    locationStatus.classList.remove('is-found', 'is-error');
+  const setFieldStatus = (status, text, state) => {
+    status.textContent = text || '';
+    status.classList.remove('is-found', 'is-error');
     if (state) {
-      locationStatus.classList.add(state);
+      status.classList.add(state);
     }
   };
+
+  const setLocationStatus = (text, state) => setFieldStatus(locationStatus, text, state);
+
+  // A field's error is written beneath it and marks the field invalid; an empty text clears both.
+  const setFieldError = (input, status, text) => {
+    setFieldStatus(status, text, text ? 'is-error' : '');
+    if (text) {
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      input.removeAttribute('aria-invalid');
+    }
+  };
+
+  // Returns the first field needing a fix, after writing every message.
+  const checkBirthMoment = () => {
+    let firstInvalid = null;
+    const flag = (input, status, text) => {
+      setFieldError(input, status, text);
+      if (text && !firstInvalid) firstInvalid = input;
+    };
+    const year = Number(dateInput.value.split('-')[0]);
+    flag(dateInput, dateStatus, !dateInput.value ? t('need_date')
+      : year < supportedYears[0] || year > supportedYears[1]
+        ? t('date_out_of_range', { min: supportedYears[0], max: supportedYears[1] })
+        : '');
+    flag(timeInput, timeStatus, timeInput.value ? '' : t('need_time'));
+    return firstInvalid;
+  };
+
+  dateInput.addEventListener('input', () => setFieldError(dateInput, dateStatus, ''));
+  timeInput.addEventListener('input', () => setFieldError(timeInput, timeStatus, ''));
 
   const applyLanguage = () => {
     document.documentElement.lang = currentLanguage;
@@ -273,9 +317,13 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const invalidField = checkBirthMoment();
     if (!resolvedLocation) {
       setLocationStatus(t('need_location'), 'is-error');
       createChartBtn.disabled = true;
+    }
+    if (invalidField || !resolvedLocation) {
+      (invalidField || locationInput).focus();
       return;
     }
 

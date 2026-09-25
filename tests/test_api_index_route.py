@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from eight_characters import __version__
 from eight_characters.main import app
+from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 
 EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
 
@@ -77,6 +78,13 @@ class TestApiIndexRoute(unittest.TestCase):
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
+
+    def test_birth_date_field_takes_the_engine_scope(self) -> None:
+        response = self.client.get('/')
+        self.assertIn(f'min="{MIN_SUPPORTED_YEAR:04d}-01-01"', response.text)
+        self.assertIn(f'max="{MAX_SUPPORTED_YEAR:04d}-12-31"', response.text)
+        # The page validates itself, so its messages follow the chosen language.
+        self.assertIn('<form id="chart-form" novalidate>', response.text)
 
     def test_index_serves_its_own_fonts(self) -> None:
         response = self.client.get('/')
