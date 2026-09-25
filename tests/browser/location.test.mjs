@@ -223,12 +223,14 @@ for (const profile of profiles) {
         const field = document.getElementById('location').getBoundingClientRect();
         const list = document.getElementById('location-suggestions');
         const box = list.getBoundingClientRect();
+        // The list hangs one step of the spacing scale below the field.
+        const step = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--space-2'));
         return {
-          gap: Math.round(box.top - field.bottom), left: box.left - field.left, width: box.width - field.width,
+          gap: Math.round(box.top - field.bottom) - step, left: box.left - field.left, width: box.width - field.width,
           scrolls: list.scrollHeight > list.clientHeight,
         };
       });
-      assert.deepEqual(layout, { gap: 6, left: 0, width: 0, scrolls: false });
+      assert.deepEqual(layout, { gap: 0, left: 0, width: 0, scrolls: false });
       const field = page.locator('#location');
       assert.equal(await field.getAttribute('role'), 'combobox');
       assert.equal(await field.getAttribute('aria-expanded'), 'true');
