@@ -40,6 +40,12 @@ from eight_characters.evolution.state import RULE_COUNT
 from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
 )
+from eight_characters.ten_gods import (
+    DAY_MASTER,
+    DayMasterName,
+    TenGodName,
+    parse_ten_gods_mapping,
+)
 from eight_characters.time_convert import (
     AmbiguousTimeError,
     BirthInput,
@@ -137,6 +143,7 @@ class FourPillarsRequest(BaseModel):
     birth_time_uncertainty_seconds: float | None = None
     include_chart: bool = False
     include_hidden_stems: bool = False
+    include_ten_gods: bool = False
     lang: str = 'fi'
 
 
@@ -546,6 +553,66 @@ def _build_hidden_stems_result(
     return result
 
 
+@lru_cache(maxsize=1)
+def _load_ten_gods_lookup() -> dict[tuple[str, str], TenGodName]:
+    return parse_ten_gods_mapping(MAPPINGS_DIR / 'ten-gods.csv')
+
+
+# Every chart request needs both mappings: a broken table stops the app at startup
+# instead of failing requests one by one.
+_load_hidden_stems_lookup()
+_load_ten_gods_lookup()
+
+
+def _build_ten_gods_result(
+    payload: HiddenStemsRequest,
+) -> dict[str, dict[str, Any]]:
+    pillars = {
+        pillar_name: _validate_pillar_text(
+            pillar_text,
+            field_name=f'{pillar_name}_pillar',
+        )
+        for pillar_name, pillar_text in (
+            ('year', payload.year_pillar),
+            ('month', payload.month_pillar),
+            ('day', payload.day_pillar),
+            ('hour', payload.hour_pillar),
+        )
+    }
+    ten_gods_lookup = _load_ten_gods_lookup()
+    hidden_stems = _build_hidden_stems_result(payload)
+    day_master_char = pillars['day'][0]
+    result: dict[str, dict[str, Any]] = {}
+    for pillar_name, (stem_char, branch_char) in pillars.items():
+        stem_info = STEMS[stem_char]
+        stem_ten_god: TenGodName | DayMasterName = (
+            DAY_MASTER
+            if pillar_name == 'day'
+            else ten_gods_lookup[(day_master_char, stem_char)]
+        )
+        hidden_entries = cast(
+            list[dict[str, Any]], hidden_stems[pillar_name]['hidden_stems']
+        )
+        result[pillar_name] = {
+            'pillar': f'{stem_char}{branch_char}',
+            'stem': {
+                'char': stem_char,
+                'element': stem_info['element'],
+                'polarity': stem_info['polarity'],
+                'ten_god': stem_ten_god,
+            },
+            'branch': branch_char,
+            'hidden_stems': [
+                {
+                    **hidden_entry,
+                    'ten_god': ten_gods_lookup[(day_master_char, hidden_entry['char'])],
+                }
+                for hidden_entry in hidden_entries
+            ],
+        }
+    return result
+
+
 def _stem_profile(stem_char: str) -> tuple[tuple[int, int, int, int, int], int, int]:
     stem_info = STEMS.get(stem_char)
     if stem_info is None:
@@ -882,14 +949,19 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
                 lang=payload.lang,
                 four_pillars=four_pillars,
             )
-        if payload.include_hidden_stems:
+        if payload.include_hidden_stems or payload.include_ten_gods:
             hidden_stems_request = HiddenStemsRequest(
                 year_pillar=_pillar_text_for_hidden_stems(four_pillars, 'year'),
                 month_pillar=_pillar_text_for_hidden_stems(four_pillars, 'month'),
                 day_pillar=_pillar_text_for_hidden_stems(four_pillars, 'day'),
                 hour_pillar=_pillar_text_for_hidden_stems(four_pillars, 'hour'),
             )
-            response['hidden_stems'] = _build_hidden_stems_result(hidden_stems_request)
+            if payload.include_hidden_stems:
+                response['hidden_stems'] = _build_hidden_stems_result(
+                    hidden_stems_request
+                )
+            if payload.include_ten_gods:
+                response['ten_gods'] = _build_ten_gods_result(hidden_stems_request)
     except ValueError as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 

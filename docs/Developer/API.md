@@ -18,11 +18,14 @@
 - **Optional enrichments**:
   - `include_chart=true` adds chart payload from `build_chart`
   - `include_hidden_stems=true` adds hidden stems payload from `_build_hidden_stems_result`
+  - `include_ten_gods=true` adds ten gods payload from `_build_ten_gods_result`
+    (stem and hidden stem ten gods relative to the Day Master)
 - **Internal calls**:
   - `_resolve_four_pillars_location`
   - `_build_four_pillars_result`
   - (optional) `build_chart`
   - (optional) `_build_hidden_stems_result`
+  - (optional) `_build_ten_gods_result`
 - **Error behavior**:
   - `400` for user/input/time-validation errors
   - `500` for unexpected internal errors
@@ -78,6 +81,13 @@
   - `stem-map.csv`
   - `branch-mapping.csv`
 - Runtime hidden stems lookup in `eight_characters/main.py` reads from this directory first.
+- Runtime ten gods lookup in `eight_characters/main.py` reads `ten-gods.csv`
+  through `parse_ten_gods_mapping` (`eight_characters/ten_gods.py`). It rejects
+  a malformed or incomplete table, and any cell that disagrees with the
+  element-cycle derivation in `evolution.primitives.ten_god_index`, instead of
+  skipping it. Both mappings load when `main` is imported, so a broken table
+  stops the app at startup. `tests/test_api_ten_gods.py` also checks the table
+  against the `lunar-python` reference.
 
 ## Frontend Flow
 
@@ -87,8 +97,17 @@ Current UI submit flow:
    - `city`, `country`, `date`, `time`
    - `include_chart=true`
    - `include_hidden_stems=true`
+   - `include_ten_gods=true`
 2. Render chart from `response.chart`.
-3. Render hidden stems from `response.hidden_stems`.
+3. Render ten gods on the card backs from `response.ten_gods`.
+4. Render hidden stems from `response.hidden_stems`.
+
+Chart card interactions:
+
+- Quick click on a branch card toggles its hidden stems panel.
+- Holding any card for at least one second flips it to its ten god; branch
+  cards list the ten god of every hidden stem, with their qi type. Holding
+  again flips it back.
 
 Location typing flow remains:
 

@@ -381,6 +381,25 @@ body {
 }
 
 .card {
+  position: relative;
+  perspective: 1600px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+}
+
+/* ── Card flip: a long press turns the card over to its ten gods ── */
+.card-inner {
+  position: relative;
+  border-radius: inherit;
+}
+
+.card-face {
   padding: 24px 16px;
   display: flex;
   flex-direction: column;
@@ -389,16 +408,44 @@ body {
   gap: 12px;
   position: relative;
   overflow: hidden;
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
   min-height: 180px;
+  border-radius: inherit;
+  transition: box-shadow 0.3s ease;
 }
 
-.card:hover {
-  transform: translateY(-2px);
+/* At rest only the facing side is shown, drawn flat so its text stays crisp.
+   It alone sizes the card; the other side waits hidden on top of it. */
+.card-back,
+.card.is-flipped .card-front {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+}
+.card.is-flipped .card-back {
+  position: relative;
+  visibility: visible;
+}
+
+/* While turning (app.js animates rotation and height), both sides are drawn in 3D. */
+.card.is-turning .card-inner {
+  transform-style: preserve-3d;
+}
+.card.is-turning .card-face {
+  position: absolute;
+  inset: 0;
+  visibility: visible;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+.card.is-turning .card-back {
+  transform: rotateY(180deg);
+}
+
+.card:hover .card-face {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
-.card::before {
+.card-face::before {
   content: '';
   position: absolute;
   inset: 0;
@@ -410,22 +457,26 @@ body {
 .card.branch {
   border-radius: 3px 3px 14px 14px;
   cursor: pointer;
-  user-select: none;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-radius 0.35s ease;
+  transition: transform 0.3s ease, border-radius 0.35s ease;
 }
 .card.branch.is-expanded {
   border-radius: 3px 3px 0 0;
-  transition: transform 0.3s ease, box-shadow 0.3s ease, border-radius 0.15s ease;
+  transition: transform 0.3s ease, border-radius 0.15s ease;
 }
 .card.branch.is-expanded:hover {
   transform: none;
 }
 
-.card.metal { background: var(--metal-bg); color: var(--metal-text); }
-.card.fire  { background: var(--fire-bg);  color: var(--fire-text); }
-.card.wood  { background: var(--wood-bg);  color: var(--wood-text); }
-.card.earth { background: var(--earth-bg); color: var(--earth-text); }
-.card.water { background: var(--water-bg); color: var(--water-text); }
+.card.metal { color: var(--metal-text); }
+.card.fire  { color: var(--fire-text); }
+.card.wood  { color: var(--wood-text); }
+.card.earth { color: var(--earth-text); }
+.card.water { color: var(--water-text); }
+.card.metal .card-face { background: var(--metal-bg); }
+.card.fire  .card-face { background: var(--fire-bg); }
+.card.wood  .card-face { background: var(--wood-bg); }
+.card.earth .card-face { background: var(--earth-bg); }
+.card.water .card-face { background: var(--water-bg); }
 
 /* ── Branch expand hint ── */
 .branch-expand-hint {
@@ -515,6 +566,47 @@ body {
   text-transform: lowercase;
 }
 
+/* ── Ten gods (card back) ── */
+.ten-god-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  container-type: inline-size;
+}
+
+/* Rows mirror the hidden stems panel on the card colour, so text takes the
+   card's ink; a long ten god name wraps within its column. */
+.card-back .hidden-stem-item {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr) auto;
+  column-gap: 10px;
+  row-gap: 2px;
+}
+.card-back .hidden-stem-label {
+  color: inherit;
+  overflow-wrap: break-word;
+}
+.card-back .hidden-stem-type {
+  color: inherit;
+  opacity: 0.7;
+}
+
+/* Too narrow for one row: the qi label moves under the ten god name. */
+@container (max-width: 150px) {
+  .card-back .hidden-stem-item {
+    grid-template-columns: 8px minmax(0, 1fr);
+  }
+  .card-back .hidden-stem-type {
+    grid-column: 2;
+    margin-left: 0;
+  }
+}
+
+@container (max-width: 100px) {
+  .card-back .hidden-stem-item { column-gap: 6px; }
+}
+
 /* ── CSS-drawn gua lines ── */
 .gua {
   display: flex;
@@ -549,12 +641,18 @@ body {
 }
 
 /* ── Text ── */
-.element-name {
+.element-name,
+.ten-god-name {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 600;
   font-size: 18px;
   letter-spacing: 0.5px;
   text-align: center;
+}
+
+.ten-god-name {
+  max-width: 100%;
+  overflow-wrap: break-word;
 }
 
 .animal-name {
@@ -621,7 +719,7 @@ body {
 @media (max-width: 640px) {
   .pillars { grid-template-columns: repeat(2, 1fr); gap: 20px; }
   .pillar-value { font-size: 28px; }
-  .card { padding: 20px 14px; min-height: 160px; }
+  .card-face { padding: 20px 14px; min-height: 160px; }
   .datetime-row { flex-direction: column; align-items: center; }
   .location-group { min-width: 0; width: 100%; }
   .location-search-wrap { flex-direction: column; align-items: stretch; }
