@@ -75,7 +75,6 @@ QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
 app = FastAPI(title='Eight Characters')
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
-app.mount('/explorer', StaticFiles(directory=EXPLORER_DIR, html=True), name='explorer')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
 
@@ -906,6 +905,18 @@ async def index(request: Request):
             'app_version': __version__,
         },
     )
+
+
+@app.get('/explorer/', response_class=HTMLResponse)
+async def explorer_page(request: Request):
+    """Serve the evolution explorer, its assets versioned like the index's."""
+    return templates.TemplateResponse(
+        request, 'explorer.html', {'app_version': __version__}
+    )
+
+
+# Mounted after the page route, which a mount at the same prefix would shadow.
+app.mount('/explorer', StaticFiles(directory=EXPLORER_DIR), name='explorer')
 
 
 @app.post('/api/chart')
