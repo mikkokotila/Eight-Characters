@@ -1,6 +1,6 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Page foundations of the Standard view: typography, contrast, form, location list, identity.
-import { assert, describe, it, engineName, profiles, openChart, withPage } from './chart-helpers.mjs';
+import { assert, describe, it, engineName, profiles, openChart, settled, withPage } from './chart-helpers.mjs';
 
 const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond'];
 
@@ -33,6 +33,33 @@ async function installAudit(page) {
   await page.addInitScript(AUDIT);
 }
 
+// Glyphs drawn from a font the page did not load, per visible text element (DevTools protocol).
+// CJK characters are exempt: the page fonts have none, and chart characters are stage 2 of #16's plan.
+async function systemGlyphFailures(page, cdp, state) {
+  const texts = await page.evaluate(() => window.__ecAudit.textElements().map((element, index) => {
+    element.setAttribute('data-glyph-audit', String(index));
+    const own = [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent).join('');
+    return { label: window.__ecAudit.describe(element), cjk: [...own].filter((char) => /\p{Script=Han}/u.test(char)).length };
+  }));
+  const { root } = await cdp.send('DOM.getDocument', { depth: -1 });
+  const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-glyph-audit]' });
+  assert.equal(nodeIds.length, texts.length);
+  const failures = [];
+  for (const nodeId of nodeIds) {
+    const { attributes } = await cdp.send('DOM.getAttributes', { nodeId });
+    const text = texts[Number(attributes[attributes.indexOf('data-glyph-audit') + 1])];
+    const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
+    const system = fonts.filter((font) => !font.isCustomFont);
+    if (system.reduce((sum, font) => sum + font.glyphCount, 0) > text.cjk) {
+      failures.push(`${state}: ${text.label} → ${system.map((font) => `${font.familyName} ×${font.glyphCount}`).join(', ')}`);
+    }
+  }
+  await page.evaluate(() => document.querySelectorAll('[data-glyph-audit]')
+    .forEach((element) => element.removeAttribute('data-glyph-audit')));
+  return failures;
+}
+
 async function fontFamilyFailures(page, families) {
   return page.evaluate((families) => window.__ecAudit.textElements()
     .filter((element) => !families.includes(window.__ecAudit.firstFamily(element)))
@@ -58,6 +85,45 @@ for (const profile of profiles) {
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
       }
     });
+
+    it('every glyph is drawn from the page fonts, except CJK characters', {
+      timeout: 120000,
+      skip: engineName !== 'chromium' && 'Platform-font inspection needs the Chromium DevTools protocol.',
+    }, () => withPage(profile, async (page) => {
+      await installAudit(page);
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send('DOM.enable');
+      await cdp.send('CSS.enable');
+      const failures = [];
+      for (const lang of ['en', 'fi']) {
+        await openChart(page, { lang });
+        await page.locator('#back-btn').click();
+        await page.locator('#location').fill('Chengdu');
+        await page.locator('.location-suggestion').first().waitFor();
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} landing`));
+        await page.locator('.location-suggestion').first().click();
+        await page.locator('#create-chart-btn').click();
+        await page.locator('#chart-view').waitFor({ state: 'visible' });
+        for (const pillar of ['hour', 'day', 'month', 'year']) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
+        await page.locator('#ten-gods-toggle').click();
+        await settled(page);
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} chart`));
+        for (const topic of ['season', 'roots', 'roles']) {
+          await page.locator(`button[data-context="${topic}"]`).click();
+          failures.push(...await systemGlyphFailures(page, cdp, `${lang} ${topic}`));
+        }
+        await page.locator('button.role-choice[data-role="friend"]').click();
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} role`));
+        await page.locator('button[data-role-back]').click();
+        await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} stem roots`));
+        await page.keyboard.press('Escape');
+        await page.locator('.relationship-chip').first().click();
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} relationship`));
+        await page.keyboard.press('Escape');
+      }
+      assert.deepEqual(failures, []);
+    }));
 
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
