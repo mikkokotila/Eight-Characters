@@ -11,7 +11,7 @@ from unittest import mock
 from eight_characters.embedded_data import ENGINE_MODEL_IDS
 from eight_characters.engine import (
     MONTH_BOUNDARIES,
-    _nearest_month_term_jds,  # pyright: ignore[reportPrivateUsage]
+    _nearest_month_terms,  # pyright: ignore[reportPrivateUsage]
     _seed_jd_for_target,  # pyright: ignore[reportPrivateUsage]
 )
 from eight_characters.nutation import nutation_arcseconds
@@ -246,9 +246,10 @@ class TestSolarPositionKernel(unittest.TestCase):
 
 
 class TestSolarTermSearch(unittest.TestCase):
-    def test_nearest_seeds_find_the_nearest_term(self) -> None:
-        # Solving only the four seeds nearest the birth gives the same nearest jie
-        # as solving all 36 jie of the civil year and the years around it.
+    def test_nearest_seeds_find_the_terms_around_the_birth(self) -> None:
+        # Solving only the four seeds nearest the birth gives the same nearest jie,
+        # and the same jie on either side of the birth, as solving all 36 jie of the
+        # civil year and the years around it.
         rng = random.Random(24)
         births = [
             datetime(1949, 1, 1, tzinfo=UTC)
@@ -270,12 +271,20 @@ class TestSolarTermSearch(unittest.TestCase):
                 for year in (birth.year - 1, birth.year, birth.year + 1)
                 for target in MONTH_BOUNDARIES
             ]
+            nearest = [jd for _, jd in _nearest_month_terms(birth.year, birth_jd)]
             with self.subTest(birth=birth.isoformat()):
                 self.assertEqual(
-                    nearest_jie_distance_seconds(
-                        birth_jd, _nearest_month_term_jds(birth.year, birth_jd)
-                    ),
+                    nearest_jie_distance_seconds(birth_jd, nearest),
                     nearest_jie_distance_seconds(birth_jd, everything),
+                )
+                # Where the month pillar last changed, and where it next changes.
+                self.assertEqual(
+                    max(jd for jd in nearest if jd <= birth_jd),
+                    max(jd for jd in everything if jd <= birth_jd),
+                )
+                self.assertEqual(
+                    min(jd for jd in nearest if jd > birth_jd),
+                    min(jd for jd in everything if jd > birth_jd),
                 )
 
 

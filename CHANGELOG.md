@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.17.0
+
+Stage 2 of the Standard view overhaul (#17): the chart shows what the engine knows, and nothing that contradicts it.
+
+### Added
+- **Each pillar's own name**: above each pillar, its characters and pinyin (丁卯 Ding Mao) replace the raw Gregorian value, which contradicted the pillar near a boundary. The canonical chart (1988-02-04 16:30, Chengdu) showed "1988" over 丁卯, six hours before Lichun.
+- **The characters on the cards**: each card's stem or branch is its main glyph, and the gua lines are secondary. The characters come from a self-hosted subset of Noto Serif TC holding only the 22 stems and branches (SIL OFL 1.1; provenance and licence in `static/fonts/`). Every font stack names it, so they look the same wherever they appear.
+- **True solar time**: the header gives the true solar time the day and hour pillars are read from, and its offset from clock time ("True solar time 15:12:24 · 1 h 17 min 36 s behind clock time"), with its date when that differs. The header itself is built on the client from the birth as entered, in the page's language (Finnish writes 16.30); `chart.header` is unchanged in the API.
+- **Pillar changes in the engine**: every pillar reports when it last changed before the birth and when it next changes, as `four_pillars.<pillar>.changes.previous` and `.next`. Each gives the elapsed seconds (TT), the pillar on the far side, and the solar term (year, month) or the clock and its reading (day, hour). Day and hour changes follow the clocks the conventions choose, including daylight-saving jumps, and each is confirmed against the engine's own rules. See `conventions-and-output.md`.
+- **Marks and exact changes**: a pillar at most 30 minutes from a change is marked beneath its name ("changed 12 min 24 s ago"). Pressing a pillar's name opens its exact changes: the distance to a tenth of a second, the term or the clock, and the pillars on either side.
+- **Zi-hour conventions**: where the birth falls in the Zi hour and the two conventions give other pillars, the header offers both, with the chart's own pressed. Choosing the other redraws the whole chart under it (Day Master, Ten Gods, roots, relationships, roles), for that chart only.
+- **Notices**: `high_latitude_warning` and `solar_term_ambiguous` are shown when true.
+
+### Changed
+- **Precision data is checked before a chart is shown**: an unreadable true solar time, missing or contradictory pillar changes, or flags that contradict the chart stop it, and the form says why.
+- **Regression fixture**: gains the four `changes` blocks, each checked against an independent value (`lunar-python` for the terms, a bisection of true solar time for the clocks); otherwise only `engine.version` changes.
+- The pillar changes add about 11 ms to a chart.
+- New tests: `test_pillar_changes` in the core-engine gate, and an engine-truth browser suite. The browser foundations audits now require the stems and branches to be drawn from the page's own font, and walk the new details, a Zi-hour chart and a high-latitude chart.
+- Version bumped to `0.17.0`; the static assets' cache keys follow it.
+
+### Fixed
+- The 0.16.1 notes gave the seed kernel's difference from `lunar-python` as a median of 120 s and up to 494 s. Measured again, it is 119 s and 496 s.
+
 ## 0.16.1
 
 The engine computes solar terms with the models it reports (#24). The month and year pillars change at the right instants; they were up to 8 minutes off.

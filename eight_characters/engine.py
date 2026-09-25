@@ -18,6 +18,10 @@ from eight_characters.integrity import (
     validate_pillar_set,
 )
 from eight_characters.output import dumps_deterministic
+from eight_characters.pillar_changes import (
+    day_and_hour_changes,
+    year_and_month_changes,
+)
 from eight_characters.sexagenary import (
     BRANCHES as SEXAGENARY_BRANCHES,
 )
@@ -108,8 +112,10 @@ def _seed_jd_for_target(year_value: int, target_longitude: float) -> float:
     return julian_date_from_datetime_utc(seed_dt)
 
 
-def _nearest_month_term_jds(civil_year: int, birth_jd_tt: float) -> list[float]:
-    """The jie around the birth: solved from the four seeds nearest to it.
+def _nearest_month_terms(
+    civil_year: int, birth_jd_tt: float
+) -> list[tuple[float, float]]:
+    """(target longitude, jd_tt) of the jie around the birth, from its four nearest seeds.
 
     Seed dates lie within a few days of their terms and jie are about 30 days apart,
     so the terms on either side of the birth always come from its nearest seeds.
@@ -120,7 +126,7 @@ def _nearest_month_term_jds(civil_year: int, birth_jd_tt: float) -> list[float]:
         for target in MONTH_BOUNDARIES
     ]
     seeds.sort(key=lambda seed: abs(seed[1] - birth_jd_tt))
-    return [find_solar_term(target, seed_jd) for target, seed_jd in seeds[:4]]
+    return [(target, find_solar_term(target, seed_jd)) for target, seed_jd in seeds[:4]]
 
 
 def _boundary_note(distance_seconds: float, label: str) -> str:
@@ -188,8 +194,27 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
     }
     validate_pillar_set(pillars)
 
-    term_jds = _nearest_month_term_jds(normalized.utc_datetime.year, solar.jd_tt)
+    month_terms = _nearest_month_terms(normalized.utc_datetime.year, solar.jd_tt)
+    term_jds = [jd for _, jd in month_terms]
     nearest_term_seconds = nearest_jie_distance_seconds(solar.jd_tt, term_jds)
+    year_changes, month_changes = year_and_month_changes(
+        birth_jd_tt=solar.jd_tt,
+        bazi_year=bazi_year,
+        lichun_jds=(
+            lichun_jd_tt_for_civil_year(bazi_year),
+            lichun_jd_tt_for_civil_year(bazi_year + 1),
+        ),
+        terms=month_terms,
+        labels=TERM_LABEL_BY_TARGET,
+    )
+    day_changes, hour_changes = day_and_hour_changes(
+        birth_utc=normalized.utc_datetime,
+        timezone_name=normalized.timezone_name,
+        longitude_deg=normalized.longitude,
+        conventions=value.conventions,
+        day=day_result.pillar,
+        hour=hour_result,
+    )
     model_uncertainty_seconds = model_uncertainty_seconds_for_year(
         normalized.utc_datetime.year
     )
@@ -277,6 +302,7 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
                         lichun_distance_seconds, TERM_LABEL_BY_TARGET[315.0]
                     ),
                 },
+                'changes': year_changes,
             },
             'month': {
                 **_pillar_dict(month_result),
@@ -285,9 +311,10 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
                     'distance_seconds': nearest_term_seconds,
                     'note': 'Distance to nearest month boundary term.',
                 },
+                'changes': month_changes,
             },
-            'day': _pillar_dict(day_result.pillar),
-            'hour': _pillar_dict(hour_result),
+            'day': {**_pillar_dict(day_result.pillar), 'changes': day_changes},
+            'hour': {**_pillar_dict(hour_result), 'changes': hour_changes},
         },
         'flags': {
             'zi_hour_window': zi_window,

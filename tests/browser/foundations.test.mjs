@@ -1,8 +1,12 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Page foundations of the Standard view: typography, contrast, form, location list, identity.
-import { assert, describe, it, engineName, profiles, openChart, settled, withPage } from './chart-helpers.mjs';
+import {
+  assert, describe, it, engineName, profiles, openChart, settled, withPage, HELSINKI, TROMSO,
+} from './chart-helpers.mjs';
 
-const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond'];
+const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond', 'Noto Serif TC'];
+// The characters the page's own CJK font carries (static/fonts/README.md).
+const STEMS_AND_BRANCHES = '甲乙丙丁戊己庚辛壬癸子丑寅卯辰巳午未申酉戌亥';
 
 // In-page helpers, installed before the page's own scripts run.
 const AUDIT = () => {
@@ -145,6 +149,15 @@ async function visitStates(page, inspect) {
     await page.locator('.relationship-chip').first().click();
     await inspect(`${lang} relationship`);
     await page.keyboard.press('Escape');
+    for (const pillar of ['hour', 'year']) {
+      await page.locator(`.pillar-identity[data-pillar="${pillar}"]`).click();
+      await inspect(`${lang} ${pillar} changes`);
+      await page.keyboard.press('Escape');
+    }
+    await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+    await inspect(`${lang} Zi-hour chart`);
+    await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+    await inspect(`${lang} high-latitude chart`);
   }
 }
 
@@ -153,14 +166,16 @@ async function installAudit(page) {
 }
 
 // Glyphs drawn from a font the page did not load, per visible text element (DevTools protocol).
-// CJK characters are exempt: the page fonts have none, and chart characters are stage 2 of #16's plan.
+// The stems and branches come from the page's own CJK font. Other CJK characters are exempt:
+// the page fonts have none.
 async function systemGlyphFailures(page, cdp, state) {
-  const texts = await page.evaluate(() => window.__ecAudit.textElements().map((element, index) => {
+  const texts = await page.evaluate((chartCharacters) => window.__ecAudit.textElements().map((element, index) => {
     element.setAttribute('data-glyph-audit', String(index));
     const own = [...element.childNodes].filter((node) => node.nodeType === Node.TEXT_NODE)
       .map((node) => node.textContent).join('');
-    return { label: window.__ecAudit.describe(element), cjk: [...own].filter((char) => /\p{Script=Han}/u.test(char)).length };
-  }));
+    const exempt = [...own].filter((char) => /\p{Script=Han}/u.test(char) && !chartCharacters.includes(char)).length;
+    return { label: window.__ecAudit.describe(element), exempt };
+  }), STEMS_AND_BRANCHES);
   const { root } = await cdp.send('DOM.getDocument', { depth: -1 });
   const { nodeIds } = await cdp.send('DOM.querySelectorAll', { nodeId: root.nodeId, selector: '[data-glyph-audit]' });
   assert.equal(nodeIds.length, texts.length);
@@ -170,7 +185,7 @@ async function systemGlyphFailures(page, cdp, state) {
     const text = texts[Number(attributes[attributes.indexOf('data-glyph-audit') + 1])];
     const { fonts } = await cdp.send('CSS.getPlatformFontsForNode', { nodeId });
     const system = fonts.filter((font) => !font.isCustomFont);
-    if (system.reduce((sum, font) => sum + font.glyphCount, 0) > text.cjk) {
+    if (system.reduce((sum, font) => sum + font.glyphCount, 0) > text.exempt) {
       failures.push(`${state}: ${text.label} → ${system.map((font) => `${font.familyName} ×${font.glyphCount}`).join(', ')}`);
     }
   }
@@ -202,10 +217,16 @@ for (const profile of profiles) {
         await page.locator('#chart-view').waitFor({ state: 'visible' });
         await page.locator('button[data-context="roles"]').click();
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
+        await page.locator('.pillar-identity[data-pillar="year"]').click();
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with a pillar's changes`);
+        await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} Zi-hour chart`);
+        await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+        assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} high-latitude chart`);
       }
     });
 
-    it('every glyph is drawn from the page fonts, except CJK characters', {
+    it('every glyph is drawn from the page fonts, except CJK characters beyond the stems and branches', {
       timeout: 120000,
       skip: engineName !== 'chromium' && 'Platform-font inspection needs the Chromium DevTools protocol.',
     }, () => withPage(profile, async (page) => {
@@ -240,6 +261,15 @@ for (const profile of profiles) {
         await page.locator('.relationship-chip').first().click();
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} relationship`));
         await page.keyboard.press('Escape');
+        for (const pillar of ['hour', 'year']) {
+          await page.locator(`.pillar-identity[data-pillar="${pillar}"]`).click();
+          failures.push(...await systemGlyphFailures(page, cdp, `${lang} ${pillar} changes`));
+          await page.keyboard.press('Escape');
+        }
+        await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} Zi-hour chart`));
+        await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
+        failures.push(...await systemGlyphFailures(page, cdp, `${lang} high-latitude chart`));
       }
       assert.deepEqual(failures, []);
     }));
@@ -472,7 +502,7 @@ for (const profile of profiles) {
           .map((face) => face.family.replace(/["']/g, '')).sort();
       });
       assert.deepEqual(foreign, []);
-      assert.deepEqual(loaded, ['Cormorant Garamond', 'Manrope']);
+      assert.deepEqual(loaded, ['Cormorant Garamond', 'Manrope', 'Noto Serif TC']);
     });
   });
 }

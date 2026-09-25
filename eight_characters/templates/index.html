@@ -74,6 +74,9 @@
   <div class="chart-header">
     <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
     <h1 class="name" id="chart-date"></h1>
+    <p class="solar-time" id="chart-solar-time"></p>
+    <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
+    <ul id="chart-notices" class="chart-notices hidden"></ul>
   </div>
 
   <section id="day-master-context" class="day-master-context" aria-labelledby="day-master-heading">
@@ -92,7 +95,10 @@
     <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
   </section>
 
+  <p id="pillar-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
   <div class="pillars" id="pillars"></div>
+
+  <section id="pillar-detail" class="relationship-detail pillar-detail hidden" aria-labelledby="pillar-detail-title"></section>
 
   <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
 
@@ -108,6 +114,7 @@
 <script src="/static/relationships.js?v={{ app_version }}"></script>
 <script src="/static/roles.js?v={{ app_version }}"></script>
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>
+<script src="/static/pillar-changes.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

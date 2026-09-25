@@ -61,10 +61,28 @@ as documented.
 The foundations suite checks the page as a whole, on the landing page, the chart
 with hidden stems and Ten Gods, and every detail page, in English and Finnish:
 every visible text is set in the self-hosted page fonts (and, in Chromium, the
-DevTools protocol confirms which font drew every glyph; only CJK characters may
-come from a system font), text meets WCAG AA contrast with backgrounds and
+DevTools protocol confirms which font drew every glyph; the stems and branches
+must come from the page's own CJK font, and only other CJK characters may come
+from a system font), text meets WCAG AA contrast with backgrounds and
 opacity composited through every ancestor, the expand chevron and element dots
 meet 3:1, card highlights stay within the gap between cards, the page loads
 nothing from another origin and nothing fails to load, and the form's date
 range, field messages, error region, progress state, headings, mode labels and
 tab titles behave as documented.
+
+The engine-truth suite checks what the chart shows of the engine's own results:
+each pillar's identity and characters, the header built from the birth as entered
+(in Finnish, times such as 16.30), and the true solar time with its offset from
+clock time, dated when it falls on another day. It checks that only a pillar
+within 30 minutes of a change is marked, before or after the birth; that every
+pillar's exact changes open on demand, naming the solar term or the clock and its
+date; that Escape returns focus; and that one detail is open at a time. A chart
+whose true solar time cannot be read, or whose pillar changes are missing or
+contradict the chart, is not shown. On the Helsinki 00:50 chart (true solar
+23:29) the Zi-hour switch appears, sends the other convention, and the Day Master,
+pillars, marks, Ten Gods, roots, relationships and roles all follow it and return
+with it; charts whose conventions agree show no switch, and a switched chart that
+cannot be read sends the form back with the reason. The high-latitude and
+solar-term notices appear, and flags that contradict the chart stop it. The
+foundations audits also walk the pillar change details, a Zi-hour chart and a
+high-latitude chart.

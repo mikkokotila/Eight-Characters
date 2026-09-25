@@ -62,9 +62,10 @@ The engine ties VSOP87's J2000 equinox to FK5 (Meeus eq. 32.3). The IAU 2006
 framework refers instead to the inertial dynamical mean equinox of J2000 (IERS
 Conventions 2010, section 5.5.4), in the ICRS. VSOP87 refers to that same kind
 of equinox, but as realised with the DE200 ephemeris (Bretagnon & Francou 1988).
-The constant 0.85 s against the Hong Kong Observatory is about the size of the
-difference between these realisations. Part of it may come from the
-Observatory's own conversion to civil time. It is not yet resolved.
+The constant 0.85 s against the Hong Kong Observatory, about 0.035″ in longitude,
+is of the order of the difference between these realisations; that remains to be
+shown with the published rotations. Part of it may come from the Observatory's
+own conversion to civil time. It is not yet resolved (#26).
 `flags.model_uncertainty_seconds` (0.5 s from 1972, 1.5 s before) is a declared
 allowance, and after 1972 it is smaller than this offset.
 

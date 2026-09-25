@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'eight-characters'
-version = '0.16.1'
+version = '0.17.0'
 description = 'BaZi Four Pillars chart generator'
 readme = 'README.md'
 requires-python = '>=3.9'
@@ -29,6 +29,7 @@ eight_characters = [
   'static/*.js',
   'static/*.svg',
   'static/*.ico',
+  'static/fonts/*',
   'resources/mappings/*.csv',
   'resources/astronomy/*',
 ]

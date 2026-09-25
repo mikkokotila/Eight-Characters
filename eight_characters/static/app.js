@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
     throw new Error('The birth date field has no supported range.');
   }
 
+  // The chart's characters have a small font of their own. Fetch it now, before the
+  // first chart needs it; a failure rejects, and shows in the console.
+  document.fonts.load("500 1em 'Noto Serif TC'", '甲');
+
   let resolvedLocation = null;
   let suggestDebounce = null;
   let suggestRequest = null;
@@ -53,6 +57,115 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentLanguage = i18n.getLanguage();
   let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
+
+  // ── The chart header: the birth moment as entered, and the true solar time ──
+  const chartDate = document.getElementById('chart-date');
+  const chartSolarTime = document.getElementById('chart-solar-time');
+  if (!chartDate || !chartSolarTime) throw new Error('Chart header is incomplete.');
+  const locale = () => (currentLanguage === 'en' ? 'en' : 'fi');
+  // A clock reading, held as a UTC date so that formatting never moves it into the
+  // viewer's own time zone. Readings no calendar has, such as 24:10, give null.
+  const parseWallClock = (text) => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(text);
+    if (!match) return null;
+    const [year, month, day, hour, minute, second] = match.slice(1).map((part) => Number(part || 0));
+    const reading = new Date(Date.UTC(year, month - 1, day, hour, minute, second));
+    const exact = reading.getUTCFullYear() === year && reading.getUTCMonth() === month - 1
+      && reading.getUTCDate() === day && reading.getUTCHours() === hour
+      && reading.getUTCMinutes() === minute && reading.getUTCSeconds() === second;
+    return exact ? reading : null;
+  };
+  const formatDate = (reading) => new Intl.DateTimeFormat(locale(), { dateStyle: 'long', timeZone: 'UTC' })
+    .format(reading);
+  // Finnish writes 16.30, English 16:30; both on a 24-hour clock.
+  const formatTime = (reading, withSeconds) => new Intl.DateTimeFormat(locale(), {
+    timeStyle: withSeconds ? 'medium' : 'short', hourCycle: 'h23', timeZone: 'UTC',
+  }).format(reading);
+  // Whole seconds, or with `tenths` to a tenth of a second (the exact values on demand).
+  const formatDuration = (totalSeconds, tenths = false) => {
+    const scale = tenths ? 10 : 1;
+    let remaining = Math.round(totalSeconds * scale);
+    const parts = [];
+    for (const [size, unit] of [[86400, 'unit_days'], [3600, 'unit_hours'], [60, 'unit_minutes']]) {
+      const amount = Math.floor(remaining / (size * scale));
+      remaining -= amount * size * scale;
+      if (amount) parts.push(`${amount} ${requiredTranslation(unit)}`);
+    }
+    if (remaining || tenths || !parts.length) {
+      const digits = tenths ? 1 : 0;
+      const seconds = new Intl.NumberFormat(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
+        .format(remaining / scale);
+      parts.push(`${seconds} ${requiredTranslation('unit_seconds')}`);
+    }
+    return parts.join(' ');
+  };
+  // True solar time, and how far it lies from the clock the birth was recorded on.
+  const describeSolarTime = (solarTime, birth) => {
+    const reading = solarTime && typeof solarTime.true_solar_time === 'string'
+      ? parseWallClock(solarTime.true_solar_time) : null;
+    if (!reading) throw new Error(requiredTranslation('solar_time_error'));
+    const time = formatTime(reading, true);
+    const sameDay = reading.toISOString().slice(0, 10) === birth.toISOString().slice(0, 10);
+    const shown = sameDay ? time : requiredTranslation('date_and_time', { date: formatDate(reading), time });
+    const offset = Math.round((reading - birth) / 1000);
+    const difference = offset === 0
+      ? requiredTranslation('clock_offset_none')
+      : requiredTranslation(offset < 0 ? 'clock_offset_behind' : 'clock_offset_ahead',
+        { duration: formatDuration(Math.abs(offset)) });
+    return { reading, text: `${requiredTranslation('true_solar_time', { time: shown })} · ${difference}` };
+  };
+
+  // ── The chart's flags: the Zi-hour alternative, and notices ──
+  const chartNotices = document.getElementById('chart-notices');
+  const ziSwitch = document.getElementById('zi-switch');
+  if (!chartNotices || !ziSwitch) throw new Error('Chart header is incomplete.');
+  const ZI_CONVENTIONS = ['split_midnight', 'whole_zi_23'];
+  // Reads the flags, checking them against the pillars; inconsistent flags stop the chart.
+  const readFlags = (flags, fourPillars, request) => {
+    const fail = () => { throw new Error(requiredTranslation('flags_error')); };
+    if (!flags || typeof flags.zi_hour_window !== 'boolean' || typeof flags.solar_term_ambiguous !== 'boolean'
+      || typeof flags.high_latitude_warning !== 'boolean' || typeof flags.model_uncertainty_seconds !== 'number'
+      || !(flags.model_uncertainty_seconds > 0)) fail();
+    const pillarText = (pillar) => `${pillar?.stem?.chinese}${pillar?.branch?.chinese}`;
+    const current = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
+    const alternative = flags.alternative_pillars;
+    // The engine gives the other convention's pillars exactly when the birth is in the Zi hour.
+    if (flags.zi_hour_window !== (alternative !== null && alternative !== undefined)) fail();
+    let zi = null;
+    if (flags.zi_hour_window) {
+      const other = alternative.conventions?.zi_convention;
+      if (!ZI_CONVENTIONS.includes(other) || other === current) fail();
+      // Offered only where the other convention gives other pillars.
+      if (pillarText(alternative.day) !== pillarText(fourPillars.day)
+        || pillarText(alternative.hour) !== pillarText(fourPillars.hour)) zi = { current, other };
+    }
+    const notices = [];
+    // The month changes at the jie on either side of the birth; the nearer decides the flag.
+    const { previous, next } = fourPillars.month.changes;
+    const nearest = previous.seconds <= next.seconds ? previous : next;
+    const within = nearest.seconds < flags.model_uncertainty_seconds;
+    // A millisecond either way: the engine and this check round differently.
+    if (flags.solar_term_ambiguous !== within
+      && Math.abs(nearest.seconds - flags.model_uncertainty_seconds) > 0.001) fail();
+    if (flags.solar_term_ambiguous) {
+      const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(flags.model_uncertainty_seconds);
+      notices.push(requiredTranslation(
+        nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }));
+    }
+    if (flags.high_latitude_warning) notices.push(requiredTranslation('notice_high_latitude'));
+    return { zi, notices };
+  };
+  const renderFlags = ({ zi, notices }) => {
+    chartNotices.innerHTML = notices.map((notice) => `<li>${esc(notice)}</li>`).join('');
+    chartNotices.classList.toggle('hidden', notices.length === 0);
+    ziSwitch.classList.toggle('hidden', zi === null);
+    ziSwitch.innerHTML = zi === null ? '' : `
+      <p class="zi-switch-note" id="zi-switch-note">${esc(requiredTranslation('zi_switch_note'))}</p>
+      <div class="zi-switch-options">${ZI_CONVENTIONS.map((convention) => `
+        <button type="button" data-zi-convention="${convention}" aria-pressed="${convention === zi.current}">${
+          esc(requiredTranslation(`zi_${convention}`))}</button>`).join('')}
+      </div>`;
+  };
 
   const setFieldStatus = (status, text, state) => {
     status.textContent = text || '';
@@ -355,6 +468,59 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // The chart on screen: the request that made it and its place, so that the Zi-hour
+  // switch can ask for it again under the other convention.
+  let shown = null;
+
+  // Requests a chart and draws it. Anything missing or inconsistent throws before the
+  // chart view is shown.
+  const showChart = async (request, city) => {
+    const pillarsRes = await fetch('/api/four_pillars', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(request),
+    });
+    const pillarsData = await pillarsRes.json();
+    if (!pillarsRes.ok) {
+      throw new Error(pillarsData.detail || t('pillars_error'));
+    }
+
+    const chartData = pillarsData.chart;
+    if (!chartData) {
+      throw new Error(t('chart_error'));
+    }
+    const tenGodsData = pillarsData.ten_gods;
+    if (!tenGodsData) {
+      throw new Error(t('ten_gods_error'));
+    }
+
+    // The header shows the birth as it was entered; the API's header text is not used.
+    const birth = parseWallClock(`${request.date}T${request.time}`);
+    if (!birth) throw new Error(t('chart_error'));
+    const heading = [
+      formatDate(birth), formatTime(birth, request.time.length > 5), city,
+    ].join(' · ');
+    const solarTime = describeSolarTime(pillarsData.solar_time, birth);
+
+    renderChart(chartData);
+    chartDate.textContent = heading;
+    chartSolarTime.textContent = solarTime.text;
+    pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
+    // Read after the pillar changes are checked: the month's changes decide the term notice.
+    renderFlags(readFlags(pillarsData.flags, pillarsData.four_pillars, request));
+    populateTenGods(tenGodsData);
+    if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
+    populateHiddenStems(pillarsData.hidden_stems);
+    relationships.render(pillarsData.interactions, chartData, tenGodsData);
+    dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
+    syncTenGodsToggle();
+    // Open charts are told apart by their tab.
+    document.title = t('chart_page_title', { chart: heading });
+    shown = { request, city };
+    inputView.classList.add('hidden');
+    chartView.classList.remove('hidden');
+  };
+
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     if (pending) {
@@ -405,38 +571,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setPending(true);
     try {
-      const pillarsRes = await fetch('/api/four_pillars', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(fourPillarsPayload),
-      });
-      const pillarsData = await pillarsRes.json();
-      if (!pillarsRes.ok) {
-        throw new Error(pillarsData.detail || t('pillars_error'));
-      }
-
-      const chartData = pillarsData.chart;
-      if (!chartData) {
-        throw new Error(t('chart_error'));
-      }
-      const tenGodsData = pillarsData.ten_gods;
-      if (!tenGodsData) {
-        throw new Error(t('ten_gods_error'));
-      }
-
-      chartData.header = `${chartData.header} · ${resolvedLocation.city}`;
-
-      renderChart(chartData);
-      populateTenGods(tenGodsData);
-      if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
-      populateHiddenStems(pillarsData.hidden_stems);
-      relationships.render(pillarsData.interactions, chartData, tenGodsData);
-      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
-      syncTenGodsToggle();
-      // Open charts are told apart by their tab.
-      document.title = t('chart_page_title', { chart: chartData.header });
-      inputView.classList.add('hidden');
-      chartView.classList.remove('hidden');
+      await showChart(fourPillarsPayload, resolvedLocation.city);
     } catch (err) {
       console.error(err);
       setFormError(err.message || t('chart_create_error'));
@@ -445,10 +580,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // The other Zi-hour convention, for this chart only. A chart that then fails is not
+  // left half drawn: the form comes back with the reason.
+  ziSwitch.addEventListener('click', async (event) => {
+    const button = event.target.closest('button[data-zi-convention]');
+    if (!button || button.getAttribute('aria-pressed') === 'true' || ziSwitch.getAttribute('aria-busy') === 'true') return;
+    const convention = button.dataset.ziConvention;
+    ziSwitch.setAttribute('aria-busy', 'true');
+    try {
+      await showChart({ ...shown.request, conventions: { zi_convention: convention } }, shown.city);
+      ziSwitch.querySelector(`button[data-zi-convention="${convention}"]`).focus();
+    } catch (err) {
+      console.error(err);
+      relationships.clear();
+      dayMasterContext.clear();
+      pillarChanges.clear();
+      chartView.classList.add('hidden');
+      inputView.classList.remove('hidden');
+      document.title = t('page_title');
+      setFormError(err.message || t('chart_create_error'));
+    } finally {
+      ziSwitch.removeAttribute('aria-busy');
+    }
+  });
+
   // The picked place is kept, so another chart for it only needs a new date or time.
   backBtn.addEventListener('click', () => {
     relationships.clear();
     dayMasterContext.clear();
+    pillarChanges.clear();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
     document.title = t('page_title');
@@ -490,13 +650,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return t(key, vars);
   };
 
+  // One detail is open at a time: a relationship, the Day Master context, or a pillar's changes.
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc,
-    beforeSelect: () => dayMasterContext.clear(),
+    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
     root: chartView, translate: requiredTranslation, escape: esc,
-    beforeSelect: () => relationships.clear(),
+    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); },
+  });
+  const pillarChanges = window.EC_PILLAR_CHANGES.create({
+    root: chartView, translate: requiredTranslation, escape: esc,
+    format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); },
   });
   const tenGodsToggle = document.getElementById('ten-gods-toggle');
   const syncTenGodsToggle = () => {
@@ -704,10 +870,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 function renderChart(data) {
-  // Header
-  document.getElementById('chart-date').textContent = data.header;
-
-  // Pillars
   const container = document.getElementById('pillars');
   container.innerHTML = '';
 
@@ -717,17 +879,24 @@ function renderChart(data) {
   data.pillars.forEach((p, i) => {
     const pillar = document.createElement('div');
     pillar.className = 'pillar';
+    pillar.dataset.pillar = pillarKeys[i];
     pillar.style.animationDelay = [0.5, 0.35, 0.2, 0.05][i] + 's';
 
     pillar.innerHTML = `
       <div class='pillar-header'>
         <div class='pillar-label'>${esc(p.label)}</div>
-        <div class='pillar-value'>${esc(p.value)}</div>
+        <button type='button' class='pillar-identity' data-pillar='${pillarKeys[i]}'
+          aria-expanded='false' aria-controls='pillar-detail'>
+          <span class='pillar-chars' lang='zh-Hant'>${esc(p.stem.char + p.branch.char)}</span>
+          <span class='pillar-pinyin'>${esc(`${p.stem.pinyin} ${p.branch.pinyin}`)}</span>
+        </button>
+        <p class='pillar-mark'></p>
       </div>
       <div class='pillar-cards'>
         <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'>
           <div class='card-inner'>
             <div class='card-face card-front'>
+              <div class='glyph' lang='zh-Hant'>${esc(p.stem.char)}</div>
               <div class='gua'>${renderLines(p.stem.lines)}</div>
               <div class='element-name'>${esc(p.stem.label)}</div>
             </div>
@@ -739,6 +908,7 @@ function renderChart(data) {
         <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}' data-char='${esc(p.branch.char)}'>
           <div class='card-inner'>
             <div class='card-face card-front'>
+              <div class='glyph' lang='zh-Hant'>${esc(p.branch.char)}</div>
               <div class='gua'>${renderLines(p.branch.lines)}</div>
               <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
               <div class='animal-element'>${esc(p.branch.element_label)}</div>
