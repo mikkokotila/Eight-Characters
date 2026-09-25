@@ -155,7 +155,9 @@ Location typing flow:
    suggestion's `display` label with its coordinates and timezone, which tell
    apart places that share a name and region.
 2. User selects a suggestion. The page keeps the whole suggestion and shows
-   its coordinates in the status line.
+   its coordinates in the status line. The field stays editable: any edit
+   drops the pick and searches again, and Create chart stays disabled until a
+   suggestion is picked.
 
 ## Error Contract (All Endpoints)
 

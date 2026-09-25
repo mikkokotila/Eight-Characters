@@ -151,8 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Kept whole: the chart is computed for these coordinates, since names repeat.
     resolvedLocation = selected;
     locationInput.value = selected.display;
-    locationInput.readOnly = true;
-    locationInput.classList.add('location-locked');
     createChartBtn.disabled = false;
     hideSuggestions();
     setLocationStatus(
@@ -168,8 +166,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearResolvedLocation = () => {
     resolvedLocation = null;
     createChartBtn.disabled = true;
-    locationInput.readOnly = false;
-    locationInput.classList.remove('location-locked');
     hideSuggestions();
     setLocationStatus('', '');
   };
@@ -206,6 +202,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   locationInput.addEventListener('input', () => {
+    // The text no longer names the picked place, so a new pick is needed to create a chart.
     if (resolvedLocation) {
       clearResolvedLocation();
     }

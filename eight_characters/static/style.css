@@ -262,12 +262,6 @@ body {
   color: #8b4e45;
 }
 
-.location-locked {
-  border-color: rgba(42, 37, 32, 0.12) !important;
-  box-shadow: none !important;
-  background: rgba(255, 255, 255, 0.45) !important;
-}
-
 /* Submit button */
 .submit-row {
   display: flex;
