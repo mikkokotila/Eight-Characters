@@ -288,6 +288,17 @@ body {
   color: #8b4e45;
 }
 
+/* Why a chart could not be created, when no single field is at fault. */
+.form-error {
+  max-width: 560px;
+  margin: 0 auto 20px;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+  text-align: center;
+  color: #8b4e45;
+}
+
 /* Submit button */
 .submit-row {
   display: flex;

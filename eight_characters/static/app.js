@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const locationInput = document.getElementById('location');
   const locationSuggestions = document.getElementById('location-suggestions');
   const locationStatus = document.getElementById('location-status');
+  const formError = document.getElementById('form-error');
   const languageButtons = [...document.querySelectorAll('.lang-btn')];
   const modeButtons = [...document.querySelectorAll('.mode-btn')];
   if (
@@ -33,7 +34,8 @@ document.addEventListener('DOMContentLoaded', () => {
     !timeStatus ||
     !locationInput ||
     !locationSuggestions ||
-    !locationStatus
+    !locationStatus ||
+    !formError
   ) {
     return;
   }
@@ -90,6 +92,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dateInput.addEventListener('input', () => setFieldError(dateInput, dateStatus, ''));
   timeInput.addEventListener('input', () => setFieldError(timeInput, timeStatus, ''));
+
+  // Failures that belong to no single field: the chart request itself, or its evidence.
+  const setFormError = (text) => {
+    formError.textContent = text || '';
+    formError.classList.toggle('hidden', !text);
+  };
+  // The message describes the last attempt; any edit starts a new one.
+  form.addEventListener('input', () => setFormError(''));
 
   const applyLanguage = () => {
     document.documentElement.lang = currentLanguage;
@@ -317,6 +327,7 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    setFormError('');
     const invalidField = checkBirthMoment();
     if (!resolvedLocation) {
       setLocationStatus(t('need_location'), 'is-error');
@@ -391,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
       chartView.classList.remove('hidden');
     } catch (err) {
       console.error(err);
-      setLocationStatus(err.message || t('chart_create_error'), 'is-error');
+      setFormError(err.message || t('chart_create_error'));
     }
   });
 

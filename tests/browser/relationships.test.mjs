@@ -179,13 +179,13 @@ for (const profile of profiles) {
     check('missing enrichment fails visibly instead of pretending no relationships', async (page) => {
       await openChart(page, { success: false }, (payload) => { delete payload.interactions; });
       assert.equal(await page.locator('#chart-view').isVisible(), false);
-      assert.match(await page.locator('#location-status').innerText(), /Could not read chart relationships/);
+      assert.match(await page.locator('#form-error').innerText(), /Could not read chart relationships/);
     });
 
     check('malformed relationship semantics fail visibly', async (page) => {
       await openChart(page, { success: false }, (payload) => { payload.interactions[0].transformation = 'applied'; });
       assert.equal(await page.locator('#chart-view').isVisible(), false);
-      assert.match(await page.locator('#location-status').innerText(), /Could not read chart relationships/);
+      assert.match(await page.locator('#form-error').innerText(), /Could not read chart relationships/);
     });
   });
 }

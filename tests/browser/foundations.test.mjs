@@ -283,6 +283,22 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#input-view').isVisible(), true);
     });
 
+    check('a chart that cannot be created is reported above the button, not under the place', async (page) => {
+      await openChart(page, { lang: 'en' });
+      await page.locator('#back-btn').click();
+      const placeStatus = await page.locator('#location-status').textContent();
+      await page.route('**/api/four_pillars', (route) => route.fulfill({ status: 500, json: { detail: 'Stopped by the test.' } }));
+      await page.locator('#create-chart-btn').click();
+      const error = page.locator('#form-error');
+      await error.waitFor({ state: 'visible' });
+      assert.equal(await error.textContent(), 'Stopped by the test.');
+      assert.equal(await error.getAttribute('role'), 'alert');
+      assert.equal(await page.locator('#location-status').textContent(), placeStatus);
+      assert.equal(await page.locator('#chart-view').isVisible(), false);
+      await page.locator('#time').fill('16:31');
+      assert.equal(await error.isVisible(), false);
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
