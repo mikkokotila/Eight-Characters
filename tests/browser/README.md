@@ -31,7 +31,8 @@ intentionally modify the real response to verify visible errors. No real birth
 records or saved user data are used.
 
 Coverage includes selection and keyboard focus, unchanged pillar geometry and
-natal colors, global and individual Ten Gods flips, long-press release suppression,
+natal colors, the display switch and individual flips (and the switch's mixed state),
+long-press release suppression,
 quick clicks/taps, cancelled touch holds, repeated combinations, complete frames,
 empty results, Finnish, narrow viewports, reduced motion, chart reset, and explicit
 errors for absent or malformed relationship data.
@@ -59,7 +60,8 @@ explorer links naming the place partly, twice, or only by city and country behav
 as documented.
 
 The foundations suite checks the page as a whole, on the landing page, the chart
-with hidden stems and Ten Gods, and every detail page, in English and Finnish:
+with hidden stems and Ten Gods, the long-press hint, the relationships list, and
+every detail page, in English and Finnish:
 every visible text is set in the self-hosted page fonts (and, in Chromium, the
 DevTools protocol confirms which font drew every glyph; the stems and branches
 must come from the page's own CJK font, and only other CJK characters may come
@@ -67,8 +69,8 @@ from a system font), text meets WCAG AA contrast with backgrounds and
 opacity composited through every ancestor, the expand chevron and element dots
 meet 3:1, card highlights stay within the gap between cards, the page loads
 nothing from another origin and nothing fails to load, and the form's date
-range, field messages, error region, progress state, headings, mode labels and
-tab titles behave as documented.
+range, field messages, error region, progress state, headings, display and view
+switch labels, and tab titles behave as documented.
 
 The engine-truth suite checks what the chart shows of the engine's own results:
 each pillar's identity and characters, the header built from the birth as entered
@@ -91,5 +93,18 @@ The design-system suite checks the one grid of the pillars: the stem and branch
 rows and the pillar names share top edges and heights across the four pillars,
 front and back, in English and Finnish, at widths from 641px to 1440px (and in
 pairs on mobile); a wrapped pillar label keeps the names level; the branch
-chevron clears its card's text; and the room kept below the pillars holds the
-tallest hidden-stem panel.
+chevron clears its card's text; opened hidden stems share a row in the flow and
+cover nothing; and no text on a card or in its hidden stems is clipped or broken
+inside a word, in any display, from 320px to 1440px, in both languages.
+
+The workbench suite checks the chart's layout (#19): at 1440×900 every topic keeps
+its highlighted cards and its explanation on screen together without scrolling;
+the chart moves over once when the panel first opens, not again while topics
+change, and back when it closes; below 1200px the panel is a sheet over the foot
+of the page, and the chart scrolls clear of it; the display switch shows
+characters, Ten Gods or hidden stems on every card; a card turns after half a
+second held, and the mouse finds a hint saying so, right above the card; the
+chart's language switch asks for the chart again and keeps its display; Edit
+keeps the birth and New chart empties the form; and the column headers pair each
+plain pillar name with its poetic one, while the panel uses the plain names in
+the chart's order.

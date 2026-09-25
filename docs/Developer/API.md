@@ -149,9 +149,9 @@ Current UI submit flow:
 3. Render ten gods on the card backs from `response.ten_gods`.
 4. Render hidden stems from `response.hidden_stems`.
 
-Evolution mode instead opens the explorer page (`GET /explorer/`, rendered
-from `templates/explorer.html` with versioned asset URLs) with the birth in
-the URL: `date`, `time`, and the picked place's `latitude`, `longitude` and
+The chart's Evolution view opens the explorer page (`GET /explorer/`, rendered
+from `templates/explorer.html` with versioned asset URLs) with the chart's birth
+in the URL: `date`, `time`, and the picked place's `latitude`, `longitude` and
 `timezone`. The explorer sends them to `POST /api/evolution_explorer` as
 `location`. It still accepts older links that carry `city` and `country`
 instead (resolved by name), shows an error in its status bar for a link with
@@ -160,10 +160,14 @@ sample chart (`explorer/data.js`) only when the URL has no birth at all.
 
 Chart card interactions:
 
+- The display switch shows characters, Ten Gods or hidden stems on every card.
 - Quick click on a branch card toggles its hidden stems panel.
-- Holding any card for at least one second flips it to its ten god; branch
-  cards list the ten god of every hidden stem, with their qi type. Holding
-  again flips it back.
+- Holding any card for half a second flips it to its ten god; branch cards list
+  the ten god of every hidden stem, with their qi type. Holding again flips it
+  back. A card changed by hand makes the display switch read mixed; pressing
+  its choice again shows it on every card.
+- The chart's FI/EN switch requests the same chart again with the other `lang`,
+  keeping the display.
 
 Location typing flow:
 
@@ -177,8 +181,9 @@ Location typing flow:
    its coordinates in the status line. The field stays editable: any edit
    drops the pick and searches again, and Create chart stays disabled until a
    suggestion is picked.
-3. Back from the chart returns to the form with the pick, date and time
-   kept, so another chart for the same place needs no new pick.
+3. Edit returns from the chart to the form with the pick, date and time
+   kept, so another chart for the same place needs no new pick. New chart
+   returns to an empty form.
 
 ## Error Contract (All Endpoints)
 
