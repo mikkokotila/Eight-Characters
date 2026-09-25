@@ -41,6 +41,28 @@ class TestInteractionRecognition(unittest.TestCase):
             ]
             self.assertEqual(actual, list(expected))
 
+    def test_potential_targets_are_explicit_and_never_applied(self):
+        expected = {
+            'stem_combination': ['earth', 'metal', 'water', 'wood', 'fire'],
+            'harmony_frame': ['water', 'wood', 'fire', 'metal'],
+        }
+        for kind, elements in expected.items():
+            self.assertEqual(
+                [
+                    rule.potential_element
+                    for rule in INTERACTION_RULES
+                    if rule.kind == kind
+                ],
+                elements,
+            )
+        self.assertTrue(
+            all(
+                rule.potential_element is None
+                for rule in INTERACTION_RULES
+                if rule.kind in ('branch_combination', 'branch_clash')
+            )
+        )
+
     def test_canonical_chart_has_non_adjacent_ding_ren_pair_only(self):
         self.assertEqual(
             detect_interactions(CANONICAL),
@@ -223,6 +245,23 @@ class TestInteractionsAPI(unittest.TestCase):
             result = self.request(**kwargs, include_interactions=True).json()
             self.assertEqual(result.pop('interactions'), detect_interactions(CANONICAL))
             self.assertEqual(result, baseline)
+
+    def test_real_chart_with_no_matches_returns_an_empty_list(self):
+        response = self.client.post(
+            '/api/four_pillars',
+            json={
+                'date': '1990-01-01',
+                'time': '12:00',
+                'include_interactions': True,
+                'location': {
+                    'timezone': 'Asia/Shanghai',
+                    'longitude': 104.066,
+                    'latitude': 30.658,
+                },
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['interactions'], [])
 
     def test_internal_recognition_errors_are_not_silently_empty(self):
         with patch(

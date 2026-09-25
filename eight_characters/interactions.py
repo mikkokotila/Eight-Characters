@@ -56,11 +56,14 @@ class InteractionRule:
 _STEM_CHARS = '甲乙丙丁戊己庚辛壬癸'
 _BRANCH_CHARS = '子丑寅卯辰巳午未申酉戌亥'
 _ELEMENTS: tuple[ElementName, ...] = ('wood', 'fire', 'earth', 'metal', 'water')
-_RULE_KINDS: tuple[InteractionKind, ...] = (
-    *('stem_combination',) * 5,
-    *('branch_combination',) * 6,
-    *('branch_clash',) * 6,
-    *('harmony_frame',) * 4,
+_RULE_GROUPS: tuple[tuple[InteractionKind, int], ...] = (
+    ('stem_combination', 5),
+    ('branch_combination', 6),
+    ('branch_clash', 6),
+    ('harmony_frame', 4),
+)
+_RULE_KINDS: tuple[InteractionKind, ...] = tuple(
+    kind for kind, count in _RULE_GROUPS for _ in range(count)
 )
 
 
