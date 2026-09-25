@@ -118,7 +118,7 @@ body {
   color: var(--text);
 }
 
-.input-header h1 {
+.input-header .eyebrow {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 300;
   font-size: 14px;
@@ -356,7 +356,7 @@ body {
   margin-bottom: 28px;
 }
 
-.chart-header h1 {
+.chart-header .eyebrow {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 300;
   font-size: 14px;

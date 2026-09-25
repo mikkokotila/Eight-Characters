@@ -326,6 +326,18 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-form').getAttribute('aria-busy'), null);
     });
 
+    check('each view has one top-level heading: the title it shows', async (page) => {
+      const headings = () => page.evaluate(() => [...document.querySelectorAll('h1, h2')]
+        .filter((heading) => heading.checkVisibility())
+        .map((heading) => `${heading.tagName} ${heading.textContent.trim()}`));
+      await page.goto(process.env.EC_BASE_URL);
+      await page.locator('[data-lang="en"]').click();
+      assert.deepEqual(await headings(), ['H1 Eight characters']);
+      await openChart(page, { lang: 'en' });
+      assert.deepEqual(await headings(), [
+        'H1 February 4, 1988 · 16:30 · Chengdu', 'H2 Day Master · Ji — Yin Earth', 'H2 Relationships']);
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
