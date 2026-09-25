@@ -39,6 +39,12 @@ ruff format --check .
 pyright
 ```
 
+## Browser Regression Tests
+
+See [Standard-mode browser tests](../../tests/browser/README.md) for the explicit
+server/module settings and desktop/mobile Chromium and WebKit checks. These use
+existing browser tooling and do not add production dependencies.
+
 ## Key Docs
 
 - User docs index: `../README.md`

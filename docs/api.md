@@ -45,6 +45,7 @@ Optional request fields:
 - `include_chart` (`false` by default)
 - `include_hidden_stems` (`false` by default)
 - `include_ten_gods` (`false` by default)
+- `include_interactions` (`false` by default)
 - `lang` (`fi` by default, used when `include_chart=true`)
 
 Response always includes:
@@ -60,6 +61,7 @@ Response conditionally includes:
 - `chart` (when `include_chart=true`)
 - `hidden_stems` (when `include_hidden_stems=true`)
 - `ten_gods` (when `include_ten_gods=true`)
+- `interactions` (when `include_interactions=true`)
 
 `ten_gods` gives, for each pillar, the ten god of its stem and of every
 hidden stem of its branch, relative to the Day Master (the day stem). Hidden
@@ -93,6 +95,56 @@ stems keep the order and `qi_type` of the `hidden_stems` payload. Values are
   }
 }
 ```
+
+#### Natal relationships (`include_interactions`)
+
+This independent, opt-in enrichment detects the five stem combinations, six
+branch combinations, six branch clashes, and four complete three-harmony frames.
+It compares the normalized natal pillars only; hidden stems do not create extra
+stem combinations. It does not run Evolution inference or change any natal element.
+
+Every matching occurrence is returned, including repeated and non-adjacent pairs.
+A frame requires all three distinct branch members; incomplete sets are not emitted.
+An empty array means no matches in this supported scope, not that the chart has no
+other relationships. Records are ordered by shared rule index, then by natal
+position (year, month, day, hour). Overlapping records are retained independently.
+
+For the canonical `1988-02-04 16:30:00` Chengdu chart:
+
+```json
+{
+  "interactions": [
+    {
+      "id": "stem_combination:4:year-hour",
+      "kind": "stem_combination",
+      "component": "stem",
+      "members": [
+        { "pillar": "year", "char": "丁", "pinyin": "Ding" },
+        { "pillar": "hour", "char": "壬", "pinyin": "Ren" }
+      ],
+      "adjacent": false,
+      "completeness": "pair",
+      "potential_element": "wood",
+      "transformation": "not_assessed"
+    }
+  ]
+}
+```
+
+`kind` is `stem_combination`, `branch_combination`, `branch_clash`, or
+`harmony_frame`. Each record identifies its `stem` or `branch` component and
+all participating cards. `adjacent` means the participating pillars occupy
+consecutive natal positions, independent of responsive screen layout.
+`completeness` is `pair` or `complete` (a three-member frame).
+
+`potential_element` is only a reference target for stem combinations and complete
+frames. Branch-pair targets are not published because they vary by convention;
+clashes have no target. Both use `null`. `transformation` is `not_assessed` for
+combinations and frames, and `not_applicable` for clashes. No activation, strength,
+transformation, favorable/unfavorable verdict, or life outcome is inferred.
+
+The flag does not implicitly include `chart`, `hidden_stems`, or `ten_gods`;
+request those separately. Existing response sections are unchanged.
 
 ### `POST /api/chart`
 
@@ -243,6 +295,7 @@ curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
     "include_chart": true,
     "include_hidden_stems": true,
     "include_ten_gods": true,
+    "include_interactions": true,
     "lang": "en"
   }'
 ```
