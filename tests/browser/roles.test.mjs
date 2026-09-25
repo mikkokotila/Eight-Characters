@@ -254,7 +254,7 @@ for (const profile of profiles) {
       check(`${name} fails visibly before showing a partial chart`,async(page)=>{
         await openChart(page,{success:false},mutate);
         assert.equal(await page.locator('#chart-view').isVisible(),false);
-        assert.match(await page.locator('#location-status').innerText(),/Could not read the natal role profile/);
+        assert.match(await page.locator('#form-error').innerText(),/Could not read the natal role profile/);
       });
     }
   });

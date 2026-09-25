@@ -3,13 +3,30 @@
    Faithfully matches the chart template aesthetic.
    ═══════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Manrope:wght@300;400;500;600&display=swap');
+/* The fonts the explorer already serves. Each file is a variable font that
+   covers every weight, so one face per family is enough. */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/explorer/vendor/fonts/Manrope-normal-400.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/explorer/vendor/fonts/CormorantGaramond-normal-400.woff2') format('woff2');
+}
 
 :root {
   --bg: #F5F0E8;
   --text: #2A2520;
-  --text-muted: #7A7168;
-  --text-light: #9A9389;
+  /* Both greys meet WCAG AA (4.5:1) on the page and on every element-tinted
+     panel; de-emphasis comes from size, case and tracking, not from lightness. */
+  --text-muted: #675F57;
+  --text-light: #655F58;
 
   --metal-bg: #C8C2B8;
   --metal-text: #33302C;
@@ -31,6 +48,9 @@
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* Browsers draw form controls in a system font unless told to take the page's. */
+button, input, select, textarea { font-family: inherit; }
 
 body {
   background: var(--bg);
@@ -86,6 +106,7 @@ body {
   color: var(--text-light);
   font-size: 11px;
   letter-spacing: 0.8px;
+  text-transform: uppercase;
   padding: 5px 9px;
   border-radius: 999px;
   cursor: pointer;
@@ -98,7 +119,7 @@ body {
   color: var(--text);
 }
 
-.input-header h1 {
+.input-header .eyebrow {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 300;
   font-size: 14px;
@@ -131,6 +152,8 @@ body {
   flex-direction: column;
   align-items: center;
   gap: 8px;
+  /* As wide as its field, so a status message wraps beneath it. */
+  width: 180px;
 }
 
 .field-group label {
@@ -151,8 +174,11 @@ body {
   background: rgba(255, 255, 255, 0.45);
   border: 1px solid rgba(42, 37, 32, 0.12);
   border-radius: 10px;
+  /* One height and alignment for all three fields; native date and time
+     controls would otherwise stand taller than the text field. */
+  height: 48px;
   padding: 12px 16px;
-  text-align: center;
+  text-align: left;
   outline: none;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   width: 180px;
@@ -194,18 +220,17 @@ body {
   opacity: 1;
 }
 
+/* Hangs from the field itself and shows every suggestion (at most eight) without scrolling. */
 .location-suggestions {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   width: 100%;
-  max-height: 270px;
   border: 1px solid rgba(42, 37, 32, 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 8px 24px rgba(42, 37, 32, 0.08);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 20;
 }
 
@@ -244,7 +269,8 @@ body {
   color: var(--text-light);
 }
 
-.location-status {
+/* Each field's own status line: guidance, a picked place, or what to fix. */
+.field-status {
   min-height: 24px;
   width: 100%;
   margin-top: 2px;
@@ -254,11 +280,22 @@ body {
   color: var(--text-light);
 }
 
-.location-status.is-found {
+.field-status.is-found {
   color: #3f6246;
 }
 
-.location-status.is-error {
+.field-status.is-error {
+  color: #8b4e45;
+}
+
+/* Why a chart could not be created, when no single field is at fault. */
+.form-error {
+  max-width: 560px;
+  margin: 0 auto 20px;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  line-height: 1.5;
+  text-align: center;
   color: #8b4e45;
 }
 
@@ -297,6 +334,12 @@ body {
   transform: none;
 }
 
+/* Working, not unavailable: the label says what is happening. */
+.submit-btn.is-pending {
+  opacity: 1;
+  cursor: progress;
+}
+
 
 /* ═══════════════════════════════════════════════════════
    CHART VIEW — exact match to template
@@ -313,7 +356,7 @@ body {
   margin-bottom: 28px;
 }
 
-.chart-header h1 {
+.chart-header .eyebrow {
   font-family: 'Cormorant Garamond', serif;
   font-weight: 300;
   font-size: 14px;
@@ -383,7 +426,8 @@ body {
   transition: transform 0.3s ease;
 }
 
-.card:hover {
+/* Only a branch card answers a click (it opens its hidden stems), so only it lifts. */
+.card.branch:hover {
   transform: translateY(-2px);
 }
 
@@ -435,7 +479,7 @@ body {
   transform: rotateY(180deg);
 }
 
-.card:hover .card-face {
+.card.branch:hover .card-face {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
 }
 
@@ -480,15 +524,15 @@ body {
   transform: translateX(-50%);
   width: 14px;
   height: 14px;
-  opacity: 0.2;
+  /* The only cue that a branch opens: at least 3:1 on every element card (WCAG 1.4.11). */
+  opacity: 0.7;
   pointer-events: none;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
 }
-.card.branch:hover .branch-expand-hint { opacity: 0.35; }
+.card.branch:hover .branch-expand-hint { opacity: 0.9; }
 .card.branch.is-expanded .branch-expand-hint {
   transform: translateX(-50%) rotate(180deg);
-  opacity: 0.4;
 }
 
 /* ── Hidden stems panel ── */
@@ -537,11 +581,13 @@ body {
   border-radius: 50%;
   flex-shrink: 0;
 }
-.hidden-stem-dot.metal { background: var(--metal-text); opacity: 0.45; }
-.hidden-stem-dot.fire  { background: var(--fire-text);  opacity: 0.55; }
-.hidden-stem-dot.wood  { background: var(--wood-text);  opacity: 0.55; }
-.hidden-stem-dot.earth { background: var(--earth-text); opacity: 0.50; }
-.hidden-stem-dot.water { background: var(--water-text); opacity: 0.55; }
+/* The element's own colour, ringed in its ink: the ring keeps the dot at 3:1 or
+   more on every surface, including a card of the same element. */
+.hidden-stem-dot.metal { background: var(--metal-bg); box-shadow: 0 0 0 1px var(--metal-text); }
+.hidden-stem-dot.fire  { background: var(--fire-bg);  box-shadow: 0 0 0 1px var(--fire-text); }
+.hidden-stem-dot.wood  { background: var(--wood-bg);  box-shadow: 0 0 0 1px var(--wood-text); }
+.hidden-stem-dot.earth { background: var(--earth-bg); box-shadow: 0 0 0 1px var(--earth-text); }
+.hidden-stem-dot.water { background: var(--water-bg); box-shadow: 0 0 0 1px var(--water-text); }
 
 .hidden-stem-label {
   font-family: 'Manrope', sans-serif;
@@ -583,7 +629,6 @@ body {
 }
 .card-back .hidden-stem-type {
   color: inherit;
-  opacity: 0.7;
 }
 
 /* Too narrow for one row: the qi label moves under the ten god name. */
@@ -663,7 +708,6 @@ body {
   font-weight: 300;
   font-size: 13px;
   letter-spacing: 1px;
-  opacity: 0.75;
   text-align: center;
   margin-top: -4px;
 }
@@ -693,9 +737,10 @@ body {
   color: var(--text);
   border-bottom-color: var(--text-muted);
 }
+/* Highlights stay within half the 4px gap between a pillar's stem and branch. */
 .card.is-context-source {
   outline: 1px solid var(--text-muted);
-  outline-offset: 5px;
+  outline-offset: 1px;
 }
 .hidden-stem-item.is-context-evidence,
 .context-evidence-row.is-context-evidence {
@@ -798,7 +843,7 @@ body {
 .role-exact { font-size: 11px; font-weight: 300; line-height: 1.8; color: var(--text-muted); margin-top: 8px; }
 .role-exact .reading-toggle { margin-left: 4px; }
 .context-detail .role-exact-summary { margin-top: 24px; }
-.card.is-context-reference { outline: 1px dotted var(--text-muted); outline-offset: 5px; }
+.card.is-context-reference { outline: 1px dotted var(--text-muted); outline-offset: 1px; }
 @media (max-width: 640px) {
   .role-group { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
   .role-group-heading { grid-column: 1 / -1; text-align: center; }
@@ -906,10 +951,11 @@ body {
 
 .card.is-related {
   outline: 1px solid var(--text-muted);
-  outline-offset: 5px;
+  outline-offset: 1px;
 }
 [data-relationship-kind="branch_clash"] .card.is-related { outline-style: dashed; }
-[data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--text-muted); }
+/* A double line needs 3px; it starts 1px inside the card to keep within the gap. */
+[data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--text-muted); outline-offset: -1px; }
 
 .relationship-empty,
 .relationship-meta,
@@ -1037,6 +1083,20 @@ body {
   color: var(--text);
   border-color: rgba(42, 37, 32, 0.25);
   background: rgba(255, 255, 255, 0.3);
+}
+
+/* Drawn rather than typed: the page fonts have no arrow glyphs. */
+.back-btn::before,
+.roles-back::before {
+  content: '';
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  margin-right: 0.45em;
+  vertical-align: -0.15em;
+  background: currentColor;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.5 8h-11M6.5 4 2.5 8l4 4'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='black' stroke-width='1.3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M13.5 8h-11M6.5 4 2.5 8l4 4'/%3E%3C/svg%3E") center / contain no-repeat;
 }
 
 

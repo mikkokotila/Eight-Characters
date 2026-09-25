@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from eight_characters import __version__
 from eight_characters.main import app
+from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 
 EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
 
@@ -77,6 +78,37 @@ class TestApiIndexRoute(unittest.TestCase):
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
+
+    def test_birth_date_field_takes_the_engine_scope(self) -> None:
+        response = self.client.get('/')
+        self.assertIn(f'min="{MIN_SUPPORTED_YEAR:04d}-01-01"', response.text)
+        self.assertIn(f'max="{MAX_SUPPORTED_YEAR:04d}-12-31"', response.text)
+        # The page validates itself, so its messages follow the chosen language.
+        self.assertIn('<form id="chart-form" novalidate>', response.text)
+
+    def test_index_serves_its_own_fonts(self) -> None:
+        response = self.client.get('/')
+        for font in ('Manrope-normal-400.woff2', 'CormorantGaramond-normal-400.woff2'):
+            path = f'/explorer/vendor/fonts/{font}'
+            self.assertIn(f'href="{path}"', response.text)
+            self.assertIn(path, self.client.get('/static/style.css').text)
+            self.assertEqual(self.client.get(path).status_code, 200, path)
+        self.assertNotIn(
+            'fonts.googleapis.com', self.client.get('/static/style.css').text
+        )
+
+    def test_tab_icon_is_linked_and_served(self) -> None:
+        response = self.client.get('/')
+        self.assertIn('<link rel="icon" href="/favicon.ico"', response.text)
+        svg_path = f'/static/favicon.svg?v={__version__}'
+        self.assertIn(f'href="{svg_path}" type="image/svg+xml"', response.text)
+        icon = self.client.get('/favicon.ico')
+        self.assertEqual(icon.status_code, 200)
+        self.assertEqual(icon.headers['content-type'], 'image/vnd.microsoft.icon')
+        self.assertTrue(icon.content.startswith(b'\x00\x00\x01\x00'))
+        svg = self.client.get(svg_path)
+        self.assertEqual(svg.status_code, 200)
+        self.assertTrue(svg.headers['content-type'].startswith('image/svg+xml'))
 
     def test_explorer_page_versions_its_assets(self) -> None:
         for path in ('/explorer/', '/explorer'):

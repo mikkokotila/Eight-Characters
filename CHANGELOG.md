@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.16.0
+
+Stage 1 of the Standard view overhaul (#16): defects and polish on the landing page and chart, with the layout unchanged.
+
+### Added
+- **Birth dates limited to the engine's scope**: the date field's bounds come from the engine policy (1949-2100, decision D-001) through the template, and the page checks the date and time before any request. A missing or out-of-range value is named in the page language beneath its own field, which is marked invalid and focused; editing clears the message. The engine checks the local date's year, so every local date from 1949-01-01 to 2100-12-31 is accepted in any timezone.
+- **Progress while a chart is created**: Create chart reads "Creating chart…" / "Luodaan karttaa…", is disabled and the form is `aria-busy` until the chart shows or fails; a second submit meanwhile is ignored.
+- **Tab titles**: the landing page's title follows the chosen language, and an open chart names itself by date, time and place ("February 4, 1988 · 16:30 · Chengdu — BaZi").
+- **八 tab icon**: two brush strokes in the page's ink on its cream, as SVG with a 16/32/48 px ICO. `GET /favicon.ico` serves it, so no page load gets a 404 any more (the explorer page included).
+- **Foundations browser suite** (`tests/browser/foundations.test.mjs`): fonts and (in Chromium) the font that drew every glyph, WCAG contrast composited through every ancestor, element dots and the expand chevron, highlight geometry, third-party and failed requests, form validation and errors, progress, headings, mode labels, and titles, in English and Finnish, desktop and mobile.
+
+### Changed
+- **`POST /api/location_suggest` suggests settlements only**: GeoNames populated places (`PPL*`) and administrative areas (`ADM*`). Airports, glaciers, islands, parks, mountains, whole countries, and results without a feature code are left out: "Helsinki" listed a Svalbard glacier, an island and two airports, and the first match for "Luxembourg" was the country's centre, 16 km from the city. The geocoder is asked for 20 candidates, and `limit` counts settlements. Every city-state has its own settlement entry, so Hong Kong (no country) is still suggested. Name resolution in city/country mode is unchanged.
+- **Fonts served by the app**: the page used a render-blocking `@import` from Google Fonts; it now uses the variable Manrope and Cormorant Garamond files the explorer already serves, preloaded, one face per family. The page makes no third-party requests.
+- **Contrast meets WCAG AA**: the two greys are AA-verified on the page and all five element-tinted panels (`#675F57`, `#655F58`; field labels, pillar labels and Back were 2.7:1, every 11px note and toggle 4.2:1); card subtitles and qi labels use their full ink; the branch expand chevron rises from 1.4:1 to at least 3:1.
+- **Hidden-stem dots show their element**: each is filled with its element's colour and ringed in its ink (3:1 on every surface); they were all near-black at half opacity, 1.27:1 apart.
+- Location suggestions hang 6px below their field instead of below the status line, list all eight without an inner scrollbar, and form an ARIA combobox/listbox (`aria-expanded`, `aria-activedescendant`, `aria-selected`). A pointer pick leaves focus in the field. An empty answer reads "No matching places."; an answer without a `suggestions` array is reported as a failed search instead of being treated as empty.
+- The three birth-data fields share one height (48px; date and time stood 2px taller) and left-aligned text.
+- Each view's visible title is its `h1`; the "Four pillars" eyebrow is a paragraph.
+- The mode switch is translated (Standardi / Evoluutio) and set in capitals by CSS; the turned-over Ten Gods toggle reads "Hide Ten Gods" / "Piilota kymmenen jumalaa" instead of "Show characters".
+- Back arrows are drawn in CSS: the page fonts have no arrow glyph, so "←" came from a system font.
+- Version bumped to `0.16.0` with coordinated static-asset cache keys. Only `engine.version` changes in the numerical regression fixture; icons are included in the package data.
+
+### Fixed
+- **Chart failures are reported above the button**: every chart error (API failures, and evidence that fails its consistency checks) replaced the picked place's status line. They now appear in the form's alert region; the place status keeps describing the place. The browser suites that corrupt evidence read the error from the new region.
+- Form controls inherit the page fonts: the FI/EN and Standard/Evolution switches and every location suggestion rendered in Arial.
+- Card highlights stay within the 4px gap between stacked cards; outlines reached 6px (8px for a complete frame) over the neighbouring card.
+- Only branch cards, which open on a click, lift under the pointer; stem cards lifted without a click action.
+
 ## 0.15.0
 
 ### Added

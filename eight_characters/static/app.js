@@ -12,9 +12,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('chart-form');
   const backBtn = document.getElementById('back-btn');
   const createChartBtn = document.getElementById('create-chart-btn');
+  const dateInput = document.getElementById('date');
+  const dateStatus = document.getElementById('date-status');
+  const timeInput = document.getElementById('time');
+  const timeStatus = document.getElementById('time-status');
   const locationInput = document.getElementById('location');
   const locationSuggestions = document.getElementById('location-suggestions');
   const locationStatus = document.getElementById('location-status');
+  const formError = document.getElementById('form-error');
   const languageButtons = [...document.querySelectorAll('.lang-btn')];
   const modeButtons = [...document.querySelectorAll('.mode-btn')];
   if (
@@ -23,11 +28,21 @@ document.addEventListener('DOMContentLoaded', () => {
     !form ||
     !backBtn ||
     !createChartBtn ||
+    !dateInput ||
+    !dateStatus ||
+    !timeInput ||
+    !timeStatus ||
     !locationInput ||
     !locationSuggestions ||
-    !locationStatus
+    !locationStatus ||
+    !formError
   ) {
     return;
+  }
+  // The engine's supported years, rendered from its policy into the date field's bounds.
+  const supportedYears = [dateInput.min, dateInput.max].map((bound) => Number(bound.slice(0, 4)));
+  if (!supportedYears.every((year) => Number.isInteger(year) && year > 0)) {
+    throw new Error('The birth date field has no supported range.');
   }
 
   let resolvedLocation = null;
@@ -39,12 +54,65 @@ document.addEventListener('DOMContentLoaded', () => {
   let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
 
-  const setLocationStatus = (text, state) => {
-    locationStatus.textContent = text || '';
-    locationStatus.classList.remove('is-found', 'is-error');
+  const setFieldStatus = (status, text, state) => {
+    status.textContent = text || '';
+    status.classList.remove('is-found', 'is-error');
     if (state) {
-      locationStatus.classList.add(state);
+      status.classList.add(state);
     }
+  };
+
+  const setLocationStatus = (text, state) => setFieldStatus(locationStatus, text, state);
+
+  // A field's error is written beneath it and marks the field invalid; an empty text clears both.
+  const setFieldError = (input, status, text) => {
+    setFieldStatus(status, text, text ? 'is-error' : '');
+    if (text) {
+      input.setAttribute('aria-invalid', 'true');
+    } else {
+      input.removeAttribute('aria-invalid');
+    }
+  };
+
+  // Returns the first field needing a fix, after writing every message.
+  const checkBirthMoment = () => {
+    let firstInvalid = null;
+    const flag = (input, status, text) => {
+      setFieldError(input, status, text);
+      if (text && !firstInvalid) firstInvalid = input;
+    };
+    const year = Number(dateInput.value.split('-')[0]);
+    flag(dateInput, dateStatus, !dateInput.value ? t('need_date')
+      : year < supportedYears[0] || year > supportedYears[1]
+        ? t('date_out_of_range', { min: supportedYears[0], max: supportedYears[1] })
+        : '');
+    flag(timeInput, timeStatus, timeInput.value ? '' : t('need_time'));
+    return firstInvalid;
+  };
+
+  dateInput.addEventListener('input', () => setFieldError(dateInput, dateStatus, ''));
+  timeInput.addEventListener('input', () => setFieldError(timeInput, timeStatus, ''));
+
+  // Failures that belong to no single field: the chart request itself, or its evidence.
+  const setFormError = (text) => {
+    formError.textContent = text || '';
+    formError.classList.toggle('hidden', !text);
+  };
+  // The message describes the last attempt; any edit starts a new one.
+  form.addEventListener('input', () => setFormError(''));
+
+  // While a chart is being created the button says so and takes no second submit.
+  let pending = false;
+  const setPending = (value) => {
+    pending = value;
+    if (value) {
+      form.setAttribute('aria-busy', 'true');
+    } else {
+      form.removeAttribute('aria-busy');
+    }
+    createChartBtn.classList.toggle('is-pending', value);
+    createChartBtn.textContent = t(value ? 'creating_chart' : 'create_chart');
+    createChartBtn.disabled = value || !resolvedLocation;
   };
 
   const applyLanguage = () => {
@@ -56,6 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         node.textContent = t(key);
       }
     });
+    if (pending) {
+      createChartBtn.textContent = t('creating_chart');
+    }
     const placeholderNodes = document.querySelectorAll('[data-i18n-placeholder]');
     placeholderNodes.forEach((node) => {
       const key = node.getAttribute('data-i18n-placeholder');
@@ -77,11 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // The field is a combobox: focus stays in it and the active option is announced from it.
   const hideSuggestions = () => {
     latestSuggestions = [];
     activeSuggestionIndex = -1;
     locationSuggestions.innerHTML = '';
     locationSuggestions.classList.add('hidden');
+    locationInput.setAttribute('aria-expanded', 'false');
+    locationInput.removeAttribute('aria-activedescendant');
   };
 
   const showSuggestions = (suggestions) => {
@@ -94,29 +168,32 @@ document.addEventListener('DOMContentLoaded', () => {
     locationSuggestions.innerHTML = suggestions
       .map(
         (item, index) => `
-        <button
-          type='button'
-          class='location-suggestion ${index === activeSuggestionIndex ? 'is-active' : ''}'
+        <div
+          role='option'
+          id='location-option-${index}'
+          class='location-suggestion'
+          aria-selected='false'
           data-index='${index}'
         >
           <span class='location-suggestion-city'>${esc(item.display)}</span>
           <span class='location-suggestion-meta'>${esc(
             `${formatCoordinates(item.latitude, item.longitude)} · ${item.timezone}`
           )}</span>
-        </button>
+        </div>
       `
       )
       .join('');
     locationSuggestions.classList.remove('hidden');
+    locationInput.setAttribute('aria-expanded', 'true');
   };
 
   const updateActiveSuggestion = (nextIndex) => {
-    const suggestionButtons = [...locationSuggestions.querySelectorAll('.location-suggestion')];
-    if (!suggestionButtons.length) {
+    const options = [...locationSuggestions.querySelectorAll('.location-suggestion')];
+    if (!options.length) {
       activeSuggestionIndex = -1;
       return;
     }
-    const max = suggestionButtons.length - 1;
+    const max = options.length - 1;
     if (nextIndex < 0) {
       activeSuggestionIndex = max;
     } else if (nextIndex > max) {
@@ -124,12 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       activeSuggestionIndex = nextIndex;
     }
-    suggestionButtons.forEach((button) => button.classList.remove('is-active'));
-    const activeButton = suggestionButtons[activeSuggestionIndex];
-    if (activeButton) {
-      activeButton.classList.add('is-active');
-      activeButton.scrollIntoView({ block: 'nearest' });
-    }
+    options.forEach((option, index) => {
+      const active = index === activeSuggestionIndex;
+      option.classList.toggle('is-active', active);
+      option.setAttribute('aria-selected', String(active));
+    });
+    const activeOption = options[activeSuggestionIndex];
+    locationInput.setAttribute('aria-activedescendant', activeOption.id);
+    activeOption.scrollIntoView({ block: 'nearest' });
   };
 
   const cancelSuggestionLookup = () => {
@@ -151,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Kept whole: the chart is computed for these coordinates, since names repeat.
     resolvedLocation = selected;
     locationInput.value = selected.display;
-    createChartBtn.disabled = false;
+    createChartBtn.disabled = pending;
     hideSuggestions();
     setLocationStatus(
       t('selected_city', {
@@ -189,8 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) {
         throw new Error(data.detail || t('suggest_error'));
       }
-      showSuggestions(data.suggestions || []);
-      setLocationStatus(t('pick_city'), '');
+      if (!Array.isArray(data.suggestions)) {
+        throw new Error(t('suggest_error'));
+      }
+      showSuggestions(data.suggestions);
+      setLocationStatus(t(data.suggestions.length ? 'pick_city' : 'no_places'), '');
     } catch (err) {
       // A cancelled lookup rejects with an AbortError; only the current lookup's failures show.
       if (isStale()) {
@@ -254,6 +336,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // A pointer pick, like a keyboard pick, leaves focus in the field.
+  locationSuggestions.addEventListener('mousedown', (event) => event.preventDefault());
+
   locationSuggestions.addEventListener('click', (event) => {
     const button = event.target.closest('.location-suggestion');
     if (!button) {
@@ -272,10 +357,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (pending) {
+      return;
+    }
 
+    setFormError('');
+    const invalidField = checkBirthMoment();
     if (!resolvedLocation) {
       setLocationStatus(t('need_location'), 'is-error');
       createChartBtn.disabled = true;
+    }
+    if (invalidField || !resolvedLocation) {
+      (invalidField || locationInput).focus();
       return;
     }
 
@@ -310,6 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    setPending(true);
     try {
       const pillarsRes = await fetch('/api/four_pillars', {
         method: 'POST',
@@ -339,11 +433,15 @@ document.addEventListener('DOMContentLoaded', () => {
       relationships.render(pillarsData.interactions, chartData, tenGodsData);
       dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
       syncTenGodsToggle();
+      // Open charts are told apart by their tab.
+      document.title = t('chart_page_title', { chart: chartData.header });
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
     } catch (err) {
       console.error(err);
-      setLocationStatus(err.message || t('chart_create_error'), 'is-error');
+      setFormError(err.message || t('chart_create_error'));
+    } finally {
+      setPending(false);
     }
   });
 
@@ -353,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dayMasterContext.clear();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
+    document.title = t('page_title');
   });
 
   // ── Hidden stems: populate, expand, collapse ──

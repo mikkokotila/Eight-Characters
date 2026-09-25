@@ -22,6 +22,7 @@ CHENGDU_GEOCODER_RESULTS: list[dict[str, Any]] = [
         'timezone': 'Asia/Shanghai',
         'latitude': 30.66667,
         'longitude': 104.06667,
+        'feature_code': 'PPLA',
     },
     {
         'name': 'Chengdu',
@@ -30,6 +31,7 @@ CHENGDU_GEOCODER_RESULTS: list[dict[str, Any]] = [
         'timezone': 'Asia/Shanghai',
         'latitude': 26.36828,
         'longitude': 115.34289,
+        'feature_code': 'PPL',
     },
     {
         'name': 'Chengdu',
@@ -38,6 +40,7 @@ CHENGDU_GEOCODER_RESULTS: list[dict[str, Any]] = [
         'timezone': 'Asia/Shanghai',
         'latitude': 26.983,
         'longitude': 114.207,
+        'feature_code': 'PPL',
     },
 ]
 
@@ -420,6 +423,7 @@ class TestApiFourPillarsEndpoint(unittest.TestCase):
                         'timezone': 'Asia/Hong_Kong',
                         'latitude': 22.27832,
                         'longitude': 114.17469,
+                        'feature_code': 'PPLC',
                     }
                 ]
             ),

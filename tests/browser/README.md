@@ -57,3 +57,14 @@ explorer, that a slow answer for an earlier query never replaces the list, that 
 picked place can be edited and is kept when returning from the chart, and that
 explorer links naming the place partly, twice, or only by city and country behave
 as documented.
+
+The foundations suite checks the page as a whole, on the landing page, the chart
+with hidden stems and Ten Gods, and every detail page, in English and Finnish:
+every visible text is set in the self-hosted page fonts (and, in Chromium, the
+DevTools protocol confirms which font drew every glyph; only CJK characters may
+come from a system font), text meets WCAG AA contrast with backgrounds and
+opacity composited through every ancestor, the expand chevron and element dots
+meet 3:1, card highlights stay within the gap between cards, the page loads
+nothing from another origin and nothing fails to load, and the form's date
+range, field messages, error region, progress state, headings, mode labels and
+tab titles behave as documented.

@@ -72,11 +72,16 @@
 - **Purpose**: autosuggest while user types location text.
 - **Primary callers**: frontend location input.
 - **Internal calls**:
-  - `_search_city_candidates`
+  - `_search_city_candidates` (asked for `SUGGEST_CANDIDATE_COUNT`, 20, candidates)
+  - `_is_settlement`
   - `_city_models_from_result`
   - `_resolved_place`
 - **Notes**:
   - empty query returns `{"suggestions": []}` without error
+  - only settlements are suggested: GeoNames feature codes `PPL*` (populated
+    places) and `ADM*` (administrative areas); airports, glaciers, islands,
+    parks, mountains, countries and results without a feature code are left
+    out, and `limit` (clamped to 1-20) counts the settlements kept
   - each suggestion is one geocoded place: `city`, `region`, `country`,
     `timezone`, `latitude`, `longitude` and a `display` label joining city,
     region and country
@@ -128,8 +133,19 @@ Current UI submit flow:
    - `include_chart=true`
    - `include_hidden_stems=true`
    - `include_ten_gods=true`
+   - `include_interactions=true`, `include_day_master_context=true`,
+     `include_role_profile=true`
+
+   Before the request the page checks the date and time itself: the date
+   field's `min`/`max` come from the engine policy's supported years
+   (`MIN_SUPPORTED_YEAR`, `MAX_SUPPORTED_YEAR`), and a missing or
+   out-of-range value is named beneath its own field in the page language.
+   While the request runs, Create chart reads "Creating chart…", is disabled
+   and the form is `aria-busy`. A failed request, or chart evidence that fails
+   its consistency checks, is shown in the form's alert region above the
+   button, never in the location status.
 2. Render chart from `response.chart`, with the picked suggestion's `city`
-   appended to the header.
+   appended to the header; the tab title names the chart the same way.
 3. Render ten gods on the card backs from `response.ten_gods`.
 4. Render hidden stems from `response.hidden_stems`.
 
@@ -151,9 +167,12 @@ Chart card interactions:
 
 Location typing flow:
 
-1. `POST /api/location_suggest` while user types. Each row shows the
+1. `POST /api/location_suggest` while user types. The field is an ARIA
+   combobox and the list, hanging from it, a listbox. Each option shows the
    suggestion's `display` label with its coordinates and timezone, which tell
-   apart places that share a name and region.
+   apart places that share a name and region. An empty answer reads "No
+   matching places."; an answer without a `suggestions` array is a failed
+   search.
 2. User selects a suggestion. The page keeps the whole suggestion and shows
    its coordinates in the status line. The field stays editable: any edit
    drops the pick and searches again, and Create chart stays disabled until a

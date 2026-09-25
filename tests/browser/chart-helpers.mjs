@@ -42,7 +42,7 @@ async function fillChart(page, { date = '1988-02-04', time = '16:30', lang = 'en
   await page.locator('#location').fill('Chengdu');
   await page.locator('.location-suggestion').click();
   await page.locator('#create-chart-btn').click();
-  await page.locator(success ? '#chart-view' : '#location-status.is-error').waitFor({ state: 'visible' });
+  await page.locator(success ? '#chart-view' : '#form-error').waitFor({ state: 'visible' });
   if (success) await settled(page);
 }
 

@@ -238,7 +238,7 @@ for (const profile of profiles) {
       check(`${name} fails visibly instead of showing misleading context`, async (page) => {
         await openChart(page, { success: false }, mutate);
         assert.equal(await page.locator('#chart-view').isVisible(), false);
-        assert.match(await page.locator('#location-status').innerText(), /Could not read Day Master context/);
+        assert.match(await page.locator('#form-error').innerText(), /Could not read Day Master context/);
       });
     }
   });

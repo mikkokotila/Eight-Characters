@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>BaZi — Neljä pilaria</title>
+<title data-i18n="page_title">BaZi — Neljä pilaria</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="/static/favicon.svg?v={{ app_version }}" type="image/svg+xml">
+<link rel="preload" href="/explorer/vendor/fonts/Manrope-normal-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="/explorer/vendor/fonts/CormorantGaramond-normal-400.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/static/style.css?v={{ app_version }}">
 </head>
 <body>
@@ -19,34 +23,40 @@
       <button type="button" class="lang-btn" data-lang="en">EN</button>
     </div>
     <div class="mode-switch">
-      <button type="button" class="mode-btn is-active" data-mode="standard">STANDARD</button>
-      <button type="button" class="mode-btn" data-mode="evolution">EVOLUTION</button>
+      <button type="button" class="mode-btn is-active" data-mode="standard" data-i18n="mode_standard">Standardi</button>
+      <button type="button" class="mode-btn" data-mode="evolution" data-i18n="mode_evolution">Evoluutio</button>
     </div>
-    <h1 data-i18n="heading">Neljä pilaria</h1>
-    <div class="title" data-i18n="title">Kahdeksan merkkiä</div>
+    <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
+    <h1 class="title" data-i18n="title">Kahdeksan merkkiä</h1>
   </div>
 
-  <form id="chart-form">
+  <!-- Validated by app.js, so messages follow the page language. -->
+  <form id="chart-form" novalidate>
 
     <!-- Date, Time, Location -->
     <div class="datetime-row">
       <div class="field-group">
         <label for="date" data-i18n="label_date">Syntymäpäivä</label>
-        <input type="date" id="date" name="date" min="0001-01-01" max="9999-12-31" required>
+        <input type="date" id="date" name="date" min="{{ birth_date_min }}" max="{{ birth_date_max }}" aria-describedby="date-status" required>
+        <div id="date-status" class="field-status" aria-live="polite"></div>
       </div>
       <div class="field-group">
         <label for="time" data-i18n="label_time">Kellonaika</label>
-        <input type="time" id="time" name="time" required>
+        <input type="time" id="time" name="time" aria-describedby="time-status" required>
+        <div id="time-status" class="field-status" aria-live="polite"></div>
       </div>
       <div class="field-group location-group">
-        <label for="location" data-i18n="label_location">Syntymäpaikka</label>
+        <label for="location" id="location-label" data-i18n="label_location">Syntymäpaikka</label>
         <div class="location-search-wrap">
-          <input type="text" id="location" name="location" placeholder="Kaupunki" data-i18n-placeholder="placeholder_city" autocomplete="off" required>
+          <input type="text" id="location" name="location" placeholder="Kaupunki" data-i18n-placeholder="placeholder_city" autocomplete="off"
+            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="location-suggestions" aria-describedby="location-status" required>
+          <div id="location-suggestions" class="location-suggestions hidden" role="listbox" aria-labelledby="location-label"></div>
         </div>
-        <div id="location-suggestions" class="location-suggestions hidden"></div>
-        <div id="location-status" class="location-status" aria-live="polite"></div>
+        <div id="location-status" class="field-status" aria-live="polite"></div>
       </div>
     </div>
+
+    <p id="form-error" class="form-error hidden" role="alert"></p>
 
     <div class="submit-row">
       <button type="submit" class="submit-btn" id="create-chart-btn" data-i18n="create_chart" disabled>Luo kartta</button>
@@ -62,8 +72,8 @@
 <div id="chart-view" class="chart-container hidden">
 
   <div class="chart-header">
-    <h1 data-i18n="heading">Neljä pilaria</h1>
-    <div class="name" id="chart-date"></div>
+    <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
+    <h1 class="name" id="chart-date"></h1>
   </div>
 
   <section id="day-master-context" class="day-master-context" aria-labelledby="day-master-heading">
@@ -89,7 +99,7 @@
   <section id="context-detail" class="relationship-detail context-detail hidden" aria-labelledby="context-detail-title"></section>
 
   <div class="back-row">
-    <button id="back-btn" class="back-btn" data-i18n="back">← Takaisin</button>
+    <button id="back-btn" class="back-btn" data-i18n="back">Takaisin</button>
   </div>
 
 </div>

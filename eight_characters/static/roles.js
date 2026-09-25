@@ -46,7 +46,7 @@
         aria-controls="context-detail" aria-label="${esc(t('roles_inspect_stem', { stem: stemTitle(s) }))}">${esc(rootsLabel(s.roots))}</button>`;
     const backButton = (name = '', pillar = '', roleFocus = '') => `
       <button type="button" class="reading-toggle roles-back" data-role-back="${esc(name)}" data-return-pillar="${esc(pillar)}" data-return-role="${esc(roleFocus)}"
-        aria-controls="context-detail">← ${esc(name ? roleName(name) : t('roles_all'))}</button>`;
+        aria-controls="context-detail">${esc(name ? roleName(name) : t('roles_all'))}</button>`;
 
     const validate = (data, chartData, gods) => {
       require(data && data.policy === 'natal_roles_v1' && Array.isArray(data.groups) && data.groups.length === 5
