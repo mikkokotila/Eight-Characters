@@ -19,6 +19,20 @@
   font-display: swap;
   src: url('/explorer/vendor/fonts/CormorantGaramond-normal-400.woff2') format('woff2');
 }
+/* The ten stems and twelve branches, and nothing else: other characters fall
+   through to the next font in the stack. Every stack names it after its Latin
+   face, so these characters look the same wherever they appear.
+   See static/fonts/README.md. */
+@font-face {
+  font-family: 'Noto Serif TC';
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url('/static/fonts/NotoSerifTC-stems-branches.woff2') format('woff2');
+  unicode-range: U+4E01, U+4E11, U+4E19, U+4E59, U+4EA5, U+5348, U+536F, U+58EC,
+    U+5B50, U+5BC5, U+5DF1, U+5DF3, U+5E9A, U+620A, U+620C, U+672A, U+7532-7533,
+    U+7678, U+8F9B, U+8FB0, U+9149;
+}
 
 :root {
   --bg: #F5F0E8;
@@ -55,7 +69,7 @@ button, input, select, textarea { font-family: inherit; }
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -120,7 +134,7 @@ body {
 }
 
 .input-header .eyebrow {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 300;
   font-size: 14px;
   letter-spacing: 4px;
@@ -130,7 +144,7 @@ body {
 }
 
 .input-header .title {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 32px;
   color: var(--text);
@@ -157,7 +171,7 @@ body {
 }
 
 .field-group label {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 13px;
   letter-spacing: 2.5px;
@@ -167,7 +181,7 @@ body {
 
 .field-group input,
 .field-group select {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-weight: 400;
   font-size: 15px;
   color: var(--text);
@@ -306,7 +320,7 @@ body {
 }
 
 .submit-btn {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 16px;
   letter-spacing: 3px;
@@ -357,7 +371,7 @@ body {
 }
 
 .chart-header .eyebrow {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 300;
   font-size: 14px;
   letter-spacing: 4px;
@@ -367,7 +381,7 @@ body {
 }
 
 .chart-header .name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 32px;
   color: var(--text);
@@ -393,7 +407,7 @@ body {
 .pillar-header { text-align: center; padding-bottom: 16px; }
 
 .pillar-label {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 13px;
   letter-spacing: 2.5px;
@@ -402,12 +416,29 @@ body {
   margin-bottom: 6px;
 }
 
-.pillar-value {
-  font-family: 'Cormorant Garamond', serif;
-  font-weight: 300;
-  font-size: 36px;
+/* The pillar's own name: its characters, then their pinyin. */
+.pillar-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
   color: var(--text);
-  line-height: 1.1;
+}
+.pillar-chars {
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.2;
+  letter-spacing: 3px;
+  /* The letter spacing also follows the last character; this keeps the pair centred. */
+  margin-right: -3px;
+}
+.pillar-pinyin {
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
+  font-weight: 500;
+  font-size: 17px;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
 }
 
 .pillar-cards {
@@ -590,14 +621,14 @@ body {
 .hidden-stem-dot.water { background: var(--water-bg); box-shadow: 0 0 0 1px var(--water-text); }
 
 .hidden-stem-label {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-weight: 500;
   font-size: 13px;
   color: var(--text);
 }
 
 .hidden-stem-type {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-weight: 300;
   font-size: 11px;
   color: var(--text-light);
@@ -646,13 +677,27 @@ body {
   .card-back .hidden-stem-item { column-gap: 6px; }
 }
 
-/* ── CSS-drawn gua lines ── */
+/* ── The card's character: its main glyph ── */
+.glyph {
+  font-family: 'Noto Serif TC', serif;
+  font-weight: 500;
+  font-size: 52px;
+  line-height: 1;
+}
+
+/* ── CSS-drawn gua lines, secondary to the character ── */
 .gua {
   display: flex;
   flex-direction: column;
   gap: var(--line-gap);
   align-items: center;
   opacity: 0.65;
+}
+.card .gua {
+  --line-w: 34px;
+  --line-h: 3px;
+  --line-gap: 4px;
+  --break-gap: 8px;
 }
 
 /* Solid line */
@@ -682,7 +727,7 @@ body {
 /* ── Text ── */
 .element-name,
 .ten-god-name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 600;
   font-size: 18px;
   letter-spacing: 0.5px;
@@ -695,7 +740,7 @@ body {
 }
 
 .animal-name {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 600;
   font-size: 15px;
   letter-spacing: 1.5px;
@@ -704,7 +749,7 @@ body {
 }
 
 .animal-element {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-weight: 300;
   font-size: 13px;
   letter-spacing: 1px;
@@ -718,7 +763,7 @@ body {
   text-align: center;
 }
 .day-master-context h2 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-size: 18px;
   font-weight: 400;
   letter-spacing: 0.5px;
@@ -788,7 +833,7 @@ body {
 }
 .context-support-group { min-width: 0; text-align: center; }
 .context-source-position {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-size: 15px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -830,8 +875,8 @@ body {
 }
 .role-choice:hover { background: rgba(255, 255, 255, 0.3); border-color: rgba(42, 37, 32, 0.12); }
 .role-choice:focus-visible { outline: 2px solid var(--text-muted); outline-offset: 3px; }
-.role-choice-name { display: block; font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 500; line-height: 1.4; }
-.role-presence { display: block; margin-top: 4px; font-family: 'Manrope', sans-serif; font-weight: 300; font-size: 11px; line-height: 1.7; color: var(--text-muted); }
+.role-choice-name { display: block; font-family: 'Cormorant Garamond', 'Noto Serif TC', serif; font-size: 18px; font-weight: 500; line-height: 1.4; }
+.role-presence { display: block; margin-top: 4px; font-family: 'Manrope', 'Noto Serif TC', sans-serif; font-weight: 300; font-size: 11px; line-height: 1.7; color: var(--text-muted); }
 .role-visible-stems { margin-top: 28px; border-top: 1px solid rgba(42, 37, 32, 0.12); padding-top: 24px; text-align: center; }
 .role-stem-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; margin-top: 24px; }
 .role-stem-entry { min-width: 0; }
@@ -871,7 +916,7 @@ body {
 
 .reading-toolbar h2,
 .relationship-position {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 13px;
   letter-spacing: 2.5px;
@@ -880,7 +925,7 @@ body {
 }
 
 .reading-toggle {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-size: 11px;
   font-weight: 400;
   letter-spacing: 0.3px;
@@ -914,7 +959,7 @@ body {
   min-height: 40px;
   max-width: 100%;
   padding: 8px 16px;
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 15px;
   line-height: 1.4;
@@ -960,7 +1005,7 @@ body {
 .relationship-empty,
 .relationship-meta,
 .relationship-note {
-  font-family: 'Manrope', sans-serif;
+  font-family: 'Manrope', 'Noto Serif TC', sans-serif;
   font-size: 11px;
   font-weight: 300;
   line-height: 1.7;
@@ -986,7 +1031,7 @@ body {
   gap: 8px 20px;
 }
 .relationship-detail h3 {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 22px;
   letter-spacing: 0.3px;
@@ -1004,7 +1049,7 @@ body {
 .relationship-position { line-height: 1.5; }
 .relationship-identity {
   margin-top: 8px;
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-size: 22px;
   font-weight: 400;
 }
@@ -1065,7 +1110,7 @@ body {
 }
 
 .back-btn {
-  font-family: 'Cormorant Garamond', serif;
+  font-family: 'Cormorant Garamond', 'Noto Serif TC', serif;
   font-weight: 400;
   font-size: 14px;
   letter-spacing: 2px;
@@ -1113,7 +1158,8 @@ body {
 
 @media (max-width: 640px) {
   .pillars { grid-template-columns: repeat(2, 1fr); gap: 20px; }
-  .pillar-value { font-size: 28px; }
+  .pillar-chars { font-size: 22px; }
+  .glyph { font-size: 44px; }
   .card-face { padding: 20px 14px; min-height: 160px; }
   .datetime-row { flex-direction: column; align-items: center; }
   .location-group { min-width: 0; width: 100%; }

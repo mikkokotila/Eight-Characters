@@ -1,3 +1,4 @@
+import hashlib
 import unittest
 
 from fastapi.testclient import TestClient
@@ -96,6 +97,21 @@ class TestApiIndexRoute(unittest.TestCase):
         self.assertNotIn(
             'fonts.googleapis.com', self.client.get('/static/style.css').text
         )
+
+    def test_chart_characters_have_their_own_font_and_licence(self) -> None:
+        # The stems and branches are drawn from a subset of Noto Serif TC; its source
+        # and SHA-256 are recorded in static/fonts/README.md.
+        path = '/static/fonts/NotoSerifTC-stems-branches.woff2'
+        self.assertIn(path, self.client.get('/static/style.css').text)
+        font = self.client.get(path)
+        self.assertEqual(font.status_code, 200)
+        self.assertEqual(
+            hashlib.sha256(font.content).hexdigest(),
+            'd1e4af3d46b33eaa85125a01d008a6f0faec9c3ac4e839f7b170b8a4d772869f',
+        )
+        licence = self.client.get('/static/fonts/NotoSerifTC-OFL.txt')
+        self.assertEqual(licence.status_code, 200)
+        self.assertIn('SIL OPEN FONT LICENSE Version 1.1', licence.text)
 
     def test_tab_icon_is_linked_and_served(self) -> None:
         response = self.client.get('/')

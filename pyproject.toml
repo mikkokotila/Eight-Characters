@@ -29,6 +29,7 @@ eight_characters = [
   'static/*.js',
   'static/*.svg',
   'static/*.ico',
+  'static/fonts/*',
   'resources/mappings/*.csv',
   'resources/astronomy/*',
 ]

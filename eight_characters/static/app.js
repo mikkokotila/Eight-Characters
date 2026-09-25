@@ -45,6 +45,10 @@ document.addEventListener('DOMContentLoaded', () => {
     throw new Error('The birth date field has no supported range.');
   }
 
+  // The chart's characters have a small font of their own. Fetch it now, before the
+  // first chart needs it; a failure rejects, and shows in the console.
+  document.fonts.load("500 1em 'Noto Serif TC'", '甲');
+
   let resolvedLocation = null;
   let suggestDebounce = null;
   let suggestRequest = null;
@@ -722,12 +726,16 @@ function renderChart(data) {
     pillar.innerHTML = `
       <div class='pillar-header'>
         <div class='pillar-label'>${esc(p.label)}</div>
-        <div class='pillar-value'>${esc(p.value)}</div>
+        <div class='pillar-identity'>
+          <span class='pillar-chars' lang='zh-Hant'>${esc(p.stem.char + p.branch.char)}</span>
+          <span class='pillar-pinyin'>${esc(`${p.stem.pinyin} ${p.branch.pinyin}`)}</span>
+        </div>
       </div>
       <div class='pillar-cards'>
         <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'>
           <div class='card-inner'>
             <div class='card-face card-front'>
+              <div class='glyph' lang='zh-Hant'>${esc(p.stem.char)}</div>
               <div class='gua'>${renderLines(p.stem.lines)}</div>
               <div class='element-name'>${esc(p.stem.label)}</div>
             </div>
@@ -739,6 +747,7 @@ function renderChart(data) {
         <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}' data-char='${esc(p.branch.char)}'>
           <div class='card-inner'>
             <div class='card-face card-front'>
+              <div class='glyph' lang='zh-Hant'>${esc(p.branch.char)}</div>
               <div class='gua'>${renderLines(p.branch.lines)}</div>
               <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
               <div class='animal-element'>${esc(p.branch.element_label)}</div>
