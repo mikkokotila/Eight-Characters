@@ -3,7 +3,7 @@
   const DISPLAY_ORDER = ['hour', 'day', 'month', 'year'];
   const KINDS = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
 
-  const create = ({ root, translate: t, escape: esc }) => {
+  const create = ({ root, translate: t, escape: esc, beforeSelect }) => {
     const list = root.querySelector('#relationship-list');
     const empty = root.querySelector('#relationship-empty');
     const detail = root.querySelector('#relationship-detail');
@@ -70,6 +70,7 @@
       const wasSelected = selected === relationship.id;
       clear();
       if (wasSelected) return;
+      beforeSelect();
       selected = relationship.id;
       root.dataset.relationshipKind = relationship.kind;
       relationship.members.forEach((member) => cardFor(relationship, member).classList.add('is-related'));
