@@ -433,6 +433,8 @@ document.addEventListener('DOMContentLoaded', () => {
       relationships.render(pillarsData.interactions, chartData, tenGodsData);
       dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
       syncTenGodsToggle();
+      // Open charts are told apart by their tab.
+      document.title = t('chart_page_title', { chart: chartData.header });
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
     } catch (err) {
@@ -449,6 +451,7 @@ document.addEventListener('DOMContentLoaded', () => {
     dayMasterContext.clear();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
+    document.title = t('page_title');
   });
 
   // ── Hidden stems: populate, expand, collapse ──

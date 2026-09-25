@@ -430,6 +430,18 @@ for (const profile of profiles) {
       assert.deepEqual(await modes(), ['Standard uppercase', 'Evolution uppercase']);
     });
 
+    check('the tab names the page in its language, and the open chart by date and place', async (page) => {
+      await page.goto(process.env.EC_BASE_URL);
+      await page.locator('[data-lang="en"]').click();
+      assert.equal(await page.title(), 'BaZi — Four pillars');
+      await page.locator('[data-lang="fi"]').click();
+      assert.equal(await page.title(), 'BaZi — Neljä pilaria');
+      await openChart(page, { lang: 'en' });
+      assert.equal(await page.title(), 'February 4, 1988 · 16:30 · Chengdu — BaZi');
+      await page.locator('#back-btn').click();
+      assert.equal(await page.title(), 'BaZi — Four pillars');
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
