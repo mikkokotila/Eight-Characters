@@ -9,6 +9,7 @@ from eight_characters.main import (
     CityLookupServiceError,
     LocationInput,
     ResolvedCity,
+    _build_four_pillars_result,
     app,
 )
 
@@ -69,6 +70,7 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
                         ),
                         ResolvedCity(
                             city='Helsinki',
+                            region='Uusimaa',
                             country='Finland',
                             timezone='Europe/Helsinki',
                         ),
@@ -122,13 +124,46 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
             body['resolved_location'],
             {
                 'city': 'Helsinki',
+                'region': 'Uusimaa',
                 'country': 'Finland',
                 'timezone': 'Europe/Helsinki',
+                'latitude': 60.1699,
+                'longitude': 24.9384,
             },
         )
         resolve_mock.assert_awaited_once()
         evolution_mock.assert_called_once()
         graph_mock.assert_called_once()
+
+    def test_evolution_explorer_computes_for_the_given_location(self) -> None:
+        # Chengdu, Jiangxi: 15:40 there is in the 申 hour; the Sichuan Chengdu is in 未.
+        location = {
+            'timezone': 'Asia/Shanghai',
+            'latitude': 26.36828,
+            'longitude': 115.34289,
+        }
+        with (
+            patch(
+                'eight_characters.main._search_city_candidates', new=AsyncMock()
+            ) as lookup,
+            patch(
+                'eight_characters.main._build_four_pillars_result',
+                wraps=_build_four_pillars_result,
+            ) as four_pillars_mock,
+        ):
+            response = self.client.post(
+                '/api/evolution_explorer',
+                json={'date': '1988-02-04', 'time': '15:40', 'location': location},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(set(body.keys()), {'graph_data'})
+        lookup.assert_not_awaited()
+        self.assertEqual(
+            four_pillars_mock.call_args.kwargs['location'], LocationInput(**location)
+        )
+        self.assertEqual(body['graph_data']['meta']['branch_ids'], [4, 2, 2, 9])
 
     def test_evolution_explorer_returns_400_on_resolution_error(self) -> None:
         with patch(

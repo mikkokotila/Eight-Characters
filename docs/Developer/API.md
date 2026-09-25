@@ -14,7 +14,9 @@
 - **Primary callers**: frontend submit flow and external API clients.
 - **Input modes**:
   - explicit `location` (`timezone`, `longitude`, `latitude`, optional `fold`)
-  - `city` + `country` (resolved through geocoding)
+  - `city` + `country` (resolved through geocoding to the first match in that
+    country; the response's `resolved_location` names the place used,
+    including its `region`, `latitude` and `longitude`)
 - **Optional enrichments**:
   - `include_chart=true` adds chart payload from `build_chart`
   - `include_hidden_stems=true` adds hidden stems payload from `_build_hidden_stems_result`
@@ -29,6 +31,22 @@
 - **Error behavior**:
   - `400` for user/input/time-validation errors
   - `500` for unexpected internal errors
+
+### `POST /api/evolution_explorer`
+
+- **Purpose**: graph data for the evolution explorer page.
+- **Primary callers**: `eight_characters/explorer/app.js`.
+- **Input modes**: the same as `POST /api/four_pillars` (`location`, or
+  `city` + `country`), plus `basin_index` and `flux_threshold`.
+- **Internal calls**:
+  - `_resolve_four_pillars_location`
+  - `_build_four_pillars_result`
+  - `_build_hidden_stems_result`
+  - `_build_evolution_input_from_four_pillars`
+  - `_build_evolution_explorer_graph_data` (in a worker thread)
+- **Error behavior**:
+  - `400` for user/input/time-validation errors
+  - `500` when the geocoder is unavailable or for unexpected internal errors
 
 ### `POST /api/chart`
 
@@ -56,8 +74,15 @@
 - **Internal calls**:
   - `_search_city_candidates`
   - `_city_models_from_result`
+  - `_resolved_place`
 - **Notes**:
   - empty query returns `{"suggestions": []}` without error
+  - each suggestion is one geocoded place: `city`, `region`, `country`,
+    `timezone`, `latitude`, `longitude` and a `display` label joining city,
+    region and country
+  - names repeat (four places called Chengdu in China, two per province), so
+    only the coordinates identify a place; callers compute with the chosen
+    suggestion's coordinates as `location`, never by re-resolving its name
 - **Error behavior**:
   - `400` for invalid query params
   - `500` for unexpected failures
@@ -67,7 +92,9 @@
 - **Purpose**: deterministic city resolution endpoint.
 - **Primary callers**: currently external/programmatic clients (not required by current frontend flow).
 - **Input**: `city` and optional `country`.
-- **Internal calls**: `_resolve_city_location`.
+- **Output**: `resolved_location` with the first match's `city`, `region`,
+  `country`, `timezone`, `latitude` and `longitude`.
+- **Internal calls**: `_resolve_city_location`, `_resolved_place`.
 - **Error behavior**:
   - `400` with `detail` when a city cannot be resolved
   - `500` for unexpected failures
@@ -94,13 +121,26 @@
 Current UI submit flow:
 
 1. `POST /api/four_pillars` with:
-   - `city`, `country`, `date`, `time`
+   - `location` built from the picked suggestion's `timezone`, `latitude` and
+     `longitude` (never its `city` and `country`, which would be resolved
+     again to the first place so named)
+   - `date`, `time`
    - `include_chart=true`
    - `include_hidden_stems=true`
    - `include_ten_gods=true`
-2. Render chart from `response.chart`.
+2. Render chart from `response.chart`, with the picked suggestion's `city`
+   appended to the header.
 3. Render ten gods on the card backs from `response.ten_gods`.
 4. Render hidden stems from `response.hidden_stems`.
+
+Evolution mode instead opens the explorer page (`GET /explorer/`, rendered
+from `templates/explorer.html` with versioned asset URLs) with the birth in
+the URL: `date`, `time`, and the picked place's `latitude`, `longitude` and
+`timezone`. The explorer sends them to `POST /api/evolution_explorer` as
+`location`. It still accepts older links that carry `city` and `country`
+instead (resolved by name), shows an error in its status bar for a link with
+only part of the birth or with both kinds of place, and shows the bundled
+sample chart (`explorer/data.js`) only when the URL has no birth at all.
 
 Chart card interactions:
 
@@ -109,10 +149,17 @@ Chart card interactions:
   cards list the ten god of every hidden stem, with their qi type. Holding
   again flips it back.
 
-Location typing flow remains:
+Location typing flow:
 
-1. `POST /api/location_suggest` while user types.
-2. User selects a suggestion (`city`, `country`, `timezone`).
+1. `POST /api/location_suggest` while user types. Each row shows the
+   suggestion's `display` label with its coordinates and timezone, which tell
+   apart places that share a name and region.
+2. User selects a suggestion. The page keeps the whole suggestion and shows
+   its coordinates in the status line. The field stays editable: any edit
+   drops the pick and searches again, and Create chart stays disabled until a
+   suggestion is picked.
+3. Back from the chart returns to the form with the pick, date and time
+   kept, so another chart for the same place needs no new pick.
 
 ## Error Contract (All Endpoints)
 

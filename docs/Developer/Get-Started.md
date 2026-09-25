@@ -41,7 +41,7 @@ pyright
 
 ## Browser Regression Tests
 
-See [Standard-mode browser tests](../../tests/browser/README.md) for the explicit
+See [browser regression tests](../../tests/browser/README.md) for the explicit
 server/module settings and desktop/mobile Chromium and WebKit checks. These use
 existing browser tooling and do not add production dependencies.
 

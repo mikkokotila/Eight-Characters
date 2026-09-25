@@ -32,6 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let resolvedLocation = null;
   let suggestDebounce = null;
+  let suggestRequest = null;
   let latestSuggestions = [];
   let activeSuggestionIndex = -1;
   let currentLanguage = i18n.getLanguage();
@@ -99,7 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
           data-index='${index}'
         >
           <span class='location-suggestion-city'>${esc(item.display)}</span>
-          <span class='location-suggestion-meta'>${esc(item.timezone)}</span>
+          <span class='location-suggestion-meta'>${esc(
+            `${formatCoordinates(item.latitude, item.longitude)} · ${item.timezone}`
+          )}</span>
         </button>
       `
       )
@@ -129,23 +132,33 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  const cancelSuggestionLookup = () => {
+    clearTimeout(suggestDebounce);
+    suggestDebounce = null;
+    if (suggestRequest) {
+      suggestRequest.abort();
+      suggestRequest = null;
+    }
+  };
+
   const applySuggestionAtIndex = (indexValue) => {
     const selected = latestSuggestions[indexValue];
     if (!selected) {
       return;
     }
-    resolvedLocation = {
-      city: selected.city || '',
-      country: selected.country || '',
-      timezone: selected.timezone || '',
-    };
-    locationInput.value = selected.display || `${resolvedLocation.city}, ${resolvedLocation.country}`;
-    locationInput.readOnly = true;
-    locationInput.classList.add('location-locked');
+    // A lookup still pending must not reopen the list or replace the chosen city's status.
+    cancelSuggestionLookup();
+    // Kept whole: the chart is computed for these coordinates, since names repeat.
+    resolvedLocation = selected;
+    locationInput.value = selected.display;
     createChartBtn.disabled = false;
     hideSuggestions();
     setLocationStatus(
-      t('selected_city', { city: resolvedLocation.city, timezone: resolvedLocation.timezone }),
+      t('selected_city', {
+        city: selected.city,
+        coordinates: formatCoordinates(selected.latitude, selected.longitude),
+        timezone: selected.timezone,
+      }),
       'is-found'
     );
   };
@@ -153,43 +166,55 @@ document.addEventListener('DOMContentLoaded', () => {
   const clearResolvedLocation = () => {
     resolvedLocation = null;
     createChartBtn.disabled = true;
-    locationInput.readOnly = false;
-    locationInput.classList.remove('location-locked');
     hideSuggestions();
     setLocationStatus('', '');
   };
 
-  locationInput.addEventListener('input', async () => {
+  const lookUpSuggestions = async (cityQuery) => {
+    const request = new AbortController();
+    suggestRequest = request;
+    // Responses can arrive out of order; only the lookup for the current input may be shown.
+    const isStale = () => request.signal.aborted || locationInput.value.trim() !== cityQuery;
+    try {
+      const res = await fetch('/api/location_suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: cityQuery, limit: 8 }),
+        signal: request.signal,
+      });
+      const data = await res.json();
+      if (isStale()) {
+        return;
+      }
+      if (!res.ok) {
+        throw new Error(data.detail || t('suggest_error'));
+      }
+      showSuggestions(data.suggestions || []);
+      setLocationStatus(t('pick_city'), '');
+    } catch (err) {
+      // A cancelled lookup rejects with an AbortError; only the current lookup's failures show.
+      if (isStale()) {
+        return;
+      }
+      hideSuggestions();
+      setLocationStatus(err.message || t('suggest_error'), 'is-error');
+    }
+  };
+
+  locationInput.addEventListener('input', () => {
+    // The text no longer names the picked place, so a new pick is needed to create a chart.
     if (resolvedLocation) {
       clearResolvedLocation();
     }
+    // The listed cities, and any lookup under way, belong to an earlier query.
+    cancelSuggestionLookup();
+    hideSuggestions();
     const cityQuery = locationInput.value.trim();
     if (!cityQuery) {
-      hideSuggestions();
       setLocationStatus('', '');
       return;
     }
-    if (suggestDebounce) {
-      clearTimeout(suggestDebounce);
-    }
-    suggestDebounce = setTimeout(async () => {
-      try {
-        const res = await fetch('/api/location_suggest', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ query: cityQuery, limit: 8 }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          throw new Error(data.detail || t('suggest_error'));
-        }
-        showSuggestions(data.suggestions || []);
-        setLocationStatus(t('pick_city'), '');
-      } catch (err) {
-        hideSuggestions();
-        setLocationStatus(err.message || t('suggest_error'), 'is-error');
-      }
-    }, 180);
+    suggestDebounce = setTimeout(() => lookUpSuggestions(cityQuery), 180);
   });
 
   locationInput.addEventListener('keydown', (event) => {
@@ -257,8 +282,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const fourPillarsPayload = {
       date: form.date.value,
       time: form.time.value,
-      city: resolvedLocation.city,
-      country: resolvedLocation.country,
+      // The picked place itself: sending its name would resolve to the first place so named.
+      location: {
+        timezone: resolvedLocation.timezone,
+        latitude: resolvedLocation.latitude,
+        longitude: resolvedLocation.longitude,
+      },
       include_chart: true,
       include_hidden_stems: true,
       include_ten_gods: true,
@@ -271,8 +300,9 @@ document.addEventListener('DOMContentLoaded', () => {
       const query = new URLSearchParams({
         date: String(fourPillarsPayload.date || ''),
         time: String(fourPillarsPayload.time || ''),
-        city: String(resolvedLocation.city || ''),
-        country: String(resolvedLocation.country || ''),
+        latitude: String(resolvedLocation.latitude),
+        longitude: String(resolvedLocation.longitude),
+        timezone: resolvedLocation.timezone,
         lang: currentLanguage,
       });
       window.location.assign(`/explorer/?${query.toString()}`);
@@ -299,9 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(t('ten_gods_error'));
       }
 
-      if (pillarsData.resolved_location) {
-        chartData.header = `${chartData.header} · ${pillarsData.resolved_location.city}`;
-      }
+      chartData.header = `${chartData.header} · ${resolvedLocation.city}`;
 
       renderChart(chartData);
       populateTenGods(tenGodsData);
@@ -318,10 +346,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // The picked place is kept, so another chart for it only needs a new date or time.
   backBtn.addEventListener('click', () => {
     relationships.clear();
     dayMasterContext.clear();
-    clearResolvedLocation();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
   });
@@ -642,4 +670,12 @@ function esc(str) {
   const el = document.createElement('span');
   el.textContent = String(str ?? '');
   return el.innerHTML;
+}
+
+
+// Two decimals is about a kilometre, or under 3 seconds of solar time.
+function formatCoordinates(latitude, longitude) {
+  const latitudeText = `${Math.abs(latitude).toFixed(2)}° ${latitude < 0 ? 'S' : 'N'}`;
+  const longitudeText = `${Math.abs(longitude).toFixed(2)}° ${longitude < 0 ? 'W' : 'E'}`;
+  return `${latitudeText}, ${longitudeText}`;
 }

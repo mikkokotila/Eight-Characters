@@ -180,14 +180,44 @@
     return TEN_GOD_GROUP_COLORS[name] || TEN_GOD_GROUP_COLORS.None;
   }
 
+  // The start page names the place by coordinates. Older links name it by city and country,
+  // which the API resolves to the first place so named. No chart parameters: the sample chart.
   function queryInputPayload() {
     const params = new URLSearchParams(window.location.search);
-    const date = (params.get('date') || '').trim();
-    const time = (params.get('time') || '').trim();
-    const city = (params.get('city') || '').trim();
-    const country = (params.get('country') || '').trim();
-    if (!date || !time || !city || !country) {
+    const read = (name) => (params.get(name) || '').trim();
+    const date = read('date');
+    const time = read('time');
+    const latitude = read('latitude');
+    const longitude = read('longitude');
+    const timezone = read('timezone');
+    const city = read('city');
+    const country = read('country');
+    const hasCoordinates = Boolean(latitude || longitude || timezone);
+    const hasName = Boolean(city || country);
+    if (!date && !time && !hasCoordinates && !hasName) {
       return null;
+    }
+    if (!date || !time) {
+      throw new Error('The link has no birth date or time.');
+    }
+    if (hasCoordinates && hasName) {
+      throw new Error('The link names the place twice, by coordinates and by city and country.');
+    }
+    if (hasCoordinates) {
+      const place = { timezone, latitude: Number(latitude), longitude: Number(longitude) };
+      if (
+        !latitude ||
+        !longitude ||
+        !timezone ||
+        !Number.isFinite(place.latitude) ||
+        !Number.isFinite(place.longitude)
+      ) {
+        throw new Error('The link needs a numeric latitude and longitude and a timezone.');
+      }
+      return { date, time, location: place };
+    }
+    if (!city || !country) {
+      throw new Error('The link needs both the city and the country of birth.');
     }
     return { date, time, city, country };
   }
@@ -2059,19 +2089,19 @@
   }
 
   async function boot() {
-    const queryPayload = queryInputPayload();
     let graphData = GRAPH_DATA;
-    if (queryPayload) {
-      try {
+    try {
+      const queryPayload = queryInputPayload();
+      if (queryPayload) {
         graphData = await loadGraphData(queryPayload);
-      } catch (error) {
-        console.error(error);
-        const statusBar = document.getElementById('statusBar');
-        if (statusBar) {
-          statusBar.textContent = `Failed to load evolution data: ${error?.message || 'unknown error'}`;
-        }
-        return;
       }
+    } catch (error) {
+      console.error(error);
+      const statusBar = document.getElementById('statusBar');
+      if (statusBar) {
+        statusBar.textContent = `Failed to load evolution data: ${error?.message || 'unknown error'}`;
+      }
+      return;
     }
     parseData(graphData);
     setupControls();
