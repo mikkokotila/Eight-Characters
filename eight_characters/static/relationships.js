@@ -177,7 +177,7 @@
       // A branch arc's feet rise through the hidden stems' row to its cards.
       const rises = arc.relationship.component === 'branch'
         ? '<span class="relationship-arc-rise is-from"></span><span class="relationship-arc-rise is-to"></span>' : '';
-      return `<span class="relationship-arc" data-kind="${esc(arc.relationship.kind)}" data-relationship-id="${esc(arc.relationship.id)}" style="${style}">
+      return `<span class="relationship-arc" data-arc-kind="${esc(arc.relationship.kind)}" data-relationship-id="${esc(arc.relationship.id)}" style="${style}">
         <span class="relationship-arc-line"></span>${rises}${middle}
       </span>`;
     };

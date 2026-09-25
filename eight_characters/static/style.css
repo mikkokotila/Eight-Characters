@@ -1267,8 +1267,8 @@ body {
   /* In from each end by half a card. */
   margin-inline: calc((100% - var(--span) * var(--pillar-gap)) / (2 * (var(--span) + 1)));
 }
-.relationship-arc[data-kind='branch_clash'] { --arc-line: 1px dashed; }
-.relationship-arc[data-kind='harmony_frame'] { --arc-line: 3px double; }
+.relationship-arc[data-arc-kind='branch_clash'] { --arc-line: 1px dashed; }
+.relationship-arc[data-arc-kind='harmony_frame'] { --arc-line: 3px double; }
 .relationship-arcs[data-component='stem'] .relationship-arc { align-self: end; height: var(--arc-depth); }
 .relationship-arcs[data-component='branch'] .relationship-arc { margin-bottom: calc(var(--arc-band) - var(--arc-depth)); }
 
