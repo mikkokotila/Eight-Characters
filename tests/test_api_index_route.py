@@ -13,6 +13,35 @@ from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
 
 
+SPACING_PROPERTIES = re.compile(
+    r'^(margin|padding)(-(top|right|bottom|left|block|inline)(-(start|end))?)?$|^(row-|column-)?gap$'
+)
+RAW_LENGTH = re.compile(r'(?<![\w.-])-?\d*\.?\d+(px|em|rem)\b')
+
+
+def _css_declarations(css: str) -> list[tuple[str, str, str]]:
+    """(selector, property, value) of every declaration, with its innermost selector."""
+    css = re.sub(r'/\*.*?\*/', '', css, flags=re.S)
+    selectors: list[str] = []
+    found: list[tuple[str, str, str]] = []
+    buffer = ''
+    for char in css:
+        if char in '{};':
+            text = buffer.strip()
+            buffer = ''
+            if char == '{':
+                selectors.append(text)
+                continue
+            if ':' in text:
+                name, value = (part.strip() for part in text.split(':', 1))
+                found.append((selectors[-1] if selectors else '', name, value))
+            if char == '}':
+                selectors.pop()
+        else:
+            buffer += char
+    return found
+
+
 class TestApiIndexRoute(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
@@ -140,6 +169,27 @@ class TestApiIndexRoute(unittest.TestCase):
                 for label in TERM_LABEL_BY_TARGET.values()
             },
         )
+
+    def test_stylesheet_takes_spacing_type_and_ink_from_its_tokens(self) -> None:
+        # Values are defined once, as tokens on :root; everything else refers to them.
+        problems: list[str] = []
+        css = self.client.get('/static/style.css').text
+        for selector, name, value in _css_declarations(css):
+            if selector == ':root' or selector.startswith('@font-face'):
+                continue
+            where = f'{selector} {{ {name}: {value} }}'
+            if 'rgba(42,37,32' in re.sub(r'\s+', '', value):
+                problems.append(f'raw ink: {where}')
+            tokens_removed = re.sub(r'var\(--[a-z0-9-]+\)', '', value)
+            if name == 'font-size' and not re.fullmatch(r'var\(--text-\d\)', value):
+                problems.append(f'font size off the scale: {where}')
+            elif name == 'letter-spacing' and not re.fullmatch(
+                r'var\(--tracking-\d\)|0|normal', value
+            ):
+                problems.append(f'tracking off the scale: {where}')
+            elif SPACING_PROPERTIES.match(name) and RAW_LENGTH.search(tokens_removed):
+                problems.append(f'raw spacing: {where}')
+        self.assertEqual(problems, [])
 
     def test_tab_icon_is_linked_and_served(self) -> None:
         response = self.client.get('/')

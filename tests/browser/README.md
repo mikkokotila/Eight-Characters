@@ -86,3 +86,10 @@ cannot be read sends the form back with the reason. The high-latitude and
 solar-term notices appear, and flags that contradict the chart stop it. The
 foundations audits also walk the pillar change details, a Zi-hour chart and a
 high-latitude chart.
+
+The design-system suite checks the one grid of the pillars: the stem and branch
+rows and the pillar names share top edges and heights across the four pillars,
+front and back, in English and Finnish, at widths from 641px to 1440px (and in
+pairs on mobile); a wrapped pillar label keeps the names level; the branch
+chevron clears its card's text; and the room kept below the pillars holds the
+tallest hidden-stem panel.
