@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from functools import cache
 
 from eight_characters.root_finding import (
     brentq,
@@ -39,6 +40,8 @@ def _term_root_function(target_longitude_deg: float):
     return f
 
 
+# A term's instant depends only on its target and seed, so each is solved once.
+@cache
 def find_solar_term(
     target_longitude_deg: float,
     seed_jd_tt: float,

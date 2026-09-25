@@ -17,8 +17,9 @@ from eight_characters.policy import (
 
 class TestPhase1Policy(unittest.TestCase):
     def test_decisions_cover_expected_count(self) -> None:
-        self.assertEqual(len(decision_ids()), 26)
+        self.assertEqual(len(decision_ids()), 27)
         self.assertIn('D-007a', decision_ids())
+        self.assertIn('D-007b', decision_ids())
 
     def test_year_range_validation(self) -> None:
         policy = EnginePolicy()

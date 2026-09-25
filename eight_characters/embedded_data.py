@@ -5,8 +5,9 @@ from importlib import metadata
 
 ENGINE_MODEL_IDS = {
     'vsop87_series': 'VSOP87D_full_Earth',
-    'nutation_model': 'IAU_2000A',
+    'nutation_model': 'IAU_2000A_R06',
     'mean_obliquity_model': 'IAU_2006',
+    'precession_model': 'IAU_2006',
     'delta_t_model': 'Espenak_Meeus',
 }
 

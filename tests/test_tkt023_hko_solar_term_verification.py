@@ -1,14 +1,37 @@
 import json
+import statistics
 import unittest
 from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
-from eight_characters.solar_position import julian_date_from_datetime_utc
+from lunar_python.util.ShouXingUtil import ShouXingUtil
+
+from eight_characters.engine import MONTH_BOUNDARIES, TERM_SEED_MONTH_DAY
+from eight_characters.solar_position import J2000_JD, julian_date_from_datetime_utc
 from eight_characters.solar_term_solver import find_solar_term
+from eight_characters.time_convert import convert_utc_to_tt
 
 UTC = UTC
 HKT = timezone(timedelta(hours=8))
 FIXTURE_PATH = Path('tests/fixtures/hko_solar_terms_2019_2028.json')
+
+
+def term_utc(jd_tt: float) -> datetime:
+    """A term's instant in UTC: the solver works in Terrestrial Time."""
+    instant = datetime(1970, 1, 1, tzinfo=UTC) + timedelta(days=jd_tt - 2440587.5)
+    return instant - timedelta(seconds=convert_utc_to_tt(instant).tt_minus_utc_seconds)
+
+
+def lunar_python_term_tt(days_from_j2000_tt: float) -> float:
+    """lunar-python's instant of the solar term nearest a day, in TT days from J2000.
+
+    Its `qiAccurate2` gives Beijing time, TT less its own Delta T plus 8 hours.
+    """
+    beijing = ShouXingUtil.qiAccurate2(days_from_j2000_tt)
+    tt = beijing - ShouXingUtil.ONE_THIRD
+    for _ in range(3):
+        tt = beijing - ShouXingUtil.ONE_THIRD + ShouXingUtil.dtT(tt)
+    return tt
 
 
 class TestTkt023HkoSolarTermVerification(unittest.TestCase):
@@ -42,14 +65,32 @@ class TestTkt023HkoSolarTermVerification(unittest.TestCase):
                 datetime(year_value, month_value, day_value, 0, 0, 0, tzinfo=UTC)
             )
             computed_jd = find_solar_term(target_longitude_deg, seed_jd)
-            computed_utc = datetime.fromtimestamp(
-                (computed_jd - 2440587.5) * 86400, tz=UTC
+            errors_seconds.append(
+                abs((term_utc(computed_jd) - hko_utc).total_seconds())
             )
-            errors_seconds.append(abs((computed_utc - hko_utc).total_seconds()))
 
         self.assertEqual(len(errors_seconds), 240)
-        self.assertLessEqual(max(errors_seconds), 420.0)
-        self.assertLessEqual(sum(errors_seconds) / len(errors_seconds), 180.0)
+        # The Observatory publishes to the nearest minute, up to 30 s from the
+        # instant, and the engine's instants lie within about a second of its own.
+        self.assertLessEqual(max(errors_seconds), 30.0 + 1.5)
+        self.assertLessEqual(statistics.mean(errors_seconds), 20.0)
+
+    def test_every_jie_1950_2100_matches_lunar_python(self) -> None:
+        # Compared in TT: lunar-python turns TT into civil time with its own Delta T
+        # for UT1, extrapolated into the future, where the engine uses UTC.
+        errors_seconds: list[float] = []
+        for year in range(1950, 2101):
+            for target in MONTH_BOUNDARIES:
+                month, day = TERM_SEED_MONTH_DAY[target]
+                seed_jd = julian_date_from_datetime_utc(
+                    datetime(year, month, day, tzinfo=UTC)
+                )
+                computed = find_solar_term(target, seed_jd) - J2000_JD
+                reference = lunar_python_term_tt(computed)
+                errors_seconds.append(abs(computed - reference) * 86400.0)
+        self.assertEqual(len(errors_seconds), 1812)
+        self.assertLessEqual(max(errors_seconds), 3.0)
+        self.assertLessEqual(statistics.median(errors_seconds), 1.0)
 
 
 if __name__ == '__main__':
