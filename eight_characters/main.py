@@ -42,6 +42,7 @@ from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
 )
 from eight_characters.interactions import detect_interactions
+from eight_characters.role_profile import build_role_profile
 from eight_characters.ten_gods import (
     DAY_MASTER,
     DayMasterName,
@@ -147,6 +148,7 @@ class FourPillarsRequest(BaseModel):
     include_ten_gods: bool = False
     include_interactions: bool = False
     include_day_master_context: bool = False
+    include_role_profile: bool = False
     lang: str = 'fi'
 
 
@@ -990,6 +992,12 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
                 time_value=payload.time,
                 lang=payload.lang,
                 four_pillars=four_pillars,
+            )
+        if payload.include_role_profile:
+            response['role_profile'] = build_role_profile(
+                _chart_components_from_four_pillars(four_pillars),
+                _load_hidden_stems_lookup(),
+                _load_ten_gods_lookup(),
             )
         if payload.include_day_master_context:
             response['day_master_context'] = build_day_master_context(

@@ -102,20 +102,6 @@
         <div class="context-evidence-list">${evidence.map((e) => evidenceMarkup(e, roots)).join('')}</div>
       </div>`;
     };
-    const presence = (records) => {
-      const visible = records.some((e) => e.component === 'stem');
-      const hidden = records.some((e) => e.component === 'hidden_stem');
-      return t(visible && hidden ? 'context_both' : visible ? 'context_visible' : hidden ? 'context_hidden' : 'context_absent');
-    };
-    const supportMarkup = (name, records) => `<div class="context-support-group" data-support-group="${esc(name)}">
-      <h4 class="relationship-position">${esc(t('context_' + name))}</h4>
-      <p class="relationship-meta">${esc(presence(records))}</p>
-      <div class="context-evidence-list">${DISPLAY.flatMap((pillar) => records.filter((e) => e.pillar === pillar)).map((e) => `
-        <div class="context-support-source">
-          <div class="context-source-position">${esc(chart[e.pillar].label)}${e.branch ? ` · ${esc(chart[e.pillar].branch.pinyin)} ${esc(e.branch)}` : ''}</div>
-          ${evidenceMarkup(e)}
-        </div>`).join('')}</div>
-    </div>`;
     const makePage = (title, meta, content, note) => `
       <div class="relationship-detail-heading">
         <h3 id="context-detail-title">${esc(title)}</h3>
@@ -125,11 +111,28 @@
       ${content}
       <p class="relationship-note">${esc(note)}</p>`;
 
+    const clearHighlights = () => {
+      root.querySelectorAll('.is-context-source, .is-context-evidence, .is-context-reference').forEach((node) => {
+        node.classList.remove('is-context-source', 'is-context-evidence', 'is-context-reference');
+      });
+    };
+    const roles = window.EC_ROLES.create({
+      root, translate: t, escape: esc, makePage, branchMarkup, evidenceMarkup,
+      show: (page, focusSelector) => {
+        require(selected === 'roles');
+        clearHighlights();
+        showPage(page);
+        if (focusSelector) {
+          const target = detail.querySelector(focusSelector);
+          require(target);
+          if (!target.matches('button')) target.setAttribute('tabindex', '-1');
+          target.focus({ preventScroll: true });
+        }
+      },
+    });
     const clear = () => {
       selected = null;
-      root.querySelectorAll('.is-context-source, .is-context-evidence').forEach((node) => {
-        node.classList.remove('is-context-source', 'is-context-evidence');
-      });
+      clearHighlights();
       controls.querySelectorAll('button').forEach((button) => button.setAttribute('aria-expanded', 'false'));
       detail.classList.add('hidden');
       detail.innerHTML = '';
@@ -140,6 +143,13 @@
       card.classList.add('is-context-source');
       // Mark exact rows on both surfaces; never open or flip cards automatically.
       rows.forEach((row) => row.classList.add('is-context-evidence'));
+    };
+    const showPage = (page) => {
+      page.evidence.forEach(highlight);
+      if (page.reference) sourcesFor(page.reference).card.classList.add('is-context-reference');
+      detail.innerHTML = page.markup;
+      detail.classList.remove('hidden');
+      status.textContent = t('context_selected', { topic: page.title });
     };
     controls.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-context]');
@@ -152,11 +162,7 @@
       beforeSelect();
       selected = key;
       button.setAttribute('aria-expanded', 'true');
-      const page = pages[key];
-      page.evidence.forEach(highlight);
-      detail.innerHTML = page.markup;
-      detail.classList.remove('hidden');
-      status.textContent = t('context_selected', { topic: page.title });
+      showPage(pages[key]);
     });
     const clearAndReturnFocus = () => {
       const button = controls.querySelector('[aria-expanded="true"]');
@@ -174,7 +180,7 @@
       }
     });
 
-    const render = (data, chartData, gods, hiddenStems) => {
+    const render = (data, chartData, gods, hiddenStems, roleProfile) => {
       clear();
       pages = {};
       controls.innerHTML = '';
@@ -188,7 +194,7 @@
       const labels = {
         season: t('context_month', { month: season.month_branch.pinyin }),
         roots: rootsLabel,
-        support: t('context_support'),
+        roles: t('roles_title'),
       };
       const rootsContent = rootPillars.length
         ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">${rootPillars.map((pillar) => branchMarkup(pillar, data.roots.filter((e) => e.pillar === pillar), true)).join('')}</div>`
@@ -203,11 +209,7 @@
           title: t('context_roots'), evidence: data.roots,
           markup: makePage(t('context_roots'), rootsLabel, rootsContent, t('context_roots_note')),
         },
-        support: {
-          title: t('context_support'), evidence: [...data.support.companions, ...data.support.resources],
-          markup: makePage(t('context_support'), t('context_support_meta'),
-            `<div class="context-support-groups">${supportMarkup('companions', data.support.companions)}${supportMarkup('resources', data.support.resources)}</div>`, t('context_support_note')),
-        },
+        roles: roles.render(roleProfile, chartData, gods),
       };
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
         <button type="button" class="reading-toggle context-toggle" data-context="${key}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}</button>`).join('');

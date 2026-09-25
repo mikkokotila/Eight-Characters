@@ -60,7 +60,7 @@ See [API Reference](api.md) and [browser regression tests](../tests/browser/READ
 
 ## Day Master context
 
-The summary above Relationships opens season, root, or support evidence in the
+The summary above Relationships opens season, root, or role evidence in the
 same below-chart detail area. Selecting one clears the other selection and its
 highlights; details never accumulate into stacked panels. See
 [Day Master context](Standard-Day-Master-Context.md).

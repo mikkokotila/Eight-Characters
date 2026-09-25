@@ -44,6 +44,13 @@ boundaries, mutually exclusive relationship/context details, and rejection of
 missing or inconsistent context. Screenshots include context overview, season,
 roots, support, flipped cards, absence, four roots, and Finnish layouts.
 
+The Roles suite covers all ten individual roles, five-group presence states,
+exact hidden-to-visible matching (including the separately labeled Day Master),
+all visible-stem roots, unchanged natal role reference, stable occurrence IDs,
+absent roles, unrooted visible stems, repeated visible identities, nested back/focus
+navigation, exclusive selection, card gestures, Finnish layouts, and corrupted
+profile rejection. `chart-helpers.mjs` is shared by the role, context, and relationship suites.
+
 The location suite checks that places sharing a name are told apart by region and
 coordinates, that the picked place's coordinates reach the chart and the evolution
 explorer, that a slow answer for an earlier query never replaces the list, that a

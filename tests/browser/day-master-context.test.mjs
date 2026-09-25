@@ -1,122 +1,11 @@
-// Run with Node's built-in test runner and an explicitly selected Playwright install.
-// No frontend build step or production dependencies are required.
-import assert from 'node:assert/strict';
-import { before, after, describe, it } from 'node:test';
-import { mkdir } from 'node:fs/promises';
-import { join } from 'node:path';
-
-const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
-const baseURL = process.env.EC_BASE_URL;
-const engineName = process.env.EC_BROWSER;
-assert.ok(moduleName, 'Set EC_PLAYWRIGHT_MODULE to playwright or its index.mjs path.');
-assert.ok(baseURL, 'Set EC_BASE_URL to the app under test.');
-assert.ok(['chromium', 'webkit'].includes(engineName), 'Set EC_BROWSER to chromium or webkit.');
-const playwright = await import(moduleName);
-let browser;
-before(async () => { browser = await playwright[engineName].launch({ headless: true }); });
-after(async () => { if (browser) await browser.close(); });
-
-const location = { timezone: 'Asia/Shanghai', longitude: 104.066, latitude: 30.658 };
-const profiles = [
-  { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
-  { name: 'mobile', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
-];
-
-async function count(page, selector, expected) {
-  await page.waitForFunction(({ selector, expected }) =>
-    document.querySelectorAll(selector).length === expected, { selector, expected });
-}
-
-async function settled(page) {
-  await page.evaluate(async () => {
-    await document.fonts.ready;
-    await Promise.all(document.getAnimations().map((animation) => animation.finished));
-  });
-  await count(page, '.is-turning', 0);
-}
-
-async function fillChart(page, { date = '1988-02-04', time = '16:30', lang = 'en', success = true } = {}) {
-  await page.locator(`[data-lang="${lang}"]`).click();
-  await page.locator('#date').fill(date);
-  await page.locator('#time').fill(time);
-  await page.locator('#location').fill('Chengdu');
-  await page.locator('.location-suggestion').click();
-  await page.locator('#create-chart-btn').click();
-  await page.locator(success ? '#chart-view' : '#location-status.is-error').waitFor({ state: 'visible' });
-  if (success) await settled(page);
-}
-
-async function openChart(page, options = {}, mutate = null) {
-  // Only geocoding is stubbed. Every chart and context record is calculated by the real API.
-  let calculated;
-  await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [
-    { city: 'Chengdu', region: 'Sichuan', country: 'China', ...location, display: 'Chengdu, Sichuan, China' },
-  ] } }));
-  await page.route('**/api/four_pillars', async (route) => {
-    const body = route.request().postDataJSON();
-    assert.equal(body.include_interactions, true);
-    assert.equal(body.include_day_master_context, true);
-    // The page sends the picked suggestion's own coordinates.
-    assert.deepEqual(body.location, location);
-    const response = await route.fetch();
-    assert.equal(response.status(), 200);
-    const payload = await response.json();
-    calculated = payload;
-    if (mutate) mutate(payload);
-    await route.fulfill({ response, json: payload });
-  });
-  await page.goto(baseURL);
-  await fillChart(page, options);
-  return calculated;
-}
-
-async function geometry(page) {
-  return page.locator('.pillar').evaluateAll((pillars) => pillars.map((pillar) => {
-    const r = pillar.getBoundingClientRect();
-    return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };
-  }));
-}
-
-async function natalColors(page) {
-  return page.locator('.card-front').evaluateAll((cards) => cards.map((card) => getComputedStyle(card).backgroundColor));
-}
-
-async function longPress(page, card) {
-  await card.scrollIntoViewIfNeeded();
-  const box = await card.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  const component = await card.evaluate((node) => node.classList.contains('stem') ? 'stem' : 'branch');
-  const pillar = await card.getAttribute('data-pillar');
-  await page.mouse.down();
-  try {
-    await page.waitForFunction((selector) => document.querySelector(selector).classList.contains('is-flipped'),
-      `.card.${component}[data-pillar="${pillar}"]`);
-  } finally {
-    await page.mouse.up();
-  }
-  await settled(page);
-}
-
-async function screenshot(page, name) {
-  if (!process.env.EC_SCREENSHOT_DIR) return;
-  await mkdir(process.env.EC_SCREENSHOT_DIR, { recursive: true });
-  await page.screenshot({ path: join(process.env.EC_SCREENSHOT_DIR, `${engineName}-${name}.png`), fullPage: true });
-}
+import {
+  assert, describe, it, engineName, profiles, openChart, fillChart, count, settled,
+  geometry, natalColors, longPress, screenshot, withPage,
+} from './chart-helpers.mjs';
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name}`, { concurrency: false }, () => {
-    const check = (name, run) => it(name, { timeout: 30000 }, async () => {
-      const { name: _name, ...options } = profile;
-      const page = await browser.newPage(options);
-      const errors = [];
-      page.on('pageerror', (error) => errors.push(error.message));
-      try {
-        await run(page);
-        assert.deepEqual(errors, [], 'Uncaught browser errors');
-      } finally {
-        await page.close();
-      }
-    });
+    const check = (name, run) => it(name, { timeout: 30000 }, () => withPage(profile, run));
 
     check('Day Master and exact roots are visible without changing chart geometry', async (page) => {
       await openChart(page);
@@ -156,21 +45,19 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-context-season`);
     });
 
-    check('support identifies occurrences and never counts the Day Master as a companion', async (page) => {
+    check('Roles retains Companion and Resource evidence without counting the Day Master', async (page) => {
       await openChart(page);
-      await page.locator('[data-context="support"]').click();
-      const companions = page.locator('[data-support-group="companions"]');
-      const resources = page.locator('[data-support-group="resources"]');
-      assert.equal(await companions.locator('.context-evidence-row').count(), 3);
-      assert.equal(await resources.locator('.context-evidence-row').count(), 1);
-      assert.match(await companions.innerText(), /Hidden/);
-      assert.match(await resources.innerText(), /Visible/);
-      assert.match(await resources.innerText(), /Ding 丁/);
-      assert.deepEqual(await page.locator('.card.stem.is-context-source').evaluateAll(nodes => nodes.map(n => n.dataset.pillar)), ['year']);
-      await count(page, '.card.branch.is-context-source', 3);
+      await page.locator('[data-context="roles"]').click();
+      assert.match(await page.locator('[data-role-group="companion"]').innerText(), /Hidden only/);
+      assert.match(await page.locator('[data-role-group="resource"]').innerText(), /Visible only/);
+      await page.locator('[data-role="friend"]').click();
+      await count(page, '[data-role-surface="visible"] [data-role-occurrence]', 0);
+      await count(page, '[data-role-surface="hidden"] [data-role-occurrence]', 2);
       assert.equal(await page.locator('.card.stem[data-pillar="day"]').evaluate(n => n.classList.contains('is-context-source')), false);
-      assert.match(await page.locator('#context-detail').innerText(), /same occurrence as a root, not additional support/);
-      await screenshot(page, `${profile.name}-context-support`);
+      await page.locator('[data-role-back]').click();
+      await page.locator('[data-role="indirect_resource"]').click();
+      assert.match(await page.locator('#context-detail').innerText(), /Ding 丁/);
+      assert.deepEqual(await page.locator('.card.stem.is-context-source').evaluateAll(nodes => nodes.map(n => n.dataset.pillar)), ['year']);
     });
 
     check('relationship and context selections replace one another and clear all old evidence', async (page) => {
@@ -181,13 +68,13 @@ for (const profile of profiles) {
       await count(page, '.card.is-context-source, #pillars .is-context-evidence', 0);
       assert.equal(await page.locator('#context-detail').isVisible(), false);
       await count(page, '.card.is-related', 2);
-      for (const key of ['season', 'roots', 'support']) {
+      for (const key of ['season', 'roots', 'roles']) {
         await page.locator(`[data-context="${key}"]`).click();
         await count(page, '.card.is-related', 0);
         assert.equal(await page.locator('#relationship-detail').isVisible(), false);
         await count(page, '#context-controls [aria-expanded="true"]', 1);
       }
-      await page.locator('[data-context="support"]').click();
+      await page.locator('[data-context="roles"]').click();
       await count(page, '.card.is-context-source, #pillars .is-context-evidence', 0);
       assert.equal(await page.locator('#context-detail').isVisible(), false);
       assert.deepEqual(await geometry(page), before);
@@ -232,16 +119,14 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-context-flipped`);
     });
 
-    check('resources can be both visible and hidden without becoming roots', async (page) => {
-      const payload = await openChart(page, { date: '1990-01-02', time: '12:00' });
-      await page.locator('[data-context="support"]').click();
-      const resources = page.locator('[data-support-group="resources"]');
-      assert.match(await resources.innerText(), /Visible and hidden/);
-      assert.equal(await resources.locator('.context-evidence-row').count(), payload.day_master_context.support.resources.length);
+    check('Resource roles remain separate from the Day Master root view', async (page) => {
+      const payload=await openChart(page,{date:'1990-01-02',time:'12:00'});
+      await page.locator('[data-context="roles"]').click();
+      assert.match(await page.locator('[data-role-group="resource"]').innerText(), /Visible and hidden/);
       await page.locator('[data-context="roots"]').click();
-      const resourceChars = payload.day_master_context.support.resources.map(e => e.char);
-      const rootChars = await page.locator('#context-detail .context-evidence-row').evaluateAll(nodes => nodes.map(n => n.dataset.evidenceChar));
-      assert.equal(rootChars.some(char => resourceChars.includes(char)), false);
+      const resourceChars=payload.day_master_context.support.resources.map(e=>e.char);
+      const rootChars=await page.locator('#context-detail .context-evidence-row').evaluateAll(nodes=>nodes.map(n=>n.dataset.evidenceChar));
+      assert.equal(rootChars.some(char=>resourceChars.includes(char)),false);
     });
 
     check('no roots is explicit even when hidden Resource exists', async (page) => {
@@ -251,19 +136,19 @@ for (const profile of profiles) {
       await count(page, '.card.is-context-source', 0);
       await count(page, '#context-detail .context-evidence-row', 0);
       assert.match(await page.locator('#context-detail').innerText(), /No hidden stems contain/);
-      await page.locator('[data-context="support"]').click();
-      assert.match(await page.locator('[data-support-group="resources"]').innerText(), /Hidden/);
+      await page.locator('[data-context="roles"]').click();
+      assert.match(await page.locator('[data-role-group="resource"]').innerText(), /Hidden/);
       await screenshot(page, `${profile.name}-context-no-roots`);
     });
 
-    check('absence of both support groups remains an inspectable empty state', async (page) => {
-      await openChart(page, { date: '1990-05-09', time: '12:00' });
-      await page.locator('[data-context="support"]').click();
-      await count(page, '.card.is-context-source, #context-detail .context-evidence-row', 0);
-      assert.match(await page.locator('[data-support-group="companions"]').innerText(), /Not present/);
-      assert.match(await page.locator('[data-support-group="resources"]').innerText(), /Not present/);
+    check('absence of both support groups is retained in the complete Roles view', async (page) => {
+      await openChart(page,{date:'1990-05-09',time:'12:00'});
+      await page.locator('[data-context="roles"]').click();
+      await count(page,'.card.is-context-source',0);
+      assert.match(await page.locator('[data-role-group="companion"]').innerText(),/Not present/);
+      assert.match(await page.locator('[data-role-group="resource"]').innerText(),/Not present/);
       await page.locator('[data-context="season"]').click();
-      await count(page, '.card.is-context-source', 1);
+      await count(page,'.card.is-context-source',1);
     });
 
     check('one and four root branches use correct labels and retain all occurrences', async (page) => {
@@ -296,7 +181,7 @@ for (const profile of profiles) {
     check('Finnish context and four-root layouts fit narrow and desktop viewports', async (page) => {
       await openChart(page, { date: '1990-01-13', time: '12:00', lang: 'fi' });
       assert.match(await page.locator('#day-master-heading').innerText(), /Päivän mestari/);
-      for (const key of ['season', 'roots', 'support']) {
+      for (const key of ['season', 'roots', 'roles']) {
         await page.locator(`[data-context="${key}"]`).click();
         for (const width of [320, 390, 641, 768, 1440]) {
           await page.setViewportSize({ width, height: 900 });

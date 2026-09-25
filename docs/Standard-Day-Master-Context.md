@@ -1,7 +1,7 @@
 # Day Master context in Standard mode
 
 The line beneath the date identifies the Day Master and provides three controls:
-the resolved solar month, Roots, and Support. Select a control to inspect its
+the resolved solar month, Roots, and Roles. Select a control to inspect its
 evidence below the chart. Select it again, press Escape, or use Clear to dismiss
 it. Keyboard activation and focus return work the same way as Relationships.
 
@@ -38,12 +38,15 @@ outlined both on the Ten Gods card back and in the existing hidden-stem panel,
 when the reader chooses to reveal either surface. The detail always names the
 actual matching stem, so opening or flipping a card is not necessary to inspect it.
 
-**Support** lists Companion and Resource occurrences separately, with Visible or
-qi-position labels on each record. The Day Master itself is excluded, but an
-identical visible stem in another pillar remains a Companion. A hidden Companion
-can be the same occurrence as a root: these are two views of that occurrence,
-not additive quantities. Support presence is not a favorable/unfavorable verdict.
-Empty root and support sets are stated explicitly rather than synthesized.
+**Roles** expands the former Support view to all ten roles in five groups.
+Companion and Resource remain available alongside Output, Wealth, and Authority.
+Each role has its own visible/hidden/absent state and occurrence details. Roots
+can now also be inspected for any visible stem. The Day Master itself is still
+excluded from additional Companion occurrences. See [Roles](Standard-Roles.md)
+for exact hidden-to-visible matching, root inspection, and navigation.
+
+The original `day_master_context.support` API fields are preserved unchanged.
+Root and Companion views can describe the same occurrence and are not additive.
 
 For the canonical 1988-02-04 16:30 Chengdu chart, Ji Earth has exact main-qi Ji
 matches in Month Chou and Day Chou, plus residual-qi Wu Earth in Hour Shen with

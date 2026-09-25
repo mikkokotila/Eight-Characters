@@ -7,7 +7,8 @@ This folder contains practical user documentation for running and using the Ba Z
 - Setup and first run: `../README.md`
 - API reference and request examples: `api.md`
 - Standard chart relationships: `Standard-Relationships.md`
-- Day Master season, roots, and support: `Standard-Day-Master-Context.md`
+- Day Master season and roots: `Standard-Day-Master-Context.md`
+- Whole-chart roles and visible-stem roots: `Standard-Roles.md`
 - Developer endpoint internals: `Developer/API.md`
 - Convention settings and output shape: `conventions-and-output.md`
 - Validation and quality signals: `validation.md`

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.15.0
+
+### Added
+- **Complete Roles view**: Standard's Support control becomes Roles, showing all ten individual Ten Gods under Companion, Output, Wealth, Authority, and Resource. Group and individual states explicitly distinguish visible only, hidden only, both, and not present.
+- **Role occurrence inspection**: selects exact visible stems and hidden-stem rows, with precise source and qi position; absent roles remain inspectable with natal scope stated.
+- **Roots for every visible stem**: inspect all four positions, including the separately identified Day Master. A dotted outline marks the inspected stem; solid outlines identify same-element hidden-stem root evidence. Exact character matches and opposite-polarity roots remain distinct.
+- **Exact hidden-to-visible links**: character-identical matches link to every visible position, including a separately labeled Day Master match. Same-element opposite-polarity roots are never mislabeled as exact matches.
+- **Opt-in role profile API**: independent `include_role_profile` flag with `natal_roles_v1` data, stable within-chart occurrence IDs, complete role groups, visible stems, roots, and exact-match references. Existing API sections, including `day_master_context.support`, are unchanged.
+- Finnish/English labels, scoped absence states, nested back/focus navigation, exclusive reading selection, and role-profile consistency checks before chart display.
+- Independent-reference API tests and a complete Roles browser suite, sharing the browser harness with the existing context and relationship suites.
+
+### Changed
+- Root and natal-occurrence collection are shared by Day Master context and Roles to keep their evidence consistent. Ten Gods always remain relative to the natal Day Master, even when inspecting a different stem.
+- No new strength weights, favorability ratings, transformations, production dependencies, or Evolution changes.
+- Version bumped to `0.15.0` with coordinated static-asset cache keys. Only `engine.version` changes in the numerical regression fixture.
+
 ## 0.14.1
 
 ### Added

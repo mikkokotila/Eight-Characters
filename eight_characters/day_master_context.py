@@ -11,13 +11,18 @@ from typing import Literal
 
 from typing_extensions import TypedDict
 
-from eight_characters.data import BRANCHES, STEMS, ElementName, PolarityName
-from eight_characters.ten_gods import TEN_GOD_NAMES, TenGodName
+from eight_characters.data import BRANCHES, ElementName
+from eight_characters.natal_evidence import (
+    Identity,
+    RootEvidence,
+    StemEvidence,
+    natal_occurrences,
+    roots_for_stem,
+    stem_identity,
+)
+from eight_characters.ten_gods import TenGodName
 
-PILLAR_NAMES = ('year', 'month', 'day', 'hour')
-QiType = Literal['main', 'middle', 'residual']
 SeasonName = Literal['spring', 'summer', 'autumn', 'winter']
-QI_TYPES: tuple[QiType, ...] = ('main', 'middle', 'residual')
 SEASON_GROUPS: tuple[tuple[str, SeasonName, ElementName], ...] = (
     ('寅卯辰', 'spring', 'wood'),
     ('巳午未', 'summer', 'fire'),
@@ -27,25 +32,6 @@ SEASON_GROUPS: tuple[tuple[str, SeasonName, ElementName], ...] = (
 _SEASON_BY_BRANCH: dict[str, tuple[SeasonName, ElementName]] = {
     char: (name, element) for chars, name, element in SEASON_GROUPS for char in chars
 }
-
-
-class Identity(TypedDict):
-    char: str
-    pinyin: str
-    element: ElementName
-    polarity: PolarityName
-
-
-class StemEvidence(Identity):
-    pillar: str
-    component: Literal['stem', 'hidden_stem']
-    branch: str | None
-    qi_type: QiType | None
-    ten_god: TenGodName
-
-
-class RootEvidence(StemEvidence):
-    match: Literal['exact_stem', 'opposite_polarity']
 
 
 class SeasonalContext(TypedDict):
@@ -69,16 +55,6 @@ class DayMasterContext(TypedDict):
     support: SupportEvidence
 
 
-def _stem_identity(char: str) -> Identity:
-    info = STEMS[char]
-    return {
-        'char': char,
-        'pinyin': info['pinyin'],
-        'element': info['element'],
-        'polarity': info['polarity'],
-    }
-
-
 def build_day_master_context(
     pillars: Mapping[str, tuple[str, str]],
     hidden_stems: Mapping[str, Sequence[str]],
@@ -90,70 +66,31 @@ def build_day_master_context(
     with hidden stems in mapping qi order. Repeated branches remain separate.
     Presence is preserved even when a relationship also involves the branch.
     """
-    if set(pillars) != set(PILLAR_NAMES):
-        raise ValueError('Day Master context requires exactly four named pillars.')
-    for name in PILLAR_NAMES:
-        pair = pillars[name]
-        if len(pair) != 2 or pair[0] not in STEMS or pair[1] not in BRANCHES:
-            raise ValueError(f'Invalid stem/branch pair for {name}: {pair!r}')
-        chars = hidden_stems.get(pair[1])
-        if (
-            chars is None
-            or not 1 <= len(chars) <= len(QI_TYPES)
-            or len(set(chars)) != len(chars)
-            or any(char not in STEMS for char in chars)
-        ):
-            raise ValueError(f'Invalid hidden-stem mapping for {pair[1]}.')
-
+    occurrences = natal_occurrences(pillars, hidden_stems, ten_gods)
     day_master = pillars['day'][0]
-    dm_element = STEMS[day_master]['element']
-    roots: list[RootEvidence] = []
-    companions: list[StemEvidence] = []
-    resources: list[StemEvidence] = []
-    month_hidden: list[StemEvidence] = []
-
-    for name in PILLAR_NAMES:
-        stem, branch = pillars[name]
-        # Exclude the Day Master, but retain same-stem occurrences elsewhere.
-        occurrences: list[tuple[str, QiType | None]] = (
-            [(stem, None)] if name != 'day' else []
-        )
-        occurrences.extend(zip(hidden_stems[branch], QI_TYPES))
-        for char, qi_type in occurrences:
-            ten_god = ten_gods.get((day_master, char))
-            if ten_god not in TEN_GOD_NAMES:
-                raise ValueError(f'Missing or invalid ten god for {day_master}/{char}.')
-            evidence: StemEvidence = {
-                **_stem_identity(char),
-                'pillar': name,
-                'component': 'stem' if qi_type is None else 'hidden_stem',
-                'branch': None if qi_type is None else branch,
-                'qi_type': qi_type,
-                'ten_god': ten_god,
-            }
-            if qi_type is not None:
-                if name == 'month':
-                    month_hidden.append(evidence.copy())
-                if evidence['element'] == dm_element:
-                    roots.append(
-                        {
-                            **evidence,
-                            'match': 'exact_stem'
-                            if char == day_master
-                            else 'opposite_polarity',
-                        }
-                    )
-            if ten_god in ('friend', 'rob_wealth'):
-                companions.append(evidence.copy())
-            elif ten_god in ('direct_resource', 'indirect_resource'):
-                resources.append(evidence.copy())
+    roots = roots_for_stem(day_master, occurrences)
+    month_hidden = [
+        record.copy()
+        for record in occurrences
+        if record['pillar'] == 'month' and record['component'] == 'hidden_stem'
+    ]
+    companions = [
+        record.copy()
+        for record in occurrences
+        if record['ten_god'] in ('friend', 'rob_wealth')
+    ]
+    resources = [
+        record.copy()
+        for record in occurrences
+        if record['ten_god'] in ('direct_resource', 'indirect_resource')
+    ]
 
     month_branch = pillars['month'][1]
     branch_info = BRANCHES[month_branch]
     season_name, season_element = _SEASON_BY_BRANCH[month_branch]
     return {
         'policy': 'natal_presence_v1',
-        'day_master': _stem_identity(day_master),
+        'day_master': stem_identity(day_master),
         'season': {
             'basis': 'traditional_month_branch_groups',
             'name': season_name,

@@ -57,6 +57,14 @@ class TestApiIndexRoute(unittest.TestCase):
             self.client.get('/static/day-master-context.js').status_code, 200
         )
 
+    def test_roles_module_loads_before_context_and_is_served(self) -> None:
+        response = self.client.get('/')
+        self.assertLess(
+            response.text.index('/static/roles.js'),
+            response.text.index('/static/day-master-context.js'),
+        )
+        self.assertEqual(self.client.get('/static/roles.js').status_code, 200)
+
     def test_index_versions_static_assets(self) -> None:
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
@@ -65,6 +73,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'localization.js',
             'relationships.js',
             'day-master-context.js',
+            'roles.js',
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
