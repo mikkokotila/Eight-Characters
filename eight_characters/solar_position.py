@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from math import atan2, cos, pi, sin, tan
+from math import atan2, cos, pi, radians, sin, tan
 
-from eight_characters.nutation import nutation_arcseconds_seed
+from eight_characters.nutation import nutation_arcseconds
 from eight_characters.obliquity import (
     arcseconds_to_radians,
     mean_obliquity_arcseconds_iau2006,
@@ -70,9 +70,15 @@ def compute_apparent_solar_longitude(
     theta_deg = normalize_degrees(earth_l_deg + 180.0)
     beta_deg = -earth_b_deg
 
-    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(
-        t_centuries
+    # VSOP87's dynamical equinox and ecliptic to the FK5 system (Meeus, Astronomical
+    # Algorithms, 2nd ed., eq. 32.3, as applied to the Sun in chapter 25).
+    lambda_prime = radians(
+        theta_deg - 1.397 * t_centuries - 0.00031 * t_centuries * t_centuries
     )
+    theta_deg = normalize_degrees(theta_deg - 0.09033 / 3600.0)
+    beta_deg += 0.03916 * (cos(lambda_prime) - sin(lambda_prime)) / 3600.0
+
+    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds(t_centuries)
     aberration_deg = (-20.4898 / radius_au) / 3600.0
     lambda_apparent_deg = normalize_degrees(
         theta_deg + delta_psi_arcseconds / 3600.0 + aberration_deg
@@ -174,9 +180,7 @@ def mean_obliquity_degrees_for_jd_tt(jd_tt: float) -> float:
 
 def nutation_degrees_for_jd_tt(jd_tt: float) -> tuple[float, float]:
     t_centuries = (jd_tt - J2000_JD) / 36525.0
-    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds_seed(
-        t_centuries
-    )
+    delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds(t_centuries)
     return (
         delta_psi_arcseconds / 3600.0,
         delta_epsilon_arcseconds / 3600.0,

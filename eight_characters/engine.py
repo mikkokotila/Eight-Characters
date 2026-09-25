@@ -108,13 +108,19 @@ def _seed_jd_for_target(year_value: int, target_longitude: float) -> float:
     return julian_date_from_datetime_utc(seed_dt)
 
 
-def _nearby_month_term_jds(civil_year: int) -> list[float]:
-    values: list[float] = []
-    for year_value in (civil_year - 1, civil_year, civil_year + 1):
-        for target in MONTH_BOUNDARIES:
-            seed_jd = _seed_jd_for_target(year_value, target)
-            values.append(find_solar_term(target, seed_jd))
-    return values
+def _nearest_month_term_jds(civil_year: int, birth_jd_tt: float) -> list[float]:
+    """The jie around the birth: solved from the four seeds nearest to it.
+
+    Seed dates lie within a few days of their terms and jie are about 30 days apart,
+    so the terms on either side of the birth always come from its nearest seeds.
+    """
+    seeds = [
+        (target, _seed_jd_for_target(year_value, target))
+        for year_value in (civil_year - 1, civil_year, civil_year + 1)
+        for target in MONTH_BOUNDARIES
+    ]
+    seeds.sort(key=lambda seed: abs(seed[1] - birth_jd_tt))
+    return [find_solar_term(target, seed_jd) for target, seed_jd in seeds[:4]]
 
 
 def _boundary_note(distance_seconds: float, label: str) -> str:
@@ -182,7 +188,7 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
     }
     validate_pillar_set(pillars)
 
-    term_jds = _nearby_month_term_jds(normalized.utc_datetime.year)
+    term_jds = _nearest_month_term_jds(normalized.utc_datetime.year, solar.jd_tt)
     nearest_term_seconds = nearest_jie_distance_seconds(solar.jd_tt, term_jds)
     model_uncertainty_seconds = model_uncertainty_seconds_for_year(
         normalized.utc_datetime.year

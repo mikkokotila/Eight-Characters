@@ -31,7 +31,7 @@ MODULE_CONTRACTS: dict[str, ModuleContract] = {
     ),
     'nutation': ModuleContract(
         name='nutation',
-        responsibility='IAU 2000A nutation calculations.',
+        responsibility='IAU 2000A (R06) nutation calculations.',
         dependencies=(),
     ),
     'obliquity': ModuleContract(
