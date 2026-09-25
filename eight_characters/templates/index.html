@@ -22,10 +22,6 @@
       <button type="button" class="lang-btn" data-lang="fi">FI</button>
       <button type="button" class="lang-btn" data-lang="en">EN</button>
     </div>
-    <div class="mode-switch">
-      <button type="button" class="mode-btn is-active" data-mode="standard" data-i18n="mode_standard">Standardi</button>
-      <button type="button" class="mode-btn" data-mode="evolution" data-i18n="mode_evolution">Evoluutio</button>
-    </div>
     <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
     <h1 class="title" data-i18n="title">Kahdeksan merkkiä</h1>
   </div>
@@ -71,43 +67,68 @@
      ═══════════════════════════════════════════════════ -->
 <div id="chart-view" class="chart-container hidden">
 
-  <div class="chart-header">
-    <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
-    <h1 class="name" id="chart-date"></h1>
-    <p class="solar-time" id="chart-solar-time"></p>
-    <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
-    <ul id="chart-notices" class="chart-notices hidden"></ul>
+  <!-- The chart column: its top bar, its topics and the pillars. When a topic is
+       open, the panel stands beside it from 1200px wide, and below that it is a
+       sheet over the foot of the page. -->
+  <div class="chart-column">
+
+    <header class="chart-bar">
+      <div class="chart-identity">
+        <h1 class="name" id="chart-date"></h1>
+        <p class="solar-time" id="chart-solar-time"></p>
+      </div>
+      <div class="chart-tools">
+        <div class="segmented display-switch" id="display-switch" role="group" aria-labelledby="display-switch-label">
+          <span id="display-switch-label" class="sr-only" data-i18n="display_label">Näytä</span>
+          <button type="button" data-display="characters" aria-pressed="true" data-i18n="display_characters">Merkit</button>
+          <button type="button" data-display="ten-gods" aria-pressed="false" data-i18n="display_ten_gods">Kymmenen jumalaa</button>
+          <button type="button" data-display="hidden-stems" aria-pressed="false" data-i18n="display_hidden_stems">Piilorungot</button>
+        </div>
+        <div class="segmented" id="view-switch" role="group" aria-labelledby="view-switch-label">
+          <span id="view-switch-label" class="sr-only" data-i18n="view_label">Näkymä</span>
+          <button type="button" data-view="standard" aria-pressed="true" data-i18n="mode_standard">Standardi</button>
+          <button type="button" data-view="evolution" aria-pressed="false" data-i18n="mode_evolution">Evoluutio</button>
+        </div>
+        <div class="segmented" id="chart-language" role="group" aria-labelledby="chart-language-label">
+          <span id="chart-language-label" class="sr-only" data-i18n="language_label">Kieli</span>
+          <button type="button" data-chart-lang="fi" aria-pressed="false">FI</button>
+          <button type="button" data-chart-lang="en" aria-pressed="false">EN</button>
+        </div>
+        <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
+        <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
+      </div>
+      <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
+      <ul id="chart-notices" class="chart-notices hidden"></ul>
+    </header>
+
+    <!-- The chart's topics: each opens its explanation in the panel. -->
+    <nav id="day-master-context" class="chart-topics" aria-labelledby="day-master-heading">
+      <h2 id="day-master-heading" class="day-master-line"></h2>
+      <div id="context-controls" class="context-controls"></div>
+      <button type="button" id="relationships-topic" class="topic-button" aria-expanded="false" aria-controls="chart-panel"></button>
+    </nav>
+
+    <p id="pillar-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+    <div class="pillars" id="pillars"></div>
   </div>
 
-  <section id="day-master-context" class="day-master-context" aria-labelledby="day-master-heading">
-    <h2 id="day-master-heading"></h2>
-    <div id="context-controls" class="context-controls"></div>
-    <p id="context-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
-  </section>
-
-  <section class="relationships" aria-labelledby="relationships-heading">
-    <div class="reading-toolbar">
-      <h2 id="relationships-heading" data-i18n="relationships">Yhteydet</h2>
-      <button type="button" id="ten-gods-toggle" class="reading-toggle" aria-pressed="false" data-i18n="show_ten_gods">Näytä kymmenen jumalaa</button>
+  <aside id="chart-panel" class="chart-panel hidden" aria-labelledby="chart-panel-title">
+    <div class="chart-panel-bar">
+      <h2 id="chart-panel-title" class="sr-only" data-i18n="panel_title">Tarkempi tieto</h2>
+      <button type="button" class="panel-close" data-close-panel data-i18n="panel_close">Sulje</button>
     </div>
-    <div id="relationship-list" class="relationship-list"></div>
-    <p id="relationship-empty" class="relationship-empty hidden" data-i18n="relationship_empty"></p>
-    <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
-  </section>
+    <section id="relationships-panel" class="relationships hidden" aria-labelledby="relationships-heading">
+      <h3 id="relationships-heading" class="panel-heading" data-i18n="relationships">Yhteydet</h3>
+      <div id="relationship-list" class="relationship-list"></div>
+      <p id="relationship-empty" class="relationship-empty hidden" data-i18n="relationship_empty"></p>
+    </section>
+    <section id="pillar-detail" class="relationship-detail pillar-detail hidden" aria-labelledby="pillar-detail-title"></section>
+    <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
+    <section id="context-detail" class="relationship-detail context-detail hidden" aria-labelledby="context-detail-title"></section>
+  </aside>
 
-  <p id="pillar-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
-  <div class="pillars" id="pillars"></div>
-
-  <section id="pillar-detail" class="relationship-detail pillar-detail hidden" aria-labelledby="pillar-detail-title"></section>
-
-  <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
-
-  <section id="context-detail" class="relationship-detail context-detail hidden" aria-labelledby="context-detail-title"></section>
-
-  <div class="back-row">
-    <button id="back-btn" class="back-btn" data-i18n="back">Takaisin</button>
-  </div>
-
+  <p id="context-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
 </div>
 
 <script src="/static/localization.js?v={{ app_version }}"></script>

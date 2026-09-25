@@ -21,7 +21,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const locationStatus = document.getElementById('location-status');
   const formError = document.getElementById('form-error');
   const languageButtons = [...document.querySelectorAll('.lang-btn')];
-  const modeButtons = [...document.querySelectorAll('.mode-btn')];
   if (
     !inputView ||
     !chartView ||
@@ -55,13 +54,20 @@ document.addEventListener('DOMContentLoaded', () => {
   let latestSuggestions = [];
   let activeSuggestionIndex = -1;
   let currentLanguage = i18n.getLanguage();
-  let selectedMode = 'standard';
   const t = (key, vars = {}) => i18n.t(key, vars, currentLanguage);
 
   // ── The chart header: the birth moment as entered, and the true solar time ──
   const chartDate = document.getElementById('chart-date');
   const chartSolarTime = document.getElementById('chart-solar-time');
-  if (!chartDate || !chartSolarTime) throw new Error('Chart header is incomplete.');
+  const displaySwitch = document.getElementById('display-switch');
+  const viewSwitch = document.getElementById('view-switch');
+  const chartLanguage = document.getElementById('chart-language');
+  const newChartBtn = document.getElementById('new-chart-btn');
+  const relationshipsTopic = document.getElementById('relationships-topic');
+  const relationshipsSection = document.getElementById('relationships-panel');
+  const chartPanel = document.getElementById('chart-panel');
+  if (!chartDate || !chartSolarTime || !displaySwitch || !viewSwitch || !chartLanguage || !newChartBtn
+    || !relationshipsTopic || !relationshipsSection || !chartPanel) throw new Error('Chart view is incomplete.');
   const locale = () => (currentLanguage === 'en' ? 'en' : 'fi');
   // A clock reading, held as a UTC date so that formatting never moves it into the
   // viewer's own time zone. Readings no calendar has, such as 24:10, give null.
@@ -250,15 +256,12 @@ document.addEventListener('DOMContentLoaded', () => {
     languageButtons.forEach((button) => {
       button.classList.toggle('is-active', button.dataset.lang === currentLanguage);
     });
+    chartLanguage.querySelectorAll('button[data-chart-lang]').forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.chartLang === currentLanguage));
+    });
     if (!resolvedLocation && !locationStatus.textContent) {
       setLocationStatus('', '');
     }
-  };
-
-  const applyModeSelection = () => {
-    modeButtons.forEach((button) => {
-      button.classList.toggle('is-active', button.dataset.mode === selectedMode);
-    });
   };
 
   // The field is a combobox: focus stays in it and the active option is announced from it.
@@ -502,7 +505,8 @@ document.addEventListener('DOMContentLoaded', () => {
     ].join(' · ');
     const solarTime = describeSolarTime(pillarsData.solar_time, birth);
 
-    renderChart(chartData);
+    renderChart(chartData, Object.fromEntries(
+      ['hour', 'day', 'month', 'year'].map((name) => [name, requiredTranslation('pillar_' + name)])));
     chartDate.textContent = heading;
     chartSolarTime.textContent = solarTime.text;
     pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
@@ -512,8 +516,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
     populateHiddenStems(pillarsData.hidden_stems);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
+    relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
-    syncTenGodsToggle();
+    closePanel();
+    applyDisplay(false);
     // Open charts are told apart by their tab.
     document.title = t('chart_page_title', { chart: heading });
     shown = { request, city };
@@ -556,19 +562,6 @@ document.addEventListener('DOMContentLoaded', () => {
       lang: currentLanguage,
     };
 
-    if (selectedMode === 'evolution') {
-      const query = new URLSearchParams({
-        date: String(fourPillarsPayload.date || ''),
-        time: String(fourPillarsPayload.time || ''),
-        latitude: String(resolvedLocation.latitude),
-        longitude: String(resolvedLocation.longitude),
-        timezone: resolvedLocation.timezone,
-        lang: currentLanguage,
-      });
-      window.location.assign(`/explorer/?${query.toString()}`);
-      return;
-    }
-
     setPending(true);
     try {
       await showChart(fourPillarsPayload, resolvedLocation.city);
@@ -580,38 +573,84 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // The other Zi-hour convention, for this chart only. A chart that then fails is not
-  // left half drawn: the form comes back with the reason.
-  ziSwitch.addEventListener('click', async (event) => {
-    const button = event.target.closest('button[data-zi-convention]');
-    if (!button || button.getAttribute('aria-pressed') === 'true' || ziSwitch.getAttribute('aria-busy') === 'true') return;
-    const convention = button.dataset.ziConvention;
-    ziSwitch.setAttribute('aria-busy', 'true');
-    try {
-      await showChart({ ...shown.request, conventions: { zi_convention: convention } }, shown.city);
-      ziSwitch.querySelector(`button[data-zi-convention="${convention}"]`).focus();
-    } catch (err) {
-      console.error(err);
-      relationships.clear();
-      dayMasterContext.clear();
-      pillarChanges.clear();
-      chartView.classList.add('hidden');
-      inputView.classList.remove('hidden');
-      document.title = t('page_title');
-      setFormError(err.message || t('chart_create_error'));
-    } finally {
-      ziSwitch.removeAttribute('aria-busy');
-    }
-  });
-
-  // The picked place is kept, so another chart for it only needs a new date or time.
-  backBtn.addEventListener('click', () => {
-    relationships.clear();
-    dayMasterContext.clear();
-    pillarChanges.clear();
+  // The next chart starts as a new one: nothing open, characters on every card.
+  const leaveChart = () => {
+    closePanel();
+    displayMode = 'characters';
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
     document.title = t('page_title');
+  };
+
+  // The shown chart, asked for again with one thing changed. A chart that then fails
+  // is not left half drawn: the form comes back with the reason. Focus returns to
+  // the control that asked, found again in the redrawn chart.
+  const reshow = async (changes, focusSelector) => {
+    chartView.setAttribute('aria-busy', 'true');
+    try {
+      await showChart({ ...shown.request, ...changes }, shown.city);
+      chartView.querySelector(focusSelector).focus();
+    } catch (err) {
+      console.error(err);
+      leaveChart();
+      setFormError(err.message || t('chart_create_error'));
+    } finally {
+      chartView.removeAttribute('aria-busy');
+    }
+  };
+
+  // Meanwhile the chart takes no clicks: they would act on a chart about to be
+  // replaced, or leave it only for the new one to open over the form.
+  chartView.addEventListener('click', (event) => {
+    if (chartView.getAttribute('aria-busy') !== 'true') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+  }, { capture: true });
+
+  // The other Zi-hour convention, for this chart only.
+  ziSwitch.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-zi-convention]');
+    if (!button || button.getAttribute('aria-pressed') === 'true') return;
+    const convention = button.dataset.ziConvention;
+    reshow({ conventions: { zi_convention: convention } }, `button[data-zi-convention="${convention}"]`);
+  });
+
+  // The chart's own words come from the API in the chart's language, so a new
+  // language asks for the chart again.
+  chartLanguage.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-chart-lang]');
+    if (!button || button.getAttribute('aria-pressed') === 'true') return;
+    currentLanguage = i18n.setLanguage(button.dataset.chartLang === 'en' ? 'en' : 'fi');
+    applyLanguage();
+    reshow({ lang: currentLanguage }, `button[data-chart-lang="${currentLanguage}"]`);
+  });
+
+  // The same birth in the Evolution explorer.
+  viewSwitch.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-view="evolution"]');
+    if (!button) return;
+    const { request } = shown;
+    const query = new URLSearchParams({
+      date: request.date,
+      time: request.time,
+      latitude: String(request.location.latitude),
+      longitude: String(request.location.longitude),
+      timezone: request.location.timezone,
+      lang: currentLanguage,
+    });
+    window.location.assign(`/explorer/?${query.toString()}`);
+  });
+
+  // Edit keeps the birth, so another chart for it only needs what changed.
+  backBtn.addEventListener('click', leaveChart);
+
+  newChartBtn.addEventListener('click', () => {
+    leaveChart();
+    form.reset();
+    clearResolvedLocation();
+    setFieldError(dateInput, dateStatus, '');
+    setFieldError(timeInput, timeStatus, '');
+    dateInput.focus();
   });
 
   // ── Hidden stems: populate, expand, collapse ──
@@ -650,34 +689,103 @@ document.addEventListener('DOMContentLoaded', () => {
     return t(key, vars);
   };
 
-  // One detail is open at a time: a relationship, the Day Master context, or a pillar's changes.
+  // One topic is open at a time, in the panel: a relationship (or their list), the
+  // Day Master context, or a pillar's changes.
+  const setRelationshipsOpen = (open) => {
+    relationshipsSection.classList.toggle('hidden', !open);
+    relationshipsTopic.setAttribute('aria-expanded', String(open));
+  };
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc,
     beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
     root: chartView, translate: requiredTranslation, escape: esc,
-    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); },
+    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
   });
   const pillarChanges = window.EC_PILLAR_CHANGES.create({
     root: chartView, translate: requiredTranslation, escape: esc,
     format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
-    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); },
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); setRelationshipsOpen(false); },
   });
-  const tenGodsToggle = document.getElementById('ten-gods-toggle');
-  const syncTenGodsToggle = () => {
-    const cards = [...document.querySelectorAll('#pillars .card')];
-    const flippedCount = cards.filter((card) => card.classList.contains('is-flipped')).length;
-    const allFlipped = cards.length > 0 && flippedCount === cards.length;
-    tenGodsToggle.setAttribute('aria-pressed', allFlipped ? 'true' : flippedCount ? 'mixed' : 'false');
-    tenGodsToggle.textContent = requiredTranslation(allFlipped ? 'hide_ten_gods' : 'show_ten_gods');
+  const closePanel = () => {
+    relationships.clear();
+    dayMasterContext.clear();
+    pillarChanges.clear();
+    setRelationshipsOpen(false);
   };
-  tenGodsToggle.addEventListener('click', () => {
-    const cards = [...document.querySelectorAll('#pillars .card')];
-    const show = !cards.every((card) => card.classList.contains('is-flipped'));
-    cards.forEach((card) => {
-      if (card.classList.contains('is-flipped') !== show) flipCard(card);
+  relationshipsTopic.addEventListener('click', () => {
+    const open = relationshipsTopic.getAttribute('aria-expanded') !== 'true';
+    closePanel();
+    setRelationshipsOpen(open);
+  });
+
+  // The panel is open while any of its sections is: the modules show and hide their
+  // own sections, and the panel follows them.
+  const panelSections = [...chartPanel.querySelectorAll(':scope > section')];
+  const syncPanel = () => {
+    const open = panelSections.some((section) => !section.classList.contains('hidden'));
+    chartPanel.classList.toggle('hidden', !open);
+    chartView.classList.toggle('has-panel', open);
+  };
+  const panelObserver = new MutationObserver(syncPanel);
+  panelSections.forEach((section) => panelObserver.observe(section, { attributes: true, attributeFilter: ['class'] }));
+
+  // Closing returns focus to the chart control whose topic was open.
+  const closePanelAndReturnFocus = () => {
+    const opener = chartView.querySelector('.chart-column [aria-expanded="true"]');
+    closePanel();
+    if (opener) opener.focus();
+  };
+  chartPanel.addEventListener('click', (event) => {
+    if (event.target.closest('[data-close-panel]')) closePanelAndReturnFocus();
+  });
+  // A module closes its own selection on Escape first; an open list closes on the next.
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape' || event.defaultPrevented) return;
+    if (relationshipsTopic.getAttribute('aria-expanded') !== 'true') return;
+    event.preventDefault();
+    closePanelAndReturnFocus();
+  });
+
+  // ── Display: every card at once shows its character, its ten gods, or its hidden stems ──
+  let displayMode = 'characters';
+  const hiddenStemsOf = (branchCard) => branchCard.closest('.pillar-cards').querySelector('.hidden-stems-panel');
+  const showsHiddenStems = (panel) => displayMode === 'hidden-stems'
+    && panel.querySelector('.hidden-stems-list').children.length > 0;
+  // A long press or a tap changes one card; the choice then reads 'mixed', and
+  // pressing it again shows it on every card.
+  const syncDisplaySwitch = () => {
+    const mixed = [...pillarsContainer.querySelectorAll('.card')].some((card) =>
+      card.classList.contains('is-flipped') !== (displayMode === 'ten-gods')
+      || (card.classList.contains('branch')
+        && hiddenStemsOf(card).classList.contains('is-expanded') !== showsHiddenStems(hiddenStemsOf(card))));
+    displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
+      const chosen = button.dataset.display === displayMode;
+      button.setAttribute('aria-pressed', chosen ? (mixed ? 'mixed' : 'true') : 'false');
     });
+  };
+  const applyDisplay = (animate) => {
+    pillarsContainer.querySelectorAll('.card').forEach((card) => {
+      const flip = displayMode === 'ten-gods';
+      if (card.classList.contains('is-flipped') === flip) return;
+      if (animate) flipCard(card);
+      else card.classList.toggle('is-flipped', flip);
+    });
+    pillarsContainer.querySelectorAll('.card.branch').forEach((branchCard) => {
+      const panel = hiddenStemsOf(branchCard);
+      const expand = showsHiddenStems(panel);
+      if (panel.classList.contains('is-expanded') === expand) return;
+      if (expand) expandPanel(panel, branchCard, animate);
+      else collapsePanel(panel, branchCard);
+    });
+    syncDisplaySwitch();
+  };
+  displaySwitch.addEventListener('click', (event) => {
+    const button = event.target.closest('button[data-display]');
+    if (!button || button.getAttribute('aria-pressed') === 'true') return;
+    displayMode = button.dataset.display;
+    applyDisplay(!reducedMotion.matches);
   });
 
   const populateTenGods = (data) => {
@@ -717,10 +825,17 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
-  const expandPanel = (panel, branchCard) => {
+  const expandPanel = (panel, branchCard, animate = true) => {
     branchCard.classList.add('is-expanded');
     panel.classList.add('is-expanded');
+    if (!animate) {
+      panel.style.height = 'auto';
+      return;
+    }
     panel.style.height = panel.scrollHeight + 'px';
+    panel.addEventListener('transitionend', (event) => {
+      if (event.propertyName === 'height' && panel.classList.contains('is-expanded')) panel.style.height = 'auto';
+    }, { once: true });
   };
 
   const collapsePanel = (panel, branchCard) => {
@@ -734,7 +849,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Cards: long press flips to ten gods, quick click toggles hidden stems ──
 
   const pillarsContainer = document.getElementById('pillars');
-  const LONG_PRESS_MS = 1000;
+  const LONG_PRESS_MS = 500;
   const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
   // A press lasts until its pointer is released; its timer is null once the card flipped.
   let activePress = null;
@@ -748,6 +863,35 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  // Nothing else shows that a card turns over, so a hint says so, above the card
+  // under the mouse. It stays there while the page scrolls.
+  const cardHint = document.createElement('div');
+  cardHint.className = 'card-hint hidden';
+  cardHint.setAttribute('aria-hidden', 'true');
+  chartView.append(cardHint);
+  let hintedCard = null;
+  const placeCardHint = () => {
+    const box = hintedCard.getBoundingClientRect();
+    cardHint.style.left = `${box.left + box.width / 2}px`;
+    cardHint.style.top = `${box.top}px`;
+  };
+  const hideCardHint = () => {
+    hintedCard = null;
+    cardHint.classList.add('hidden');
+  };
+  pillarsContainer.addEventListener('pointerover', (event) => {
+    const card = event.target.closest('.card');
+    if (!card || event.pointerType !== 'mouse' || activePress) return;
+    hintedCard = card;
+    cardHint.textContent = requiredTranslation('long_press_hint');
+    placeCardHint();
+    cardHint.classList.remove('hidden');
+  });
+  pillarsContainer.addEventListener('pointerout', (event) => {
+    if (!event.relatedTarget || !event.target.closest('.card')?.contains(event.relatedTarget)) hideCardHint();
+  });
+  window.addEventListener('scroll', () => { if (hintedCard) placeCardHint(); }, { passive: true });
+
   // The facing side sizes the card, so a taller back grows the card as it turns.
   const flipCard = (card) => {
     const inner = card.querySelector('.card-inner');
@@ -755,7 +899,6 @@ document.addEventListener('DOMContentLoaded', () => {
     card.classList.remove('is-turning');
     const fromHeight = inner.getBoundingClientRect().height;
     const flipped = card.classList.toggle('is-flipped');
-    syncTenGodsToggle();
     if (reducedMotion.matches) return;
     const toHeight = inner.getBoundingClientRect().height;
     card.classList.add('is-turning');
@@ -778,6 +921,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!e.isPrimary || e.button !== 0) return;
     const card = e.target.closest('.card');
     if (!card) return;
+    hideCardHint();
     const press = {
       pointerId: e.pointerId,
       pointerType: e.pointerType,
@@ -790,6 +934,7 @@ document.addEventListener('DOMContentLoaded', () => {
       // The release that ends this press must not also toggle hidden stems.
       suppressNextClick = true;
       flipCard(card);
+      syncDisplaySwitch();
     }, LONG_PRESS_MS);
     activePress = press;
   });
@@ -847,6 +992,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       expandPanel(panel, branchCard);
     }
+    syncDisplaySwitch();
   });
 
   languageButtons.forEach((button) => {
@@ -857,19 +1003,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  modeButtons.forEach((button) => {
-    button.addEventListener('click', () => {
-      selectedMode = button.dataset.mode === 'evolution' ? 'evolution' : 'standard';
-      applyModeSelection();
-    });
-  });
-
   applyLanguage();
-  applyModeSelection();
 });
 
 
-function renderChart(data) {
+// `plainNames` are the pillars' plain names in the page language; the chart's own
+// labels are their poetic names.
+function renderChart(data, plainNames) {
   const container = document.getElementById('pillars');
   container.innerHTML = '';
 
@@ -884,7 +1024,10 @@ function renderChart(data) {
 
     pillar.innerHTML = `
       <div class='pillar-header'>
-        <div class='pillar-label'>${esc(p.label)}</div>
+        <div class='pillar-label'>
+          <span class='pillar-plain'>${esc(plainNames[pillarKeys[i]])}</span>
+          <span class='pillar-poetic'>${esc(p.label)}</span>
+        </div>
         <button type='button' class='pillar-identity' data-pillar='${pillarKeys[i]}'
           aria-expanded='false' aria-controls='pillar-detail'>
           <span class='pillar-chars' lang='zh-Hant'>${esc(p.stem.char + p.branch.char)}</span>

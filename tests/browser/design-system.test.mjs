@@ -1,6 +1,9 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
-// Stage 3 of the Standard view (#18): one grid for the pillars, and room for what hangs below them.
-import { assert, describe, it, engineName, profiles, openChart, settled, withPage } from './chart-helpers.mjs';
+// Stage 3 of the Standard view (#18): one grid for the pillars, and hidden stems in the flow below
+// them (#19). Text on the cards fits them at every width.
+import {
+  assert, describe, it, engineName, profiles, openChart, settled, showDisplay, withPage,
+} from './chart-helpers.mjs';
 
 const WIDE = [641, 700, 800, 900, 1024, 1440];
 
@@ -36,10 +39,36 @@ function misaligned(pillars, groups, state) {
   return failures;
 }
 
-async function turnAll(page) {
-  await page.locator('#ten-gods-toggle').click();
-  await settled(page);
-}
+// Text on a card's facing side, or in an opened hidden-stem panel, that its box clips, or
+// a word that breaks across two lines.
+const FIT_AUDIT = () => {
+  const problems = [];
+  const boxes = [...document.querySelectorAll('#pillars .card')]
+    .map((card) => card.querySelector(card.classList.contains('is-flipped') ? '.card-back' : '.card-front'));
+  boxes.push(...document.querySelectorAll('#pillars .hidden-stems-panel.is-expanded'));
+  for (const box of boxes) {
+    const edges = box.getBoundingClientRect();
+    const walker = document.createTreeWalker(box, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const node = walker.currentNode;
+      if (!node.textContent.trim() || !node.parentElement.getClientRects().length) continue;
+      const text = document.createRange();
+      text.selectNodeContents(node);
+      if ([...text.getClientRects()].some((r) => r.width > 0 && (r.left < edges.left - 0.5 || r.right > edges.right + 0.5))) {
+        problems.push(`clipped "${node.textContent.trim()}"`);
+      }
+      for (const match of node.textContent.matchAll(/\S+/g)) {
+        const word = document.createRange();
+        word.setStart(node, match.index);
+        word.setEnd(node, match.index + match[0].length);
+        if (new Set([...word.getClientRects()].filter((r) => r.width > 0).map((r) => Math.round(r.top))).size > 1) {
+          problems.push(`broken "${match[0]}"`);
+        }
+      }
+    }
+  }
+  return [...new Set(problems)];
+};
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / design system`, { concurrency: false }, () => {
@@ -56,9 +85,9 @@ for (const profile of profiles) {
           await page.setViewportSize({ width, height: profile.viewport.height });
           await settled(page);
           failures.push(...misaligned(await rows(page), groups, `${lang} ${width}px front`));
-          await turnAll(page);
+          await showDisplay(page, 'ten-gods');
           failures.push(...misaligned(await rows(page), groups, `${lang} ${width}px back`));
-          await turnAll(page);
+          await showDisplay(page, 'characters');
         }
       }
       assert.deepEqual(failures, []);
@@ -103,20 +132,56 @@ for (const profile of profiles) {
       assert.deepEqual(failures, []);
     });
 
-    check('the room kept below the pillars holds the tallest hidden-stem panel', async (page) => {
+    check('opened hidden stems share a row in the flow and cover nothing', async (page) => {
       await openChart(page, { lang: 'en' });
-      for (const pillar of ['hour', 'day', 'month', 'year']) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
-      await settled(page);
-      const layout = await page.evaluate(() => ({
-        rows: Math.max(...[...document.querySelectorAll('.hidden-stems-panel.is-expanded')]
-          .map((panel) => panel.querySelectorAll('.hidden-stem-item').length)),
-        lowest: Math.max(...[...document.querySelectorAll('.hidden-stems-panel.is-expanded')]
-          .map((panel) => panel.getBoundingClientRect().bottom)),
-        back: document.querySelector('.back-row').getBoundingClientRect().top,
-      }));
+      await showDisplay(page, 'hidden-stems');
+      const layout = await page.evaluate(() => {
+        const panels = [...document.querySelectorAll('.hidden-stems-panel.is-expanded')];
+        const boxOf = (node) => node.getBoundingClientRect();
+        const overlaps = panels.flatMap((panel) => [...document.querySelectorAll('#pillars .pillar-header, #pillars .card')]
+          .filter((node) => {
+            const a = boxOf(panel);
+            const b = boxOf(node);
+            return a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+          })
+          .map((node) => `the ${panel.dataset.pillar} panel covers ${node.className} of ${node.closest('.pillar').dataset.pillar}`));
+        return {
+          rows: Math.max(...panels.map((panel) => panel.querySelectorAll('.hidden-stem-item').length)),
+          tops: Object.fromEntries(panels.map((panel) => [panel.dataset.pillar, Math.round(boxOf(panel).top * 10) / 10])),
+          lowest: Math.max(...panels.map((panel) => boxOf(panel).bottom)),
+          end: boxOf(document.getElementById('pillars')).bottom,
+          overlaps,
+        };
+      });
       // The canonical chart has branches with three hidden stems, the most any branch has.
       assert.equal(layout.rows, 3);
-      assert.ok(layout.lowest <= layout.back, `panel ends at ${layout.lowest}, back row starts at ${layout.back}`);
+      assert.deepEqual(layout.overlaps, []);
+      assert.ok(layout.lowest <= layout.end, `a panel ends at ${layout.lowest}, below the pillars' end at ${layout.end}`);
+      const groups = profile.name === 'desktop' ? [['hour', 'day', 'month', 'year']] : [['hour', 'day'], ['month', 'year']];
+      for (const group of groups) {
+        assert.equal(new Set(group.map((pillar) => layout.tops[pillar])).size, 1, JSON.stringify(layout.tops));
+      }
+    });
+
+    check('text on the cards and in their hidden stems is never clipped or broken inside a word', async (page) => {
+      // Motion off: the text is measured, not the turn.
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      const widths = profile.name === 'desktop' ? [641, 700, 900, 1024, 1200, 1440] : [320, 360, profile.viewport.width];
+      const failures = [];
+      for (const lang of ['en', 'fi']) {
+        // The longest words: Lohikäärme and Hevonen among the animals, Ruokajumala among the Ten Gods.
+        for (const [date, time] of [['2000-06-15', '08:00'], ['1985-05-20', '10:10']]) {
+          await openChart(page, { lang, date, time });
+          for (const width of widths) {
+            await page.setViewportSize({ width, height: profile.viewport.height });
+            for (const mode of ['characters', 'ten-gods', 'hidden-stems']) {
+              await showDisplay(page, mode);
+              failures.push(...(await page.evaluate(FIT_AUDIT)).map((problem) => `${lang} ${date} ${width}px ${mode}: ${problem}`));
+            }
+          }
+        }
+      }
+      assert.deepEqual(failures, []);
     });
   });
 }

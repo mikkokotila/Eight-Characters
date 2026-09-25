@@ -26,8 +26,10 @@
       return card;
     };
 
+    // Plain names, in the chart's own order (Hour, Day, Month, Year).
     const labelFor = (relationship) => {
-      const positions = relationship.members.map((member) => t('pillar_' + member.pillar));
+      const positions = DISPLAY_ORDER.filter((pillar) => relationship.members.some((member) => member.pillar === pillar))
+        .map((pillar) => t('pillar_' + pillar));
       return `${positions.join('–')} · ${t('relationship_' + relationship.kind)}`;
     };
 
@@ -53,7 +55,7 @@
       const roles = relationship.component === 'stem' ? [data.stem] : data.hidden_stems;
       return `
         <div class="relationship-member">
-          <div class="relationship-position">${esc(chart.label)}</div>
+          <div class="relationship-position">${esc(t('pillar_' + member.pillar))}</div>
           <div class="relationship-identity">${esc(identity)}</div>
           <div class="relationship-element">${esc(elementLabel)}</div>
           <div class="relationship-roles">${roles.map((role) => `
@@ -89,7 +91,6 @@
       detail.innerHTML = `
         <div class="relationship-detail-heading">
           <h3 id="relationship-detail-title">${esc(labelFor(relationship))}</h3>
-          <button type="button" class="reading-toggle" data-clear-relationship>${esc(t('relationship_clear'))}</button>
         </div>
         <p class="relationship-meta">${esc(meta.join(' · '))}</p>
         <div class="relationship-members" style="--member-count: ${relationship.members.length}">
@@ -112,9 +113,6 @@
       clear();
       if (button) button.focus();
     };
-    detail.addEventListener('click', (event) => {
-      if (event.target.closest('[data-clear-relationship]')) clearAndReturnFocus();
-    });
     // Pointer activation need not move keyboard focus into the chart.
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && selected !== null) {

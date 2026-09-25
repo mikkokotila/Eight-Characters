@@ -74,7 +74,9 @@ async function openChart(page, options = {}, mutate = null) {
     assert.deepEqual(body.location, location);
     assert.equal(body.city, undefined);
     assert.equal(body.country, undefined);
-    const response = await route.fetch();
+    // A pooled connection the server has just closed as idle resets before any
+    // response; only that is retried, as a browser would. The API has no side effects.
+    const response = await route.fetch({ maxRetries: 2 });
     assert.equal(response.status(), 200);
     const payload = await response.json();
     calculated = payload;
@@ -86,11 +88,30 @@ async function openChart(page, options = {}, mutate = null) {
   return calculated;
 }
 
+// The pillars' boxes: their place on the page, with x taken within the chart column.
+// The column moves over once, when the panel first opens beside it (workbench.test.mjs).
 async function geometry(page) {
-  return page.locator('.pillar').evaluateAll((pillars) => pillars.map((pillar) => {
-    const r = pillar.getBoundingClientRect();
-    return { x: r.x + scrollX, y: r.y + scrollY, width: r.width, height: r.height };
-  }));
+  return page.locator('.pillar').evaluateAll((pillars) => {
+    const column = document.querySelector('.chart-column').getBoundingClientRect();
+    return pillars.map((pillar) => {
+      const r = pillar.getBoundingClientRect();
+      return { x: r.x - column.x, y: r.y + scrollY, width: r.width, height: r.height };
+    });
+  });
+}
+
+// Every card shows its character, its Ten Gods or its hidden stems.
+async function showDisplay(page, mode) {
+  await page.locator(`#display-switch button[data-display="${mode}"]`).click();
+  await settled(page);
+}
+
+// The relationships topic: their list, in the panel.
+async function openRelationships(page) {
+  const topic = page.locator('#relationships-topic');
+  assert.equal(await topic.getAttribute('aria-expanded'), 'false', 'the relationships are open already');
+  await topic.click();
+  await page.locator('#relationships-panel').waitFor({ state: 'visible' });
 }
 
 async function natalColors(page) {
@@ -98,9 +119,13 @@ async function natalColors(page) {
 }
 
 async function longPress(page, card) {
-  await card.scrollIntoViewIfNeeded();
+  // Pressed where it can be seen: at the top of the screen, clear of a sheet over its foot.
+  await card.evaluate((node) => node.scrollIntoView({ block: 'start' }));
   const box = await card.boundingBox();
-  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  const [x, y] = [box.x + box.width / 2, box.y + box.height / 2];
+  assert.equal(await card.evaluate((node, [x, y]) => node.contains(document.elementFromPoint(x, y)), [x, y]), true,
+    'the press lands on the card');
+  await page.mouse.move(x, y);
   const component = await card.evaluate((node) => node.classList.contains('stem') ? 'stem' : 'branch');
   const pillar = await card.getAttribute('data-pillar');
   await page.mouse.down();
@@ -121,7 +146,7 @@ async function screenshot(page, name) {
 
 export {
   assert, describe, it, engineName, profiles, openChart, fillChart, count, settled, geometry, natalColors, longPress,
-  screenshot, HELSINKI, TROMSO,
+  screenshot, showDisplay, openRelationships, HELSINKI, TROMSO,
 };
 export async function withPage(profile, run) {
   const { name, ...options } = profile;

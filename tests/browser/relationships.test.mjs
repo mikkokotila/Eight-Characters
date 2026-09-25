@@ -1,6 +1,6 @@
 import {
-  assert, describe, it, engineName, profiles, openChart, fillChart, count, settled,
-  geometry, natalColors, longPress, screenshot, withPage,
+  assert, describe, it, engineName, profiles, openChart, fillChart, count,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
 } from './chart-helpers.mjs';
 
 for (const profile of profiles) {
@@ -10,9 +10,11 @@ for (const profile of profiles) {
     check('canonical selection preserves geometry and natal colors', async (page) => {
       await openChart(page);
       assert.equal(await page.locator('.relationship-chip').count(), 1);
+      assert.equal(await page.locator('#relationships-topic').textContent(), 'Relationships (1)');
       const before = await geometry(page);
       const colors = await natalColors(page);
       await screenshot(page, `${profile.name}-overview`);
+      await openRelationships(page);
       await page.locator('.relationship-chip').click();
       await count(page, '.card.is-related', 2);
       assert.deepEqual(await geometry(page), before);
@@ -28,39 +30,67 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#relationship-detail').isVisible(), false);
     });
 
-    check('keyboard selection, Escape, and clear return focus', async (page) => {
+    check('keyboard selection, Escape, and close return focus', async (page) => {
       await openChart(page);
+      const topic = page.locator('#relationships-topic');
+      await topic.focus();
+      await page.keyboard.press('Enter');
+      assert.equal(await topic.getAttribute('aria-expanded'), 'true');
       const chip = page.locator('.relationship-chip');
       await chip.focus();
       await page.keyboard.press('Enter');
       await count(page, '.card.is-related', 2);
       assert.equal(await chip.getAttribute('aria-expanded'), 'true');
+      // The first Escape clears the relationship, the next closes their list.
       await page.keyboard.press('Escape');
       await count(page, '.card.is-related', 0);
       assert.equal(await chip.evaluate((node) => node === document.activeElement), true);
+      await page.keyboard.press('Escape');
+      assert.equal(await topic.getAttribute('aria-expanded'), 'false');
+      assert.equal(await page.locator('#chart-panel').isVisible(), false);
+      assert.equal(await topic.evaluate((node) => node === document.activeElement), true);
+      // Close does both at once.
       await page.keyboard.press('Space');
-      await page.locator('[data-clear-relationship]').click();
+      await chip.focus();
+      await page.keyboard.press('Space');
+      await count(page, '.card.is-related', 2);
+      await page.locator('[data-close-panel]').click();
+      await count(page, '.card.is-related', 0);
       assert.equal(await chip.getAttribute('aria-expanded'), 'false');
-      assert.equal(await chip.evaluate((node) => node === document.activeElement), true);
+      assert.equal(await topic.getAttribute('aria-expanded'), 'false');
+      assert.equal(await topic.evaluate((node) => node === document.activeElement), true);
     });
 
-    check('global Ten Gods respects mixed state and existing long press', async (page) => {
+    check('the display reads mixed after a long press or a tap, and pressing it again shows it on every card', async (page) => {
       await openChart(page);
-      const card = page.locator('.card.stem').first();
-      await longPress(page, card);
-      assert.equal(await page.locator('#ten-gods-toggle').getAttribute('aria-pressed'), 'mixed');
-      await page.locator('#ten-gods-toggle').click();
-      await settled(page);
+      const pressed = () => page.locator('#display-switch button').evaluateAll((buttons) =>
+        buttons.map((button) => `${button.dataset.display} ${button.getAttribute('aria-pressed')}`));
+      assert.deepEqual(await pressed(), ['characters true', 'ten-gods false', 'hidden-stems false']);
+      await longPress(page, page.locator('.card.stem').first());
+      assert.deepEqual(await pressed(), ['characters mixed', 'ten-gods false', 'hidden-stems false']);
+      await showDisplay(page, 'characters');
+      await count(page, '.card.is-flipped', 0);
+      assert.deepEqual(await pressed(), ['characters true', 'ten-gods false', 'hidden-stems false']);
+      await longPress(page, page.locator('.card.stem').first());
+      await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
-      assert.equal(await page.locator('#ten-gods-toggle').getAttribute('aria-pressed'), 'true');
-      await page.locator('#ten-gods-toggle').click();
-      await settled(page);
+      assert.deepEqual(await pressed(), ['characters false', 'ten-gods true', 'hidden-stems false']);
+      const branch = page.locator('.card.branch').first();
+      if (profile.hasTouch) await branch.tap(); else await branch.click();
+      await count(page, '.hidden-stems-panel.is-expanded', 1);
+      assert.deepEqual(await pressed(), ['characters false', 'ten-gods mixed', 'hidden-stems false']);
+      await showDisplay(page, 'ten-gods');
+      await count(page, '.hidden-stems-panel.is-expanded', 0);
+      await count(page, '.card.is-flipped', 8);
+      assert.deepEqual(await pressed(), ['characters false', 'ten-gods true', 'hidden-stems false']);
+      await showDisplay(page, 'characters');
       await count(page, '.card.is-flipped', 0);
       await count(page, '.hidden-stems-panel.is-expanded', 0);
     });
 
     check('branch long press does not expand; quick click or tap still does', async (page) => {
       await openChart(page);
+      await openRelationships(page);
       await page.locator('.relationship-chip').click();
       const card = page.locator('.card.branch').first();
       await longPress(page, card);
@@ -78,7 +108,7 @@ for (const profile of profiles) {
       const pointer = { pointerId: 9, pointerType: 'touch', isPrimary: true, button: 0, clientX: 20, clientY: 20 };
       await card.dispatchEvent('pointerdown', pointer);
       await card.dispatchEvent('pointercancel', pointer);
-      // Exercise the actual one-second timer after cancellation, not just the immediate state.
+      // Wait out the half-second timer after cancellation, not just the immediate state.
       await page.waitForTimeout(1100);
       await count(page, '.card.is-flipped', 0);
       await count(page, '.hidden-stems-panel.is-expanded', 0);
@@ -87,6 +117,7 @@ for (const profile of profiles) {
     check('branch clashes expose all hidden roles without changing element colors', async (page) => {
       const payload = await openChart(page, { date: '1990-01-05', time: '12:00' });
       const colors = await natalColors(page);
+      await openRelationships(page);
       await page.locator('[data-kind="branch_clash"]').click();
       await count(page, '.card.branch.is-related', 2);
       assert.equal(await page.locator('.card.is-related').first().evaluate((node) => getComputedStyle(node).outlineStyle), 'dashed');
@@ -100,6 +131,7 @@ for (const profile of profiles) {
 
     check('repeated branch combination occurrences stay independently selectable', async (page) => {
       await openChart(page, { date: '1990-01-07', time: '12:00' });
+      await openRelationships(page);
       const chips = page.locator('[data-kind="branch_combination"]');
       assert.equal(await chips.count(), 2);
       await chips.nth(0).click();
@@ -114,6 +146,7 @@ for (const profile of profiles) {
 
     check('complete frames preserve repeated occurrences and three participants', async (page) => {
       await openChart(page, { date: '1990-01-08', time: '12:00' });
+      await openRelationships(page);
       const chips = page.locator('[data-kind="harmony_frame"]');
       assert.equal(await chips.count(), 2);
       await chips.first().click();
@@ -129,16 +162,18 @@ for (const profile of profiles) {
     check('empty charts say what was checked and still expose Ten Gods', async (page) => {
       await openChart(page, { date: '1990-01-01', time: '12:00' });
       assert.equal(await page.locator('.relationship-chip').count(), 0);
+      assert.equal(await page.locator('#relationships-topic').textContent(), 'Relationships (0)');
+      await openRelationships(page);
       assert.equal(await page.locator('#relationship-empty').isVisible(), true);
       assert.match(await page.locator('#relationship-empty').innerText(), /No combinations, clashes or complete harmony frames/);
-      await page.locator('#ten-gods-toggle').click();
-      await settled(page);
+      await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
     });
 
     check('Finnish labels and narrow layouts remain readable', async (page) => {
       await openChart(page, { date: '1990-01-08', time: '12:00', lang: 'fi' });
       assert.equal(await page.locator('#relationships-heading').textContent(), 'Yhteydet');
+      await openRelationships(page);
       await page.locator('.relationship-chip').first().click();
       assert.match(await page.locator('#relationship-detail').innerText(), /Muuntumista ei ole arvioitu/);
       assert.doesNotMatch(await page.locator('#chart-view').innerText(), /relationship_|ten_god_|qi_/);
@@ -147,8 +182,7 @@ for (const profile of profiles) {
         assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false, `overflow at ${width}`);
       }
       await page.setViewportSize(profile.viewport);
-      await page.locator('#ten-gods-toggle').click();
-      await settled(page);
+      await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await screenshot(page, `${profile.name}-finnish`);
@@ -157,21 +191,24 @@ for (const profile of profiles) {
     check('reduced motion flips immediately without turn animations', async (page) => {
       await page.emulateMedia({ reducedMotion: 'reduce' });
       await openChart(page);
-      await page.locator('#ten-gods-toggle').click();
+      await page.locator('#display-switch button[data-display="ten-gods"]').click();
       await count(page, '.card.is-flipped', 8);
       assert.equal(await page.locator('.card.is-turning').count(), 0);
     });
 
     check('returning to the form and creating another chart clears all state', async (page) => {
       await openChart(page);
+      await openRelationships(page);
       await page.locator('.relationship-chip').click();
-      await page.locator('#ten-gods-toggle').click();
-      await settled(page);
+      await showDisplay(page, 'ten-gods');
       await page.locator('#back-btn').click();
       await fillChart(page, { date: '1990-01-01', time: '12:00' });
       await count(page, '.card.is-related', 0);
       await count(page, '.card.is-flipped', 0);
-      assert.equal(await page.locator('#ten-gods-toggle').getAttribute('aria-pressed'), 'false');
+      assert.equal(await page.locator('#display-switch button[data-display="characters"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('#chart-panel').isVisible(), false);
+      assert.equal(await page.locator('#relationships-topic').getAttribute('aria-expanded'), 'false');
+      await openRelationships(page);
       assert.equal(await page.locator('#relationship-detail').isVisible(), false);
       assert.equal(await page.locator('#relationship-empty').isVisible(), true);
     });

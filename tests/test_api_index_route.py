@@ -57,11 +57,11 @@ class TestApiIndexRoute(unittest.TestCase):
     def test_relationship_view_has_accessible_controls(self) -> None:
         response = self.client.get('/')
         for element_id in (
+            'relationships-topic',
             'relationships-heading',
             'relationship-list',
             'relationship-detail',
             'relationship-status',
-            'ten-gods-toggle',
         ):
             self.assertIn(f'id="{element_id}"', response.text)
         self.assertIn('aria-live="polite"', response.text)
@@ -70,6 +70,20 @@ class TestApiIndexRoute(unittest.TestCase):
             response.text.index('/static/app.js'),
         )
         self.assertEqual(self.client.get('/static/relationships.js').status_code, 200)
+
+    def test_chart_view_has_its_bar_and_panel(self) -> None:
+        response = self.client.get('/')
+        for element_id in (
+            'display-switch',
+            'view-switch',
+            'chart-language',
+            'back-btn',
+            'new-chart-btn',
+            'chart-panel',
+        ):
+            self.assertIn(f'id="{element_id}"', response.text)
+        # The view is chosen on a chart, not before one.
+        self.assertNotIn('data-mode=', response.text)
 
     def test_day_master_context_has_accessible_controls_and_versioned_module(
         self,
