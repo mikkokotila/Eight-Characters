@@ -100,7 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
           data-index='${index}'
         >
           <span class='location-suggestion-city'>${esc(item.display)}</span>
-          <span class='location-suggestion-meta'>${esc(item.timezone)}</span>
+          <span class='location-suggestion-meta'>${esc(
+            `${formatCoordinates(item.latitude, item.longitude)} · ${item.timezone}`
+          )}</span>
         </button>
       `
       )
@@ -146,18 +148,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     // A lookup still pending must not reopen the list or replace the chosen city's status.
     cancelSuggestionLookup();
-    resolvedLocation = {
-      city: selected.city || '',
-      country: selected.country || '',
-      timezone: selected.timezone || '',
-    };
-    locationInput.value = selected.display || `${resolvedLocation.city}, ${resolvedLocation.country}`;
+    // Kept whole: the chart is computed for these coordinates, since names repeat.
+    resolvedLocation = selected;
+    locationInput.value = selected.display;
     locationInput.readOnly = true;
     locationInput.classList.add('location-locked');
     createChartBtn.disabled = false;
     hideSuggestions();
     setLocationStatus(
-      t('selected_city', { city: resolvedLocation.city, timezone: resolvedLocation.timezone }),
+      t('selected_city', {
+        city: selected.city,
+        coordinates: formatCoordinates(selected.latitude, selected.longitude),
+        timezone: selected.timezone,
+      }),
       'is-found'
     );
   };
@@ -282,8 +285,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const fourPillarsPayload = {
       date: form.date.value,
       time: form.time.value,
-      city: resolvedLocation.city,
-      country: resolvedLocation.country,
+      // The picked place itself: sending its name would resolve to the first place so named.
+      location: {
+        timezone: resolvedLocation.timezone,
+        latitude: resolvedLocation.latitude,
+        longitude: resolvedLocation.longitude,
+      },
       include_chart: true,
       include_hidden_stems: true,
       include_ten_gods: true,
@@ -324,9 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
         throw new Error(t('ten_gods_error'));
       }
 
-      if (pillarsData.resolved_location) {
-        chartData.header = `${chartData.header} · ${pillarsData.resolved_location.city}`;
-      }
+      chartData.header = `${chartData.header} · ${resolvedLocation.city}`;
 
       renderChart(chartData);
       populateTenGods(tenGodsData);
@@ -667,4 +672,12 @@ function esc(str) {
   const el = document.createElement('span');
   el.textContent = String(str ?? '');
   return el.innerHTML;
+}
+
+
+// Two decimals is about a kilometre, or under 3 seconds of solar time.
+function formatCoordinates(latitude, longitude) {
+  const latitudeText = `${Math.abs(latitude).toFixed(2)}° ${latitude < 0 ? 'S' : 'N'}`;
+  const longitudeText = `${Math.abs(longitude).toFixed(2)}° ${longitude < 0 ? 'W' : 'E'}`;
+  return `${latitudeText}, ${longitudeText}`;
 }

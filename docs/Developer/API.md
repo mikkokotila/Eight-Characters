@@ -105,11 +105,15 @@
 Current UI submit flow:
 
 1. `POST /api/four_pillars` with:
-   - `city`, `country`, `date`, `time`
+   - `location` built from the picked suggestion's `timezone`, `latitude` and
+     `longitude` (never its `city` and `country`, which would be resolved
+     again to the first place so named)
+   - `date`, `time`
    - `include_chart=true`
    - `include_hidden_stems=true`
    - `include_ten_gods=true`
-2. Render chart from `response.chart`.
+2. Render chart from `response.chart`, with the picked suggestion's `city`
+   appended to the header.
 3. Render ten gods on the card backs from `response.ten_gods`.
 4. Render hidden stems from `response.hidden_stems`.
 
@@ -120,10 +124,13 @@ Chart card interactions:
   cards list the ten god of every hidden stem, with their qi type. Holding
   again flips it back.
 
-Location typing flow remains:
+Location typing flow:
 
-1. `POST /api/location_suggest` while user types.
-2. User selects a suggestion (`city`, `country`, `timezone`).
+1. `POST /api/location_suggest` while user types. Each row shows the
+   suggestion's `display` label with its coordinates and timezone, which tell
+   apart places that share a name and region.
+2. User selects a suggestion. The page keeps the whole suggestion and shows
+   its coordinates in the status line.
 
 ## Error Contract (All Endpoints)
 
