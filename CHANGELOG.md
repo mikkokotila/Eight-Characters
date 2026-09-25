@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.18.0
+
+Stage 3 of the Standard view overhaul (#18): spacing, type and ink on scales, and one grid for all four pillars.
+
+### Changed
+- **Tokens.** Every colour, space, font size and tracking in `style.css` comes from tokens defined once on `:root`. A unit test fails on any raw spacing, font size, tracking or ink value outside them. `docs/Developer/Design-Tokens.md` lists the tokens and their uses, with a specimen.
+  - **Space**: one 4px scale, `--space-1` to `--space-8` (4 to 64px). Spacing that was 2, 3, 5, 6, 9, 10, 14, 18, 20, 28, 36, 40, 44 or 56px is rounded onto it. The `-8px` margin patch under the chart header is gone.
+  - **Type**: six sizes, `--text-1` to `--text-6` (13, 15, 18, 22, 32 and 52px), where there were fourteen (11 to 52px). Nothing that is read is smaller than 13px, and weight 300 is no longer used below display sizes. Three trackings in em (text, capitals, the eyebrow) replace ten values.
+  - **Ink**: `--ink-1` to `--ink-3`, `--line-1` and `--line-2`, `--surface-1` to `--surface-3` and a few more replace ink written out as `rgba()` with eleven alphas. The two near-identical secondary greys are now one, the darker, so every text keeps WCAG AA.
+- **One grid for the pillars.** The four pillars share row tracks (label, name, mark, stem, branch) through CSS subgrid, so their rows line up and the cards of a row share one height, front and back.
+  - A Finnish label that wraps ("SISÄINEN VUODENAIKA") no longer drops its column's cards.
+  - With Ten Gods on, the branch cards are one height instead of 205, 187, 187 and 180px.
+- **Room for the hidden stems.** The 110px kept below the pillars is now derived from the tallest hidden-stem panel (three rows) through tokens: 120px.
+- **Tests.** A browser suite checks that:
+  - the rows line up from 641 to 1440px, in both languages, front and back;
+  - the branch chevron clears its card's text;
+  - the room below the pillars holds the tallest panel.
+
+  The location list's offset below its field is now read from the spacing token.
+- Version bumped to `0.18.0`; the static assets' cache keys follow it.
+
 ## 0.17.0
 
 Stage 2 of the Standard view overhaul (#17): the chart shows what the engine knows, and nothing that contradicts it.
