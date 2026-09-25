@@ -57,3 +57,10 @@ This is a source for traditional rule identities, not empirical validation of
 predictions about people. Presence and transformation are separate in this UI.
 
 See [API Reference](api.md) and [browser regression tests](../tests/browser/README.md).
+
+## Day Master context
+
+The summary above Relationships opens season, root, or support evidence in the
+same below-chart detail area. Selecting one clears the other selection and its
+highlights; details never accumulate into stacked panels. See
+[Day Master context](Standard-Day-Master-Context.md).

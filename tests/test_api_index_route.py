@@ -35,10 +35,36 @@ class TestApiIndexRoute(unittest.TestCase):
         )
         self.assertEqual(self.client.get('/static/relationships.js').status_code, 200)
 
+    def test_day_master_context_has_accessible_controls_and_versioned_module(
+        self,
+    ) -> None:
+        response = self.client.get('/')
+        for element_id in (
+            'day-master-context',
+            'day-master-heading',
+            'context-controls',
+            'context-detail',
+            'context-status',
+        ):
+            self.assertIn(f'id="{element_id}"', response.text)
+        self.assertLess(
+            response.text.index('/static/day-master-context.js'),
+            response.text.index('/static/app.js'),
+        )
+        self.assertEqual(
+            self.client.get('/static/day-master-context.js').status_code, 200
+        )
+
     def test_index_versions_static_assets(self) -> None:
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
-        for asset in ('style.css', 'localization.js', 'relationships.js', 'app.js'):
+        for asset in (
+            'style.css',
+            'localization.js',
+            'relationships.js',
+            'day-master-context.js',
+            'app.js',
+        ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
 
 

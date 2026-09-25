@@ -674,6 +674,97 @@ body {
   margin-top: -4px;
 }
 
+/* ── Day Master context: evidence in the existing chart's ink ── */
+.day-master-context {
+  margin: -8px auto 24px;
+  text-align: center;
+}
+.day-master-context h2 {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 18px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  line-height: 1.5;
+  color: var(--text);
+}
+.context-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 2px 24px;
+  margin-top: 4px;
+}
+.context-toggle[aria-expanded="true"] {
+  color: var(--text);
+  border-bottom-color: var(--text-muted);
+}
+.card.is-context-source {
+  outline: 1px solid var(--text-muted);
+  outline-offset: 5px;
+}
+.hidden-stem-item.is-context-evidence,
+.context-evidence-row.is-context-evidence {
+  outline: 1px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+.context-evidence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 20px auto 0;
+  text-align: left;
+}
+.context-evidence-row {
+  min-width: 0;
+  padding: 4px 0;
+  color: var(--text-muted);
+}
+.context-evidence-identity {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text);
+}
+.context-evidence-identity > span:first-child { overflow-wrap: break-word; min-width: 0; }
+.context-evidence-identity .hidden-stem-type { flex-shrink: 0; }
+.context-evidence-role {
+  margin-top: 5px;
+  font-size: 11px;
+  font-weight: 300;
+  line-height: 1.7;
+  overflow-wrap: break-word;
+}
+.context-month-composition { max-width: 360px; margin: 28px auto 0; text-align: center; }
+.context-month-composition > h4 { margin-bottom: 16px; }
+.context-support-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 36px;
+  margin-top: 28px;
+}
+.context-support-group { min-width: 0; text-align: center; }
+.context-source-position {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.context-support-source + .context-support-source {
+  border-top: 1px solid rgba(42, 37, 32, 0.08);
+  padding-top: 12px;
+}
+@media (max-width: 640px) {
+  .day-master-context { margin-bottom: 20px; }
+  .context-controls { gap: 2px 16px; }
+  .context-support-groups { grid-template-columns: 1fr; gap: 28px; }
+}
+
 /* ── Relationships: quiet annotations, never a second colour system ── */
 .relationships {
   margin-bottom: 36px;
@@ -849,7 +940,7 @@ body {
 }
 .relationship-roles .hidden-stem-label { font-size: 12px; overflow-wrap: break-word; }
 .relationship-note { margin-top: 24px; }
-.relationship-detail:not(.hidden) + .back-row { margin-top: 28px; }
+.relationship-detail:not(.hidden) ~ .back-row { margin-top: 28px; }
 
 .sr-only {
   position: absolute;

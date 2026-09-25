@@ -46,6 +46,7 @@ Optional request fields:
 - `include_hidden_stems` (`false` by default)
 - `include_ten_gods` (`false` by default)
 - `include_interactions` (`false` by default)
+- `include_day_master_context` (`false` by default)
 - `lang` (`fi` by default, used when `include_chart=true`)
 
 Response always includes:
@@ -62,6 +63,7 @@ Response conditionally includes:
 - `hidden_stems` (when `include_hidden_stems=true`)
 - `ten_gods` (when `include_ten_gods=true`)
 - `interactions` (when `include_interactions=true`)
+- `day_master_context` (when `include_day_master_context=true`)
 
 `ten_gods` gives, for each pillar, the ten god of its stem and of every
 hidden stem of its branch, relative to the Day Master (the day stem). Hidden
@@ -145,6 +147,46 @@ transformation, favorable/unfavorable verdict, or life outcome is inferred.
 
 The flag does not implicitly include `chart`, `hidden_stems`, or `ten_gods`;
 request those separately. Existing response sections are unchanged.
+
+#### Day Master context
+
+Set `include_day_master_context: true` to request the context independently of
+chart, hidden-stem, Ten Gods, or interaction enrichment. The response adds:
+
+- `policy`: `natal_presence_v1`.
+- `day_master`: `char`, `pinyin`, `element`, and `polarity`.
+- `season`: `basis: traditional_month_branch_groups`, `name`, `element`,
+  `month_branch` identity, and that branch's `hidden_stems` evidence.
+- `roots`: every same-element hidden-stem occurrence, including repeated branches.
+- `support`: separate `companions` and `resources` evidence arrays.
+
+An evidence record contains `pillar`, `component` (`stem` or `hidden_stem`),
+`branch`, `char`, `pinyin`, `element`, `polarity`, `qi_type`, and `ten_god`.
+Visible records have `branch: null` and `qi_type: null`. Hidden records identify
+their enclosing branch and `main`, `middle`, or `residual` qi position.
+Roots additionally include `match: exact_stem` or `opposite_polarity`.
+Records follow year/month/day/hour order, visible before hidden within a pillar.
+
+For example, the canonical chart's first root is:
+
+```json
+{
+  "pillar": "month", "component": "hidden_stem", "branch": "丑",
+  "char": "己", "pinyin": "Ji", "element": "earth", "polarity": "Yin",
+  "qi_type": "main", "ten_god": "friend", "match": "exact_stem"
+}
+```
+
+No root means `roots: []`; no support means the corresponding array is empty.
+The Day Master itself is excluded from companions. Hidden companions can be
+the same occurrences as roots and must not be double-counted. Resource is not
+a root. Season describes the resolved solar-month branch's traditional group,
+not Gregorian-month weather or a within-month governing-qi estimate. The group
+element, branch element, and hidden stems are deliberately distinct.
+
+These are natal occurrence records, not strength weights, favorability ratings,
+or applied transformations. See [Day Master context](Standard-Day-Master-Context.md)
+for the policy and Standard-mode controls.
 
 ### `POST /api/chart`
 
@@ -296,6 +338,7 @@ curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
     "include_hidden_stems": true,
     "include_ten_gods": true,
     "include_interactions": true,
+    "include_day_master_context": true,
     "lang": "en"
   }'
 ```

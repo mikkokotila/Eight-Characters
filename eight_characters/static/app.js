@@ -263,6 +263,7 @@ document.addEventListener('DOMContentLoaded', () => {
       include_hidden_stems: true,
       include_ten_gods: true,
       include_interactions: true,
+      include_day_master_context: true,
       lang: currentLanguage,
     };
 
@@ -304,13 +305,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderChart(chartData);
       populateTenGods(tenGodsData);
+      if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
+      populateHiddenStems(pillarsData.hidden_stems);
       relationships.render(pillarsData.interactions, chartData, tenGodsData);
+      dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems);
       syncTenGodsToggle();
       inputView.classList.add('hidden');
       chartView.classList.remove('hidden');
-      if (pillarsData.hidden_stems) {
-        populateHiddenStems(pillarsData.hidden_stems);
-      }
     } catch (err) {
       console.error(err);
       setLocationStatus(err.message || t('chart_create_error'), 'is-error');
@@ -319,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   backBtn.addEventListener('click', () => {
     relationships.clear();
+    dayMasterContext.clear();
     clearResolvedLocation();
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
@@ -341,7 +343,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const elementName = t('element_' + hs.element);
           const qiLabel = t('qi_' + hs.qi_type);
           return `
-            <div class='hidden-stem-item'>
+            <div class='hidden-stem-item' data-hidden-stem='${esc(hs.char)}'>
               <span class='hidden-stem-dot ${esc(hs.element)}'></span>
               <span class='hidden-stem-label'>${esc(hs.polarity)} ${esc(elementName)}</span>
               <span class='hidden-stem-type'>${esc(qiLabel)}</span>
@@ -362,6 +364,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc,
+    beforeSelect: () => dayMasterContext.clear(),
+  });
+  const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
+    root: chartView, translate: requiredTranslation, escape: esc,
+    beforeSelect: () => relationships.clear(),
   });
   const tenGodsToggle = document.getElementById('ten-gods-toggle');
   const syncTenGodsToggle = () => {
@@ -406,7 +413,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const tenGodName = requiredTranslation('ten_god_' + hs.ten_god);
           const qiLabel = requiredTranslation('qi_' + hs.qi_type);
           return `
-            <div class='hidden-stem-item'>
+            <div class='hidden-stem-item' data-hidden-stem='${esc(hs.char)}'>
               <span class='hidden-stem-dot ${esc(hs.element)}'></span>
               <span class='hidden-stem-label'>${esc(tenGodName)}</span>
               <span class='hidden-stem-type'>${esc(qiLabel)}</span>

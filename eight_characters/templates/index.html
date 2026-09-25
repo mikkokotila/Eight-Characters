@@ -66,6 +66,12 @@
     <div class="name" id="chart-date"></div>
   </div>
 
+  <section id="day-master-context" class="day-master-context" aria-labelledby="day-master-heading">
+    <h2 id="day-master-heading"></h2>
+    <div id="context-controls" class="context-controls"></div>
+    <p id="context-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  </section>
+
   <section class="relationships" aria-labelledby="relationships-heading">
     <div class="reading-toolbar">
       <h2 id="relationships-heading" data-i18n="relationships">Yhteydet</h2>
@@ -80,6 +86,8 @@
 
   <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
 
+  <section id="context-detail" class="relationship-detail context-detail hidden" aria-labelledby="context-detail-title"></section>
+
   <div class="back-row">
     <button id="back-btn" class="back-btn" data-i18n="back">← Takaisin</button>
   </div>
@@ -88,6 +96,7 @@
 
 <script src="/static/localization.js?v={{ app_version }}"></script>
 <script src="/static/relationships.js?v={{ app_version }}"></script>
+<script src="/static/day-master-context.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>
