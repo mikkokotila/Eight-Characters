@@ -219,18 +219,17 @@ body {
   opacity: 1;
 }
 
+/* Hangs from the field itself and shows every suggestion (at most eight) without scrolling. */
 .location-suggestions {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
   width: 100%;
-  max-height: 270px;
   border: 1px solid rgba(42, 37, 32, 0.12);
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.78);
   box-shadow: 0 8px 24px rgba(42, 37, 32, 0.08);
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   z-index: 20;
 }
 

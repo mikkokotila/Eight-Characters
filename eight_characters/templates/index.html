@@ -44,11 +44,12 @@
         <div id="time-status" class="field-status" aria-live="polite"></div>
       </div>
       <div class="field-group location-group">
-        <label for="location" data-i18n="label_location">Syntymäpaikka</label>
+        <label for="location" id="location-label" data-i18n="label_location">Syntymäpaikka</label>
         <div class="location-search-wrap">
-          <input type="text" id="location" name="location" placeholder="Kaupunki" data-i18n-placeholder="placeholder_city" autocomplete="off" aria-describedby="location-status" required>
+          <input type="text" id="location" name="location" placeholder="Kaupunki" data-i18n-placeholder="placeholder_city" autocomplete="off"
+            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="location-suggestions" aria-describedby="location-status" required>
+          <div id="location-suggestions" class="location-suggestions hidden" role="listbox" aria-labelledby="location-label"></div>
         </div>
-        <div id="location-suggestions" class="location-suggestions hidden"></div>
         <div id="location-status" class="field-status" aria-live="polite"></div>
       </div>
     </div>

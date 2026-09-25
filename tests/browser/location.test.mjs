@@ -33,6 +33,17 @@ const SUGGESTIONS = {
   // The partial query ranks another city first.
   Cheng: [ZHENGZHOU, CHENGDU_SICHUAN],
   Chengdu: [CHENGDU_SICHUAN, CHENGDU_JIANGXI, CHENGDU_JIAN],
+  // A full list: eight settlements, the most the page asks for.
+  Chengd: [
+    CHENGDU_SICHUAN,
+    place('Chengde', 'Hebei', 'China', 'Asia/Shanghai', 40.9519, 117.95883),
+    place('Chengdi', 'Shanxi', 'China', 'Asia/Shanghai', 36.71667, 113.1),
+    place('Xiabancheng', 'Hebei', 'China', 'Asia/Shanghai', 40.77028, 118.16972),
+    place('Chengde', 'Jilin', 'China', 'Asia/Shanghai', 43.24478, 126.06567),
+    place('Chengde', 'Taiwan', 'Taiwan', 'Asia/Taipei', 22.6105, 120.60327),
+    place('Chengdi', 'Fujian', 'China', 'Asia/Shanghai', 26.13078, 116.96451),
+    place('Chengdi', 'Jiangxi', 'China', 'Asia/Shanghai', 26.14101, 116.07928),
+  ],
   Helsinki: [HELSINKI],
 };
 
@@ -201,6 +212,62 @@ for (const profile of profiles) {
       const edited = await formState(page);
       assert.equal(edited.createDisabled, true);
       assert.equal(edited.found, false);
+    });
+
+    check('suggestions are a listbox hanging from the field, showing all eight without scrolling', async (page) => {
+      await stubSuggestions(page);
+      await page.goto(baseURL);
+      await page.locator('[data-lang="en"]').click();
+      await search(page, 'Chengd', CHENGDU_SICHUAN.display);
+      const layout = await page.evaluate(() => {
+        const field = document.getElementById('location').getBoundingClientRect();
+        const list = document.getElementById('location-suggestions');
+        const box = list.getBoundingClientRect();
+        return {
+          gap: Math.round(box.top - field.bottom), left: box.left - field.left, width: box.width - field.width,
+          scrolls: list.scrollHeight > list.clientHeight,
+        };
+      });
+      assert.deepEqual(layout, { gap: 6, left: 0, width: 0, scrolls: false });
+      const field = page.locator('#location');
+      assert.equal(await field.getAttribute('role'), 'combobox');
+      assert.equal(await field.getAttribute('aria-expanded'), 'true');
+      assert.equal(await field.getAttribute('aria-controls'), 'location-suggestions');
+      assert.equal(await page.locator('#location-suggestions').getAttribute('role'), 'listbox');
+      assert.equal(await page.locator('#location-suggestions [role="option"]').count(), 8);
+      await field.press('ArrowDown');
+      await field.press('ArrowDown');
+      assert.equal(await field.getAttribute('aria-activedescendant'), 'location-option-1');
+      assert.deepEqual(await page.locator('[role="option"]').evaluateAll((options) =>
+        options.map((option) => option.getAttribute('aria-selected'))),
+      ['false', 'true', 'false', 'false', 'false', 'false', 'false', 'false']);
+      await field.press('Escape');
+      assert.equal(await field.getAttribute('aria-expanded'), 'false');
+      assert.equal(await field.getAttribute('aria-activedescendant'), null);
+    });
+
+    check('a place picked with the pointer leaves focus in the field', async (page) => {
+      await stubSuggestions(page);
+      await page.goto(baseURL);
+      await page.locator('[data-lang="en"]').click();
+      await search(page, 'Chengdu', CHENGDU_SICHUAN.display);
+      await page.locator('.location-suggestion').nth(1).click();
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'location');
+      assert.equal((await formState(page)).value, 'Chengdu, Jiangxi, China');
+    });
+
+    check('a search with no place says so, and a malformed answer is an error', async (page) => {
+      await stubSuggestions(page);
+      await page.goto(baseURL);
+      await page.locator('[data-lang="en"]').click();
+      await page.locator('#location').fill('Atlantis');
+      await page.waitForFunction(() => document.getElementById('location-status').textContent === 'No matching places.');
+      assert.equal(await page.locator('#location-suggestions').isVisible(), false);
+      assert.equal(await page.locator('#location').getAttribute('aria-expanded'), 'false');
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { places: [] } }));
+      await page.locator('#location').fill('Helsinki');
+      await page.waitForFunction(() => document.getElementById('location-status').classList.contains('is-error'));
+      assert.equal(await page.locator('#location-status').textContent(), 'Location search failed.');
     });
 
     check('evolution mode opens the explorer for the picked place', async (page) => {

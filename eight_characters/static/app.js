@@ -148,11 +148,14 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   };
 
+  // The field is a combobox: focus stays in it and the active option is announced from it.
   const hideSuggestions = () => {
     latestSuggestions = [];
     activeSuggestionIndex = -1;
     locationSuggestions.innerHTML = '';
     locationSuggestions.classList.add('hidden');
+    locationInput.setAttribute('aria-expanded', 'false');
+    locationInput.removeAttribute('aria-activedescendant');
   };
 
   const showSuggestions = (suggestions) => {
@@ -165,29 +168,32 @@ document.addEventListener('DOMContentLoaded', () => {
     locationSuggestions.innerHTML = suggestions
       .map(
         (item, index) => `
-        <button
-          type='button'
-          class='location-suggestion ${index === activeSuggestionIndex ? 'is-active' : ''}'
+        <div
+          role='option'
+          id='location-option-${index}'
+          class='location-suggestion'
+          aria-selected='false'
           data-index='${index}'
         >
           <span class='location-suggestion-city'>${esc(item.display)}</span>
           <span class='location-suggestion-meta'>${esc(
             `${formatCoordinates(item.latitude, item.longitude)} · ${item.timezone}`
           )}</span>
-        </button>
+        </div>
       `
       )
       .join('');
     locationSuggestions.classList.remove('hidden');
+    locationInput.setAttribute('aria-expanded', 'true');
   };
 
   const updateActiveSuggestion = (nextIndex) => {
-    const suggestionButtons = [...locationSuggestions.querySelectorAll('.location-suggestion')];
-    if (!suggestionButtons.length) {
+    const options = [...locationSuggestions.querySelectorAll('.location-suggestion')];
+    if (!options.length) {
       activeSuggestionIndex = -1;
       return;
     }
-    const max = suggestionButtons.length - 1;
+    const max = options.length - 1;
     if (nextIndex < 0) {
       activeSuggestionIndex = max;
     } else if (nextIndex > max) {
@@ -195,12 +201,14 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       activeSuggestionIndex = nextIndex;
     }
-    suggestionButtons.forEach((button) => button.classList.remove('is-active'));
-    const activeButton = suggestionButtons[activeSuggestionIndex];
-    if (activeButton) {
-      activeButton.classList.add('is-active');
-      activeButton.scrollIntoView({ block: 'nearest' });
-    }
+    options.forEach((option, index) => {
+      const active = index === activeSuggestionIndex;
+      option.classList.toggle('is-active', active);
+      option.setAttribute('aria-selected', String(active));
+    });
+    const activeOption = options[activeSuggestionIndex];
+    locationInput.setAttribute('aria-activedescendant', activeOption.id);
+    activeOption.scrollIntoView({ block: 'nearest' });
   };
 
   const cancelSuggestionLookup = () => {
@@ -222,7 +230,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Kept whole: the chart is computed for these coordinates, since names repeat.
     resolvedLocation = selected;
     locationInput.value = selected.display;
-    createChartBtn.disabled = false;
+    createChartBtn.disabled = pending;
     hideSuggestions();
     setLocationStatus(
       t('selected_city', {
@@ -260,8 +268,11 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!res.ok) {
         throw new Error(data.detail || t('suggest_error'));
       }
-      showSuggestions(data.suggestions || []);
-      setLocationStatus(t('pick_city'), '');
+      if (!Array.isArray(data.suggestions)) {
+        throw new Error(t('suggest_error'));
+      }
+      showSuggestions(data.suggestions);
+      setLocationStatus(t(data.suggestions.length ? 'pick_city' : 'no_places'), '');
     } catch (err) {
       // A cancelled lookup rejects with an AbortError; only the current lookup's failures show.
       if (isStale()) {
@@ -324,6 +335,9 @@ document.addEventListener('DOMContentLoaded', () => {
       hideSuggestions();
     }
   });
+
+  // A pointer pick, like a keyboard pick, leaves focus in the field.
+  locationSuggestions.addEventListener('mousedown', (event) => event.preventDefault());
 
   locationSuggestions.addEventListener('click', (event) => {
     const button = event.target.closest('.location-suggestion');
