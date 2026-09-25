@@ -48,8 +48,9 @@ the test suite (`test_phase3_astronomical_kernel`,
   minute): every instant is within 30.9 s of the published minute. Rounded,
   238 give that minute. The other two lie 0.2 s and 0.9 s past a half minute.
   Moving all 240 by one constant amount cannot reproduce every minute. The
-  nearest it comes is a shift of 0.85 s earlier, which misses by 0.03 s. In
-  other words, the engine's instants lie about 0.85 s after the Observatory's.
+  best such shift, 0.855 s earlier, still leaves two instants 0.012 s past a
+  half minute. In other words, the engine's instants lie about 0.85 s after
+  the Observatory's.
 - **`lunar-python`**, every jie 1950-2100 (1,812 instants, compared in TT so that
   the two libraries' conversions to civil time do not enter): largest difference
   2.7 s, median 0.6 s. `lunar-python` evaluates an abridged series with its own
