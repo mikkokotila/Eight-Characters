@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Eight Characters — Evolution Explorer</title>
-  <link rel="stylesheet" href="/explorer/styles.css">
+  <link rel="stylesheet" href="/explorer/styles.css?v={{ app_version }}">
 </head>
 <body>
   <header class="topbar">
@@ -96,8 +96,8 @@
 
   <footer class="status-bar" id="statusBar"></footer>
 
-  <script src="/explorer/vendor/d3.v7.min.js"></script>
-  <script src="/explorer/data.js"></script>
-  <script src="/explorer/app.js"></script>
+  <script src="/explorer/vendor/d3.v7.min.js?v={{ app_version }}"></script>
+  <script src="/explorer/data.js?v={{ app_version }}"></script>
+  <script src="/explorer/app.js?v={{ app_version }}"></script>
 </body>
 </html>

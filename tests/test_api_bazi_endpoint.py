@@ -113,6 +113,7 @@ class TestApiBaziCompatibility(unittest.TestCase):
                     ),
                     ResolvedCity(
                         city='Helsinki',
+                        region='Uusimaa',
                         country='Finland',
                         timezone='Europe/Helsinki',
                     ),
@@ -133,8 +134,11 @@ class TestApiBaziCompatibility(unittest.TestCase):
         payload = response.json()
         self.assertIn('resolved_location', payload)
         self.assertEqual(payload['resolved_location']['city'], 'Helsinki')
+        self.assertEqual(payload['resolved_location']['region'], 'Uusimaa')
         self.assertEqual(payload['resolved_location']['country'], 'Finland')
         self.assertEqual(payload['resolved_location']['timezone'], 'Europe/Helsinki')
+        self.assertEqual(payload['resolved_location']['latitude'], 60.1699)
+        self.assertEqual(payload['resolved_location']['longitude'], 24.9384)
 
     def test_location_suggest_returns_suggestions(self) -> None:
         with patch(
@@ -143,6 +147,7 @@ class TestApiBaziCompatibility(unittest.TestCase):
                 return_value=[
                     {
                         'name': 'Helsinki',
+                        'admin1': 'Uusimaa',
                         'country': 'Finland',
                         'timezone': 'Europe/Helsinki',
                         'longitude': 24.9384,
@@ -162,8 +167,12 @@ class TestApiBaziCompatibility(unittest.TestCase):
         self.assertEqual(len(payload['suggestions']), 1)
         suggestion = payload['suggestions'][0]
         self.assertEqual(suggestion['city'], 'Helsinki')
+        self.assertEqual(suggestion['region'], 'Uusimaa')
         self.assertEqual(suggestion['country'], 'Finland')
         self.assertEqual(suggestion['timezone'], 'Europe/Helsinki')
+        self.assertEqual(suggestion['latitude'], 60.1699)
+        self.assertEqual(suggestion['longitude'], 24.9384)
+        self.assertEqual(suggestion['display'], 'Helsinki, Uusimaa, Finland')
 
     def test_location_suggest_returns_500_on_lookup_service_error(self) -> None:
         with patch(

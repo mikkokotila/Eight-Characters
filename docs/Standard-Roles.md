@@ -77,6 +77,8 @@ The policy is `natal_roles_v1`. It reuses the same root definition as
 and root matcher. Evolution inference is not involved.
 
 See `tests/test_api_role_profile.py` for independent-reference coverage and
-`tests/browser/roles.test.mjs` for the real-API browser suite. All browser suites
-use `tests/browser/chart-helpers.mjs`; only geocoding is stubbed. See
+`tests/browser/roles.test.mjs` for the real-API browser suite. The role, context, and relationship suites share
+`tests/browser/chart-helpers.mjs`. Suggestion fixtures carry coordinates and the
+app sends them unchanged; chart requests are not rewritten. The location suite
+also covers picking a place and opening the explorer. See
 [API reference](api.md) and [browser setup](../tests/browser/README.md).

@@ -1,4 +1,4 @@
-# Standard-mode browser regression tests
+# Browser regression tests
 
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend
@@ -24,10 +24,11 @@ frame, and Finnish-language screenshots. Nothing is written into the repository
 by default. Review the screenshots alongside the behavioral assertions when
 changing typography, spacing, or responsive layout.
 
-The tests calculate charts through the real `/api/four_pillars` endpoint. They stub
-only location suggestions and substitute fixed test coordinates for geocoding.
-Malformed-response tests intentionally modify the real response to verify visible
-errors. No real birth records or saved user data are used.
+The tests calculate charts and explorer graphs through the real API. They stub
+only location suggestions, whose fixed test coordinates the page sends as the
+chart's `location`, so no test depends on the geocoder. Malformed-response tests
+intentionally modify the real response to verify visible errors. No real birth
+records or saved user data are used.
 
 Coverage includes selection and keyboard focus, unchanged pillar geometry and
 natal colors, global and individual Ten Gods flips, long-press release suppression,
@@ -48,4 +49,11 @@ exact hidden-to-visible matching (including the separately labeled Day Master),
 all visible-stem roots, unchanged natal role reference, stable occurrence IDs,
 absent roles, unrooted visible stems, repeated visible identities, nested back/focus
 navigation, exclusive selection, card gestures, Finnish layouts, and corrupted
-profile rejection. `chart-helpers.mjs` is shared by all three suites.
+profile rejection. `chart-helpers.mjs` is shared by the role, context, and relationship suites.
+
+The location suite checks that places sharing a name are told apart by region and
+coordinates, that the picked place's coordinates reach the chart and the evolution
+explorer, that a slow answer for an earlier query never replaces the list, that a
+picked place can be edited and is kept when returning from the chart, and that
+explorer links naming the place partly, twice, or only by city and country behave
+as documented.

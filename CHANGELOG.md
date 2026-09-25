@@ -16,6 +16,30 @@
 - No new strength weights, favorability ratings, transformations, production dependencies, or Evolution changes.
 - Version bumped to `0.15.0` with coordinated static-asset cache keys. Only `engine.version` changes in the numerical regression fixture.
 
+## 0.14.1
+
+### Added
+- **Location browser tests** (`tests/browser/location.test.mjs`): same-name places told apart and the picked one charted and opened in the explorer by its coordinates, stale suggestion answers ignored, a picked place editable and kept when returning from the chart, and explorer links with a partial or doubled place rejected. They run in the existing Chromium/WebKit harness, desktop and mobile; the relationship and Day Master context tests' suggestion stubs now have the coordinates the page sends as `location`.
+
+### Changed
+- Version bumped to `0.14.1` so HTML, JavaScript, and CSS use coordinated cache keys, and returning visitors load the fixed location code.
+- Updated only the regression fixture's `engine.version` metadata; numerical engine results are unchanged.
+- **`POST /api/location_suggest` identifies each place**: every suggestion also carries `region` (the geocoder's first-level region, such as a province or state), `latitude` and `longitude`, and `display` names the region: `Chengdu, Sichuan, China` rather than `Chengdu, China`. Empty parts are left out, so a place without a country reads `Hong Kong`, not `Hong Kong, `. Names repeat even within a region (two places called Chengdu in Sichuan, two in Jiangxi), so the coordinates are what identify a suggestion.
+- `resolved_location` (city/country mode of `POST /api/four_pillars` and `POST /api/evolution_explorer`, and `POST /api/location_search`) also reports `region`, `latitude` and `longitude`, so a caller can see which place a name was resolved to. A name still resolves to the first geocoder match in the given country; send `location` to compute for a particular place.
+
+### Fixed
+- **The chart is computed for the place picked from the suggestions**: the page sent only the picked place's city and country, and the server resolved that name again to the first geocoder match. Picking the second `Chengdu, China` (in Jiangxi, 115.34° E) silently computed the chart for Chengdu, Sichuan (104.07° E), 45 minutes of true solar time away, which can change the hour pillar: 15:40 on 1988-02-04 is a 申 hour in the Jiangxi Chengdu and a 未 hour in the Sichuan one. The page now sends the picked place's coordinates and timezone as `location`.
+- The suggestion list and the selected-place status show each place's coordinates, so places that share a name and region can be told apart.
+- A place without a country in the geocoder data, such as Hong Kong, can be charted; the page used to send an empty country, which the API rejected.
+- **A picked place can be changed without reloading the page**: the field locked after a pick until the chart's Back button, so a wrong pick could only be undone by reloading. The field now stays editable; editing it drops the pick and searches again, and Create chart is disabled until a place is picked.
+- **Back from the chart keeps the picked place**: Back cleared the pick and disabled Create chart, so changing only the date or time meant picking the same place again. The pick now stays, with its status line, and Create chart stays enabled.
+- **The evolution explorer computes for the picked place too**: its link carried only the city and country, which the explorer resolved by name again. The link now carries the picked place's `latitude`, `longitude` and `timezone`, and the explorer sends them as `location`. Links with `city` and `country` from before still open, resolved by name as they were.
+- The explorer no longer shows its bundled sample chart when a link carries only part of the birth, or none of the place: a link from a Hong Kong pick, which had no country, silently opened the sample chart. Such links, and links that name the place both by coordinates and by city, now show an error; `/explorer/` with no birth at all still shows the sample.
+- The evolution explorer page is rendered from a template with versioned asset URLs (`?v=<version>`), like the start page. Its script and data were served with no cache instructions, so after an update a browser could keep running the cached old explorer. The page is served at `/explorer/`; `/explorer/index.html` no longer exists.
+- **Location suggestions only ever list results for the current input**: responses were applied in the order they arrived, so a slow response for a partial query could replace the list for the full query. Typing `Chengdu` could list `Zhengzhou, China` first (the top result for `Che`, `Chen` and `Cheng`), and picking the top entry gave the wrong birthplace, longitude and true solar time. A lookup is now cancelled as soon as the input changes, and a response for anything other than the current input is discarded.
+- The previous list is hidden as soon as the input changes, so Enter or a click can no longer pick a result for an earlier query while the new lookup runs.
+- Clearing the input or choosing a city cancels the pending lookup, which could otherwise reopen the list or replace the status. A cancelled lookup is never reported as an error; a failure of the current lookup still is.
+
 ## 0.14.0
 
 ### Added

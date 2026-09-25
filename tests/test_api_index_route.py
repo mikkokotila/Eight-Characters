@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 from eight_characters import __version__
 from eight_characters.main import app
 
+EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
+
 
 class TestApiIndexRoute(unittest.TestCase):
     @classmethod
@@ -75,6 +77,20 @@ class TestApiIndexRoute(unittest.TestCase):
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
+
+    def test_explorer_page_versions_its_assets(self) -> None:
+        for path in ('/explorer/', '/explorer'):
+            response = self.client.get(path)
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.headers['content-type'].startswith('text/html'))
+            self.assertIn('id="statusBar"', response.text)
+            for asset in EXPLORER_ASSETS:
+                self.assertIn(f'/explorer/{asset}?v={__version__}', response.text)
+
+    def test_explorer_assets_are_served(self) -> None:
+        for asset in EXPLORER_ASSETS:
+            response = self.client.get(f'/explorer/{asset}?v={__version__}')
+            self.assertEqual(response.status_code, 200, asset)
 
 
 if __name__ == '__main__':

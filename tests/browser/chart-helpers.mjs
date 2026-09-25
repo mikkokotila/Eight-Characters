@@ -50,17 +50,18 @@ async function openChart(page, options = {}, mutate = null) {
   // Only geocoding is stubbed. Every chart and context record is calculated by the real API.
   let calculated;
   await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [
-    { city: 'Chengdu', country: 'China', timezone: 'Asia/Shanghai', display: 'Chengdu, China' },
+    { city: 'Chengdu', region: 'Sichuan', country: 'China', ...location, display: 'Chengdu, Sichuan, China' },
   ] } }));
   await page.route('**/api/four_pillars', async (route) => {
     const body = route.request().postDataJSON();
     assert.equal(body.include_interactions, true);
     assert.equal(body.include_day_master_context, true);
     assert.equal(body.include_role_profile, true);
-    delete body.city;
-    delete body.country;
-    body.location = location;
-    const response = await route.fetch({ postData: JSON.stringify(body) });
+    // Assert the actual picked coordinates; do not rewrite the app's request.
+    assert.deepEqual(body.location, location);
+    assert.equal(body.city, undefined);
+    assert.equal(body.country, undefined);
+    const response = await route.fetch();
     assert.equal(response.status(), 200);
     const payload = await response.json();
     calculated = payload;
