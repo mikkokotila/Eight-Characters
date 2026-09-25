@@ -23,8 +23,10 @@
 :root {
   --bg: #F5F0E8;
   --text: #2A2520;
-  --text-muted: #7A7168;
-  --text-light: #9A9389;
+  /* Both greys meet WCAG AA (4.5:1) on the page and on every element-tinted
+     panel; de-emphasis comes from size, case and tracking, not from lightness. */
+  --text-muted: #675F57;
+  --text-light: #655F58;
 
   --metal-bg: #C8C2B8;
   --metal-text: #33302C;
@@ -498,15 +500,15 @@ body {
   transform: translateX(-50%);
   width: 14px;
   height: 14px;
-  opacity: 0.2;
+  /* The only cue that a branch opens: at least 3:1 on every element card (WCAG 1.4.11). */
+  opacity: 0.7;
   pointer-events: none;
   transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1),
               opacity 0.3s ease;
 }
-.card.branch:hover .branch-expand-hint { opacity: 0.35; }
+.card.branch:hover .branch-expand-hint { opacity: 0.9; }
 .card.branch.is-expanded .branch-expand-hint {
   transform: translateX(-50%) rotate(180deg);
-  opacity: 0.4;
 }
 
 /* ── Hidden stems panel ── */
@@ -601,7 +603,6 @@ body {
 }
 .card-back .hidden-stem-type {
   color: inherit;
-  opacity: 0.7;
 }
 
 /* Too narrow for one row: the qi label moves under the ten god name. */
@@ -681,7 +682,6 @@ body {
   font-weight: 300;
   font-size: 13px;
   letter-spacing: 1px;
-  opacity: 0.75;
   text-align: center;
   margin-top: -4px;
 }

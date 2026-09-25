@@ -26,8 +26,99 @@ const AUDIT = () => {
   const describe = (element) => `${element.tagName.toLowerCase()}${element.id ? `#${element.id}` : ''}`
     + `${element.classList.length ? `.${[...element.classList].join('.')}` : ''} "${element.textContent.trim().slice(0, 40)}"`;
   const firstFamily = (element) => getComputedStyle(element).fontFamily.split(',')[0].trim().replace(/^["']|["']$/g, '');
-  window.__ecAudit = { textElements, describe, firstFamily };
+
+  // WCAG 2.2 contrast, with backgrounds and opacity composited through every ancestor.
+  const parse = (value) => {
+    const match = value.match(/^rgba?\(([^)]+)\)$/);
+    if (!match) throw new Error(`Unexpected colour value: ${value}`);
+    const [r, g, b, a = 1] = match[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return [r, g, b, a];
+  };
+  const over = ([r, g, b, a], below) => [r, g, b].map((channel, i) => channel * a + below[i] * (1 - a));
+  const opacity = (element) => {
+    let product = 1;
+    for (let node = element; node; node = node.parentElement) product *= Number(getComputedStyle(node).opacity);
+    return product;
+  };
+  const backdrop = (element) => {
+    const chain = [];
+    for (let node = element; node; node = node.parentElement) chain.unshift(node);
+    return chain.reduce((below, node) => {
+      const [r, g, b, a] = parse(getComputedStyle(node).backgroundColor);
+      return a > 0 ? over([r, g, b, a * opacity(node)], below) : below;
+    }, [255, 255, 255]);
+  };
+  const luminance = (rgb) => {
+    const [r, g, b] = rgb.map((c) => { c /= 255; return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4; });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => {
+    const [light, dark] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+    return (light + 0.05) / (dark + 0.05);
+  };
+  const inkOn = (element, colour, surface) => {
+    const [r, g, b, a] = parse(colour);
+    return ratio(over([r, g, b, a * opacity(element)], surface), surface);
+  };
+  const contrastFailures = () => textElements().flatMap((element) => {
+    // Disabled controls are exempt (WCAG 1.4.3).
+    if (element.closest('button:disabled')) return [];
+    const style = getComputedStyle(element);
+    const size = parseFloat(style.fontSize);
+    const needed = size >= 24 || (size >= 18.66 && Number(style.fontWeight) >= 700) ? 3 : 4.5;
+    const got = inkOn(element, style.color, backdrop(element));
+    return got < needed ? [`${describe(element)} ${got.toFixed(2)}:1, needs ${needed}:1`] : [];
+  });
+  // The branch expand chevron is the only cue that a branch card opens (WCAG 1.4.11: 3:1).
+  const chevronFailures = () => [...document.querySelectorAll('.branch-expand-hint')]
+    .filter((hint) => hint.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true }))
+    .flatMap((hint) => {
+      const got = inkOn(hint, getComputedStyle(hint).color, backdrop(hint.parentElement));
+      const card = hint.closest('.card');
+      return got < 3 ? [`chevron on ${card.dataset.pillar} ${[...card.classList].join('.')} ${got.toFixed(2)}:1`] : [];
+    });
+  window.__ecAudit = { textElements, describe, firstFamily, contrastFailures, chevronFailures, parse, backdrop, inkOn };
 };
+
+// Every chart state and detail page, in both languages; `inspect` runs in each.
+async function visitStates(page, inspect) {
+  for (const lang of ['en', 'fi']) {
+    await openChart(page, { lang });
+    await page.locator('#back-btn').click();
+    await page.locator('#location').fill('Chengdu');
+    await page.locator('.location-suggestion').first().waitFor();
+    await inspect(`${lang} landing with suggestions`);
+    await page.locator('.location-suggestion').first().click();
+    await inspect(`${lang} landing with a picked place`);
+    await page.locator('#create-chart-btn').click();
+    await page.locator('#chart-view').waitFor({ state: 'visible' });
+    await settled(page);
+    await inspect(`${lang} chart`);
+    const pillars = ['hour', 'day', 'month', 'year'];
+    for (const pillar of pillars) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
+    await settled(page);
+    await inspect(`${lang} chart with hidden stems`);
+    await page.locator('#ten-gods-toggle').click();
+    await settled(page);
+    await inspect(`${lang} Ten Gods with hidden stems`);
+    for (const pillar of pillars) await page.locator(`.card.branch[data-pillar="${pillar}"]`).click();
+    await page.locator('#ten-gods-toggle').click();
+    await settled(page);
+    for (const topic of ['season', 'roots', 'roles']) {
+      await page.locator(`button[data-context="${topic}"]`).click();
+      await inspect(`${lang} ${topic}`);
+    }
+    await page.locator('button.role-choice[data-role="friend"]').click();
+    await inspect(`${lang} role`);
+    await page.locator('button[data-role-back]').click();
+    await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
+    await inspect(`${lang} stem roots`);
+    await page.keyboard.press('Escape');
+    await page.locator('.relationship-chip').first().click();
+    await inspect(`${lang} relationship`);
+    await page.keyboard.press('Escape');
+  }
+}
 
 async function installAudit(page) {
   await page.addInitScript(AUDIT);
@@ -124,6 +215,19 @@ for (const profile of profiles) {
       }
       assert.deepEqual(failures, []);
     }));
+
+    check('text meets WCAG AA contrast and the expand chevron 3:1, in every state', async (page) => {
+      await installAudit(page);
+      const failures = [];
+      await visitStates(page, async (state) => {
+        // Measure settled colours, not a fade or a flip in progress.
+        await settled(page);
+        const found = await page.evaluate(() => [
+          ...window.__ecAudit.contrastFailures(), ...window.__ecAudit.chevronFailures()]);
+        failures.push(...found.map((failure) => `${state}: ${failure}`));
+      });
+      assert.deepEqual([...new Set(failures)], []);
+    });
 
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
