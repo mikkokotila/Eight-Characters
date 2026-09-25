@@ -14,7 +14,7 @@ marks identify complete three-harmony frames. These are line styles, not ratings
 The existing five-element colors, card faces, fonts, and element assignments remain
 unchanged. A relationship does not repaint a card as a transformed element.
 
-Show Ten Gods turns all eight cards over together. Show characters returns them.
+Show Ten Gods turns all eight cards over together. Hide Ten Gods returns them.
 Individual one-second holds still work, and the toggle reflects a mixed state when
 only some cards are turned. A quick click or tap on a branch still toggles its
 hidden-stem panel; releasing a long press does not also expand it.

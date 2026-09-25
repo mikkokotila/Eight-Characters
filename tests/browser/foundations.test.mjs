@@ -407,6 +407,19 @@ for (const profile of profiles) {
       assert.notEqual(branch.shadow, 'none');
     });
 
+    check('the Ten Gods toggle names what it does', async (page) => {
+      const labels = { en: ['Show Ten Gods', 'Hide Ten Gods'], fi: ['Näytä kymmenen jumalaa', 'Piilota kymmenen jumalaa'] };
+      for (const [lang, [show, hide]] of Object.entries(labels)) {
+        await openChart(page, { lang });
+        const toggle = page.locator('#ten-gods-toggle');
+        assert.equal(await toggle.textContent(), show);
+        await toggle.click();
+        await settled(page);
+        assert.equal(await toggle.textContent(), hide);
+        assert.equal(await toggle.getAttribute('aria-pressed'), 'true');
+      }
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
