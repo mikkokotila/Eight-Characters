@@ -171,8 +171,11 @@ body {
   background: rgba(255, 255, 255, 0.45);
   border: 1px solid rgba(42, 37, 32, 0.12);
   border-radius: 10px;
+  /* One height and alignment for all three fields; native date and time
+     controls would otherwise stand taller than the text field. */
+  height: 48px;
   padding: 12px 16px;
-  text-align: center;
+  text-align: left;
   outline: none;
   transition: border-color 0.3s ease, box-shadow 0.3s ease;
   width: 180px;

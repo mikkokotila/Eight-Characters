@@ -229,6 +229,16 @@ for (const profile of profiles) {
       assert.deepEqual([...new Set(failures)], []);
     });
 
+    check('the birth-data fields share one height and one text alignment', async (page) => {
+      await openChart(page, { lang: 'en' });
+      await page.locator('#back-btn').click();
+      const fields = await page.locator('#date, #time, #location').evaluateAll((inputs) => inputs.map((input) => ({
+        height: input.getBoundingClientRect().height, align: getComputedStyle(input).textAlign,
+      })));
+      assert.equal(new Set(fields.map((field) => field.height)).size, 1, JSON.stringify(fields));
+      assert.equal(new Set(fields.map((field) => field.align)).size, 1, JSON.stringify(fields));
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];
