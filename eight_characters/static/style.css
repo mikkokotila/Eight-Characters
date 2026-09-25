@@ -32,6 +32,9 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* Browsers draw form controls in a system font unless told to take the page's. */
+button, input, select, textarea { font-family: inherit; }
+
 body {
   background: var(--bg);
   color: var(--text);
