@@ -361,6 +361,36 @@ for (const profile of profiles) {
         'H1 February 4, 1988 · 16:30 · Chengdu', 'H2 Day Master · Ji — Yin Earth', 'H2 Relationships']);
     });
 
+    check('card highlights stay within half the gap between stacked cards', async (page) => {
+      const intrusions = (state) => page.evaluate((state) => {
+        const gap = parseFloat(getComputedStyle(document.querySelector('.pillar-cards')).rowGap);
+        const highlighted = [...document.querySelectorAll('.card.is-related, .card.is-context-source, .card.is-context-reference')];
+        if (!highlighted.length) throw new Error(`${state}: nothing highlighted`);
+        return highlighted.flatMap((card) => {
+          const style = getComputedStyle(card);
+          const reach = parseFloat(style.outlineOffset) + parseFloat(style.outlineWidth);
+          return reach > gap / 2
+            ? [`${state}: ${style.outlineStyle} outline on ${card.dataset.pillar} reaches ${reach}px into a ${gap}px gap`] : [];
+        });
+      }, state);
+      const found = [];
+      await openChart(page, { lang: 'en' });
+      await page.locator('[data-kind="stem_combination"]').click();
+      found.push(...await intrusions('stem combination'));
+      await page.locator('button[data-context="roots"]').click();
+      found.push(...await intrusions('roots'));
+      await page.locator('button[data-context="roles"]').click();
+      await page.locator('.role-stem-entry button[data-root-pillar="year"]').click();
+      found.push(...await intrusions('stem roots'));
+      await openChart(page, { date: '1990-01-05', time: '12:00' });
+      await page.locator('[data-kind="branch_clash"]').first().click();
+      found.push(...await intrusions('branch clash'));
+      await openChart(page, { date: '1990-01-08', time: '12:00' });
+      await page.locator('[data-kind="harmony_frame"]').first().click();
+      found.push(...await intrusions('harmony frame'));
+      assert.deepEqual(found, []);
+    });
+
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
       const origin = new URL(process.env.EC_BASE_URL).origin;
       const foreign = [];

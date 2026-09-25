@@ -735,9 +735,10 @@ body {
   color: var(--text);
   border-bottom-color: var(--text-muted);
 }
+/* Highlights stay within half the 4px gap between a pillar's stem and branch. */
 .card.is-context-source {
   outline: 1px solid var(--text-muted);
-  outline-offset: 5px;
+  outline-offset: 1px;
 }
 .hidden-stem-item.is-context-evidence,
 .context-evidence-row.is-context-evidence {
@@ -840,7 +841,7 @@ body {
 .role-exact { font-size: 11px; font-weight: 300; line-height: 1.8; color: var(--text-muted); margin-top: 8px; }
 .role-exact .reading-toggle { margin-left: 4px; }
 .context-detail .role-exact-summary { margin-top: 24px; }
-.card.is-context-reference { outline: 1px dotted var(--text-muted); outline-offset: 5px; }
+.card.is-context-reference { outline: 1px dotted var(--text-muted); outline-offset: 1px; }
 @media (max-width: 640px) {
   .role-group { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; }
   .role-group-heading { grid-column: 1 / -1; text-align: center; }
@@ -948,10 +949,11 @@ body {
 
 .card.is-related {
   outline: 1px solid var(--text-muted);
-  outline-offset: 5px;
+  outline-offset: 1px;
 }
 [data-relationship-kind="branch_clash"] .card.is-related { outline-style: dashed; }
-[data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--text-muted); }
+/* A double line needs 3px; it starts 1px inside the card to keep within the gap. */
+[data-relationship-kind="harmony_frame"] .card.is-related { outline: 3px double var(--text-muted); outline-offset: -1px; }
 
 .relationship-empty,
 .relationship-meta,
