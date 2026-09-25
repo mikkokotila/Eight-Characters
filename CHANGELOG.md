@@ -1,11 +1,13 @@
 # Changelog
 
-## Unreleased
+## 0.14.1
 
 ### Added
 - **Location browser tests** (`tests/browser/location.test.mjs`): same-name places told apart and the picked one charted and opened in the explorer by its coordinates, stale suggestion answers ignored, a picked place editable and kept when returning from the chart, and explorer links with a partial or doubled place rejected. They run in the existing Chromium/WebKit harness, desktop and mobile; the relationship and Day Master context tests' suggestion stubs now have the coordinates the page sends as `location`.
 
 ### Changed
+- Version bumped to `0.14.1` so HTML, JavaScript, and CSS use coordinated cache keys, and returning visitors load the fixed location code.
+- Updated only the regression fixture's `engine.version` metadata; numerical engine results are unchanged.
 - **`POST /api/location_suggest` identifies each place**: every suggestion also carries `region` (the geocoder's first-level region, such as a province or state), `latitude` and `longitude`, and `display` names the region: `Chengdu, Sichuan, China` rather than `Chengdu, China`. Empty parts are left out, so a place without a country reads `Hong Kong`, not `Hong Kong, `. Names repeat even within a region (two places called Chengdu in Sichuan, two in Jiangxi), so the coordinates are what identify a suggestion.
 - `resolved_location` (city/country mode of `POST /api/four_pillars` and `POST /api/evolution_explorer`, and `POST /api/location_search`) also reports `region`, `latitude` and `longitude`, so a caller can see which place a name was resolved to. A name still resolves to the first geocoder match in the given country; send `location` to compute for a particular place.
 
