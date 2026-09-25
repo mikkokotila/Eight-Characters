@@ -42,6 +42,7 @@ from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
 )
 from eight_characters.interactions import detect_interactions
+from eight_characters.nutation import nutation_series
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 from eight_characters.role_profile import build_role_profile
 from eight_characters.ten_gods import (
@@ -55,6 +56,7 @@ from eight_characters.time_convert import (
     BirthInput,
     NonexistentTimeError,
 )
+from eight_characters.vsop87d import earth_series
 
 BASE_DIR = Path(__file__).resolve().parent
 MAPPINGS_DIR = BASE_DIR / 'resources' / 'mappings'
@@ -611,10 +613,13 @@ def _load_ten_gods_lookup() -> dict[tuple[str, str], TenGodName]:
     return parse_ten_gods_mapping(MAPPINGS_DIR / 'ten-gods.csv')
 
 
-# Every chart request needs both mappings: a broken table stops the app at startup
-# instead of failing requests one by one.
+# Every chart request needs both mappings and the astronomical model tables: a
+# broken or altered table stops the app at startup instead of failing requests one
+# by one.
 _load_hidden_stems_lookup()
 _load_ten_gods_lookup()
+earth_series()
+nutation_series()
 
 
 def _build_ten_gods_result(

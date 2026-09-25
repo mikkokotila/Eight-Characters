@@ -30,6 +30,7 @@ eight_characters = [
   'static/*.svg',
   'static/*.ico',
   'resources/mappings/*.csv',
+  'resources/astronomy/*',
 ]
 
 [tool.ruff]

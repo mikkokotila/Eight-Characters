@@ -1,5 +1,7 @@
 import json
 import random
+import subprocess
+import sys
 import unittest
 from datetime import UTC, datetime, timedelta
 from math import pi
@@ -96,6 +98,43 @@ class TestVsop87dEvaluator(unittest.TestCase):
     def test_altered_model_table_is_refused(self) -> None:
         with self.assertRaisesRegex(ValueError, 'is not the published table'):
             astronomy_resource_text('VSOP87D.ear', '0' * 64)
+
+    def test_app_verifies_every_model_table_at_startup(self) -> None:
+        loaded = subprocess.run(
+            [
+                sys.executable,
+                '-c',
+                'import eight_characters.main\n'
+                'from eight_characters.nutation import nutation_series\n'
+                'from eight_characters.vsop87d import earth_series\n'
+                'print(earth_series.cache_info().currsize,'
+                ' nutation_series.cache_info().currsize)',
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+        self.assertEqual(loaded.stdout.split(), ['1', '1'])
+        for module, constant, file_name in (
+            ('vsop87d', 'VSOP87D_EARTH_SHA256', 'VSOP87D.ear'),
+            ('nutation', 'NUTATION_LONGITUDE_SHA256', 'tab5.3a.txt'),
+            ('nutation', 'NUTATION_OBLIQUITY_SHA256', 'tab5.3b.txt'),
+        ):
+            with self.subTest(table=file_name):
+                refused = subprocess.run(
+                    [
+                        sys.executable,
+                        '-c',
+                        f'import eight_characters.{module} as model\n'
+                        f"model.{constant} = '0' * 64\n"
+                        'import eight_characters.main',
+                    ],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                self.assertNotEqual(refused.returncode, 0)
+                self.assertIn(f'{file_name} is not the published table', refused.stderr)
 
 
 class TestNutationModel(unittest.TestCase):

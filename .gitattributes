@@ -1,0 +1,4 @@
+# Published model tables, kept byte for byte: the loaders check their SHA-256.
+eight_characters/resources/astronomy/VSOP87D.ear -text
+eight_characters/resources/astronomy/tab5.3a.txt -text
+eight_characters/resources/astronomy/tab5.3b.txt -text
