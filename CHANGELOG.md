@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.16.1
+
+The engine computes solar terms with the models it reports (#24). The month and year pillars change at the right instants; they were up to 8 minutes off.
+
+### Fixed
+- **Solar terms up to 8 minutes off**: the engine evaluated a 6-term seed of VSOP87D and a 4-term nutation series, while reporting `VSOP87D_full_Earth` and `IAU_2000A`. Its jie differed from `lunar-python` by a median of 120 s and up to 494 s (1950-2100), and from the Hong Kong Observatory by −358 s to +328 s. A birth within that margin of a jie could get the wrong month pillar, and at Lichun the wrong year pillar. The engine now evaluates:
+  - all 2,425 terms of VSOP87D for the Earth, from IMCCE's published `VSOP87D.ear`;
+  - IAU 2000A nutation with the IAU 2006 adjustments: 1,358 and 1,056 terms, IERS Conventions 2010 Tables 5.3a/b. `engine.nutation_model` reads `IAU_2000A_R06`;
+  - the FK5 correction of Meeus eq. 32.3.
+- **Equinox of date**: VSOP87D carries positions to the date with the IAU 1976 rate of precession (Bretagnon & Francou 1988), but the engine's obliquity and nutation belong to the IAU 2006 precession. Longitudes now refer to the IAU 2006 equinox of date (new decision D-007b; new `engine.precession_model: IAU_2006`). Without this change, the jie drifted by 0.3″ a century against both references: +3 s in the 1950s, −8 s by 2100.
+- **Checked against references**:
+  - All 240 Hong Kong Observatory terms, 2019-2028, fall within 30.9 s of the published minute; 238 of them round to it.
+  - Every jie 1950-2100 is within 2.7 s of `lunar-python` (median 0.6 s).
+  - Meeus's Example 25.b is reproduced to 0.0012″. The engine was 3.0″ off.
+- The equation of time refers the mean Sun to the same equinox as the true Sun. It had missed the FK5 correction. True solar time moves by 0.006 s.
+- **Regression fixture** (1988-02-04, Chengdu): the pillars are unchanged.
+  - Lichun 1988 moves from 14:42:08 to 14:42:49.5 UTC. The year and month boundary distances change from 22328.3 s to 22369.5 s. `lunar-python` puts Lichun 0.44 s earlier in TT.
+  - The solar longitude changes from 314.738003° to 314.737513°. `lunar-python` gives 314.737519°.
+  - `hour_boundary_proximity_seconds` changes from 744.0 to 744.1. The seed series had moved the Sun 1.76″ in the equation of time, 0.12 s of true solar time.
+
+### Changed
+- **Model tables checked at startup**: the app reads VSOP87D and both nutation tables when it starts, and checks each one's SHA-256, term counts and term numbering. An altered or truncated table stops it, where before the results would silently change. The tables ship in the package (`resources/astronomy/*`, with a provenance README), and `.gitattributes` keeps them byte for byte on every checkout.
+- **Solar term solving**: each jie is solved once per process and reused, and a chart solves only the four nearest its birth. The first chart in a season takes about 90 ms (at most 140 ms); later charts take about 1 ms. The tables load in about 20 ms.
+- **Stricter reference tests**:
+  - The HKO check converts the engine's TT instants to UTC; it had compared TT with civil time. It now allows 31.5 s against the published minute, down from 420 s.
+  - `lunar-python` covers every jie 1950-2100 in TT.
+  - New checks: IMCCE's VSOP87D check values; ERFA's `eraP06e` values for the IAU 2006 precession and obliquity; VSOP87D's precession constant as read from its own series.
+- **Docs**: `conventions-and-output.md` describes the models step by step. `validation.md` gives the measured accuracy and the one known residual: the engine's instants lie about 0.85 s after the Observatory's. The J2000 equinox tie (FK5, versus the inertial dynamical equinox of the IAU 2006 framework) is about that size. `flags.model_uncertainty_seconds` (0.5 s from 1972) is below that offset.
+- Version bumped to `0.16.1`. Besides the numbers above, the regression fixture changes only in `engine.version`, `engine.nutation_model` and the new `engine.precession_model`.
+
 ## 0.16.0
 
 Stage 1 of the Standard view overhaul (#16): defects and polish on the landing page and chart, with the layout unchanged.
