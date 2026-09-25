@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.14.0
+
+### Added
+- **Day Master context in Standard mode**: a restrained summary beneath the date with Month, Roots, and Support controls. Details show the resolved solar month's traditional group and branch composition, exact same-element hidden-stem roots, and visible/hidden Companion and Resource occurrences.
+- **Precise evidence highlights**: participating cards and the matching hidden-stem rows are outlined without changing natal colors, card geometry, flip state, or open panels. Context and relationship details are mutually exclusive.
+- **Day Master context API**: independent `include_day_master_context` enrichment with explicit `natal_presence_v1` policy. Root matches distinguish exact stems from opposite polarity; Resource is separate, and the Day Master itself is excluded from Companion occurrences.
+- Finnish/English context labels, keyboard controls, focus return, live announcements, reduced-motion support, and explicit absence states.
+- Reference-based API tests, real-API desktop/mobile browser coverage, and user/API documentation.
+
+### Fixed
+- Escape dismisses the active reading even when pointer activation leaves keyboard focus outside the chart (including WebKit).
+- Missing or inconsistent context, hidden-stem composition, or highlight surfaces stop chart creation visibly rather than showing contradictory evidence.
+
+### Changed
+- Version bumped to `0.14.0` so HTML, JavaScript, and CSS use coordinated cache keys.
+- Updated only the regression fixture's `engine.version` metadata. Numerical engine results, dependencies, and Evolution definitions/inference are unchanged.
+- Seasonal groups and month-branch composition are displayed separately. No overall-strength, favorability, transformation, or within-month governing-qi assessment is introduced.
+
 ## 0.13.0
 
 ### Added
