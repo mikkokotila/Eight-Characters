@@ -42,3 +42,10 @@ presence, no/one/four-root layouts, explicit support absence, resolved solar-mon
 boundaries, mutually exclusive relationship/context details, and rejection of
 missing or inconsistent context. Screenshots include context overview, season,
 roots, support, flipped cards, absence, four roots, and Finnish layouts.
+
+The Roles suite covers all ten individual roles, five-group presence states,
+exact hidden-to-visible matching (including the separately labeled Day Master),
+all visible-stem roots, unchanged natal role reference, stable occurrence IDs,
+absent roles, unrooted visible stems, repeated visible identities, nested back/focus
+navigation, exclusive selection, card gestures, Finnish layouts, and corrupted
+profile rejection. `chart-helpers.mjs` is shared by all three suites.
