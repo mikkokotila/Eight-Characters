@@ -101,6 +101,20 @@ document.addEventListener('DOMContentLoaded', () => {
   // The message describes the last attempt; any edit starts a new one.
   form.addEventListener('input', () => setFormError(''));
 
+  // While a chart is being created the button says so and takes no second submit.
+  let pending = false;
+  const setPending = (value) => {
+    pending = value;
+    if (value) {
+      form.setAttribute('aria-busy', 'true');
+    } else {
+      form.removeAttribute('aria-busy');
+    }
+    createChartBtn.classList.toggle('is-pending', value);
+    createChartBtn.textContent = t(value ? 'creating_chart' : 'create_chart');
+    createChartBtn.disabled = value || !resolvedLocation;
+  };
+
   const applyLanguage = () => {
     document.documentElement.lang = currentLanguage;
     const textNodes = document.querySelectorAll('[data-i18n]');
@@ -110,6 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
         node.textContent = t(key);
       }
     });
+    if (pending) {
+      createChartBtn.textContent = t('creating_chart');
+    }
     const placeholderNodes = document.querySelectorAll('[data-i18n-placeholder]');
     placeholderNodes.forEach((node) => {
       const key = node.getAttribute('data-i18n-placeholder');
@@ -326,6 +343,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (pending) {
+      return;
+    }
 
     setFormError('');
     const invalidField = checkBirthMoment();
@@ -369,6 +389,7 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    setPending(true);
     try {
       const pillarsRes = await fetch('/api/four_pillars', {
         method: 'POST',
@@ -403,6 +424,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
       setFormError(err.message || t('chart_create_error'));
+    } finally {
+      setPending(false);
     }
   });
 

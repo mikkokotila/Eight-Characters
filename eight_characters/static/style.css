@@ -334,6 +334,12 @@ body {
   transform: none;
 }
 
+/* Working, not unavailable: the label says what is happening. */
+.submit-btn.is-pending {
+  opacity: 1;
+  cursor: progress;
+}
+
 
 /* ═══════════════════════════════════════════════════════
    CHART VIEW — exact match to template

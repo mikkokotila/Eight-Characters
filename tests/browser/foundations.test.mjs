@@ -295,8 +295,35 @@ for (const profile of profiles) {
       assert.equal(await error.getAttribute('role'), 'alert');
       assert.equal(await page.locator('#location-status').textContent(), placeStatus);
       assert.equal(await page.locator('#chart-view').isVisible(), false);
+      assert.equal(await page.locator('#create-chart-btn').isEnabled(), true);
+      assert.equal(await page.locator('#create-chart-btn').textContent(), 'Create chart');
       await page.locator('#time').fill('16:31');
       assert.equal(await error.isVisible(), false);
+    });
+
+    check('creating a chart shows progress and takes no second submit', async (page) => {
+      await openChart(page, { lang: 'fi' });
+      await page.locator('#back-btn').click();
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let requests = 0;
+      // Held until inspected, then handed to the real API.
+      await page.route('**/api/four_pillars', async (route) => { requests += 1; await held; await route.fallback(); });
+      const button = page.locator('#create-chart-btn');
+      await button.click();
+      await page.waitForFunction(() => document.getElementById('create-chart-btn').classList.contains('is-pending'));
+      assert.equal(await button.isDisabled(), true);
+      assert.equal(await button.textContent(), 'Luodaan karttaa…');
+      assert.equal(await page.locator('#chart-form').getAttribute('aria-busy'), 'true');
+      await page.locator('#time').press('Enter');
+      await page.evaluate(() => document.getElementById('chart-form').requestSubmit());
+      release();
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      assert.equal(requests, 1);
+      await page.locator('#back-btn').click();
+      assert.equal(await button.isEnabled(), true);
+      assert.equal(await button.textContent(), 'Luo kartta');
+      assert.equal(await page.locator('#chart-form').getAttribute('aria-busy'), null);
     });
 
     check('the page requests nothing from other origins and loads one face per font', async (page) => {
