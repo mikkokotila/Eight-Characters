@@ -237,6 +237,7 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
             'vsop87_series': ENGINE_MODEL_IDS['vsop87_series'],
             'nutation_model': ENGINE_MODEL_IDS['nutation_model'],
             'mean_obliquity_model': ENGINE_MODEL_IDS['mean_obliquity_model'],
+            'precession_model': ENGINE_MODEL_IDS['precession_model'],
             'delta_t_model': ENGINE_MODEL_IDS['delta_t_model'],
             'tzdb_version': get_tzdb_version(),
             'leap_second_table': tt_result.leap_second_metadata,

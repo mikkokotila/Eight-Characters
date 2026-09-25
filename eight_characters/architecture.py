@@ -39,10 +39,15 @@ MODULE_CONTRACTS: dict[str, ModuleContract] = {
         responsibility='IAU 2006 mean and true obliquity.',
         dependencies=('nutation',),
     ),
+    'precession': ModuleContract(
+        name='precession',
+        responsibility='VSOP87D and IAU 2006 general precession in longitude.',
+        dependencies=(),
+    ),
     'solar_position': ModuleContract(
         name='solar_position',
         responsibility='Solar longitude, equation of time, and true solar time.',
-        dependencies=('vsop87d', 'nutation', 'obliquity'),
+        dependencies=('vsop87d', 'nutation', 'obliquity', 'precession'),
     ),
     'root_finding': ModuleContract(
         name='root_finding',

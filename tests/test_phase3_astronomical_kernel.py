@@ -14,6 +14,10 @@ from eight_characters.engine import (
 )
 from eight_characters.nutation import nutation_arcseconds
 from eight_characters.obliquity import mean_obliquity_arcseconds_iau2006
+from eight_characters.precession import (
+    general_precession_iau2006_arcsec,
+    vsop87_to_iau2006_equinox_arcsec,
+)
 from eight_characters.solar_position import (
     J2000_JD,
     compute_apparent_solar_longitude,
@@ -35,6 +39,9 @@ from eight_characters.vsop87d import (
 
 VSOP87_CHECK_PATH = Path('tests/fixtures/vsop87d_earth_check.json')
 ARCSEC_PER_DEG = 3600.0
+ARCSEC_TO_RAD = pi / (180.0 * ARCSEC_PER_DEG)
+# ERFA's own test of eraP06e (t_erfa_c.c): TT 2400000.5 + 52541.0.
+ERFA_P06E_T_CENTURIES = (2400000.5 + 52541.0 - J2000_JD) / 36525.0
 # Meeus, Astronomical Algorithms (2nd ed.), Appendix III, keeps the largest terms of
 # each VSOP87D Earth series: this many for each power of time, of L, B and R.
 MEEUS_APPENDIX_III_TERM_COUNTS = {
@@ -104,12 +111,44 @@ class TestNutationModel(unittest.TestCase):
         self.assertEqual(ENGINE_MODEL_IDS['vsop87_series'], 'VSOP87D_full_Earth')
         self.assertEqual(ENGINE_MODEL_IDS['nutation_model'], 'IAU_2000A_R06')
         self.assertEqual(ENGINE_MODEL_IDS['mean_obliquity_model'], 'IAU_2006')
+        self.assertEqual(ENGINE_MODEL_IDS['precession_model'], 'IAU_2006')
 
 
 class TestObliquityModel(unittest.TestCase):
     def test_iau2006_mean_obliquity_at_j2000(self) -> None:
         value = mean_obliquity_arcseconds_iau2006(0.0)
         self.assertAlmostEqual(value, 84381.406, places=3)
+
+    def test_iau2006_mean_obliquity_matches_erfa(self) -> None:
+        value = mean_obliquity_arcseconds_iau2006(ERFA_P06E_T_CENTURIES)
+        self.assertAlmostEqual(
+            value * ARCSEC_TO_RAD, 0.4090864054922431688, delta=1e-14
+        )
+
+
+class TestPrecessionModel(unittest.TestCase):
+    def test_vsop87d_precession_is_the_one_in_its_series(self) -> None:
+        # VSOP87D's secular term in L is the Earth's mean motion plus the general
+        # precession of Bretagnon & Francou (1988), sec. 4.3: their Table 2 gives the
+        # motion as 6283.0758499914 and p_A0 as 50290.966" per thousand years.
+        secular = [a for a, _b, c in earth_series()[1][1] if c == 0.0]
+        self.assertEqual(len(secular), 1)
+        self.assertAlmostEqual(
+            secular[0] - 6283.0758499914, 50290.966 * ARCSEC_TO_RAD, delta=1e-10
+        )
+
+    def test_iau2006_general_precession_matches_erfa(self) -> None:
+        value = general_precession_iau2006_arcsec(ERFA_P06E_T_CENTURIES)
+        self.assertAlmostEqual(
+            value * ARCSEC_TO_RAD, 0.6651637681381016288e-3, delta=1e-14
+        )
+
+    def test_equinox_conversion_is_zero_at_j2000(self) -> None:
+        self.assertEqual(vsop87_to_iau2006_equinox_arcsec(0.0), 0.0)
+        # The IAU 2006 equinox of date lags VSOP87D's by 0.300" per century.
+        self.assertAlmostEqual(
+            vsop87_to_iau2006_equinox_arcsec(0.01) / 0.01, -0.300405, delta=1e-4
+        )
 
 
 class TestSolarPositionKernel(unittest.TestCase):
@@ -147,16 +186,22 @@ class TestSolarPositionKernel(unittest.TestCase):
     def test_apparent_longitude_matches_meeus_example_25b(self) -> None:
         # 1992 October 13.0 TD: Meeus gives 199 deg 54' 21.818" and R = 0.99760775.
         # He evaluates the VSOP87D terms of his Appendix III, which put the Sun 0.27"
-        # east of the full series. On those terms the engine reproduces both.
+        # east of the full series, and stays in VSOP87D's IAU 1976 equinox of date.
+        # On those terms and in that equinox the engine reproduces both.
+        jd_tt = 2448908.5
+        t_centuries = (jd_tt - J2000_JD) / 36525.0
         with mock.patch(
             'eight_characters.vsop87d.earth_series', meeus_appendix_iii_series
         ):
             lambda_deg, _beta, radius_au, _dpsi, _deps, _t = (
-                compute_apparent_solar_longitude(2448908.5)
+                compute_apparent_solar_longitude(jd_tt)
             )
+        meeus_equinox_deg = (
+            lambda_deg - vsop87_to_iau2006_equinox_arcsec(t_centuries) / ARCSEC_PER_DEG
+        )
         meeus_deg = 199 + 54 / 60 + 21.818 / ARCSEC_PER_DEG
         self.assertAlmostEqual(
-            (lambda_deg - meeus_deg) * ARCSEC_PER_DEG, 0.0, delta=0.01
+            (meeus_equinox_deg - meeus_deg) * ARCSEC_PER_DEG, 0.0, delta=0.01
         )
         self.assertAlmostEqual(radius_au, 0.99760775, delta=5e-9)
 

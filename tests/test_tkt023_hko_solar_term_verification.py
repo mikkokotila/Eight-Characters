@@ -77,9 +77,7 @@ class TestTkt023HkoSolarTermVerification(unittest.TestCase):
 
     def test_every_jie_1950_2100_matches_lunar_python(self) -> None:
         # Compared in TT: lunar-python turns TT into civil time with its own Delta T
-        # for UT1, extrapolated into the future, where the engine uses UTC. The two
-        # drift apart by 0.3" of longitude a century, about 7 s: VSOP87D refers to
-        # the equinox of date by the IAU 1976 precession.
+        # for UT1, extrapolated into the future, where the engine uses UTC.
         errors_seconds: list[float] = []
         for year in range(1950, 2101):
             for target in MONTH_BOUNDARIES:
@@ -91,8 +89,8 @@ class TestTkt023HkoSolarTermVerification(unittest.TestCase):
                 reference = lunar_python_term_tt(computed)
                 errors_seconds.append(abs(computed - reference) * 86400.0)
         self.assertEqual(len(errors_seconds), 1812)
-        self.assertLessEqual(max(errors_seconds), 9.0)
-        self.assertLessEqual(statistics.median(errors_seconds), 3.0)
+        self.assertLessEqual(max(errors_seconds), 3.0)
+        self.assertLessEqual(statistics.median(errors_seconds), 1.0)
 
 
 if __name__ == '__main__':

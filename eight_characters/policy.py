@@ -25,6 +25,7 @@ ENGINE_DECISIONS: dict[str, str] = {
     'D-006': 'Use VSOP87D full Earth series, not EMB.',
     'D-007': 'Use IAU 2000A nutation.',
     'D-007a': 'Use IAU 2006 mean obliquity.',
+    'D-007b': 'Use IAU 2006 precession for the equinox of date.',
     'D-008': 'Use Espenak-Meeus delta-T model.',
     'D-009': 'Use geocentric apparent coordinates.',
     'D-010': 'Use pure-Python Brent method; no SciPy.',

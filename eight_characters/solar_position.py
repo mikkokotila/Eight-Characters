@@ -8,10 +8,27 @@ from eight_characters.obliquity import (
     mean_obliquity_arcseconds_iau2006,
     true_obliquity_radians,
 )
+from eight_characters.precession import vsop87_to_iau2006_equinox_arcsec
 from eight_characters.vsop87d import earth_heliocentric_lbr, normalize_degrees
 
 J2000_JD = 2451545.0
 SECONDS_PER_DAY = 86400.0
+
+# VSOP87's dynamical equinox and ecliptic to the FK5 system (Meeus, Astronomical
+# Algorithms, 2nd ed., eq. 32.3, as applied to the Sun in chapter 25).
+FK5_LONGITUDE_CORRECTION_ARCSEC = -0.09033
+
+
+def equinox_correction_arcsec(t_centuries: float) -> float:
+    """From VSOP87D's mean equinox of date to the one the engine's longitudes use.
+
+    That equinox is VSOP87's J2000 equinox tied to FK5 and carried to the date by
+    the IAU 2006 precession, which the engine's obliquity and nutation belong to,
+    instead of VSOP87D's IAU 1976 rate.
+    """
+    return FK5_LONGITUDE_CORRECTION_ARCSEC + vsop87_to_iau2006_equinox_arcsec(
+        t_centuries
+    )
 
 
 @dataclass(frozen=True)
@@ -70,12 +87,13 @@ def compute_apparent_solar_longitude(
     theta_deg = normalize_degrees(earth_l_deg + 180.0)
     beta_deg = -earth_b_deg
 
-    # VSOP87's dynamical equinox and ecliptic to the FK5 system (Meeus, Astronomical
-    # Algorithms, 2nd ed., eq. 32.3, as applied to the Sun in chapter 25).
+    # The FK5 correction to the latitude (Meeus eq. 32.3) and the longitude's equinox.
     lambda_prime = radians(
         theta_deg - 1.397 * t_centuries - 0.00031 * t_centuries * t_centuries
     )
-    theta_deg = normalize_degrees(theta_deg - 0.09033 / 3600.0)
+    theta_deg = normalize_degrees(
+        theta_deg + equinox_correction_arcsec(t_centuries) / 3600.0
+    )
     beta_deg += 0.03916 * (cos(lambda_prime) - sin(lambda_prime)) / 3600.0
 
     delta_psi_arcseconds, delta_epsilon_arcseconds = nutation_arcseconds(t_centuries)
@@ -113,8 +131,12 @@ def _equation_of_time_minutes(
         alpha += 2.0 * pi
     alpha_deg = alpha * 180.0 / pi
 
+    # The mean Sun, referred to the same equinox of date as the true Sun.
     l0_deg = normalize_degrees(
-        280.46646 + 36000.76983 * t_centuries + 0.0003032 * (t_centuries**2)
+        280.46646
+        + 36000.76983 * t_centuries
+        + 0.0003032 * (t_centuries**2)
+        + equinox_correction_arcsec(t_centuries) / 3600.0
     )
     eot_deg = (
         l0_deg
