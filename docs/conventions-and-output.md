@@ -39,8 +39,29 @@ Each pillar includes:
 - `stem.chinese`
 - `branch.index`
 - `branch.chinese`
+- `changes`: when the pillar last changed before the birth (`previous`) and
+  when it next changes (`next`)
 
 Year and month include boundary metadata and distance values.
+
+#### `changes`
+
+A change is an instant at which the engine's own rules, under the request's
+conventions, give a different pillar. `previous` and `next` each give:
+
+- `seconds`: the time between the birth and the change, in elapsed seconds of
+  Terrestrial Time. It is never negative.
+- `pillar`: the pillar on the far side of the change, with `stem` and `branch`
+  as above.
+- For the year and month, `term`: the solar term at which the pillar changes,
+  such as `lichun_315` or `xiaohan_285`.
+- For the day and hour, `clock`: the clock the conventions read for that change,
+  `true_solar` or `civil`, and `clock_time`: what that clock shows at the change,
+  to the second, such as `1988-02-04T15:00:00`.
+
+The civil clock's daylight-saving jumps are changes wherever they give a
+different pillar. The hour's stem follows the day's, so the hour pillar also
+changes when the day does, even on the other clock.
 
 ## Warning and Ambiguity Flags
 

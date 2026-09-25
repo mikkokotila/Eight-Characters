@@ -81,7 +81,7 @@ def _tzdata_zone_names() -> frozenset[str]:
 
 
 @cache
-def _load_timezone(timezone_name: str) -> ZoneInfo:
+def load_timezone(timezone_name: str) -> ZoneInfo:
     # Zones come only from the pinned tzdata package, never the host's system
     # database, so conversions are reproducible and match the reported tzdb_version.
     if timezone_name not in _tzdata_zone_names():
@@ -102,7 +102,7 @@ def _resolve_local_time(
     timezone_name: str,
     fold: int | None,
 ) -> datetime:
-    tz = _load_timezone(timezone_name)
+    tz = load_timezone(timezone_name)
 
     wall = datetime(year, month, day, hour, minute, second)
     dt0 = wall.replace(tzinfo=tz, fold=0)

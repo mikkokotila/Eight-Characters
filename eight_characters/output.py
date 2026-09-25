@@ -21,6 +21,10 @@ def normalize_output_numeric_precision(payload: dict[str, Any]) -> dict[str, Any
         boundary = payload['pillars'][pillar_name]['boundary']
         boundary['distance_seconds'] = _rounded(boundary['distance_seconds'], 1)
 
+    for pillar_name in ('year', 'month', 'day', 'hour'):
+        for change in payload['pillars'][pillar_name]['changes'].values():
+            change['seconds'] = _rounded(change['seconds'], 1)
+
     flags = payload['flags']
     flags['hour_boundary_proximity_seconds'] = _rounded(
         flags['hour_boundary_proximity_seconds'], 1

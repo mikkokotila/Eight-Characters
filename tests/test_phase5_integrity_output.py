@@ -40,6 +40,9 @@ class TestIntegrityAndOutputContract(unittest.TestCase):
         self.assertIn('hour', payload['pillars'])
 
     def test_deterministic_json_sorting(self) -> None:
+        def changes() -> dict[str, dict[str, float]]:
+            return {'previous': {'seconds': 44.044}, 'next': {'seconds': 22369.4567}}
+
         payload = {
             'z': 1,
             'a': {
@@ -54,8 +57,16 @@ class TestIntegrityAndOutputContract(unittest.TestCase):
                 'tt_julian_date': 2447198.85481481,
             },
             'pillars': {
-                'year': {'boundary': {'distance_seconds': -1536.044}},
-                'month': {'boundary': {'distance_seconds': 2592000.033}},
+                'year': {
+                    'boundary': {'distance_seconds': -1536.044},
+                    'changes': changes(),
+                },
+                'month': {
+                    'boundary': {'distance_seconds': 2592000.033},
+                    'changes': changes(),
+                },
+                'day': {'changes': changes()},
+                'hour': {'changes': changes()},
             },
             'flags': {
                 'hour_boundary_proximity_seconds': 4344.0444,
@@ -64,6 +75,8 @@ class TestIntegrityAndOutputContract(unittest.TestCase):
         }
         serialized = dumps_deterministic(payload)
         self.assertTrue(serialized.startswith('{"a"'))
+        # Distances to pillar changes are given to a tenth of a second.
+        self.assertIn('"next":{"seconds":22369.5}', serialized)
 
     def test_compute_engine_json_is_valid_json(self) -> None:
         output_json = compute_engine_json(

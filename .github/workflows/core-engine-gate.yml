@@ -30,4 +30,5 @@ jobs:
             tests.test_phase2_time_normalization \
             tests.test_phase3_astronomical_kernel \
             tests.test_phase4_boundary_and_pillars \
-            tests.test_phase5_integrity_output
+            tests.test_phase5_integrity_output \
+            tests.test_pillar_changes
