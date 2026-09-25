@@ -24,6 +24,7 @@ from eight_characters.data import (
     ChartPayload,
     build_chart,
 )
+from eight_characters.day_master_context import build_day_master_context
 from eight_characters.engine import compute_engine_payload
 from eight_characters.evolution.inference import InferenceConfig
 from eight_characters.evolution.pipeline import EvolutionInput, run_natal_mvp
@@ -146,6 +147,7 @@ class FourPillarsRequest(BaseModel):
     include_hidden_stems: bool = False
     include_ten_gods: bool = False
     include_interactions: bool = False
+    include_day_master_context: bool = False
     lang: str = 'fi'
 
 
@@ -950,6 +952,12 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
                 time_value=payload.time,
                 lang=payload.lang,
                 four_pillars=four_pillars,
+            )
+        if payload.include_day_master_context:
+            response['day_master_context'] = build_day_master_context(
+                _chart_components_from_four_pillars(four_pillars),
+                _load_hidden_stems_lookup(),
+                _load_ten_gods_lookup(),
             )
         if payload.include_interactions:
             response['interactions'] = detect_interactions(
