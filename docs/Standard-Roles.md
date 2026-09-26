@@ -7,11 +7,17 @@ Master Roots controls continue to work as before.
 
 ## Reading the overview
 
-Each group shows its element relative to the natal Day Master. Both the group
-and each individual role report one of four states: Visible only, Hidden only,
-Visible and hidden, or Not present. These are occurrence states, not power,
-strength, percentages, favorability, or personality judgments. A group's presence
-does not imply that both of its roles are present.
+The overview is a matrix. Each group names its element relative to the natal Day
+Master, beside that element's colour. Its two roles stand under it, each with a
+mark in two columns, the visible stems and the hidden stems: a filled dot where
+the role is visible, a ring where it is hidden, and a small dot where it is not.
+A role the chart lacks is set in the secondary ink, and can still be selected.
+
+Each role, and each group with its heading, is read to assistive technology as
+one of four states: Visible only, Hidden only, Visible and hidden, or Not present.
+These are occurrence states, not power, strength, percentages, favorability, or
+personality judgments. A group's presence does not imply that both of its roles
+are present.
 
 The Day Master itself is not an additional visible Companion. Other visible
 stems with the identical character do remain separate Companion occurrences.
@@ -19,8 +25,9 @@ The Visible stems section includes all four positions, with the Day Master
 explicitly identified as the reference, and provides root inspection for each.
 
 Select any individual role, including an absent one, to inspect it. Visible and
-hidden occurrences are listed separately. Hidden entries name their branch,
-actual stem, and qi position. Selecting a role highlights only its occurrences:
+hidden occurrences are listed separately. Each occurrence has its pillar beside
+it; hidden entries also name their branch, actual stem, and qi position. The page
+names its role once, in its title. Selecting a role highlights only its occurrences:
 visible cards and precise rows on both hidden-stem surfaces. It does not open
 panels, flip cards, recolor elements, or move the pillars.
 

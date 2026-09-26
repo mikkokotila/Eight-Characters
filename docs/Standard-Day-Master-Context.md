@@ -7,6 +7,17 @@ over the foot of the page). Select it again, press Escape, or use Close to
 dismiss it. Keyboard activation and focus return work the same way as
 Relationships.
 
+Every page in the panel reads from the left. First its title and a line on what
+it found, then its evidence. At its foot is one note on what the page does and
+does not claim, of about 60 to 75 characters to the line where the panel has room.
+A stem is one line of text:
+- its element's colour, its characters, and its qi position when hidden;
+- below that, what the page says of it: its Ten God, and for a root, how it
+  matches the Day Master.
+
+The outlines belong to the chart, not the panel. Pillars are named as their
+column headers name them.
+
 Only one relationship or context detail is open at a time. Switching topics
 clears the previous highlights without moving the pillars, changing their natal
 elements, flipping cards, or opening hidden-stem panels. From 1200px wide the chart

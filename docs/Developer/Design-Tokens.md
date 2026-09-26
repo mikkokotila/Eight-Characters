@@ -78,3 +78,13 @@ and gaps use only these, or `calc()` of them.
 - `--sheet-height`: narrower, the panel is a sheet over the foot of the page, at
   most half the screen tall. The chart keeps as much room below it to scroll
   clear of the sheet.
+- A page in the panel reads from the left:
+  - its title in `--text-4`;
+  - a line in `--ink-2`;
+  - its content;
+  - one note at its foot in `--text-1`, at most 35em wide: about 60 to 75
+    characters to the line.
+
+  Its labels, a pillar's plain name or a group of roles, take the column
+  header's capitals. The roles matrix is no wider than `--panel-width`, so on a
+  wide sheet each mark stays near its role.

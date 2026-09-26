@@ -1073,119 +1073,172 @@ body {
   outline: 1px solid var(--ink-2);
   outline-offset: 1px;
 }
-.hidden-stem-item.is-context-evidence,
-.context-evidence-row.is-context-evidence {
+.card.is-context-reference { outline: 1px dotted var(--ink-2); outline-offset: 1px; }
+.hidden-stem-item.is-context-evidence {
   outline: 1px solid currentColor;
   outline-offset: 3px;
   border-radius: 2px;
 }
+/* In the panel a stem is a line of text, never a box: its element's swatch, the
+   stem and a hidden stem's qi position, and below them what the page says of it. */
 .context-evidence-list {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  margin: var(--space-5) auto 0;
-  text-align: left;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 .context-evidence-row {
+  display: grid;
+  grid-template-columns: 8px minmax(0, 1fr);
+  column-gap: var(--space-2);
   min-width: 0;
-  padding: var(--space-1) 0;
+  font-size: var(--text-1);
+  line-height: 1.65;
   color: var(--ink-2);
 }
+/* The swatch on the middle of the stem's line, the grid's first row. */
+.context-evidence-row > .hidden-stem-dot { align-self: center; }
 .context-evidence-identity {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--space-2);
-  font-size: var(--text-1);
-  line-height: 1.65;
+  min-width: 0;
   color: var(--ink-1);
 }
 .context-evidence-identity > span:first-child { overflow-wrap: break-word; min-width: 0; }
 .context-evidence-identity .hidden-stem-type { flex-shrink: 0; }
 .context-evidence-role {
-  margin-top: var(--space-1);
-  font-size: var(--text-1);
+  grid-column: 2;
   font-weight: 400;
-  line-height: 1.7;
   overflow-wrap: break-word;
 }
-.context-month-composition { max-width: 360px; margin: var(--space-6) auto 0; text-align: center; }
-.context-month-composition > h4 { margin-bottom: var(--space-4); }
-.context-support-groups {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-6);
-  margin-top: var(--space-6);
-}
-.context-support-group { min-width: 0; text-align: center; }
-.context-source-position {
-  font-family: var(--font-serif);
-  font-size: var(--text-2);
-  line-height: 1.5;
-  color: var(--ink-2);
-  margin-bottom: var(--space-1);
-}
-.context-support-source + .context-support-source {
-  border-top: 1px solid var(--line-1);
-  padding-top: var(--space-3);
-}
-@container panel (max-width: 640px) {
-  .context-support-groups { grid-template-columns: 1fr; }
-}
 
-/* ── Roles: the existing detail surface, not another dashboard ── */
-.role-overview { margin-top: var(--space-6); }
-.role-group {
+/* ── Roles: the ten roles in their five groups, against the visible and the
+   hidden stems. No wider than the panel, so on a wide sheet each mark stays
+   near its role. ── */
+.role-overview {
   display: grid;
-  grid-template-columns: minmax(0, 0.85fr) repeat(2, minmax(0, 1fr));
-  gap: var(--space-5);
-  padding: var(--space-4) 0;
-  align-items: stretch;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  column-gap: var(--space-4);
+  max-width: var(--panel-width);
+  margin-top: var(--space-5);
 }
-.role-group + .role-group { border-top: 1px solid var(--line-1); }
-.role-group-heading { display: flex; flex-direction: column; justify-content: center; min-width: 0; }
-.role-group-heading .relationship-element { margin-top: var(--space-1); }
+.role-overview-columns,
+.role-group,
 .role-choice {
-  border: 1px solid transparent;
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+}
+/* The headings and the rows share one inset, so each mark stands under its heading. */
+.role-overview-columns,
+.role-group-heading,
+.role-choice { padding-inline: var(--space-2); }
+.role-overview-columns > :first-child { grid-column: 2; }
+.role-overview-columns > span {
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  line-height: 1.7;
+  color: var(--ink-2);
+  text-align: center;
+}
+.role-group { padding-block: var(--space-3); }
+.role-group + .role-group { border-top: 1px solid var(--line-1); }
+.role-group-heading {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  padding-bottom: var(--space-1);
+}
+.role-group-heading .relationship-element { margin-top: 0; }
+.role-choice {
+  align-items: center;
+  min-width: 0;
+  min-height: 40px;
+  border: none;
   border-radius: 8px;
   background: none;
   color: var(--ink-1);
   text-align: left;
-  padding: var(--space-2) var(--space-3);
-  min-width: 0;
-  min-height: 54px;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background 0.2s ease;
 }
-.role-choice:hover { background: var(--surface-1); border-color: var(--line-1); }
-.role-choice:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 3px; }
-.role-choice-name { display: block; font-family: var(--font-serif); font-size: var(--text-3); font-weight: 500; line-height: 1.4; }
-.role-presence { display: block; margin-top: var(--space-1); font-family: var(--font-sans); font-weight: 400; font-size: var(--text-1); line-height: 1.7; color: var(--ink-2); }
-.role-visible-stems { margin-top: var(--space-6); border-top: 1px solid var(--line-1); padding-top: var(--space-5); text-align: center; }
-.role-stem-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-5); margin-top: var(--space-5); }
-.role-stem-entry { min-width: 0; }
-.role-stem-entry .reading-toggle { margin-top: var(--space-2); }
-.roles-back { display: block; width: fit-content; max-width: 100%; margin: var(--space-5) auto 0; }
-.role-sources { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-6); margin-top: var(--space-6); }
-.role-source-kind { min-width: 0; text-align: center; }
-.role-occurrence + .role-occurrence { border-top: 1px solid var(--line-1); padding-top: var(--space-4); }
-.role-exact { font-size: var(--text-1); font-weight: 400; line-height: 1.8; color: var(--ink-2); margin-top: var(--space-2); }
+.role-choice:hover { background: var(--surface-1); }
+.role-choice:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.role-choice-name {
+  min-width: 0;
+  overflow-wrap: break-word;
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 500;
+  line-height: 1.4;
+}
+/* A role the chart lacks stays a choice, in the secondary ink. */
+.role-choice.is-absent .role-choice-name { color: var(--ink-2); font-weight: 400; }
+/* Drawn, not typed (the page fonts have none of these): ● visible, ○ hidden, · absent. */
+.role-mark { justify-self: center; width: 10px; height: 10px; border-radius: 50%; }
+.role-mark[data-mark='visible'] { background: var(--ink-1); }
+.role-mark[data-mark='hidden'] { box-shadow: inset 0 0 0 1.5px var(--ink-1); }
+.role-mark[data-mark='absent'] { width: 4px; height: 4px; background: var(--ink-2); }
+
+/* A section of a page: the overview's visible stems, a role's visible and hidden
+   occurrences. */
+.panel-subheading {
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: var(--tracking-1);
+}
+.role-visible-stems {
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--line-1);
+}
+/* An occurrence: where it is, and beside that the stem and where it leads. */
+.role-occurrences {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+.role-occurrence {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: start;
+}
+.role-occurrence-place { display: flex; flex-direction: column; min-width: 0; }
+/* On the stem's first line. */
+.role-occurrence-place .relationship-position { line-height: 1.65; }
+.role-occurrence-branch { font-size: var(--text-1); line-height: 1.7; color: var(--ink-2); }
+.role-occurrence-body { min-width: 0; }
+.role-occurrence-body .reading-toggle { margin-top: var(--space-1); }
+.roles-back { display: block; width: fit-content; max-width: 100%; margin-top: var(--space-4); }
+.role-sources {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-6);
+  margin-top: var(--space-5);
+}
+.role-source-kind { min-width: 0; }
+.role-exact { font-size: var(--text-1); font-weight: 400; line-height: 1.8; color: var(--ink-2); margin-top: var(--space-1); }
 .role-exact .reading-toggle { margin-left: var(--space-1); }
 .context-detail .role-exact-summary { margin-top: var(--space-5); }
-.card.is-context-reference { outline: 1px dotted var(--ink-2); outline-offset: 1px; }
 @container panel (max-width: 640px) {
-  .role-group { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); }
-  .role-group-heading { grid-column: 1 / -1; text-align: center; }
-  .role-choice { padding: var(--space-3) var(--space-2); text-align: center; }
-  .role-stem-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-4); }
   .role-sources { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) { .role-choice { transition: none; } }
 
 /* ── Relationships: quiet annotations, never a second colour system ── */
+/* A label in the panel: a pillar's plain name as its column header writes it, a
+   group of roles. */
 .relationship-position {
   font-family: var(--font-serif);
-  font-weight: 400;
+  font-weight: 500;
   font-size: var(--text-1);
   letter-spacing: var(--tracking-2);
   text-transform: uppercase;
@@ -1360,7 +1413,6 @@ body {
 .relationship-arcs.has-selection .relationship-arc { --arc-ink: var(--line-2); }
 .relationship-arcs .relationship-arc.is-active { --arc-ink: var(--ink-1); }
 
-.relationship-empty,
 .relationship-meta,
 .relationship-note {
   font-family: var(--font-sans);
@@ -1369,7 +1421,15 @@ body {
   line-height: 1.7;
   letter-spacing: var(--tracking-1);
   color: var(--ink-2);
-  text-align: center;
+}
+/* What a page finds when there is nothing to list: said plainly, as its content. */
+.relationship-empty {
+  margin-top: var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-2);
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--ink-1);
 }
 
 /* ── The panel: a chosen topic's explanation, beside the chart or as a sheet ── */
@@ -1557,9 +1617,9 @@ kbd {
   .chart-container.has-panel { padding-bottom: var(--sheet-height); }
 }
 
+/* A page in the panel reads from the left, like the list of relationships. */
 .relationship-detail-heading {
   display: flex;
-  justify-content: center;
   align-items: center;
   flex-wrap: wrap;
   gap: var(--space-2) var(--space-5);
@@ -1569,7 +1629,6 @@ kbd {
   font-weight: 400;
   font-size: var(--text-4);
   letter-spacing: var(--tracking-1);
-  text-align: center;
 }
 .relationship-meta { margin-top: var(--space-2); }
 
@@ -1579,7 +1638,7 @@ kbd {
   gap: var(--space-6);
   margin-top: var(--space-6);
 }
-.relationship-member { min-width: 0; text-align: center; }
+.relationship-member { min-width: 0; }
 .relationship-position { line-height: 1.5; }
 .relationship-identity {
   margin-top: var(--space-2);
@@ -1598,16 +1657,16 @@ kbd {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
-  max-width: 240px;
-  margin: var(--space-4) auto 0;
-  text-align: left;
+  margin-top: var(--space-3);
 }
 .relationship-roles .hidden-stem-item {
   display: grid;
   grid-template-columns: 8px minmax(0, 1fr) auto;
 }
 .relationship-roles .hidden-stem-label { font-size: var(--text-1); overflow-wrap: break-word; }
-.relationship-note { margin-top: var(--space-5); }
+/* The page's note on what it does and does not claim: one paragraph at its foot,
+   of about 60 to 75 characters to the line where the panel has room. */
+.relationship-note { max-width: 35em; margin-top: var(--space-5); }
 
 /* ── A pillar's changes: the one before the birth and the one after ── */
 .pillar-change-sides {
@@ -1616,7 +1675,7 @@ kbd {
   gap: var(--space-6);
   margin-top: var(--space-6);
 }
-.pillar-change { min-width: 0; text-align: center; }
+.pillar-change { min-width: 0; }
 .pillar-change-side {
   font-family: var(--font-serif);
   font-size: var(--text-1);
@@ -1682,12 +1741,12 @@ kbd {
   .bar-action,
   .panel-close,
   .topic-button,
+  .role-choice,
   .chart-topics .context-toggle { min-height: 44px; }
 }
 @container panel (max-width: 640px) {
   .relationship-members { grid-template-columns: 1fr; }
   .pillar-change-sides { grid-template-columns: 1fr; }
-  .relationship-detail h3 { font-size: var(--text-3); }
 }
 
 @media (prefers-reduced-motion: reduce) {
