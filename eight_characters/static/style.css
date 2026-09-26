@@ -827,6 +827,30 @@ body {
   transform: translate(-50%, calc(-100% - var(--space-2)));
 }
 
+/* ── What a bar action did (Copy link), over the foot of the page. It is a live
+   region, so it stays in place, faded out, while it has nothing to say. ── */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: var(--space-6);
+  z-index: 40;
+  max-width: calc(100% - 2 * var(--space-4));
+  padding: var(--space-2) var(--space-4);
+  border-radius: 8px;
+  background: var(--ink-1);
+  color: var(--bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  letter-spacing: var(--tracking-1);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.2s ease;
+}
+.toast.is-shown { opacity: 1; }
+.toast.is-error { background: var(--ink-error); }
+
 /* ── Branch expand hint ── */
 .branch-expand-hint {
   position: absolute;
@@ -1552,7 +1576,7 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .relationship-chip, .reading-toggle,
   .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle,
-  .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot { transition: none; }
+  .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot, .toast { transition: none; }
 }
 
 /* Drawn rather than typed: the page fonts have no arrow glyphs. */

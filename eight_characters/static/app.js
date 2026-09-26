@@ -336,26 +336,31 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
 
+  // A place picked from the list, or named by a chart's link.
+  const pickPlace = (place) => {
+    // A lookup still pending must not reopen the list or replace the chosen city's status.
+    cancelSuggestionLookup();
+    // Kept whole: the chart is computed for these coordinates, since names repeat.
+    resolvedLocation = place;
+    locationInput.value = place.display;
+    createChartBtn.disabled = pending;
+    hideSuggestions();
+    setLocationStatus(
+      t('selected_city', {
+        city: place.city,
+        coordinates: formatCoordinates(place.latitude, place.longitude),
+        timezone: place.timezone,
+      }),
+      'is-found'
+    );
+  };
+
   const applySuggestionAtIndex = (indexValue) => {
     const selected = latestSuggestions[indexValue];
     if (!selected) {
       return;
     }
-    // A lookup still pending must not reopen the list or replace the chosen city's status.
-    cancelSuggestionLookup();
-    // Kept whole: the chart is computed for these coordinates, since names repeat.
-    resolvedLocation = selected;
-    locationInput.value = selected.display;
-    createChartBtn.disabled = pending;
-    hideSuggestions();
-    setLocationStatus(
-      t('selected_city', {
-        city: selected.city,
-        coordinates: formatCoordinates(selected.latitude, selected.longitude),
-        timezone: selected.timezone,
-      }),
-      'is-found'
-    );
+    pickPlace(selected);
   };
 
   const clearResolvedLocation = () => {
@@ -471,19 +476,41 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // The chart on screen: the request that made it and its place, so that the Zi-hour
-  // switch can ask for it again under the other convention.
+  // The chart on screen: the request that made it, its place and its heading, so that it
+  // can be asked for again (in the other language, or under the other Zi-hour
+  // convention) and named in the address.
   let shown = null;
+  // Only the chart asked for last is drawn: an earlier answer that arrives later is
+  // dropped. Leaving the chart drops any answer still on its way.
+  let drawing = 0;
 
-  // Requests a chart and draws it. Anything missing or inconsistent throws before the
-  // chart view is shown.
-  const showChart = async (request, city) => {
+  // A chart for a birth at a picked place: its coordinates, not its name, which would
+  // resolve to the first place so named.
+  const chartRequest = ({ date, time, place, lang, zi }) => ({
+    date,
+    time,
+    location: { timezone: place.timezone, latitude: place.latitude, longitude: place.longitude },
+    include_chart: true,
+    include_hidden_stems: true,
+    include_ten_gods: true,
+    include_interactions: true,
+    include_day_master_context: true,
+    include_role_profile: true,
+    lang,
+    ...(zi === ZI_CONVENTIONS[0] ? {} : { conventions: { zi_convention: zi } }),
+  });
+
+  // Requests a chart and draws it, and says whether it did: a later request supersedes
+  // it. Anything missing or inconsistent throws before the chart view is shown.
+  const showChart = async (request, place) => {
+    const serial = ++drawing;
     const pillarsRes = await fetch('/api/four_pillars', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(request),
     });
     const pillarsData = await pillarsRes.json();
+    if (serial !== drawing) return false;
     if (!pillarsRes.ok) {
       throw new Error(pillarsData.detail || t('pillars_error'));
     }
@@ -501,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const birth = parseWallClock(`${request.date}T${request.time}`);
     if (!birth) throw new Error(t('chart_error'));
     const heading = [
-      formatDate(birth), formatTime(birth, request.time.length > 5), city,
+      formatDate(birth), formatTime(birth, request.time.length > 5), place.city,
     ].join(' · ');
     const solarTime = describeSolarTime(pillarsData.solar_time, birth);
 
@@ -520,9 +547,13 @@ document.addEventListener('DOMContentLoaded', () => {
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
-    // Open charts are told apart by their tab.
-    document.title = t('chart_page_title', { chart: heading });
-    shown = { request, city };
+    shown = { request, place, heading };
+    revealChart();
+    return true;
+  };
+  // Open charts are told apart by their tab.
+  const revealChart = () => {
+    document.title = t('chart_page_title', { chart: shown.heading });
     inputView.classList.add('hidden');
     chartView.classList.remove('hidden');
   };
@@ -544,27 +575,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    const fourPillarsPayload = {
-      date: form.date.value,
-      time: form.time.value,
-      // The picked place itself: sending its name would resolve to the first place so named.
-      location: {
-        timezone: resolvedLocation.timezone,
-        latitude: resolvedLocation.latitude,
-        longitude: resolvedLocation.longitude,
-      },
-      include_chart: true,
-      include_hidden_stems: true,
-      include_ten_gods: true,
-      include_interactions: true,
-      include_day_master_context: true,
-      include_role_profile: true,
-      lang: currentLanguage,
-    };
+    const request = chartRequest({
+      date: form.date.value, time: form.time.value, place: resolvedLocation, lang: currentLanguage, zi: ZI_CONVENTIONS[0],
+    });
 
     setPending(true);
     try {
-      await showChart(fourPillarsPayload, resolvedLocation.city);
+      if (await showChart(request, resolvedLocation)) addressChart('pushState');
     } catch (err) {
       console.error(err);
       setFormError(err.message || t('chart_create_error'));
@@ -575,6 +592,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // The next chart starts as a new one: nothing open, characters on every card.
   const leaveChart = () => {
+    drawing += 1;
     closePanel();
     displayMode = 'characters';
     chartView.classList.add('hidden');
@@ -588,12 +606,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const reshow = async (changes, focusSelector) => {
     chartView.setAttribute('aria-busy', 'true');
     try {
-      await showChart({ ...shown.request, ...changes }, shown.city);
+      if (!(await showChart({ ...shown.request, ...changes }, shown.place))) return;
+      addressChart('replaceState');
       chartView.querySelector(focusSelector).focus();
     } catch (err) {
       console.error(err);
       leaveChart();
       setFormError(err.message || t('chart_create_error'));
+      addressForm('replaceState');
     } finally {
       chartView.removeAttribute('aria-busy');
     }
@@ -641,11 +661,16 @@ document.addEventListener('DOMContentLoaded', () => {
     window.location.assign(`/explorer/?${query.toString()}`);
   });
 
-  // Edit keeps the birth, so another chart for it only needs what changed.
-  backBtn.addEventListener('click', leaveChart);
+  // Edit keeps the birth, so another chart for it only needs what changed. Both steps
+  // back to the form are history entries: Back returns to the chart.
+  backBtn.addEventListener('click', () => {
+    leaveChart();
+    addressForm('pushState');
+  });
 
   newChartBtn.addEventListener('click', () => {
     leaveChart();
+    addressForm('pushState');
     form.reset();
     clearResolvedLocation();
     setFieldError(dateInput, dateStatus, '');
@@ -1003,7 +1028,257 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
+  // ── The address: the chart on screen and its open topic ──
+  // A chart lives in the address's fragment, which browsers never send to the server:
+  // #chart?date=…&time=…&place=…&city=…&latitude=…&longitude=…&timezone=…&lang=…, then
+  // zi, display and topic where they differ from a new chart's. A new chart, another
+  // topic, Edit and New chart add history entries; the language, the Zi-hour convention
+  // and the display replace the current one. The address never names a chart that is
+  // not on screen.
+  const CHART_ROUTE = '#chart?';
+  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'zi', 'display', 'topic'];
+  const DISPLAYS = ['characters', 'ten-gods', 'hidden-stems'];
+  // The pages a topic can show. Whether this chart has the one named is known once it is drawn.
+  const TOPIC_PATH = /^(season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year))$/;
+  const linkError = (part) => new Error(t('link_error', { part }));
+  const formAddress = () => `${location.pathname}${location.search}`;
+
+  // The topic open in the panel, as the address names it, or null.
+  const contextDetail = document.getElementById('context-detail');
+  const currentTopic = () => {
+    if (!contextDetail.classList.contains('hidden')) return contextDetail.dataset.topic;
+    if (relationshipsTopic.getAttribute('aria-expanded') === 'true') {
+      const chosen = relationshipsSection.querySelector('.relationship-chip.is-active');
+      return chosen ? `relationships/${chosen.dataset.relationship}` : 'relationships';
+    }
+    const pillar = chartView.querySelector('.pillar-identity[aria-expanded="true"]');
+    return pillar ? `pillar/${pillar.dataset.pillar}` : null;
+  };
+
+  const chartAddress = () => {
+    const { request, place } = shown;
+    const params = new URLSearchParams({
+      date: request.date,
+      time: request.time,
+      place: place.display,
+      city: place.city,
+      latitude: String(request.location.latitude),
+      longitude: String(request.location.longitude),
+      timezone: request.location.timezone,
+      lang: request.lang,
+    });
+    const zi = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
+    if (zi !== ZI_CONVENTIONS[0]) params.set('zi', zi);
+    if (displayMode !== 'characters') params.set('display', displayMode);
+    const topic = currentTopic();
+    if (topic !== null) params.set('topic', topic);
+    return `${formAddress()}${CHART_ROUTE}${params}`;
+  };
+
+  // What the address holds: null for the form, or the chart's open topic and display.
+  let addressed = null;
+  const addressChart = (method) => {
+    history[method](null, '', chartAddress());
+    addressed = { topic: currentTopic(), display: displayMode };
+  };
+  const addressForm = (method) => {
+    history[method](null, '', formAddress());
+    addressed = null;
+  };
+
+  // After a reader's click or key on the chart, the address follows what is open.
+  const followView = () => {
+    if (addressed === null || chartView.getAttribute('aria-busy') === 'true') return;
+    const topic = currentTopic();
+    if (topic !== addressed.topic) addressChart('pushState');
+    else if (displayMode !== addressed.display) addressChart('replaceState');
+  };
+  chartView.addEventListener('click', followView);
+  document.addEventListener('keydown', followView);
+
+  // The chart a link describes, or null when it describes none. A link that describes
+  // no chart throws, naming the part that is missing or wrong.
+  const readChartLink = (hash) => {
+    if (hash === '' || hash === '#') return null;
+    if (!hash.startsWith(CHART_ROUTE)) throw linkError('chart');
+    const params = new URLSearchParams(hash.slice(CHART_ROUTE.length));
+    for (const key of new Set(params.keys())) {
+      if (!LINK_PARTS.includes(key) || params.getAll(key).length > 1) throw linkError(key);
+    }
+    const text = (key) => {
+      const value = params.get(key);
+      if (value === null || value.trim() === '') throw linkError(key);
+      return value;
+    };
+    const optional = (key, valid) => {
+      const value = params.get(key);
+      if (value !== null && !valid(value)) throw linkError(key);
+      return value;
+    };
+    const coordinate = (key, limit) => {
+      const value = Number(text(key));
+      if (!Number.isFinite(value) || Math.abs(value) > limit) throw linkError(key);
+      return value;
+    };
+    const date = text('date');
+    const year = Number(date.slice(0, 4));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !parseWallClock(`${date}T00:00`)
+      || year < supportedYears[0] || year > supportedYears[1]) throw linkError('date');
+    const time = text('time');
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time) || !parseWallClock(`${date}T${time}`)) throw linkError('time');
+    const lang = text('lang');
+    if (!['fi', 'en'].includes(lang)) throw linkError('lang');
+    return {
+      date,
+      time,
+      place: {
+        display: text('place'),
+        city: text('city'),
+        latitude: coordinate('latitude', 90),
+        longitude: coordinate('longitude', 180),
+        timezone: text('timezone'),
+      },
+      lang,
+      zi: optional('zi', (value) => ZI_CONVENTIONS.includes(value)) ?? ZI_CONVENTIONS[0],
+      display: optional('display', (value) => DISPLAYS.includes(value)) ?? 'characters',
+      topic: optional('topic', (value) => TOPIC_PATH.test(value)),
+    };
+  };
+
+  const sameChart = (link) => {
+    if (shown === null) return false;
+    const { request, place } = shown;
+    return place.display === link.place.display && place.city === link.place.city
+      && request.date === link.date && request.time === link.time && request.lang === link.lang
+      && request.location.latitude === link.place.latitude && request.location.longitude === link.place.longitude
+      && request.location.timezone === link.place.timezone
+      && (request.conventions?.zi_convention ?? ZI_CONVENTIONS[0]) === link.zi;
+  };
+
+  // Opens the topic a link names, as a reader would, and checks that it is the one open.
+  const openTopic = (topic) => {
+    const need = (element) => {
+      if (!element) throw linkError('topic');
+      return element;
+    };
+    const [first, ...rest] = topic.split('/');
+    if (first === 'relationships') {
+      relationshipsTopic.click();
+      if (rest.length) {
+        need([...relationshipsSection.querySelectorAll('.relationship-chip')]
+          .find((chip) => chip.dataset.relationship === rest[0])).click();
+      }
+    } else if (first === 'pillar') {
+      need(chartView.querySelector(`.pillar-identity[data-pillar="${rest[0]}"]`)).click();
+    } else {
+      need(chartView.querySelector(`#context-controls button[data-context="${first}"]`)).click();
+      // roles/<role>, roles/stem/<pillar>, or roles/<role>/stem/<pillar>
+      const role = rest[0] === 'stem' ? '' : rest.shift();
+      if (role) need(contextDetail.querySelector(`button[data-role="${role}"]`)).click();
+      if (rest[0] === 'stem') {
+        need(contextDetail.querySelector(`button[data-root-pillar="${rest[1]}"][data-from-role="${role}"]`)).click();
+      }
+    }
+    if (currentTopic() !== topic) throw linkError('topic');
+  };
+
+  // Shows what the address names, the form or a chart with its topic and display,
+  // without adding to the history. The birth goes into the form, for Edit. An address
+  // that names no chart gives way to the form's, with the reason.
+  let arrivals = 0;
+  const followAddress = async () => {
+    const arrival = ++arrivals;
+    // Until the address is followed, opening its topic is not a reader's step.
+    addressed = null;
+    // An earlier arrival or a creation still under way is superseded, and so is its wait.
+    chartView.removeAttribute('aria-busy');
+    setPending(false);
+    setFormError('');
+    let link;
+    try {
+      link = readChartLink(location.hash);
+    } catch (err) {
+      console.error(err);
+      leaveChart();
+      setFormError(err.message);
+      addressForm('replaceState');
+      return;
+    }
+    if (link === null) {
+      leaveChart();
+      return;
+    }
+    if (link.lang !== currentLanguage) {
+      currentLanguage = i18n.setLanguage(link.lang);
+      applyLanguage();
+    }
+    dateInput.value = link.date;
+    timeInput.value = link.time;
+    setFieldError(dateInput, dateStatus, '');
+    setFieldError(timeInput, timeStatus, '');
+    pickPlace(link.place);
+    // Meanwhile a chart on screen takes no clicks, and the form says it is creating one.
+    const onChart = !chartView.classList.contains('hidden');
+    try {
+      if (sameChart(link)) {
+        closePanel();
+        displayMode = link.display;
+        applyDisplay(false);
+        revealChart();
+      } else {
+        if (onChart) chartView.setAttribute('aria-busy', 'true');
+        else setPending(true);
+        displayMode = link.display;
+        const drawn = await showChart(chartRequest(link), link.place)
+          .finally(() => {
+            if (arrival !== arrivals) return;
+            chartView.removeAttribute('aria-busy');
+            setPending(false);
+          });
+        if (!drawn) return;
+      }
+      if (link.topic !== null) openTopic(link.topic);
+      addressChart('replaceState');
+    } catch (err) {
+      console.error(err);
+      leaveChart();
+      setFormError(err.message || t('chart_create_error'));
+      addressForm('replaceState');
+    }
+  };
+  window.addEventListener('popstate', followAddress);
+
+  // ── Copy link: the address names this chart and its open topic ──
+  const copyLinkBtn = document.getElementById('copy-link-btn');
+  if (!copyLinkBtn) throw new Error('Chart bar is incomplete.');
+  // What a bar action did, said briefly over the foot of the page and read out.
+  const toast = document.createElement('div');
+  toast.className = 'toast';
+  toast.setAttribute('role', 'status');
+  chartView.append(toast);
+  let toastTimer = null;
+  const showToast = (text, isError) => {
+    clearTimeout(toastTimer);
+    toast.textContent = text;
+    toast.classList.toggle('is-error', isError);
+    toast.classList.add('is-shown');
+    toastTimer = setTimeout(() => {
+      toast.classList.remove('is-shown');
+      toast.textContent = '';
+    }, isError ? 6000 : 3000);
+  };
+  copyLinkBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(location.href);
+      showToast(requiredTranslation('link_copied'), false);
+    } catch (err) {
+      console.error(err);
+      showToast(requiredTranslation('link_copy_error'), true);
+    }
+  });
+
   applyLanguage();
+  if (location.hash) followAddress();
 });
 
 
