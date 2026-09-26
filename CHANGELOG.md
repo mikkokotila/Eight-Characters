@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.25.0
+
+Stage 5 of the Standard view overhaul (#20), part 1: the chart out of the page, as text and on paper.
+
+### Changed
+- **Copy as text**, in the chart's bar and among the commands, copies two lines for notes and messages:
+  - the pillars on the chart's cards, in written order, year to hour: `丁卯 癸丑 己丑 壬申`;
+  - the birth as entered, its true solar time, and the convention that set the day: `February 4, 1988 · 16:30 · Chengdu · True solar time 15:12:24 · Day changes at midnight`. In the Zi hour it names the convention the chart was read with.
+
+  A message says the text was copied, or that the browser refused. In Finnish the bar's tools now take two rows at desktop widths, as they already did on narrower screens.
+- **Print.** The browser's print, or Print among the commands, prints:
+  - the chart's name and precision line;
+  - the pillars in their element colours, with their arcs and any opened hidden stems;
+  - any open topic, below the chart at the page's width.
+
+  The controls and the page's tone are left out. A Zi-hour chart prints its convention as text, and a heading moves to the next page with what it heads.
+- On paper, the arcs' rows are laid out as ordinary grid items: paged, Chromium does not place an absolutely placed grid item in its area.
+- **Docs.** New `docs/Standard-Copy-and-Print.md`.
+- **Tests.** A browser suite for the output (`output.test.mjs`). The copied text is checked against the API and the screen, in both languages and both Zi conventions. The printed layout, the arcs on paper, a refused copy and the commands are checked too. Each of four faults put in fails at least one of its tests:
+  - pillars copied hour first;
+  - the default convention named for every chart;
+  - the panel left as a sheet on paper;
+  - the arcs' rows left absolutely placed.
+- Version bumped to `0.25.0`; the static assets' cache keys follow it.
+
 ## 0.24.0
 
 The Standard view: the panel points at the chart. A follow-up to #19, suggested while reviewing its last part.
