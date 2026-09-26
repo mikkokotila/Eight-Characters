@@ -1413,6 +1413,30 @@ body {
 .relationship-arcs.has-selection .relationship-arc { --arc-ink: var(--line-2); }
 .relationship-arcs .relationship-arc.is-active { --arc-ink: var(--ink-1); }
 
+/* ── What the panel points at, on the chart ──
+   A line in the panel under the pointer (after half a second), a control there with
+   keyboard focus, or a line a click keeps, rings what it names:
+   - its cards in the ink, 2px wide, within half the gap between stacked cards;
+   - its rows on a card's back or in opened hidden stems;
+   - its arc.
+   Meanwhile the chart's other outlines step back and the other arcs fade. Nothing
+   changes colour, opens, turns or moves. */
+#pillars[data-spotlight] .card:not(.is-spotlit),
+#pillars[data-spotlight] .hidden-stem-item:not(.is-spotlit) { outline-color: transparent; }
+#pillars .card.is-spotlit { outline: 2px solid var(--ink-1); outline-offset: 0; }
+#pillars .hidden-stem-item.is-spotlit { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
+#pillars[data-spotlight] .relationship-arc { --arc-ink: var(--line-2); }
+#pillars[data-spotlight] .relationship-arc.is-spotlit { --arc-ink: var(--ink-1); }
+/* In the panel: a line that points (a control keeps its own look), the line pointing
+   now, and a line a click keeps. The shade spreads past the line without moving it. */
+.chart-panel [data-spot]:not(button) { border-radius: 4px; cursor: pointer; }
+.chart-panel .is-spot-source:not(button),
+.chart-panel .is-spot-pinned {
+  background: var(--surface-2);
+  box-shadow: 0 0 0 var(--space-1) var(--surface-2);
+}
+.chart-panel .is-spot-pinned { outline: 1px solid var(--line-2); outline-offset: var(--space-1); }
+
 .relationship-meta,
 .relationship-note {
   font-family: var(--font-sans);

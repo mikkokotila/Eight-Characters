@@ -722,12 +722,14 @@ document.addEventListener('DOMContentLoaded', () => {
     relationshipsSection.classList.toggle('hidden', !open);
     relationshipsTopic.setAttribute('aria-expanded', String(open));
   };
+  // A line in the panel points at what it names on the chart (spotlight.js).
+  const spot = window.EC_SPOTLIGHT.create({ root: chartView, escape: esc });
   const relationships = window.EC_RELATIONSHIPS.create({
-    root: chartView, translate: requiredTranslation, escape: esc,
+    root: chartView, translate: requiredTranslation, escape: esc, spot,
     beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
-    root: chartView, translate: requiredTranslation, escape: esc,
+    root: chartView, translate: requiredTranslation, escape: esc, spot,
     beforeSelect: () => { relationships.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
   });
   const pillarChanges = window.EC_PILLAR_CHANGES.create({

@@ -8,13 +8,13 @@
   };
   const COMPANIONS = ['friend', 'rob_wealth'];
   const RESOURCES = ['direct_resource', 'indirect_resource'];
-  const create = ({ root, translate: t, escape: esc, beforeSelect }) => {
+  const create = ({ root, translate: t, escape: esc, spot, beforeSelect }) => {
     const summary = root.querySelector('#day-master-context');
     const heading = root.querySelector('#day-master-heading');
     const controls = root.querySelector('#context-controls');
     const detail = root.querySelector('#context-detail');
     const status = root.querySelector('#context-status');
-    if (!summary || !heading || !controls || !detail || !status) {
+    if (!summary || !heading || !controls || !detail || !status || !spot) {
       throw new Error('Day Master context view is incomplete.');
     }
     let selected = null;
@@ -85,14 +85,15 @@
     };
 
     // One stem: its element's swatch, the stem, a hidden stem's qi position, and then
-    // its role, which a role's own page leaves out, and how a root matches.
+    // its role, which a role's own page leaves out, and how a root matches. It points at
+    // its card on the chart, and at its row there when hidden stems show.
     const evidenceMarkup = (e, { role = true, rootMatch = false } = {}) => {
       const about = [
         ...(role ? [t('ten_god_' + e.ten_god)] : []),
         ...(rootMatch ? [t('context_match_' + e.match)] : []),
       ];
       return `
-      <div class="context-evidence-row" data-evidence-pillar="${esc(e.pillar)}" data-evidence-char="${esc(e.char)}">
+      <div class="context-evidence-row" data-evidence-pillar="${esc(e.pillar)}" data-evidence-char="${esc(e.char)}"${spot.attr([spot.of(e)])}>
         <span class="hidden-stem-dot ${esc(e.element)}" aria-hidden="true"></span>
         <div class="context-evidence-identity">
           <span>${esc(e.pinyin)} ${esc(e.char)} · ${esc(elementLabel(e))}</span>
@@ -104,7 +105,7 @@
 
     const branchMarkup = (pillar, evidence, roots = false) => {
       const branch = chart[pillar].branch;
-      return `<div class="relationship-member">
+      return `<div class="relationship-member"${spot.attr([`branch:${pillar}`])}>
         <div class="relationship-position">${esc(t('pillar_' + pillar))}</div>
         <div class="relationship-identity">${esc(branch.pinyin)} ${esc(branch.char)}</div>
         <div class="relationship-element">${esc(branch.element_label)}</div>
@@ -125,7 +126,7 @@
       });
     };
     const roles = window.EC_ROLES.create({
-      root, translate: t, escape: esc, makePage, branchMarkup, evidenceMarkup,
+      root, translate: t, escape: esc, spot, makePage, branchMarkup, evidenceMarkup,
       show: (page, focusSelector) => {
         require(selected === 'roles');
         clearHighlights();

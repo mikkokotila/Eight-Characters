@@ -19,9 +19,9 @@
     hidden_only: ['absent', 'hidden'], absent: ['absent', 'absent'],
   };
   const occurrenceId = (e) => e.component === 'stem' ? `visible:${e.pillar}` : `hidden:${e.pillar}:${e.char}`;
-  const create = ({ root, translate: t, escape: esc, makePage, branchMarkup, evidenceMarkup, show }) => {
+  const create = ({ root, translate: t, escape: esc, spot, makePage, branchMarkup, evidenceMarkup, show }) => {
     const detail = root.querySelector('#context-detail');
-    if (!detail || typeof show !== 'function') throw new Error('Roles view is incomplete.');
+    if (!detail || !spot || typeof show !== 'function') throw new Error('Roles view is incomplete.');
     let profile;
     let chart = {};
     let roleMap = {};
@@ -47,8 +47,9 @@
     const stemTitle = (s) => `${t('pillar_' + s.pillar)} · ${s.pinyin} ${s.char}`;
     const roleName = (name) => t('ten_god_' + name);
     const pLabel = (value) => t('roles_presence_' + value);
+    // A stem's roots control points at the roots it leads to.
     const rootButton = (s, fromRole = '') => `
-      <button type="button" class="reading-toggle" data-root-pillar="${esc(s.pillar)}" data-from-role="${esc(fromRole)}"
+      <button type="button" class="reading-toggle" data-root-pillar="${esc(s.pillar)}" data-from-role="${esc(fromRole)}"${spot.attr(s.roots.map(spot.of))}
         aria-controls="context-detail" aria-label="${esc(t('roles_inspect_stem', { stem: stemTitle(s) }))}">${esc(rootsLabel(s.roots))}</button>`;
     const backButton = (name = '', pillar = '', roleFocus = '') => `
       <button type="button" class="reading-toggle roles-back" data-role-back="${esc(name)}" data-return-pillar="${esc(pillar)}" data-return-role="${esc(roleFocus)}"
@@ -94,6 +95,8 @@
       });
     };
 
+    // Where a role occurs; a group's roles occur where either does.
+    const occurrences = (role) => [...role.visible, ...role.hidden].map(spot.of);
     // Where an occurrence is: its pillar, and a hidden stem's branch.
     const placeMarkup = (pillar, branch = null) => `
       <div class="role-occurrence-place">
@@ -113,14 +116,14 @@
             <span>${esc(t('roles_column_visible'))}</span><span>${esc(t('roles_column_hidden'))}</span>
           </div>${profile.groups.map((group) => `
           <div class="role-group" data-role-group="${esc(group.group)}">
-            <div class="role-group-heading">
+            <div class="role-group-heading"${spot.attr(group.roles.flatMap(occurrences))}>
               <span class="hidden-stem-dot ${esc(group.element)}" aria-hidden="true"></span>
               <h4 class="relationship-position">${esc(t('roles_group_' + group.group))}</h4>
               <span class="relationship-element">${esc(t('element_' + group.element))}</span>
               <span class="role-presence sr-only">${esc(pLabel(group.presence))}</span>
             </div>
             ${group.roles.map((role) => `
-              <button type="button" class="role-choice${role.presence === 'absent' ? ' is-absent' : ''}" data-role="${esc(role.ten_god)}" aria-controls="context-detail">
+              <button type="button" class="role-choice${role.presence === 'absent' ? ' is-absent' : ''}" data-role="${esc(role.ten_god)}"${spot.attr(occurrences(role))} aria-controls="context-detail">
                 <span class="role-choice-name">${esc(roleName(role.ten_god))}</span>
                 <span class="role-presence sr-only">${esc(pLabel(role.presence))}</span>
                 ${MARKS[role.presence].map((mark) => `<span class="role-mark" data-mark="${mark}" aria-hidden="true"></span>`).join('')}
@@ -132,7 +135,7 @@
           <p class="relationship-meta">${esc(t('roles_visible_meta'))}</p>
           <div class="role-occurrences">${DISPLAY.map((pillar) => {
             const s = stemMap[pillar];
-            return `<div class="role-occurrence role-stem-entry">${placeMarkup(pillar)}
+            return `<div class="role-occurrence role-stem-entry"${spot.attr([`stem:${pillar}`])}>${placeMarkup(pillar)}
               <div class="role-occurrence-body">${evidenceMarkup({ ...s, component: 'stem' })}${rootButton(s)}</div>
             </div>`;
           }).join('')}</div>
@@ -143,13 +146,13 @@
       const matches = DISPLAY.map((pillar) => stemMap[pillar]).filter((s) => s.exact_hidden_matches.includes(record.id));
       if (!matches.length) return `<p class="role-exact">${esc(t('roles_no_exact_visible'))}</p>`;
       return `<div class="role-exact"><span>${esc(t('roles_exact_visible'))}</span> ${matches.map((s) => `
-        <button type="button" class="reading-toggle" data-root-pillar="${esc(s.pillar)}" data-from-role="${esc(name)}" aria-controls="context-detail">
+        <button type="button" class="reading-toggle" data-root-pillar="${esc(s.pillar)}" data-from-role="${esc(name)}"${spot.attr([`stem:${s.pillar}`])} aria-controls="context-detail">
           ${esc(t('pillar_' + s.pillar))}${s.pillar === 'day' ? ` · ${esc(roleName('day_master'))}` : ''}
         </button>`).join(' · ')}</div>`;
     };
     // The page names the role once, in its title, not again under each occurrence.
     const roleSource = (record, name) => `
-      <div class="role-occurrence" data-role-occurrence="${esc(record.id)}">${placeMarkup(record.pillar, record.branch)}
+      <div class="role-occurrence" data-role-occurrence="${esc(record.id)}"${spot.attr([spot.of(record)])}>${placeMarkup(record.pillar, record.branch)}
         <div class="role-occurrence-body">${evidenceMarkup(record, { role: false })}
           ${record.component === 'stem' ? rootButton(stemMap[record.pillar], name) : exactVisibleMarkup(record, name)}
         </div>

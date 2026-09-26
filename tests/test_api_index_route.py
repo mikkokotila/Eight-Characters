@@ -124,6 +124,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'day-master-context.js',
             'roles.js',
             'palette.js',
+            'spotlight.js',
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
