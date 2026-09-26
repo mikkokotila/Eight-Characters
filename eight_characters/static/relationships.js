@@ -38,13 +38,13 @@
     return arcs;
   };
 
-  const create = ({ root, translate: t, escape: esc, beforeSelect }) => {
+  const create = ({ root, translate: t, escape: esc, spot, beforeSelect }) => {
     const list = root.querySelector('#relationship-list');
     const empty = root.querySelector('#relationship-empty');
     const detail = root.querySelector('#relationship-detail');
     const status = root.querySelector('#relationship-status');
     const pillars = root.querySelector('#pillars');
-    if (!list || !empty || !detail || !status || !pillars) {
+    if (!list || !empty || !detail || !status || !pillars || !spot) {
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
@@ -84,20 +84,23 @@
       status.textContent = '';
     };
 
+    // A member points at its card; a branch's roles, each at its hidden stem.
     const memberMarkup = (relationship, member) => {
       const chart = chartByPillar[member.pillar];
       const data = tenGods[member.pillar];
       const component = chart[relationship.component];
       const identity = `${member.pinyin} ${member.char}`;
       const elementLabel = relationship.component === 'stem' ? component.label : component.element_label;
-      const roles = relationship.component === 'stem' ? [data.stem] : data.hidden_stems;
+      const stem = relationship.component === 'stem';
+      const roles = stem ? [data.stem] : data.hidden_stems;
+      const card = `${relationship.component}:${member.pillar}`;
       return `
-        <div class="relationship-member">
+        <div class="relationship-member"${spot.attr([card])}>
           <div class="relationship-position">${esc(t('pillar_' + member.pillar))}</div>
           <div class="relationship-identity">${esc(identity)}</div>
           <div class="relationship-element">${esc(elementLabel)}</div>
           <div class="relationship-roles">${roles.map((role) => `
-            <div class="hidden-stem-item">
+            <div class="hidden-stem-item"${spot.attr([stem ? card : `hidden:${member.pillar}:${role.char}`])}>
               <span class="hidden-stem-dot ${esc(role.element)}"></span>
               <span class="hidden-stem-label">${esc(t('ten_god_' + role.ten_god))}</span>
               ${role.qi_type ? `<span class="hidden-stem-type">${esc(t('qi_' + role.qi_type))}</span>` : ''}
@@ -232,9 +235,11 @@
           .map(arcMarkup).join('');
         pillars.append(band);
       });
+      // Each entry points at its cards and its arc.
       list.innerHTML = relationships.map((relationship, index) => `
         <button type="button" class="relationship-chip" data-kind="${esc(relationship.kind)}"
-          data-relationship-index="${index}" data-relationship="${esc(relationship.id)}"
+          data-relationship-index="${index}" data-relationship="${esc(relationship.id)}"${spot.attr([
+            ...relationship.members.map((member) => `${relationship.component}:${member.pillar}`), `arc:${relationship.id}`])}
           aria-expanded="false" aria-controls="relationship-detail">
           <span class="relationship-mark" aria-hidden="true"></span>
           <span>${esc(labelFor(relationship))}</span>

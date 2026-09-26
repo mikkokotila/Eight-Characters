@@ -88,3 +88,9 @@ and gaps use only these, or `calc()` of them.
   Its labels, a pillar's plain name or a group of roles, take the column
   header's capitals. The roles matrix is no wider than `--panel-width`, so on a
   wide sheet each mark stays near its role.
+- What a line in the panel points at is ringed on the chart in `--ink-1`:
+  - a card with a 2px outline at no offset, so the ring stays within half the 4px gap
+    between a pillar's stem and branch;
+  - a hidden stem's row with a 2px outline.
+
+  The pointing line takes `--surface-2`, spread by `--space-1` without moving.

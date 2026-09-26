@@ -164,5 +164,23 @@ The panel suite checks what the panel says (#19).
   - Where the page has room (a sheet 1024px wide), they average 60 to 75.
 - **Pillar names** in the panel are written as their column headers write them.
 
+The pointing suite checks that the panel points at the chart (#19).
+- **Timing.** A line rings on the chart what it names after half a second at rest,
+  never sooner, measured in the page. While a ring shows, the next line rings at
+  once. None stays once the pointer has left, and after a pause the half second
+  applies again.
+- **Targets.** Every kind of line rings exactly what the API's records say it names:
+  - the season's branch and hidden stems;
+  - each role and group, and each visible stem and its roots;
+  - each occurrence on a role's page, and each visible stem it leads to;
+  - each relationship's cards and arc, and each member of a chosen one.
+
+  An absent role names nothing.
+- **Keeping and letting go.** A click or tap keeps a line's ring, even while the pointer
+  is on the chart, and a second lets it go. A role's click opens its page and nothing
+  rings until the pointer moves. Keyboard focus rings at once.
+- **Nothing else changes.** Pointing moves, opens, turns and recolours nothing, keeps
+  within half the gap between cards, and leaves no ring behind a closed page.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.

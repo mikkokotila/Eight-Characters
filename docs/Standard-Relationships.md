@@ -18,6 +18,10 @@ cards behind any opened hidden stems. Selecting an entry darkens its arc and
 fades the others. With two pillars to a row, up to 640px wide, nothing is drawn,
 and the list in the sheet names them.
 
+Resting the pointer on an entry for half a second rings its cards and darkens its
+arc; in the details, each member points at its card, and a branch's hidden stems at
+their rows.
+
 The selected relationship's details open below the list, and the pillars stay in
 place: from 1200px wide the chart moves over once, when the panel first opens,
 and a sheet only lies over the page. The details identify the stems or branches,

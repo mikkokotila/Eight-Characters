@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.24.0
+
+The Standard view: the panel points at the chart. A follow-up to #19, suggested while reviewing its last part.
+
+### Changed
+- **Each line in the panel points at the chart.** A page still highlights all its evidence at once, and now each line in it rings its own part, with a dark ring:
+  - a stem, its card;
+  - a hidden stem, its branch's card, and its row where hidden stems show;
+  - a relationship, its cards and its arc;
+  - a role or a group of roles, every place it occurs;
+  - a stem's roots control, the roots it leads to.
+- **When it rings:**
+  - after the pointer rests on a line for half a second; while a ring shows, the next line rings at once, and the ring goes shortly after the pointer leaves every line;
+  - for as long as a click or tap keeps it, on a line that leads nowhere else. This serves touch, which has no hover, and a pointer that moves over to the chart to look closer. A second click lets it go. A control keeps its own action;
+  - at once, while a control in the panel has keyboard focus.
+- Meanwhile the page's other outlines step back and the other arcs fade. The ring is 2px of ink, within half the gap between stacked cards. Nothing moves, opens, turns or changes colour.
+- A line may name only what the chart shows; each page checks this as it is built. A page closed or redrawn takes its rings with it.
+- **Docs.** `docs/Standard-Day-Master-Context.md` describes the rings; the Roles, Relationships and Keyboard pages and the design tokens add their parts.
+- **Tests.** A browser suite for the pointing (`pointing.test.mjs`) checks:
+  - the half second, and the quick switch after it;
+  - what every kind of line rings, from the API's records;
+  - keeping by click, tap and focus;
+  - that nothing moves.
+
+  Each of seven faults put into the pointing fails at least one of its tests: no half second, no quick switch, nothing kept, a hidden stem without its row, a ring past half the gap, focus that rings nothing, a ring left behind a closed page.
+- Version bumped to `0.24.0`; the static assets' cache keys follow it.
+
 ## 0.23.0
 
 Stage 4 of the Standard view overhaul (#19), part 5: what the panel says. This completes #19.
