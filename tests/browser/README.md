@@ -182,5 +182,18 @@ The pointing suite checks that the panel points at the chart (#19).
 - **Nothing else changes.** Pointing moves, opens, turns and recolours nothing, keeps
   within half the gap between cards, and leaves no ring behind a closed page.
 
+The output suite checks the chart out of the page (#20).
+- **Copy as text.** The copied pillars match the API's record and the cards, year to
+  hour. The second line matches the screen's name, true solar time and convention,
+  in English and Finnish. In the Zi hour, switching the convention changes both
+  lines. A refusal says so. The commands offer Copy as text and Print.
+- **Print.** With print media, the chart keeps its eight cards, colours and precision
+  line; the controls are gone; the open topic follows below at the page's width;
+  and with no topic, nothing follows.
+- **Arcs on paper.** Each arc stands on its cards as on screen, and the arcs' rows
+  are laid out for paged output: Chromium places absolutely placed grid items
+  wrongly there, and emulated print is not paged. A Zi-hour chart prints its
+  convention as text.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.
