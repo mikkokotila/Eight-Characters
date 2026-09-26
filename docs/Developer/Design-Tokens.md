@@ -22,7 +22,7 @@ value: `tests/test_api_index_route.py`
 | `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% | an option under the pointer; the active option |
 | `--shadow-1`, `--shadow-2`, `--shadow-sheet` | | a focused field; anything raised; the sheet over the foot of the page |
 | `--sheen` | | the light across a card's face |
-| `--<element>-bg`, `--<element>-text`, `--<element>-tint` | | each element's cards, their ink, and its hidden-stem panels |
+| `--<element>-bg`, `--<element>-text`, `--<element>-tint` | the tint: its element at 20% on the page tone (22% for metal and water), mixed opaque with `color-mix()` | each element's cards, their ink, and its hidden-stem panels |
 
 `--ink-1` and `--ink-2` meet WCAG AA (4.5:1) on the page and on every
 element-tinted panel. De-emphasis comes from size, case and tracking, not from a

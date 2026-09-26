@@ -34,10 +34,12 @@ const AUDIT = () => {
 
   // WCAG 2.2 contrast, with backgrounds and opacity composited through every ancestor.
   const parse = (value) => {
-    const match = value.match(/^rgba?\(([^)]+)\)$/);
-    if (!match) throw new Error(`Unexpected colour value: ${value}`);
-    const [r, g, b, a = 1] = match[1].split(/[\s,/]+/).filter(Boolean).map(Number);
-    return [r, g, b, a];
+    const rgb = value.match(/^rgba?\(([^)]+)\)$/);
+    // A mixed colour (color-mix) is given in sRGB's own terms, each channel from 0 to 1.
+    const srgb = value.match(/^color\(srgb ([^)]+)\)$/);
+    if (!rgb && !srgb) throw new Error(`Unexpected colour value: ${value}`);
+    const [r, g, b, a = 1] = (rgb ?? srgb)[1].split(/[\s,/]+/).filter(Boolean).map(Number);
+    return srgb ? [r * 255, g * 255, b * 255, a] : [r, g, b, a];
   };
   const over = ([r, g, b, a], below) => [r, g, b].map((channel, i) => channel * a + below[i] * (1 - a));
   const opacity = (element) => {

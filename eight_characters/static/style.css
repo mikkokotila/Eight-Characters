@@ -75,12 +75,14 @@
   --earth-text: #2A2610;
   --water-bg: #7A8FA0;
   --water-text: #0F1A22;
-  /* The element colours, faint, behind a branch's hidden stems. */
-  --metal-tint: rgba(200, 194, 184, 0.22);
-  --fire-tint: rgba(196, 133, 122, 0.20);
-  --wood-tint: rgba(122, 158, 114, 0.20);
-  --earth-tint: rgba(187, 168, 98, 0.20);
-  --water-tint: rgba(122, 143, 160, 0.22);
+  /* The element colours, faint, behind a branch's hidden stems: a share of
+     each on the page's tone. Opaque, so nothing behind a panel shows through;
+     the branch arcs' feet pass behind opened panels. */
+  --metal-tint: color-mix(in srgb, var(--metal-bg) 22%, var(--bg));
+  --fire-tint: color-mix(in srgb, var(--fire-bg) 20%, var(--bg));
+  --wood-tint: color-mix(in srgb, var(--wood-bg) 20%, var(--bg));
+  --earth-tint: color-mix(in srgb, var(--earth-bg) 20%, var(--bg));
+  --water-tint: color-mix(in srgb, var(--water-bg) 22%, var(--bg));
 
   /* ── Space: one 4px scale ── */
   --space-1: 4px;
@@ -860,13 +862,12 @@ body {
               opacity 0.35s ease 0.05s;
 }
 
-/* Element-tinted panel backgrounds, laid on the page's own tone: the feet of
-   the branch arcs run down behind an opened panel, and it hides them. */
-.hidden-stems-panel.metal { background: linear-gradient(var(--metal-tint), var(--metal-tint)), var(--bg); }
-.hidden-stems-panel.fire  { background: linear-gradient(var(--fire-tint), var(--fire-tint)), var(--bg); }
-.hidden-stems-panel.wood  { background: linear-gradient(var(--wood-tint), var(--wood-tint)), var(--bg); }
-.hidden-stems-panel.earth { background: linear-gradient(var(--earth-tint), var(--earth-tint)), var(--bg); }
-.hidden-stems-panel.water { background: linear-gradient(var(--water-tint), var(--water-tint)), var(--bg); }
+/* Element-tinted panel backgrounds */
+.hidden-stems-panel.metal { background: var(--metal-tint); }
+.hidden-stems-panel.fire  { background: var(--fire-tint); }
+.hidden-stems-panel.wood  { background: var(--wood-tint); }
+.hidden-stems-panel.earth { background: var(--earth-tint); }
+.hidden-stems-panel.water { background: var(--water-tint); }
 
 .hidden-stems-list {
   padding: var(--space-3) var(--space-4) var(--space-4);
