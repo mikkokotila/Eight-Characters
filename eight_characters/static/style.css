@@ -1831,3 +1831,81 @@ kbd {
   .location-group { min-width: 0; width: 100%; }
   .location-search-wrap { flex-direction: column; align-items: stretch; }
 }
+
+/* ═══════════════════════════════════════════════════════
+   PRINT — the chart, its precision line and the open topic
+   ═══════════════════════════════════════════════════════
+   On paper the chart is as on screen, in its element colours; the controls are left
+   out, and so is the page's tone (the paper stays white). An open topic follows below
+   the chart, whatever the screen's width. */
+@media print {
+  @page { margin: 12mm; }
+  body { display: block; min-height: 0; padding: 0; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+
+  #input-view,
+  .chart-tools,
+  .context-controls,
+  #relationships-topic,
+  .chart-panel-bar,
+  .toast,
+  .card-hint,
+  .branch-expand-hint,
+  dialog { display: none !important; }
+
+  /* The colours that carry meaning print as they are. */
+  .card-face,
+  .hidden-stems-panel,
+  .hidden-stem-dot,
+  .role-mark {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* The convention the chart was read with, as text. */
+  .zi-switch-options button:not([aria-pressed='true']) { display: none; }
+  .zi-switch-options button[aria-pressed='true'] {
+    padding: 0;
+    border: none;
+    background: none;
+    color: var(--ink-1);
+  }
+
+  .chart-container,
+  .chart-container.has-panel { display: block; max-width: none; padding-bottom: 0; }
+  .pillars { break-inside: avoid; }
+  .chart-bar,
+  .chart-topics { break-after: avoid; }
+  .chart-panel {
+    position: static;
+    max-height: none;
+    overflow: visible;
+    margin-top: var(--space-6);
+    padding: var(--space-5) 0 0;
+    border: none;
+    border-top: 1px solid var(--line-2);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .relationship-member,
+  .context-evidence-row,
+  .role-occurrence,
+  .role-group { break-inside: avoid; }
+  /* A heading goes to the next page with what it heads. */
+  .relationship-detail-heading,
+  .relationship-meta,
+  .panel-heading,
+  .panel-subheading { break-after: avoid; }
+}
+/* Paged, Chromium does not lay an absolutely placed grid item in its grid area. On paper
+   the arcs' rows are ordinary grid items, over pillars placed in their own columns and
+   rows 1 to 8, so that nothing flows around them; both rows keep their heights. Up to
+   640px there are two pillars to a row and no arcs. */
+@media print and (min-width: 641px) {
+  .pillar { grid-row: 1 / span 8; }
+  .pillar:nth-child(1) { grid-column: 1; }
+  .pillar:nth-child(2) { grid-column: 2; }
+  .pillar:nth-child(3) { grid-column: 3; }
+  .pillar:nth-child(4) { grid-column: 4; }
+  .relationship-arcs { position: relative; inset: auto; }
+}
