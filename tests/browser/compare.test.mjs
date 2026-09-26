@@ -30,6 +30,11 @@ async function side(page, key) {
     topic: await frame.locator('#context-detail').evaluate((node) => (node.classList.contains('hidden') ? null : node.dataset.topic)),
   };
 }
+// Both charts drawn: nothing asked of the API is left in flight when a frame goes.
+async function bothDrawn(page) {
+  await page.locator('#compare-view').waitFor({ state: 'visible' });
+  return [await side(page, 'a'), await side(page, 'b')];
+}
 const pairIn = (url) => {
   const params = new URLSearchParams(new URL(url).hash.slice('#compare?'.length));
   return { a: new URLSearchParams(params.get('a') ?? ''), b: params.has('b') ? new URLSearchParams(params.get('b')) : null };
@@ -71,7 +76,7 @@ for (const profile of profiles) {
 
     check('the second birth shows both charts side by side, each the chart view with only its own controls', async (page) => {
       await compareWithSecond(page);
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await bothDrawn(page);
       assert.equal(await page.locator('#input-view').isVisible(), false);
       assert.equal(await page.locator('#chart-view').isVisible(), false);
       const expectedA = await pillarsOf(page, '1988-02-04', '16:30');
@@ -104,7 +109,7 @@ for (const profile of profiles) {
       const a = new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length));
       const b = new URLSearchParams({ ...Object.fromEntries(a), date: SECOND.date, time: SECOND.time });
       await page.goto(new URL(`/#compare?${new URLSearchParams({ a: a.toString(), b: b.toString() })}`, page.url()).href);
-      const first = await side(page, 'a');
+      const [first] = await bothDrawn(page);
       const length = await page.evaluate(() => history.length);
       await first.frame.locator('button[data-context="roots"]').click();
       await first.frame.locator('#context-detail').waitFor({ state: 'visible' });
@@ -122,8 +127,7 @@ for (const profile of profiles) {
 
     check('Swap sides keeps each chart with what is open in it; Close goes to the first; Back walks the comparison', async (page) => {
       await compareWithSecond(page);
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
-      const before = await side(page, 'a');
+      const [before] = await bothDrawn(page);
       await before.frame.locator('button[data-context="roots"]').click();
       await page.waitForFunction(() => location.hash.includes('topic%3Droots'));
       await page.locator('#compare-swap').click();
@@ -147,7 +151,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#pillars .card.stem').evaluateAll((cards) => cards.map((card) => card.dataset.char).join('')), a.stems);
       // Back: the comparison, the form for its second chart, then the first chart.
       await page.goBack();
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await bothDrawn(page);
       await page.goBack();
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.goBack();
@@ -157,8 +161,7 @@ for (const profile of profiles) {
 
     check('the comparison\'s language asks both charts again in it', async (page) => {
       await compareWithSecond(page);
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
-      await side(page, 'a');
+      await bothDrawn(page);
       await page.locator('#compare-language button[data-compare-lang="fi"]').click();
       await page.waitForFunction(() => {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
@@ -180,7 +183,7 @@ for (const profile of profiles) {
         Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.__copied.push(text); } } });
       });
       await compareWithSecond(page);
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await bothDrawn(page);
       await page.locator('#compare-copy-link').click();
       await page.waitForFunction(() => document.querySelector('.toast').textContent === 'Comparison link copied');
       assert.deepEqual(await page.evaluate(() => window.__copied), [page.url()]);
@@ -195,8 +198,7 @@ for (const profile of profiles) {
 
     check('the commands offer Compare on a chart, and leave the page\'s actions out of a compared chart', async (page) => {
       await compareWithSecond(page);
-      await page.locator('#compare-view').waitFor({ state: 'visible' });
-      const { frame } = await side(page, 'a');
+      const [{ frame }] = await bothDrawn(page);
       await frame.locator('#pillars .card.stem').first().click();
       await page.keyboard.press('Control+k');
       const inFrame = await frame.locator('#palette-list .palette-label').allTextContents();
