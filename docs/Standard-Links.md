@@ -50,6 +50,7 @@ waits in the form.
 ## Copy link
 
 Copy link, in the bar above the chart, copies the address. A message over the foot
-of the page says that it was copied, or that the browser refused.
+of the page says that it was copied, or that the browser refused. Copy as text copies
+the chart itself (see [Copying and printing](Standard-Copy-and-Print.md)).
 
 See [browser regression tests](../tests/browser/README.md): `links.test.mjs`.

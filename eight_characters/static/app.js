@@ -118,7 +118,8 @@ document.addEventListener('DOMContentLoaded', () => {
       ? requiredTranslation('clock_offset_none')
       : requiredTranslation(offset < 0 ? 'clock_offset_behind' : 'clock_offset_ahead',
         { duration: formatDuration(Math.abs(offset)) });
-    return { reading, text: `${requiredTranslation('true_solar_time', { time: shown })} · ${difference}` };
+    const solar = requiredTranslation('true_solar_time', { time: shown });
+    return { reading, solar, text: `${solar} · ${difference}` };
   };
 
   // ── The chart's flags: the Zi-hour alternative, and notices ──
@@ -548,7 +549,20 @@ document.addEventListener('DOMContentLoaded', () => {
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
-    shown = { request, place, heading };
+    // The chart as text, for notes and messages: the pillars on its cards in written
+    // order, year to hour, then the birth as entered, its true solar time and the
+    // convention that set the day.
+    const onCards = Object.fromEntries(['hour', 'day', 'month', 'year'].map((name) => {
+      const stem = chartView.querySelector(`.card.stem[data-pillar="${name}"]`);
+      const branch = chartView.querySelector(`.card.branch[data-pillar="${name}"]`);
+      return [name, `${stem.dataset.char}${branch.dataset.char}`];
+    }));
+    const zi = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
+    const text = [
+      ['year', 'month', 'day', 'hour'].map((name) => onCards[name]).join(' '),
+      [heading, solarTime.solar, requiredTranslation(`zi_${zi}`)].join(' · '),
+    ].join('\n');
+    shown = { request, place, heading, text };
     revealChart();
     return true;
   };
@@ -1321,9 +1335,11 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   window.addEventListener('popstate', followAddress);
 
-  // ── Copy link: the address names this chart and its open topic ──
+  // ── Copy link: the address names this chart and its open topic. Copy as text: the
+  // chart itself, for notes and messages ──
   const copyLinkBtn = document.getElementById('copy-link-btn');
-  if (!copyLinkBtn) throw new Error('Chart bar is incomplete.');
+  const copyTextBtn = document.getElementById('copy-text-btn');
+  if (!copyLinkBtn || !copyTextBtn) throw new Error('Chart bar is incomplete.');
   // What a bar action did, said briefly over the foot of the page and read out.
   const toast = document.createElement('div');
   toast.className = 'toast';
@@ -1347,6 +1363,15 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
       showToast(requiredTranslation('link_copy_error'), true);
+    }
+  });
+  copyTextBtn.addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(shown.text);
+      showToast(requiredTranslation('text_copied'), false);
+    } catch (err) {
+      console.error(err);
+      showToast(requiredTranslation('text_copy_error'), true);
     }
   });
 
@@ -1411,7 +1436,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
     add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
     const chart = requiredTranslation('palette_chart');
-    [copyLinkBtn, backBtn, newChartBtn].forEach((button) => add(chart, button.textContent, () => button.click()));
+    [copyLinkBtn, copyTextBtn, backBtn, newChartBtn].forEach((button) => add(chart, button.textContent, () => button.click()));
+    // The page's own print, whose stylesheet prints the chart and its open topic.
+    add(chart, requiredTranslation('print'), () => window.print());
     if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
     add(chart, requiredTranslation('keys_title'), openKeys);
     return commands;
