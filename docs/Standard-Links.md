@@ -47,6 +47,11 @@ this chart does not have, does not open a chart. The form says why, naming the
 part, and the address becomes the form's. When the link's birth is valid, it
 waits in the form.
 
+## Comparisons
+
+Two charts side by side have an address of their own, holding both charts' links:
+see [Comparing two charts](Standard-Compare.md).
+
 ## Copy link
 
 Copy link, in the bar above the chart, copies the address. A message over the foot

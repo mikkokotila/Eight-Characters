@@ -11,6 +11,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Whole-chart roles and visible-stem roots: `Standard-Roles.md`
 - Chart links, history and Copy link: `Standard-Links.md`
 - Copying a chart as text, and printing it: `Standard-Copy-and-Print.md`
+- Two charts side by side: `Standard-Compare.md`
 - The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
 - Developer endpoint internals: `Developer/API.md`
 - Standard view design tokens, and the dark theme: `Developer/Design-Tokens.md`
