@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.23.0
+
+Stage 4 of the Standard view overhaul (#19), part 5: what the panel says. This completes #19.
+
+### Changed
+- **Roles is a matrix.** Each role stands in its group, with a mark in two columns, the visible stems and the hidden stems: a filled dot where it is visible, a ring where it is hidden, a small dot where it is not. The marks are drawn, not typed.
+  - Each group shows its element's colour beside its name, on one line.
+  - A role the chart lacks is set in the secondary ink and can still be chosen.
+  - Screen readers still hear each role's state in words.
+  - The Finnish column headings, "Näkyvissä" and "Piilossa", take the words of the existing presence states.
+- **A stem in the panel is a line of text**, with its element's colour, not a box outlined like an input field. The outlines stay on the chart.
+- **Nothing is said twice.**
+  - A role's page names the role once, in its title, not again under each occurrence.
+  - Each occurrence's pillar stands beside it, not over it.
+  - The season page no longer stacks "Month branch composition" over "Month".
+  - A visible stem no longer says Visible under Visible stems.
+- **Every page reads from the left**, as the list of relationships already did. It ends with one note in one style, of about 60 to 75 characters to the line where the panel has room: 66 to 69 on average on a sheet 1024px wide, and never more than 75. When a page has nothing to list, it says so in running text, not in the style of a note.
+- **One style for the pillars' names**: the panel writes them in the capitals of their column headers. Page titles keep the detail heading's size in the narrow panel.
+- **Docs.** `docs/Standard-Roles.md`, `docs/Standard-Day-Master-Context.md` and `docs/Developer/Design-Tokens.md` describe the panel's pages.
+- **Tests.** A browser suite for the panel (`panel.test.mjs`) checks:
+  - the matrix and its marks;
+  - rows without boxes;
+  - no repeated names and no stacked labels;
+  - the notes' alignment, style and line length;
+  - the pillars' names.
+
+  Every test in it fails on the previous version.
+- Version bumped to `0.23.0`; the static assets' cache keys follow it.
+
 ## 0.22.0
 
 Stage 4 of the Standard view overhaul (#19), part 4: the chart by keyboard.
