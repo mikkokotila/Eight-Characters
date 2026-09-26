@@ -12,6 +12,12 @@
   ];
   const FIELDS = ['id', 'pillar', 'component', 'branch', 'char', 'element', 'polarity', 'qi_type', 'ten_god'];
   const presence = (visible, hidden) => visible && hidden ? 'visible_and_hidden' : visible ? 'visible_only' : hidden ? 'hidden_only' : 'absent';
+  // A role's marks in the overview's two columns, visible stems and hidden stems:
+  // ● where it is visible, ○ where it is hidden, · where it is not.
+  const MARKS = {
+    visible_and_hidden: ['visible', 'hidden'], visible_only: ['visible', 'absent'],
+    hidden_only: ['absent', 'hidden'], absent: ['absent', 'absent'],
+  };
   const occurrenceId = (e) => e.component === 'stem' ? `visible:${e.pillar}` : `hidden:${e.pillar}:${e.char}`;
   const create = ({ root, translate: t, escape: esc, makePage, branchMarkup, evidenceMarkup, show }) => {
     const detail = root.querySelector('#context-detail');
@@ -88,31 +94,46 @@
       });
     };
 
+    // Where an occurrence is: its pillar, and a hidden stem's branch.
+    const placeMarkup = (pillar, branch = null) => `
+      <div class="role-occurrence-place">
+        <span class="relationship-position">${esc(t('pillar_' + pillar))}</span>
+        ${branch ? `<span class="role-occurrence-branch">${esc(chart[pillar].branch.pinyin)} ${esc(branch)}</span>` : ''}
+      </div>`;
+
     // Each page carries its path, as the chart's address names it: roles, roles/<role>,
     // roles/stem/<pillar>, or roles/<role>/stem/<pillar> when reached from that role.
+    // The overview is a matrix: the roles in their groups, against the visible and the
+    // hidden stems. The marks are drawn; each role says its presence in words as well.
     const buildOverview = () => ({
       path: 'roles', title: t('roles_title'), evidence: [],
       markup: makePage(t('roles_title'), t('roles_overview_meta'), `
-        <div class="role-overview">${profile.groups.map((group) => `
+        <div class="role-overview">
+          <div class="role-overview-columns" aria-hidden="true">
+            <span>${esc(t('roles_column_visible'))}</span><span>${esc(t('roles_column_hidden'))}</span>
+          </div>${profile.groups.map((group) => `
           <div class="role-group" data-role-group="${esc(group.group)}">
-            <div class="role-group-heading"><h4 class="relationship-position">${esc(t('roles_group_' + group.group))}</h4>
+            <div class="role-group-heading">
+              <span class="hidden-stem-dot ${esc(group.element)}" aria-hidden="true"></span>
+              <h4 class="relationship-position">${esc(t('roles_group_' + group.group))}</h4>
               <span class="relationship-element">${esc(t('element_' + group.element))}</span>
-              <span class="role-presence">${esc(pLabel(group.presence))}</span></div>
+              <span class="role-presence sr-only">${esc(pLabel(group.presence))}</span>
+            </div>
             ${group.roles.map((role) => `
-              <button type="button" class="role-choice" data-role="${esc(role.ten_god)}" aria-controls="context-detail">
+              <button type="button" class="role-choice${role.presence === 'absent' ? ' is-absent' : ''}" data-role="${esc(role.ten_god)}" aria-controls="context-detail">
                 <span class="role-choice-name">${esc(roleName(role.ten_god))}</span>
-                <span class="role-presence">${esc(pLabel(role.presence))}</span>
+                <span class="role-presence sr-only">${esc(pLabel(role.presence))}</span>
+                ${MARKS[role.presence].map((mark) => `<span class="role-mark" data-mark="${mark}" aria-hidden="true"></span>`).join('')}
               </button>`).join('')}
-          </div>`).join('')}</div>
+          </div>`).join('')}
+        </div>
         <section class="role-visible-stems" aria-labelledby="visible-stems-heading">
-          <h4 id="visible-stems-heading" class="relationship-position">${esc(t('roles_visible_stems'))}</h4>
+          <h4 id="visible-stems-heading" class="panel-subheading">${esc(t('roles_visible_stems'))}</h4>
           <p class="relationship-meta">${esc(t('roles_visible_meta'))}</p>
-          <div class="role-stem-grid">${DISPLAY.map((pillar) => {
+          <div class="role-occurrences">${DISPLAY.map((pillar) => {
             const s = stemMap[pillar];
-            return `<div class="role-stem-entry">
-              <div class="context-source-position">${esc(t('pillar_' + pillar))}</div>
-              <div class="relationship-identity">${esc(s.pinyin)} ${esc(s.char)}</div>
-              <div class="role-presence">${esc(roleName(s.ten_god))}</div>${rootButton(s)}
+            return `<div class="role-occurrence role-stem-entry">${placeMarkup(pillar)}
+              <div class="role-occurrence-body">${evidenceMarkup({ ...s, component: 'stem' })}${rootButton(s)}</div>
             </div>`;
           }).join('')}</div>
         </section>`, t('roles_overview_note')),
@@ -126,21 +147,22 @@
           ${esc(t('pillar_' + s.pillar))}${s.pillar === 'day' ? ` · ${esc(roleName('day_master'))}` : ''}
         </button>`).join(' · ')}</div>`;
     };
+    // The page names the role once, in its title, not again under each occurrence.
     const roleSource = (record, name) => `
-      <div class="role-occurrence" data-role-occurrence="${esc(record.id)}">
-        <div class="context-source-position">${esc(t('pillar_' + record.pillar))}${record.branch ? ` · ${esc(chart[record.pillar].branch.pinyin)} ${esc(record.branch)}` : ''}</div>
-        ${evidenceMarkup(record)}
-        ${record.component === 'stem' ? rootButton(stemMap[record.pillar], name) : exactVisibleMarkup(record, name)}
+      <div class="role-occurrence" data-role-occurrence="${esc(record.id)}">${placeMarkup(record.pillar, record.branch)}
+        <div class="role-occurrence-body">${evidenceMarkup(record, { role: false })}
+          ${record.component === 'stem' ? rootButton(stemMap[record.pillar], name) : exactVisibleMarkup(record, name)}
+        </div>
       </div>`;
     const buildRolePage = (name) => {
       const role = roleMap[name];
       const content = role.presence === 'absent'
-        ? `<p class="relationship-note role-empty">${esc(t('roles_absent_scope', { role: roleName(name) }))}</p>`
+        ? `<p class="relationship-empty role-empty">${esc(t('roles_absent_scope', { role: roleName(name) }))}</p>`
         : `<div class="role-sources">${['visible', 'hidden'].map((kind) => `
             <section class="role-source-kind" data-role-surface="${kind}">
-              <h4 class="relationship-position">${esc(t('roles_' + kind))}</h4>
-              <div class="context-evidence-list">${role[kind].length ? sorted(role[kind]).map((e) => roleSource(e, name)).join('')
-                : `<p class="relationship-meta">${esc(t('context_absent'))}</p>`}</div>
+              <h4 class="panel-subheading">${esc(t('roles_' + kind))}</h4>
+              ${role[kind].length ? `<div class="role-occurrences">${sorted(role[kind]).map((e) => roleSource(e, name)).join('')}</div>`
+                : `<p class="relationship-meta">${esc(t('context_absent'))}</p>`}
             </section>`).join('')}</div>`;
       return { path: `roles/${name}`, title: roleName(name), evidence: [...role.visible, ...role.hidden],
         markup: makePage(roleName(name), pLabel(role.presence), `${backButton('', '', name)}${content}`, t('roles_role_note')) };
@@ -150,7 +172,7 @@
       const rootPillars = DISPLAY.filter((name) => s.roots.some((r) => r.pillar === name));
       const content = s.roots.length ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">
         ${rootPillars.map((name) => branchMarkup(name, s.roots.filter((r) => r.pillar === name), true)).join('')}</div>`
-        : `<p class="relationship-note role-empty">${esc(t('roles_no_roots', { stem: `${s.pinyin} ${s.char}` }))}</p>`;
+        : `<p class="relationship-empty role-empty">${esc(t('roles_no_roots', { stem: `${s.pinyin} ${s.char}` }))}</p>`;
       const reference = { ...s, component: 'stem', branch: null, qi_type: null };
       return { path: fromRole ? `roles/${fromRole}/stem/${pillar}` : `roles/stem/${pillar}`,
         title: `${t('roles_stem_roots')} · ${stemTitle(s)}`, evidence: s.roots, reference,

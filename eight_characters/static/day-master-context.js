@@ -84,14 +84,23 @@
       expected.forEach(sourcesFor);
     };
 
-    const evidenceMarkup = (e, rootMatch = false) => `
-      <div class="context-evidence-row${rootMatch ? ' is-context-evidence' : ''}" data-evidence-pillar="${esc(e.pillar)}" data-evidence-char="${esc(e.char)}">
+    // One stem: its element's swatch, the stem, a hidden stem's qi position, and then
+    // its role, which a role's own page leaves out, and how a root matches.
+    const evidenceMarkup = (e, { role = true, rootMatch = false } = {}) => {
+      const about = [
+        ...(role ? [t('ten_god_' + e.ten_god)] : []),
+        ...(rootMatch ? [t('context_match_' + e.match)] : []),
+      ];
+      return `
+      <div class="context-evidence-row" data-evidence-pillar="${esc(e.pillar)}" data-evidence-char="${esc(e.char)}">
+        <span class="hidden-stem-dot ${esc(e.element)}" aria-hidden="true"></span>
         <div class="context-evidence-identity">
           <span>${esc(e.pinyin)} ${esc(e.char)} · ${esc(elementLabel(e))}</span>
-          <span class="hidden-stem-type">${esc(e.component === 'stem' ? t('context_visible') : t('qi_' + e.qi_type))}</span>
+          ${e.component === 'stem' ? '' : `<span class="hidden-stem-type">${esc(t('qi_' + e.qi_type))}</span>`}
         </div>
-        <div class="context-evidence-role">${esc(t('ten_god_' + e.ten_god))}${rootMatch ? ` · ${esc(t('context_match_' + e.match))}` : ''}</div>
+        ${about.length ? `<div class="context-evidence-role">${esc(about.join(' · '))}</div>` : ''}
       </div>`;
+    };
 
     const branchMarkup = (pillar, evidence, roots = false) => {
       const branch = chart[pillar].branch;
@@ -99,7 +108,7 @@
         <div class="relationship-position">${esc(t('pillar_' + pillar))}</div>
         <div class="relationship-identity">${esc(branch.pinyin)} ${esc(branch.char)}</div>
         <div class="relationship-element">${esc(branch.element_label)}</div>
-        <div class="context-evidence-list">${evidence.map((e) => evidenceMarkup(e, roots)).join('')}</div>
+        <div class="context-evidence-list">${evidence.map((e) => evidenceMarkup(e, { rootMatch: roots })).join('')}</div>
       </div>`;
     };
     const makePage = (title, meta, content, note) => `
@@ -198,12 +207,12 @@
       };
       const rootsContent = rootPillars.length
         ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">${rootPillars.map((pillar) => branchMarkup(pillar, data.roots.filter((e) => e.pillar === pillar), true)).join('')}</div>`
-        : `<p class="relationship-note">${esc(t('context_no_roots'))}</p>`;
+        : `<p class="relationship-empty">${esc(t('context_no_roots'))}</p>`;
       pages = {
         season: {
           path: 'season', title: t('context_season'), evidence: season.hidden_stems,
           markup: makePage(t('context_season'), t('context_season_group', { season: t('context_' + season.name), element: t('element_' + season.element) }),
-            `<div class="context-month-composition"><h4 class="relationship-position">${esc(t('context_month_composition'))}</h4>${branchMarkup('month', season.hidden_stems)}</div>`, t('context_season_note')),
+            `<div class="relationship-members" style="--member-count: 1">${branchMarkup('month', season.hidden_stems)}</div>`, t('context_season_note')),
         },
         roots: {
           path: 'roots', title: t('context_roots'), evidence: data.roots,
