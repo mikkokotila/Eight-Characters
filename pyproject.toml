@@ -32,6 +32,7 @@ eight_characters = [
   'static/fonts/*',
   'resources/mappings/*.csv',
   'resources/astronomy/*',
+  'resources/canon/*.md',
 ]
 
 [tool.ruff]
@@ -59,6 +60,10 @@ select = [
 ignore = [
   "E501",  # keep long reference strings and URLs as-is
 ]
+# The canon's own typography, which the readings quote and match exactly: the en
+# dash of its pillar pairings (Year–Month) and the multiplication sign of its section
+# titles (10×3).
+allowed-confusables = ["–", "×"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "BLE001", "PLR2004", "ANN"]
