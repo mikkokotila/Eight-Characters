@@ -1597,8 +1597,10 @@ body {
   /* The second row of pillars. */
   .pillar:nth-child(n + 3) { margin-top: var(--space-5); }
   /* Two pillars to a row leave no line for the arcs to span; the relationships
-     are listed in the sheet. Their rows are left empty, so they take no room. */
+     are listed in the sheet. Their rows are left empty, so they take no room,
+     and the headers keep their own room above the cards. */
   .relationship-arcs { display: none; }
+  .pillar-header { padding-bottom: var(--space-4); }
   /* The bottom padding holds the branch chevron (bottom 8px, 14px tall). */
   .card-face { padding: var(--space-5) var(--space-3); }
   .datetime-row { flex-direction: column; align-items: center; }
