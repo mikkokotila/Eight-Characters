@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.22.0
+
+Stage 4 of the Standard view overhaul (#19), part 4: the chart by keyboard.
+
+### Changed
+- **The cards take one tab stop**, the card used last or the hour stem on a new chart. Left and Right move along the pillars, Up and Down between stem and branch; the arrows stop at the edges and do not scroll the page.
+- **Enter or Space** opens and closes a branch's hidden stems, as a click does. **T** turns the card with focus to its Ten Gods and back, as a long press does, once even when held.
+- **A hint above the card with keyboard focus** says its keys, and a ring inside the card's edge shows the focus.
+- **For screen readers**, a branch card is a button with `aria-expanded` and a stem card a group, each named by its pillar and the side it shows; the pillars are a group described by the keys.
+- **`?` lists the keys** in a dialog while focus is on the chart (WCAG 2.1.4).
+- **⌘K or Ctrl+K opens the commands**: the topics, each relationship, role page and pillar's changes, the display, the other language, the Evolution view, Copy link, Edit, New chart, Close and Keys. Words narrow them; a topic opens in one step of the history.
+- **Escape in a dialog** closes the dialog only, and focus returns.
+- `docs/Standard-Keyboard.md` describes the keys.
+- **Tests.** A browser suite for the keyboard (`keyboard.test.mjs`); in WebKit it steps with Option+Tab, as Safari does without Full Keyboard Access. The suites' `settled()` counts a transition that the next change interrupts as done.
+- Version bumped to `0.22.0`; the static assets' cache keys follow it.
+
 ## 0.21.0
 
 Stage 4 of the Standard view overhaul (#19), part 3: chart links.
