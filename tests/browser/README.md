@@ -149,5 +149,20 @@ topic in one step of the history. Every control of the chart is reached by Tab, 
 cards at one stop. In WebKit the suite steps with Option+Tab, as Safari does without
 Full Keyboard Access.
 
+The panel suite checks what the panel says (#19).
+- **Roles is a matrix.** Each role has a drawn mark under the visible and the hidden
+  stems (filled, ring or small dot), centred under its column's heading.
+  - Each group's heading shows its element's swatch on one line with its name.
+  - A role the chart lacks is in the secondary ink.
+  - Each role gives its state in words to assistive technology.
+- **A stem is a line of text** on every page, with its element's swatch, never a
+  box. The chart's highlight stays on the chart.
+- **Nothing is said twice.** A role's page names the role once, an occurrence's
+  pillar stands beside it, and no label in capitals stands directly over another.
+- **Every page reads from the left** and ends with one note in one style.
+  - The notes never hold more than 75 characters to the line.
+  - Where the page has room (a sheet 1024px wide), they average 60 to 75.
+- **Pillar names** in the panel are written as their column headers write them.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.
