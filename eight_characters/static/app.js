@@ -7,6 +7,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!i18n) {
     return;
   }
+  // Embedded (?embed=1), the chart is one of a comparison's two, in a frame of the
+  // comparison's page. Its bar keeps what belongs to this chart alone: the display and
+  // Copy as text. Its steps replace its history entry rather than add to it, since the
+  // page's history is the comparison's, and it tells the page each new address.
+  const embedded = new URLSearchParams(location.search).get('embed') === '1';
+  document.documentElement.classList.toggle('is-embedded', embedded);
   const inputView = document.getElementById('input-view');
   const chartView = document.getElementById('chart-view');
   const form = document.getElementById('chart-form');
@@ -1165,8 +1171,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // What the address holds: null for the form, or the chart's open topic and display.
   let addressed = null;
   const addressChart = (method) => {
-    history[method](null, '', chartAddress());
+    history[embedded ? 'replaceState' : method](null, '', chartAddress());
     addressed = { topic: currentTopic(), display: displayMode };
+    if (embedded) window.parent.postMessage({ type: 'ec-chart', hash: location.hash, title: document.title }, location.origin);
   };
   const addressForm = (method) => {
     history[method](null, '', formAddress());
@@ -1334,6 +1341,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   window.addEventListener('popstate', followAddress);
+  // The comparison asks both its charts for its language.
+  if (embedded) {
+    window.addEventListener('message', (event) => {
+      if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== 'ec-language') return;
+      const button = chartLanguage.querySelector(`button[data-chart-lang="${event.data.lang}"]`);
+      if (!button) throw new Error(`Unknown language: ${event.data.lang}`);
+      button.click();
+    });
+  }
 
   // ── Copy link: the address names this chart and its open topic. Copy as text: the
   // chart itself, for notes and messages ──
@@ -1430,13 +1446,18 @@ document.addEventListener('DOMContentLoaded', () => {
     displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
       add(requiredTranslation('display_label'), button.textContent, () => button.click());
     });
-    chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
-      add(requiredTranslation('language_label'), button.textContent, () => button.click());
-    });
-    const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
-    add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
+    // Embedded, the comparison's page holds the language, the view and the chart's
+    // other actions.
+    if (!embedded) {
+      chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
+        add(requiredTranslation('language_label'), button.textContent, () => button.click());
+      });
+      const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
+      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
+    }
     const chart = requiredTranslation('palette_chart');
-    [copyLinkBtn, copyTextBtn, backBtn, newChartBtn].forEach((button) => add(chart, button.textContent, () => button.click()));
+    (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn])
+      .forEach((button) => add(chart, button.textContent, () => button.click()));
     // The page's own print, whose stylesheet prints the chart and its open topic.
     add(chart, requiredTranslation('print'), () => window.print());
     if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
