@@ -175,8 +175,16 @@ for (const profile of profiles) {
       await press(page, '?');
       await page.locator('#keys-dialog [data-close-dialog]').click();
       assert.deepEqual(await openDialogs(page), []);
-      // Without focus in the chart, ? is only a character.
-      await page.evaluate(() => document.activeElement.blur());
+      assert.equal(await focused(page), 'hour branch');
+      // Without focus in the chart, ? is only a character. Focus moved away as the dialog
+      // closes stays away: nothing gives it back to the chart a moment later.
+      await press(page, '?');
+      await page.evaluate(async () => {
+        document.querySelector('#keys-dialog [data-close-dialog]').click();
+        document.activeElement.blur();
+        await new Promise((resolve) => { setTimeout(resolve, 100); });
+      });
+      assert.equal(await page.evaluate(() => document.activeElement === document.body), true);
       await press(page, '?');
       assert.deepEqual(await openDialogs(page), []);
     });

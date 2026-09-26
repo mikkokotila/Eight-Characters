@@ -1355,20 +1355,14 @@ document.addEventListener('DOMContentLoaded', () => {
   const paletteDialog = document.getElementById('command-palette');
   if (!keysDialog || !paletteDialog) throw new Error('Chart dialogs are incomplete.');
   const palette = window.EC_PALETTE.create({ dialog: paletteDialog, escape: esc });
-  // Escape in a dialog closes it and nothing else: an open topic stays open.
+  // Escape in a dialog closes it and nothing else: an open topic stays open. A closing
+  // dialog gives focus back to where it was, as the browser does it.
   [keysDialog, paletteDialog].forEach((dialog) => dialog.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') event.stopPropagation();
   }));
-  let keysOpener = null;
-  const openKeys = () => {
-    keysOpener = document.activeElement;
-    keysDialog.showModal();
-  };
+  const openKeys = () => keysDialog.showModal();
   keysDialog.addEventListener('click', (event) => {
     if (event.target.closest('[data-close-dialog]')) keysDialog.close();
-  });
-  keysDialog.addEventListener('close', () => {
-    if (keysOpener) keysOpener.focus();
   });
 
   // A topic from the palette opens as a link's does, in one step of the history.

@@ -9,9 +9,6 @@
     let commands = [];
     let found = [];
     let active = 0;
-    // What had focus, to have it again when the palette closes without running anything.
-    let opener = null;
-    let ran = false;
 
     const matches = (command, words) => {
       const text = `${command.label} ${command.group}`.toLocaleLowerCase();
@@ -35,14 +32,12 @@
       input.setAttribute('aria-activedescendant', `palette-option-${active}`);
       list.children[active].scrollIntoView({ block: 'nearest' });
     };
-    // The palette closes first and gives focus back, so that the command moves it on
-    // if it moves focus at all.
+    // The palette closes first, and the browser gives focus back to where it was, so
+    // that the command moves it on if it moves focus at all.
     const run = (index) => {
       const command = found[index];
       if (!command) return;
-      ran = true;
       dialog.close();
-      opener.focus();
       command.run();
     };
 
@@ -67,14 +62,8 @@
       const option = event.target.closest('[data-index]');
       if (option) run(Number(option.dataset.index));
     });
-    dialog.addEventListener('close', () => {
-      if (!ran && opener) opener.focus();
-    });
-
     const open = (available) => {
       commands = available;
-      opener = document.activeElement;
-      ran = false;
       input.value = '';
       active = 0;
       draw();
