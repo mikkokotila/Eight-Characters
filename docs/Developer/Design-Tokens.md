@@ -28,6 +28,35 @@ value: `tests/test_api_index_route.py`
 element-tinted panel. De-emphasis comes from size, case and tracking, not from a
 lighter ink.
 
+### The dark theme
+
+On screen, when the system's setting is dark (`prefers-color-scheme: dark`), the
+colour tokens take the embers palette. It was chosen from three drawn on the chart.
+Space, type and every rule that uses the tokens stay as they are. The page declares
+its scheme (`color-scheme`), so the browser's own controls, such as the date and time
+pickers, follow it. Paper keeps the day's colours.
+
+| Token | Dark value |
+|---|---|
+| `--bg` | `#1C1916` |
+| `--ink-1`, `--ink-2` | `#EEE7DC` (14.3:1), `#B2A99C` (7.5:1) |
+| `--ink-3` | the ink at 60% |
+| `--ink-found`, `--ink-error` | `#93C29B`, `#E6A094` |
+| `--line-1`, `--line-2` | the ink at 14%, 34% |
+| `--surface-1`, `--surface-2`, `--surface-3` | white at 4%, 8%; `#2C2824` at 96% |
+| `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% |
+| `--shadow-*`, `--backdrop`, `--sheen` | black at 35–55%; white light at 8% |
+| `--metal-bg` / `--metal-text` | `#5C5851` / `#F3EFE8` |
+| `--fire-bg` / `--fire-text` | `#7C3E34` / `#F8E6E1` |
+| `--wood-bg` / `--wood-text` | `#3D5C38` / `#E7F1E4` |
+| `--earth-bg` / `--earth-text` | `#6B5E2E` / `#F5EED4` |
+| `--water-bg` / `--water-text` | `#384E5F` / `#E4EEF5` |
+
+The tints mix the deep element colours on the dark page, by the same formula as by
+day. Each element's type meets AA on its card (5.5:1 or more), `--ink-2` does on every
+tint (5.7:1 or more), and each element's ring is 3:1 or more on every surface. The
+foundations suite measures this in every state of both themes.
+
 ## Space
 
 `--space-1` to `--space-8`: 4, 8, 12, 16, 24, 32, 48 and 64px. Margins, padding
