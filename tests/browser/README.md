@@ -122,3 +122,16 @@ behind them (compared pixel for pixel with the arcs hidden) while the arcs keep
 their shape; that arcs needing more than the rows hold fail visibly; and, on
 desktop and mobile, that the cards stand in the same place with none to all seven
 of one chart's relationships. Phones draw no arcs.
+
+The chart links suite checks the chart's address (#19). A new chart's address names
+it, and a reload shows the same chart, with its birth in the form for Edit. The open
+topic and the display come back in a new tab with nothing stored, in the link's
+language. Every kind of topic (season, roots, roles and their pages, relationships
+and a chosen one, a pillar's changes) comes back from its link. Back and Forward walk
+through the topics, the chart and the form; Edit and New chart are steps of their
+own, and an earlier chart is asked for again. The display, the Zi-hour convention
+and the language replace the current entry. Links that open no chart say why, keep
+a valid birth in the form and leave the form's address. A chart that arrives after
+a later step is not drawn. Copy link puts the address on the clipboard and says so,
+and says so when the browser refuses. `openLink` in `chart-helpers.mjs` opens a
+link as a new tab would, with every chart calculated by the real API.
