@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
+from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
 from eight_characters.data import (
     BRANCHES,
@@ -44,6 +45,7 @@ from eight_characters.explorer.build_data_js_from_evolution import (
 from eight_characters.interactions import detect_interactions
 from eight_characters.nutation import nutation_series
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
+from eight_characters.reading import build_reading, check_reading_canon
 from eight_characters.role_profile import build_role_profile
 from eight_characters.ten_gods import (
     DAY_MASTER,
@@ -152,6 +154,7 @@ class FourPillarsRequest(BaseModel):
     include_interactions: bool = False
     include_day_master_context: bool = False
     include_role_profile: bool = False
+    include_reading: bool = False
     lang: str = 'fi'
 
 
@@ -620,6 +623,8 @@ _load_hidden_stems_lookup()
 _load_ten_gods_lookup()
 earth_series()
 nutation_series()
+# The canon's taxonomy, and every sentence and label the readings rely on in it.
+check_reading_canon(load_canon())
 
 
 def _build_ten_gods_result(
@@ -1041,6 +1046,14 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
         if payload.include_interactions:
             response['interactions'] = detect_interactions(
                 _chart_components_from_four_pillars(four_pillars)
+            )
+        if payload.include_reading:
+            components = _chart_components_from_four_pillars(four_pillars)
+            response['reading'] = build_reading(
+                load_canon(),
+                components,
+                _load_ten_gods_lookup(),
+                detect_interactions(components),
             )
         if payload.include_hidden_stems or payload.include_ten_gods:
             hidden_stems_request = HiddenStemsRequest(
