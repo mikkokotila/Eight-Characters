@@ -81,7 +81,10 @@ class TestApiIndexRoute(unittest.TestCase):
             'copy-text-btn',
             'back-btn',
             'new-chart-btn',
+            'compare-btn',
             'chart-panel',
+            'compare-view',
+            'compare-charts',
         ):
             self.assertIn(f'id="{element_id}"', response.text)
         # The view is chosen on a chart, not before one.
@@ -126,6 +129,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'roles.js',
             'palette.js',
             'spotlight.js',
+            'compare.js',
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)

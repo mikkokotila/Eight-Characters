@@ -26,6 +26,12 @@
     <h1 class="title" data-i18n="title">Kahdeksan merkkiä</h1>
   </div>
 
+  <!-- While a comparison's second chart is chosen: which chart it is compared with. -->
+  <p id="compare-note" class="compare-note hidden">
+    <span id="compare-note-text"></span>
+    <button type="button" id="compare-cancel" class="bar-action" data-i18n="compare_cancel">Peruuta</button>
+  </p>
+
   <!-- Validated by app.js, so messages follow the page language. -->
   <form id="chart-form" novalidate>
 
@@ -98,6 +104,7 @@
         <button type="button" id="copy-text-btn" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
         <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
         <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
+        <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
       </div>
       <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
       <ul id="chart-notices" class="chart-notices hidden"></ul>
@@ -185,6 +192,32 @@
   </dialog>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     VIEW 3 — TWO CHARTS SIDE BY SIDE (hidden initially)
+     ═══════════════════════════════════════════════════ -->
+<div id="compare-view" class="compare-container hidden">
+  <header class="compare-bar">
+    <h1 class="compare-title" data-i18n="compare_title">Vertailu</h1>
+    <div class="compare-tools">
+      <!-- On a narrow screen one chart is shown at a time. -->
+      <div class="segmented compare-sides" id="compare-sides" role="group" aria-labelledby="compare-sides-label">
+        <span id="compare-sides-label" class="sr-only" data-i18n="compare_shown">Näytetään</span>
+        <button type="button" data-compare-side="a" aria-pressed="true" data-i18n="compare_first">Kartta 1</button>
+        <button type="button" data-compare-side="b" aria-pressed="false" data-i18n="compare_second">Kartta 2</button>
+      </div>
+      <div class="segmented" id="compare-language" role="group" aria-labelledby="compare-language-label">
+        <span id="compare-language-label" class="sr-only" data-i18n="language_label">Kieli</span>
+        <button type="button" data-compare-lang="fi" aria-pressed="false">FI</button>
+        <button type="button" data-compare-lang="en" aria-pressed="false">EN</button>
+      </div>
+      <button type="button" id="compare-swap" class="bar-action" data-i18n="compare_swap">Vaihda puolet</button>
+      <button type="button" id="compare-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+      <button type="button" id="compare-close" class="bar-action" data-i18n="compare_close">Sulje vertailu</button>
+    </div>
+  </header>
+  <div id="compare-charts" class="compare-charts" data-shown="a"></div>
+</div>
+
 <script src="/static/localization.js?v={{ app_version }}"></script>
 <script src="/static/spotlight.js?v={{ app_version }}"></script>
 <script src="/static/relationships.js?v={{ app_version }}"></script>
@@ -192,6 +225,7 @@
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>
 <script src="/static/pillar-changes.js?v={{ app_version }}"></script>
 <script src="/static/palette.js?v={{ app_version }}"></script>
+<script src="/static/compare.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

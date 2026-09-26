@@ -600,6 +600,14 @@ document.addEventListener('DOMContentLoaded', () => {
       date: form.date.value, time: form.time.value, place: resolvedLocation, lang: currentLanguage, zi: ZI_CONVENTIONS[0],
     });
 
+    // A comparison's second chart is drawn in its own frame: the address names the pair.
+    if (comparingWith !== null) {
+      const pair = new URLSearchParams({ a: comparingWith, b: linkParams(request, resolvedLocation).toString() });
+      history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${pair}`);
+      followAddress();
+      return;
+    }
+
     setPending(true);
     try {
       if (await showChart(request, resolvedLocation)) addressChart('pushState');
@@ -1148,8 +1156,8 @@ document.addEventListener('DOMContentLoaded', () => {
     return pillar ? `pillar/${pillar.dataset.pillar}` : null;
   };
 
-  const chartAddress = () => {
-    const { request, place } = shown;
+  // A birth's link, as asked for: the chart's parameters without its topic or display.
+  const linkParams = (request, place) => {
     const params = new URLSearchParams({
       date: request.date,
       time: request.time,
@@ -1162,6 +1170,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const zi = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
     if (zi !== ZI_CONVENTIONS[0]) params.set('zi', zi);
+    return params;
+  };
+  const chartAddress = () => {
+    const { request, place } = shown;
+    const params = linkParams(request, place);
     if (displayMode !== 'characters') params.set('display', displayMode);
     const topic = currentTopic();
     if (topic !== null) params.set('topic', topic);
@@ -1239,6 +1252,64 @@ document.addEventListener('DOMContentLoaded', () => {
     };
   };
 
+  // Two charts side by side: #compare?a=<a chart link's parameters>&b=<the other's>.
+  // With a alone, the form asks for the chart to compare it with.
+  const COMPARE_ROUTE = '#compare?';
+  const readCompareLink = (hash) => {
+    const params = new URLSearchParams(hash.slice(COMPARE_ROUTE.length));
+    for (const key of new Set(params.keys())) {
+      if (!['a', 'b'].includes(key) || params.getAll(key).length > 1) throw linkError(key);
+    }
+    const side = (key) => {
+      const value = params.get(key);
+      return value === null ? null : { params: value, link: readChartLink(`${CHART_ROUTE}${value}`) };
+    };
+    const a = side('a');
+    if (a === null) throw linkError('a');
+    return { a, b: side('b') };
+  };
+  // A chart's name from its link, as its own bar writes it.
+  const headingOf = (params) => {
+    const link = readChartLink(`${CHART_ROUTE}${params}`);
+    const birth = parseWallClock(`${link.date}T${link.time}`);
+    return [formatDate(birth), formatTime(birth, link.time.length > 5), link.place.city].join(' · ');
+  };
+  let comparingWith = null;
+  const compareNote = document.getElementById('compare-note');
+  const compareNoteText = document.getElementById('compare-note-text');
+  const compareView = document.getElementById('compare-view');
+  if (!compareNote || !compareNoteText || !compareView) throw new Error('Comparison is incomplete.');
+  // The form asks for a comparison's second chart, naming the first; or it is itself again.
+  const askForSecond = (a) => {
+    comparingWith = a;
+    compareNoteText.textContent = t('compare_note', { chart: headingOf(a) });
+    compareNote.classList.remove('hidden');
+    createChartBtn.setAttribute('data-i18n', 'compare_create');
+    createChartBtn.textContent = t('compare_create');
+  };
+  const askForChart = () => {
+    comparingWith = null;
+    compareNote.classList.add('hidden');
+    createChartBtn.setAttribute('data-i18n', 'create_chart');
+    createChartBtn.textContent = t('create_chart');
+  };
+  const goToChart = (params) => {
+    history.pushState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
+    followAddress();
+  };
+  const compare = window.EC_COMPARE.create({
+    view: compareView,
+    translate: requiredTranslation,
+    heading: headingOf,
+    onAddress: (hash) => history.replaceState(null, '', `${formAddress()}${hash}`),
+    onLanguage: (lang) => {
+      currentLanguage = i18n.setLanguage(lang);
+      applyLanguage();
+    },
+    onClose: goToChart,
+    toast: (text, isError) => showToast(text, isError),
+  });
+
   const sameChart = (link) => {
     if (shown === null) return false;
     const { request, place } = shown;
@@ -1288,6 +1359,37 @@ document.addEventListener('DOMContentLoaded', () => {
     chartView.removeAttribute('aria-busy');
     setPending(false);
     setFormError('');
+    compare.hide();
+    if (location.hash.startsWith(COMPARE_ROUTE)) {
+      let pair;
+      try {
+        pair = readCompareLink(location.hash);
+      } catch (err) {
+        console.error(err);
+        askForChart();
+        leaveChart();
+        setFormError(err.message);
+        addressForm('replaceState');
+        return;
+      }
+      if (pair.a.link.lang !== currentLanguage) {
+        currentLanguage = i18n.setLanguage(pair.a.link.lang);
+        applyLanguage();
+      }
+      leaveChart();
+      if (pair.b === null) {
+        // The second chart is a new birth.
+        form.reset();
+        clearResolvedLocation();
+        askForSecond(pair.a.params);
+        return;
+      }
+      askForChart();
+      inputView.classList.add('hidden');
+      compare.show(pair.a.params, pair.b.params, currentLanguage);
+      return;
+    }
+    askForChart();
     let link;
     try {
       link = readChartLink(location.hash);
@@ -1350,6 +1452,17 @@ document.addEventListener('DOMContentLoaded', () => {
       button.click();
     });
   }
+
+  // Compare starts from this chart: the form asks for the other. Cancel goes back to it.
+  const compareBtn = document.getElementById('compare-btn');
+  const compareCancel = document.getElementById('compare-cancel');
+  if (!compareBtn || !compareCancel) throw new Error('Comparison is incomplete.');
+  compareBtn.addEventListener('click', () => {
+    const a = chartAddress().split(CHART_ROUTE)[1];
+    history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${new URLSearchParams({ a })}`);
+    followAddress();
+  });
+  compareCancel.addEventListener('click', () => goToChart(comparingWith));
 
   // ── Copy link: the address names this chart and its open topic. Copy as text: the
   // chart itself, for notes and messages ──
@@ -1456,7 +1569,7 @@ document.addEventListener('DOMContentLoaded', () => {
       add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
     }
     const chart = requiredTranslation('palette_chart');
-    (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn])
+    (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn, compareBtn])
       .forEach((button) => add(chart, button.textContent, () => button.click()));
     // The page's own print, whose stylesheet prints the chart and its open topic.
     add(chart, requiredTranslation('print'), () => window.print());
