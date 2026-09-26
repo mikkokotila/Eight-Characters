@@ -77,6 +77,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'display-switch',
             'view-switch',
             'chart-language',
+            'copy-link-btn',
             'back-btn',
             'new-chart-btn',
             'chart-panel',

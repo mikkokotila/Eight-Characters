@@ -135,6 +135,7 @@
       controls.querySelectorAll('button').forEach((button) => button.setAttribute('aria-expanded', 'false'));
       detail.classList.add('hidden');
       detail.innerHTML = '';
+      delete detail.dataset.topic;
       status.textContent = '';
     };
     const highlight = (e) => {
@@ -143,10 +144,13 @@
       // Mark exact rows on both surfaces; never open or flip cards automatically.
       rows.forEach((row) => row.classList.add('is-context-evidence'));
     };
+    // The page shown names itself on the detail, for the chart's address.
     const showPage = (page) => {
+      require(typeof page.path === 'string');
       page.evidence.forEach(highlight);
       if (page.reference) sourcesFor(page.reference).card.classList.add('is-context-reference');
       detail.innerHTML = page.markup;
+      detail.dataset.topic = page.path;
       detail.classList.remove('hidden');
       status.textContent = t('context_selected', { topic: page.title });
     };
@@ -197,12 +201,12 @@
         : `<p class="relationship-note">${esc(t('context_no_roots'))}</p>`;
       pages = {
         season: {
-          title: t('context_season'), evidence: season.hidden_stems,
+          path: 'season', title: t('context_season'), evidence: season.hidden_stems,
           markup: makePage(t('context_season'), t('context_season_group', { season: t('context_' + season.name), element: t('element_' + season.element) }),
             `<div class="context-month-composition"><h4 class="relationship-position">${esc(t('context_month_composition'))}</h4>${branchMarkup('month', season.hidden_stems)}</div>`, t('context_season_note')),
         },
         roots: {
-          title: t('context_roots'), evidence: data.roots,
+          path: 'roots', title: t('context_roots'), evidence: data.roots,
           markup: makePage(t('context_roots'), rootsLabel, rootsContent, t('context_roots_note')),
         },
         roles: roles.render(roleProfile, chartData, gods),

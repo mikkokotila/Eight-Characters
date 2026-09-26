@@ -59,12 +59,11 @@ async function fillChart(page, { date = '1988-02-04', time = '16:30', lang = 'en
   if (success) await settled(page);
 }
 
-async function openChart(page, options = {}, mutate = null) {
-  // Only geocoding is stubbed. Every chart and context record is calculated by the real API.
-  const place = options.place ?? CHENGDU;
+// Every chart and context record is calculated by the real API, for the place's own
+// coordinates. Gives the last chart's payload.
+async function calculateCharts(page, place, mutate) {
   const location = { timezone: place.timezone, longitude: place.longitude, latitude: place.latitude };
   let calculated;
-  await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [place] } }));
   await page.route('**/api/four_pillars', async (route) => {
     const body = route.request().postDataJSON();
     assert.equal(body.include_interactions, true);
@@ -83,9 +82,26 @@ async function openChart(page, options = {}, mutate = null) {
     if (mutate) mutate(payload);
     await route.fulfill({ response, json: payload });
   });
+  return () => calculated;
+}
+
+async function openChart(page, options = {}, mutate = null) {
+  // Only geocoding is stubbed.
+  const place = options.place ?? CHENGDU;
+  await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [place] } }));
+  const calculated = await calculateCharts(page, place, mutate);
   await page.goto(baseURL);
   await fillChart(page, options);
-  return calculated;
+  return calculated();
+}
+
+// A chart's link, opened as in a new tab: the chart, its topic and its display.
+async function openLink(page, link, { place = CHENGDU, success = true } = {}) {
+  const calculated = await calculateCharts(page, place, null);
+  await page.goto(new URL(link, baseURL).href);
+  await page.locator(success ? '#chart-view' : '#form-error').waitFor({ state: 'visible' });
+  if (success) await settled(page);
+  return calculated();
 }
 
 // The pillars' boxes: their place on the page, with x taken within the chart column.
@@ -145,8 +161,8 @@ async function screenshot(page, name) {
 }
 
 export {
-  assert, describe, it, engineName, profiles, openChart, fillChart, count, settled, geometry, natalColors, longPress,
-  screenshot, showDisplay, openRelationships, HELSINKI, TROMSO,
+  assert, describe, it, engineName, profiles, openChart, openLink, fillChart, count, settled, geometry, natalColors,
+  longPress, screenshot, showDisplay, openRelationships, CHENGDU, HELSINKI, TROMSO,
 };
 export async function withPage(profile, run) {
   const { name, ...options } = profile;

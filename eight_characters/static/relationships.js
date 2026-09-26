@@ -234,7 +234,8 @@
       });
       list.innerHTML = relationships.map((relationship, index) => `
         <button type="button" class="relationship-chip" data-kind="${esc(relationship.kind)}"
-          data-relationship-index="${index}" aria-expanded="false" aria-controls="relationship-detail">
+          data-relationship-index="${index}" data-relationship="${esc(relationship.id)}"
+          aria-expanded="false" aria-controls="relationship-detail">
           <span class="relationship-mark" aria-hidden="true"></span>
           <span>${esc(labelFor(relationship))}</span>
         </button>`).join('');

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.21.0
+
+Stage 4 of the Standard view overhaul (#19), part 3: chart links.
+
+### Changed
+- **Each chart has an address of its own.** It names the chart on screen, its open topic and its display, in the address's fragment (`#chart?date=…&time=…&place=…&city=…&latitude=…&longitude=…&timezone=…&lang=…`, then `zi`, `display` and `topic` where they differ from a new chart's), which browsers never send to the server. A topic is named down to its page, such as `roles/direct_wealth/stem/hour` or `relationships/stem_combination:4:year-hour`.
+- **Opening a link** — a reload, another tab, or someone else's browser — fills the form with its birth and opens the chart at its topic and display, in the link's language.
+- **Back and Forward** step through new charts, topics, Edit and New chart; Back from a chart returns to the form with its birth. The language, the Zi-hour convention and the display replace the current entry. A chart reached through the history is calculated again, and only the latest step's chart is drawn.
+- **A link that opens no chart says why**, naming the part that is missing or not valid, and the address becomes the form's; a valid birth waits in the form.
+- **Copy link**, in the bar, copies the address. A message over the foot of the page says it was copied, or that the browser refused, and is read out.
+- `docs/Standard-Links.md` describes the address.
+- **Tests.** A browser suite for chart links (`links.test.mjs`): the address of a new chart, reloads, a new tab in another language, every kind of topic, Back and Forward, Edit and New chart, the entries that settings replace, broken links, a chart that arrives after a later step, and Copy link. `openLink` in `chart-helpers.mjs` opens a link as a new tab would.
+- Version bumped to `0.21.0`; the static assets' cache keys follow it.
+
 ## 0.20.0
 
 Stage 4 of the Standard view overhaul (#19), part 2: the relationships drawn on the chart.

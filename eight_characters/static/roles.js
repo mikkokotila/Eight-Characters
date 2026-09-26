@@ -88,8 +88,10 @@
       });
     };
 
+    // Each page carries its path, as the chart's address names it: roles, roles/<role>,
+    // roles/stem/<pillar>, or roles/<role>/stem/<pillar> when reached from that role.
     const buildOverview = () => ({
-      title: t('roles_title'), evidence: [],
+      path: 'roles', title: t('roles_title'), evidence: [],
       markup: makePage(t('roles_title'), t('roles_overview_meta'), `
         <div class="role-overview">${profile.groups.map((group) => `
           <div class="role-group" data-role-group="${esc(group.group)}">
@@ -140,7 +142,7 @@
               <div class="context-evidence-list">${role[kind].length ? sorted(role[kind]).map((e) => roleSource(e, name)).join('')
                 : `<p class="relationship-meta">${esc(t('context_absent'))}</p>`}</div>
             </section>`).join('')}</div>`;
-      return { title: roleName(name), evidence: [...role.visible, ...role.hidden],
+      return { path: `roles/${name}`, title: roleName(name), evidence: [...role.visible, ...role.hidden],
         markup: makePage(roleName(name), pLabel(role.presence), `${backButton('', '', name)}${content}`, t('roles_role_note')) };
     };
     const buildRootPage = (pillar, fromRole) => {
@@ -150,7 +152,8 @@
         ${rootPillars.map((name) => branchMarkup(name, s.roots.filter((r) => r.pillar === name), true)).join('')}</div>`
         : `<p class="relationship-note role-empty">${esc(t('roles_no_roots', { stem: `${s.pinyin} ${s.char}` }))}</p>`;
       const reference = { ...s, component: 'stem', branch: null, qi_type: null };
-      return { title: `${t('roles_stem_roots')} · ${stemTitle(s)}`, evidence: s.roots, reference,
+      return { path: fromRole ? `roles/${fromRole}/stem/${pillar}` : `roles/stem/${pillar}`,
+        title: `${t('roles_stem_roots')} · ${stemTitle(s)}`, evidence: s.roots, reference,
         markup: makePage(`${t('roles_stem_roots')} · ${stemTitle(s)}`,
           `${roleName(s.ten_god)} · ${rootsLabel(s.roots)}`,
           `${backButton(fromRole, pillar)}${content}
