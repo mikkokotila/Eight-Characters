@@ -13,7 +13,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Copying a chart as text, and printing it: `Standard-Copy-and-Print.md`
 - The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
 - Developer endpoint internals: `Developer/API.md`
-- Standard view design tokens: `Developer/Design-Tokens.md`
+- Standard view design tokens, and the dark theme: `Developer/Design-Tokens.md`
 - Convention settings and output shape: `conventions-and-output.md`
 - Validation and quality signals: `validation.md`
 - Common issues and fixes: `troubleshooting.md`

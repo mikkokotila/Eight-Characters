@@ -36,7 +36,8 @@
 
 /* Every colour, space, size and tracking below comes from these tokens. */
 :root {
-  /* ── Colour ── */
+  /* ── Colour ── (for a dark page, see the dark theme below) */
+  color-scheme: light;
   --bg: #F5F0E8;
   /* Ink: text, and the secondary ink of labels and notes. Both meet WCAG AA
      (4.5:1) on the page and on every element-tinted panel; de-emphasis comes
@@ -130,6 +131,45 @@
   --line-gap: 6px;
   --break-gap: 10px;
   --line-r: 1px;
+}
+
+/* The dark theme, on screen when the system asks for it: the colour tokens again, for
+   a dark page. The elements take deep colours with light type; each ink still meets
+   WCAG AA (4.5:1) on the page, on every element-tinted panel and on its card, and each
+   element's ring 3:1. Paper keeps the day's colours. */
+@media screen and (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #1C1916;
+    --ink-1: #EEE7DC;
+    --ink-2: #B2A99C;
+    --ink-3: rgba(238, 231, 220, 0.6);
+    --ink-found: #93C29B;
+    --ink-error: #E6A094;
+    --line-1: rgba(238, 231, 220, 0.14);
+    --line-2: rgba(238, 231, 220, 0.34);
+    --surface-1: rgba(255, 255, 255, 0.04);
+    --surface-2: rgba(255, 255, 255, 0.08);
+    --surface-3: rgba(44, 40, 36, 0.96);
+    --surface-page-1: rgba(28, 25, 22, 0.85);
+    --surface-page-2: rgba(28, 25, 22, 0.92);
+    --shadow-1: 0 2px 16px rgba(0, 0, 0, 0.35);
+    --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-sheet: 0 -8px 24px rgba(0, 0, 0, 0.45);
+    --backdrop: rgba(0, 0, 0, 0.55);
+    --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%);
+
+    --metal-bg: #5C5851;
+    --metal-text: #F3EFE8;
+    --fire-bg: #7C3E34;
+    --fire-text: #F8E6E1;
+    --wood-bg: #3D5C38;
+    --wood-text: #E7F1E4;
+    --earth-bg: #6B5E2E;
+    --earth-text: #F5EED4;
+    --water-bg: #384E5F;
+    --water-text: #E4EEF5;
+  }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }

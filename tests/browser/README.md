@@ -195,5 +195,13 @@ The output suite checks the chart out of the page (#20).
   wrongly there, and emulated print is not paged. A Zi-hour chart prints its
   convention as text.
 
+The theme suite checks the dark theme (#20):
+- the system's setting chooses the day's colours or the embers palette, and changes
+  them on an open page;
+- every card takes its element's dark colours;
+- paper keeps the day's colours when the screen is dark.
+
+The foundations suite's contrast audit runs in both themes.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.

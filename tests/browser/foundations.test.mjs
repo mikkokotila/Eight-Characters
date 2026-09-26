@@ -283,18 +283,25 @@ for (const profile of profiles) {
       assert.deepEqual(failures, []);
     }));
 
-    check('text meets WCAG AA contrast, and the chevron and element dots 3:1, in every state', async (page) => {
-      await installAudit(page);
-      const failures = [];
-      await visitStates(page, async (state) => {
-        // Measure settled colours, not a fade or a flip in progress.
-        await settled(page);
-        const found = await page.evaluate(() => [...window.__ecAudit.contrastFailures(),
-          ...window.__ecAudit.chevronFailures(), ...window.__ecAudit.dotFailures()]);
-        failures.push(...found.map((failure) => `${state}: ${failure}`));
+    // In the day's colours and in the dark theme's, which the system's setting chooses.
+    for (const scheme of ['light', 'dark']) {
+      check(`text meets WCAG AA contrast, and the chevron and element dots 3:1, in every state (${scheme})`, async (page) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await installAudit(page);
+        const failures = [];
+        await visitStates(page, async (state) => {
+          // Measure settled colours, not a fade or a flip in progress.
+          await settled(page);
+          const found = await page.evaluate(() => [...window.__ecAudit.contrastFailures(),
+            ...window.__ecAudit.chevronFailures(), ...window.__ecAudit.dotFailures()]);
+          failures.push(...found.map((failure) => `${state}: ${failure}`));
+        });
+        assert.deepEqual([...new Set(failures)], []);
+        // The theme measured is the one asked for.
+        assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
+          scheme === 'dark' ? 'rgb(28, 25, 22)' : 'rgb(245, 240, 232)');
       });
-      assert.deepEqual([...new Set(failures)], []);
-    });
+    }
 
     check('the birth-data fields share one height and one text alignment', async (page) => {
       await openChart(page, { lang: 'en' });

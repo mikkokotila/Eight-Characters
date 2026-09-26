@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.26.0
+
+Stage 5 of the Standard view overhaul (#20), part 2: a dark theme.
+
+### Changed
+- **A dark theme**, on screen when the system's setting is dark. The colour tokens take the embers palette, chosen from three drawn on the real chart:
+  - a dark warm page with light ink;
+  - deep element colours with light type (metal `#5C5851`, fire `#7C3E34`, wood `#3D5C38`, earth `#6B5E2E`, water `#384E5F`);
+  - the element tints, mixed on the dark page as by day.
+
+  It changes on an open page as the setting changes. The page declares its colour scheme, so the browser's own controls, such as the date and time pickers, follow it. Paper keeps the day's colours.
+- **Contrast.** Every ink meets WCAG AA on the page, on each tinted panel and on its card, and each element's ring is 3:1 or more. The foundations suite's contrast audit, which visits every state in both languages, now runs in both themes.
+- **Docs.** `docs/Developer/Design-Tokens.md` gives the dark values and their contrast.
+- **Tests.** A browser suite for the theme (`theme.test.mjs`):
+  - the setting chooses the palette, live;
+  - every card takes its element's dark colours;
+  - print keeps the day's colours when the screen is dark.
+- Version bumped to `0.26.0`; the static assets' cache keys follow it.
+
 ## 0.25.0
 
 Stage 5 of the Standard view overhaul (#20), part 1: the chart out of the page, as text and on paper.
