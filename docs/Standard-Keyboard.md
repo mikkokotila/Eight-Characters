@@ -34,7 +34,11 @@ described by the keys above.
   - the topics, each relationship, each role's page and each pillar's changes, which
     open as a link opens them, in one step of the history;
   - the display, the other language and the Evolution view;
-  - Copy link, Edit, New chart, Close (when a topic is open) and Keys.
+  - Copy link, Copy as text, Edit, New chart, Compare, Print, Close (when a topic is
+    open) and Keys.
+
+  In a comparison, each chart's commands are its own: its topics, its display, Copy
+  as text and Print; the comparison's bar holds the rest.
 - Escape in a dialog closes the dialog only; an open topic stays open. Focus returns to
   where it was.
 

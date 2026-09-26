@@ -253,7 +253,7 @@ for (const profile of profiles) {
         await press(page, TAB);
       }
       assert.deepEqual(reached, ['Characters', 'Ten Gods', 'Hidden stems', 'Standard', 'Evolution', 'FI', 'EN',
-        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
+        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
         '壬申 Ren Shen', 'hour stem', '己丑 Ji Chou', '癸丑 Gui Chou', '丁卯 Ding Mao']);
     });
   });

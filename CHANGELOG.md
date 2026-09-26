@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.27.0
+
+Stage 5 of the Standard view overhaul (#20), part 3: two charts side by side.
+
+### Changed
+- **Compare**, in a chart's bar and among the commands, asks for the second birth. The form names the chart it will be compared with; Cancel goes back to it.
+- **The two charts stand side by side.** Each is the chart view itself, in a frame of its own. It keeps its display, Copy as text, topics, panel (a sheet over the foot of its frame) and the pointing from its panel. Nothing is drawn between the charts.
+- **The comparison's bar** holds:
+  - the language, which asks both charts again in it;
+  - Swap sides, where each chart keeps what is open in it;
+  - Copy link, for the pair;
+  - Close, which goes to the first chart.
+
+  Narrower than 900px, one chart shows at a time, with a switch between them.
+- **The pair's address**, `#compare?a=…&b=…`, holds both charts' links. It follows what is open in either, so the link reopens both as they were. With `a` alone, the form asks for the second chart. Back steps from the pair to its form, then to the first chart; what is done within a chart adds nothing to the history. A comparison link that names no pair says why.
+- **Embedded chart view** (`?embed=1`). The chart view can be embedded in a comparison's frame: its bar keeps the chart's own controls, its steps replace its history entry, and it tells the page each address.
+- **Docs.** New `docs/Standard-Compare.md`; the links and keyboard pages point to it.
+- **Tests.** A browser suite for comparing (`compare.test.mjs`), with the charts' pillars checked against the API. Each of four faults put in fails at least one of its tests:
+  - a compared chart adding history entries;
+  - Swap moving the frames, which reloads them without their open topics;
+  - the language not passed on;
+  - the pair's address not following its charts.
+- Version bumped to `0.27.0`; the static assets' cache keys follow it.
+
 ## 0.26.0
 
 Stage 5 of the Standard view overhaul (#20), part 2: a dark theme.

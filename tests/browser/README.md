@@ -203,5 +203,20 @@ The theme suite checks the dark theme (#20):
 
 The foundations suite's contrast audit runs in both themes.
 
+The compare suite checks two charts side by side (#20).
+- **Starting.** Compare asks for the second birth, naming the first and starting
+  empty; Cancel goes back.
+- **The pair.** Both charts' pillars match the API. Each frame keeps only its own
+  controls; frames and page are titled; the address names both.
+- **Topics and address.** Each chart opens its own topics, and the pair's address
+  follows without adding to the history. The pair's link reopens both as they were.
+- **Swap, Close and Back.** Swap sides keeps each chart with what is open in it;
+  Close goes to the first chart; Back walks the pair, its form, then the first chart.
+- **Language and narrow screens.** The language asks both charts again in it. On a
+  narrow screen one chart shows at a time, and the switch shows the other.
+- **Broken links and commands.** A link that names no pair says why. Copy link
+  copies the pair. The commands offer Compare on a chart and leave the page's
+  actions out of a compared chart.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.
