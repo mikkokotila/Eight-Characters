@@ -32,4 +32,5 @@ jobs:
             tests.test_phase4_boundary_and_pillars \
             tests.test_phase5_integrity_output \
             tests.test_pillar_changes \
+            tests.test_life_stages \
             tests.test_canon
