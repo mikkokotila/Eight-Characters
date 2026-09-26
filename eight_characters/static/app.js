@@ -534,6 +534,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderChart(chartData, Object.fromEntries(
       ['hour', 'day', 'month', 'year'].map((name) => [name, requiredTranslation('pillar_' + name)])));
+    setKeyCard(cardAt(keyCard));
     chartDate.textContent = heading;
     chartSolarTime.textContent = solarTime.text;
     pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
@@ -595,6 +596,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawing += 1;
     closePanel();
     displayMode = 'characters';
+    keyCard = { pillar: 'hour', component: 'stem' };
     chartView.classList.add('hidden');
     inputView.classList.remove('hidden');
     document.title = t('page_title');
@@ -795,7 +797,10 @@ document.addEventListener('DOMContentLoaded', () => {
       const flip = displayMode === 'ten-gods';
       if (card.classList.contains('is-flipped') === flip) return;
       if (animate) flipCard(card);
-      else card.classList.toggle('is-flipped', flip);
+      else {
+        card.classList.toggle('is-flipped', flip);
+        labelCard(card);
+      }
     });
     pillarsContainer.querySelectorAll('.card.branch').forEach((branchCard) => {
       const panel = hiddenStemsOf(branchCard);
@@ -852,6 +857,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const expandPanel = (panel, branchCard, animate = true) => {
     branchCard.classList.add('is-expanded');
+    branchCard.setAttribute('aria-expanded', 'true');
     panel.classList.add('is-expanded');
     if (!animate) {
       panel.style.height = 'auto';
@@ -868,6 +874,7 @@ document.addEventListener('DOMContentLoaded', () => {
     panel.offsetHeight; // force reflow
     panel.classList.remove('is-expanded');
     branchCard.classList.remove('is-expanded');
+    branchCard.setAttribute('aria-expanded', 'false');
     panel.style.height = '0';
   };
 
@@ -917,6 +924,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   window.addEventListener('scroll', () => { if (hintedCard) placeCardHint(); }, { passive: true });
 
+  // A card is named by its pillar and the side it shows.
+  const labelCard = (card) => {
+    const component = card.classList.contains('stem') ? 'stem' : 'branch';
+    const side = card.classList.contains('is-flipped') ? 'back' : 'front';
+    card.setAttribute('aria-labelledby', `pillar-name-${card.dataset.pillar} card-${card.dataset.pillar}-${component}-${side}`);
+  };
+
   // The facing side sizes the card, so a taller back grows the card as it turns.
   const flipCard = (card) => {
     const inner = card.querySelector('.card-inner');
@@ -924,6 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
     card.classList.remove('is-turning');
     const fromHeight = inner.getBoundingClientRect().height;
     const flipped = card.classList.toggle('is-flipped');
+    labelCard(card);
     if (reducedMotion.matches) return;
     const toHeight = inner.getBoundingClientRect().height;
     card.classList.add('is-turning');
@@ -1018,6 +1033,62 @@ document.addEventListener('DOMContentLoaded', () => {
       expandPanel(panel, branchCard);
     }
     syncDisplaySwitch();
+  });
+
+  // ── The cards by keyboard ──
+  // The eight cards take one tab stop, the card last focused (the hour stem to begin
+  // with), and arrows move between them: left and right along the pillars, up and down
+  // between stem and branch. Enter or Space opens a branch's hidden stems, as a click
+  // does; T turns the card with focus, as a long press does. A hint above the card
+  // says so when it has keyboard focus.
+  const PILLAR_ORDER = ['hour', 'day', 'month', 'year'];
+  let keyCard = { pillar: 'hour', component: 'stem' };
+  const cardAt = ({ pillar, component }) => pillarsContainer.querySelector(`.card.${component}[data-pillar="${pillar}"]`);
+  const setKeyCard = (card) => {
+    keyCard = { pillar: card.dataset.pillar, component: card.classList.contains('stem') ? 'stem' : 'branch' };
+    pillarsContainer.querySelectorAll('.card').forEach((node) => node.setAttribute('tabindex', node === card ? '0' : '-1'));
+  };
+  pillarsContainer.addEventListener('focusin', (event) => {
+    const card = event.target;
+    if (!card.matches('.card')) return;
+    setKeyCard(card);
+    if (!card.matches(':focus-visible')) return;
+    hintedCard = card;
+    cardHint.textContent = requiredTranslation(card.classList.contains('branch') ? 'key_hint_branch' : 'key_hint_stem');
+    placeCardHint();
+    cardHint.classList.remove('hidden');
+  });
+  pillarsContainer.addEventListener('focusout', (event) => {
+    if (event.target === hintedCard) hideCardHint();
+  });
+  pillarsContainer.addEventListener('keydown', (event) => {
+    const card = event.target;
+    if (!card.matches('.card') || event.altKey || event.ctrlKey || event.metaKey) return;
+    const pillar = card.dataset.pillar;
+    const component = card.classList.contains('stem') ? 'stem' : 'branch';
+    const at = PILLAR_ORDER.indexOf(pillar);
+    const moves = {
+      ArrowLeft: at > 0 ? { pillar: PILLAR_ORDER[at - 1], component } : null,
+      ArrowRight: at < PILLAR_ORDER.length - 1 ? { pillar: PILLAR_ORDER[at + 1], component } : null,
+      ArrowUp: component === 'branch' ? { pillar, component: 'stem' } : null,
+      ArrowDown: component === 'stem' ? { pillar, component: 'branch' } : null,
+    };
+    if (Object.hasOwn(moves, event.key)) {
+      // The page does not scroll under the cards.
+      event.preventDefault();
+      if (moves[event.key]) cardAt(moves[event.key]).focus();
+      return;
+    }
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      if (component === 'branch' && !event.repeat) card.click();
+      return;
+    }
+    if ((event.key === 't' || event.key === 'T') && !event.repeat) {
+      event.preventDefault();
+      flipCard(card);
+      syncDisplaySwitch();
+    }
   });
 
   languageButtons.forEach((button) => {
@@ -1277,6 +1348,94 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── The keys, and the commands ──
+  // ? lists the keys while the chart has focus: a character key acts only then (WCAG
+  // 2.1.4). ⌘K or Ctrl+K opens the commands wherever focus is, while a chart is shown.
+  const keysDialog = document.getElementById('keys-dialog');
+  const paletteDialog = document.getElementById('command-palette');
+  if (!keysDialog || !paletteDialog) throw new Error('Chart dialogs are incomplete.');
+  const palette = window.EC_PALETTE.create({ dialog: paletteDialog, escape: esc });
+  // Escape in a dialog closes it and nothing else: an open topic stays open.
+  [keysDialog, paletteDialog].forEach((dialog) => dialog.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') event.stopPropagation();
+  }));
+  let keysOpener = null;
+  const openKeys = () => {
+    keysOpener = document.activeElement;
+    keysDialog.showModal();
+  };
+  keysDialog.addEventListener('click', (event) => {
+    if (event.target.closest('[data-close-dialog]')) keysDialog.close();
+  });
+  keysDialog.addEventListener('close', () => {
+    if (keysOpener) keysOpener.focus();
+  });
+
+  // A topic from the palette opens as a link's does, in one step of the history.
+  const goToTopic = (path) => {
+    if (currentTopic() === path) return;
+    const before = addressed;
+    addressed = null;
+    try {
+      closePanel();
+      openTopic(path);
+    } finally {
+      addressed = before;
+    }
+    followView();
+  };
+  const ROLES = ['friend', 'rob_wealth', 'eating_god', 'hurting_officer', 'indirect_wealth', 'direct_wealth',
+    'seven_killings', 'direct_officer', 'indirect_resource', 'direct_resource'];
+  // What the chart offers now, named as its controls name it.
+  const chartCommands = () => {
+    const commands = [];
+    const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
+    const topics = requiredTranslation('palette_topics');
+    chartView.querySelectorAll('#context-controls button[data-context]').forEach((button) => {
+      add(topics, button.textContent, () => goToTopic(button.dataset.context));
+    });
+    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
+    relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {
+      add(requiredTranslation('relationships'), chip.textContent, () => goToTopic(`relationships/${chip.dataset.relationship}`));
+    });
+    ROLES.forEach((role) => {
+      add(requiredTranslation('roles_title'), requiredTranslation('ten_god_' + role), () => goToTopic(`roles/${role}`));
+    });
+    chartView.querySelectorAll('.pillar-identity').forEach((button) => {
+      add(requiredTranslation('palette_pillars'),
+        `${requiredTranslation('pillar_' + button.dataset.pillar)} · ${button.textContent}`,
+        () => goToTopic(`pillar/${button.dataset.pillar}`));
+    });
+    displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
+      add(requiredTranslation('display_label'), button.textContent, () => button.click());
+    });
+    chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
+      add(requiredTranslation('language_label'), button.textContent, () => button.click());
+    });
+    const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
+    add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
+    const chart = requiredTranslation('palette_chart');
+    [copyLinkBtn, backBtn, newChartBtn].forEach((button) => add(chart, button.textContent, () => button.click()));
+    if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
+    add(chart, requiredTranslation('keys_title'), openKeys);
+    return commands;
+  };
+
+  document.addEventListener('keydown', (event) => {
+    if (event.defaultPrevented || chartView.classList.contains('hidden') || keysDialog.open || paletteDialog.open) return;
+    if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
+      event.preventDefault();
+      palette.open(chartCommands());
+      return;
+    }
+    const focus = document.activeElement;
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey
+      && chartView.contains(focus) && !focus.closest('input, textarea, select, [contenteditable="true"]')) {
+      event.preventDefault();
+      openKeys();
+    }
+  });
+
   applyLanguage();
   if (location.hash) followAddress();
 });
@@ -1289,7 +1448,7 @@ function renderChart(data, plainNames) {
   container.innerHTML = '';
 
   const pillarKeys = ['hour', 'day', 'month', 'year'];
-  const expandHint = `<svg class='branch-expand-hint' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>`;
+  const expandHint = `<svg class='branch-expand-hint' aria-hidden='true' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>`;
 
   data.pillars.forEach((p, i) => {
     const pillar = document.createElement('div');
@@ -1297,10 +1456,13 @@ function renderChart(data, plainNames) {
     pillar.dataset.pillar = pillarKeys[i];
     pillar.style.animationDelay = [0.5, 0.35, 0.2, 0.05][i] + 's';
 
+    // Each card is named by its pillar and its facing side (see labelCard). A branch is
+    // a button: it opens its hidden stems.
+    const key = pillarKeys[i];
     pillar.innerHTML = `
       <div class='pillar-header'>
         <div class='pillar-label'>
-          <span class='pillar-plain'>${esc(plainNames[pillarKeys[i]])}</span>
+          <span class='pillar-plain' id='pillar-name-${key}'>${esc(plainNames[pillarKeys[i]])}</span>
           <span class='pillar-poetic'>${esc(p.label)}</span>
         </div>
         <button type='button' class='pillar-identity' data-pillar='${pillarKeys[i]}'
@@ -1311,34 +1473,37 @@ function renderChart(data, plainNames) {
         <p class='pillar-mark'></p>
       </div>
       <div class='pillar-cards'>
-        <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'>
+        <div class='card ${p.stem.element} stem' data-pillar='${pillarKeys[i]}' data-char='${esc(p.stem.char)}'
+          role='group' tabindex='-1' aria-keyshortcuts='T' aria-labelledby='pillar-name-${key} card-${key}-stem-front'>
           <div class='card-inner'>
-            <div class='card-face card-front'>
+            <div class='card-face card-front' id='card-${key}-stem-front'>
               <div class='glyph' lang='zh-Hant'>${esc(p.stem.char)}</div>
               <div class='gua'>${renderLines(p.stem.lines)}</div>
               <div class='element-name'>${esc(p.stem.label)}</div>
             </div>
-            <div class='card-face card-back'>
+            <div class='card-face card-back' id='card-${key}-stem-back'>
               <div class='ten-god-name'></div>
             </div>
           </div>
         </div>
-        <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}' data-char='${esc(p.branch.char)}'>
+        <div class='card ${p.branch.element} branch' data-pillar='${pillarKeys[i]}' data-char='${esc(p.branch.char)}'
+          role='button' tabindex='-1' aria-expanded='false' aria-controls='hidden-stems-${key}' aria-keyshortcuts='Enter Space T'
+          aria-labelledby='pillar-name-${key} card-${key}-branch-front'>
           <div class='card-inner'>
-            <div class='card-face card-front'>
+            <div class='card-face card-front' id='card-${key}-branch-front'>
               <div class='glyph' lang='zh-Hant'>${esc(p.branch.char)}</div>
               <div class='gua'>${renderLines(p.branch.lines)}</div>
               <div class='animal-name'>${esc(p.branch.animal_fi)}</div>
               <div class='animal-element'>${esc(p.branch.element_label)}</div>
               ${expandHint}
             </div>
-            <div class='card-face card-back'>
+            <div class='card-face card-back' id='card-${key}-branch-back'>
               <div class='ten-god-list'></div>
               ${expandHint}
             </div>
           </div>
         </div>
-        <div class='hidden-stems-panel ${p.branch.element}' data-pillar='${pillarKeys[i]}'>
+        <div class='hidden-stems-panel ${p.branch.element}' data-pillar='${pillarKeys[i]}' id='hidden-stems-${key}'>
           <div class='hidden-stems-list'></div>
         </div>
       </div>
