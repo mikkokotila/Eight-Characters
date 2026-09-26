@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.20.0
+
+Stage 4 of the Standard view overhaul (#19), part 2: the relationships drawn on the chart.
+
+### Changed
+- **Arcs on the chart.** Stem combinations arch above the stems, and branch combinations, clashes and complete frames hang below the branches, each from the middle of its first card to the middle of its last, in the list's lines: solid, dashed for a clash, double for a frame. A frame's middle member has a foot of its own.
+  - An arc rises a level for each column it spans, and above every arc it spans or crosses. Four levels hold every combination of four stems or four branches, which a unit test walks through; a chart that needed more would fail visibly.
+  - The arcs have rows of their own in the pillar grid, one height each, so the cards stand in the same place whatever the relationships. Real charts have up to seven.
+  - The branch arcs' feet reach up to the cards past any opened hidden stems, whose panels cover them. The element tints behind hidden stems are now opaque: the element's colour mixed with the page's tone (`color-mix()`), the same colours as before to within a level.
+  - Selecting a relationship darkens its arc and fades the others.
+  - With two pillars to a row, on phones, no arcs are drawn; the sheet lists the relationships.
+- From 641px wide the pillar headers keep 8px less room below them, since the stem arcs' row keeps its own. Phones are unchanged.
+- **Tests.** A browser suite for the arcs (`arcs.test.mjs`) checks each arc's ends, line, feet and level on eight charts at 1440, 1024 and 700px; the chosen arc; the feet behind opened hidden stems; the guard against arcs that would not fit; and, on desktop and mobile, the cards' places with none to seven relationships.
+- Version bumped to `0.20.0`; the static assets' cache keys follow it.
+
 ## 0.19.0
 
 Stage 4 of the Standard view overhaul (#19), part 1: the chart becomes a workbench. One bar above it, and a panel that explains the chosen topic beside it.

@@ -2,13 +2,49 @@
 (() => {
   const DISPLAY_ORDER = ['hour', 'day', 'month', 'year'];
   const KINDS = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
+  // The arcs' rows hold four levels. No combination of stems or branches needs
+  // more (tests/test_api_interactions.py walks every one with this layout).
+  const ARC_LEVELS = 4;
+
+  // Each arc spans its members' columns. It rises one level for each column it
+  // spans, and higher still to stand above every arc it spans or crosses: narrow
+  // arcs are placed first, each at least one level above the highest it
+  // overlaps. Arcs that only meet at a card may share a level.
+  const arcLayout = (relationships) => {
+    const arcs = relationships.map((relationship) => {
+      const columns = relationship.members.map((member) => DISPLAY_ORDER.indexOf(member.pillar)).sort((a, b) => a - b);
+      return { relationship, columns, from: columns[0], to: columns[columns.length - 1], feet: {} };
+    });
+    const byWidth = [...arcs].sort((a, b) => (a.to - a.from) - (b.to - b.from) || a.from - b.from);
+    byWidth.forEach((arc, index) => {
+      const overlapped = byWidth.slice(0, index)
+        .filter((other) => Math.max(arc.from, other.from) < Math.min(arc.to, other.to));
+      arc.level = Math.max(arc.to - arc.from, 1 + Math.max(0, ...overlapped.map((other) => other.level)));
+    });
+    if (arcs.some((arc) => arc.level > ARC_LEVELS)) {
+      throw new Error(`Relationship arcs need more than ${ARC_LEVELS} levels.`);
+    }
+    // The feet on one card, left to right: arcs from the left, lowest first; a frame's
+    // middle member; arcs to the right, highest first. No arc's foot then crosses
+    // another arc that ends on the same card.
+    DISPLAY_ORDER.forEach((_, column) => {
+      const feet = [
+        ...arcs.filter((arc) => arc.to === column).sort((a, b) => a.level - b.level).map((arc) => [arc, 'to']),
+        ...arcs.filter((arc) => arc.columns.length === 3 && arc.columns[1] === column).map((arc) => [arc, 'middle']),
+        ...arcs.filter((arc) => arc.from === column).sort((a, b) => b.level - a.level).map((arc) => [arc, 'from']),
+      ];
+      feet.forEach(([arc, end], index) => { arc.feet[end] = index - (feet.length - 1) / 2; });
+    });
+    return arcs;
+  };
 
   const create = ({ root, translate: t, escape: esc, beforeSelect }) => {
     const list = root.querySelector('#relationship-list');
     const empty = root.querySelector('#relationship-empty');
     const detail = root.querySelector('#relationship-detail');
     const status = root.querySelector('#relationship-status');
-    if (!list || !empty || !detail || !status) {
+    const pillars = root.querySelector('#pillars');
+    if (!list || !empty || !detail || !status || !pillars) {
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
@@ -37,6 +73,8 @@
       selected = null;
       root.removeAttribute('data-relationship-kind');
       root.querySelectorAll('.card.is-related').forEach((card) => card.classList.remove('is-related'));
+      pillars.querySelectorAll('.relationship-arcs').forEach((band) => band.classList.remove('has-selection'));
+      pillars.querySelectorAll('.relationship-arc.is-active').forEach((arc) => arc.classList.remove('is-active'));
       list.querySelectorAll('button').forEach((button) => {
         button.setAttribute('aria-expanded', 'false');
         button.classList.remove('is-active');
@@ -76,6 +114,11 @@
       selected = relationship.id;
       root.dataset.relationshipKind = relationship.kind;
       relationship.members.forEach((member) => cardFor(relationship, member).classList.add('is-related'));
+      const arc = [...pillars.querySelectorAll('.relationship-arc')]
+        .find((node) => node.dataset.relationshipId === relationship.id);
+      if (!arc) throw new Error(`Relationship ${relationship.id} has no arc.`);
+      pillars.querySelectorAll('.relationship-arcs').forEach((band) => band.classList.add('has-selection'));
+      arc.classList.add('is-active');
       button.setAttribute('aria-expanded', 'true');
       button.classList.add('is-active');
       const meta = [t(relationship.adjacent ? 'relationship_adjacent' : 'relationship_non_adjacent')];
@@ -121,11 +164,30 @@
       }
     });
 
+    const arcMarkup = (arc) => {
+      const style = [
+        `grid-column: ${arc.from + 1} / ${arc.to + 2}`, `--span: ${arc.to - arc.from}`, `--level: ${arc.level}`,
+        `--foot-from: ${arc.feet.from}`, `--foot-to: ${arc.feet.to}`,
+      ].join('; ');
+      // A frame's middle member stands under the arc where it is (at) of the way
+      // across; half an ellipse is sqrt(1 - x²) of its rise there, x from -1 to 1.
+      const at = arc.columns.length === 3 ? (arc.columns[1] - arc.from) / (arc.to - arc.from) : null;
+      const middle = at === null ? ''
+        : `<span class="relationship-arc-foot" style="--at: ${at}; --reach: ${Math.sqrt(1 - (2 * at - 1) ** 2)}; --foot: ${arc.feet.middle}"></span>`;
+      // A branch arc's feet rise through the hidden stems' row to its cards.
+      const rises = arc.relationship.component === 'branch'
+        ? '<span class="relationship-arc-rise is-from"></span><span class="relationship-arc-rise is-to"></span>' : '';
+      return `<span class="relationship-arc" data-arc-kind="${esc(arc.relationship.kind)}" data-relationship-id="${esc(arc.relationship.id)}" style="${style}">
+        <span class="relationship-arc-line"></span>${rises}${middle}
+      </span>`;
+    };
+
     const render = (relationships, chartData, tenGodsData) => {
       clear();
       entries = [];
       list.innerHTML = '';
       empty.classList.add('hidden');
+      pillars.querySelectorAll('.relationship-arcs').forEach((band) => band.remove());
       if (!Array.isArray(relationships) || chartData.pillars.length !== DISPLAY_ORDER.length) {
         throw new Error(t('interactions_error'));
       }
@@ -159,6 +221,17 @@
         if (relationship.potential_element !== null) t('element_' + relationship.potential_element);
       });
       entries = relationships;
+      // Stem combinations above the stems, branch relations below the branches. The
+      // list in the panel says what the arcs draw.
+      ['stem', 'branch'].forEach((component) => {
+        const band = document.createElement('div');
+        band.className = 'relationship-arcs';
+        band.dataset.component = component;
+        band.setAttribute('aria-hidden', 'true');
+        band.innerHTML = arcLayout(relationships.filter((relationship) => relationship.component === component))
+          .map(arcMarkup).join('');
+        pillars.append(band);
+      });
       list.innerHTML = relationships.map((relationship, index) => `
         <button type="button" class="relationship-chip" data-kind="${esc(relationship.kind)}"
           data-relationship-index="${index}" aria-expanded="false" aria-controls="relationship-detail">
