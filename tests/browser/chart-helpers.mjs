@@ -43,7 +43,13 @@ async function count(page, selector, expected) {
 async function settled(page) {
   await page.evaluate(async () => {
     await document.fonts.ready;
-    await Promise.all(document.getAnimations().map((animation) => animation.finished));
+    // Until nothing moves. A transition that the next change interrupts is cancelled, and
+    // counts as done; one that starts meanwhile is waited for too. Finished animations
+    // that hold their end state are not moving.
+    const moving = () => document.getAnimations().filter((animation) => animation.playState !== 'finished');
+    for (let running = moving(); running.length > 0; running = moving()) {
+      await Promise.allSettled(running.map((animation) => animation.finished));
+    }
   });
   await count(page, '.is-turning', 0);
 }

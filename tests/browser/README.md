@@ -135,3 +135,19 @@ a valid birth in the form and leave the form's address. A chart that arrives aft
 a later step is not drawn. Copy link puts the address on the clipboard and says so,
 and says so when the browser refuses. `openLink` in `chart-helpers.mjs` opens a
 link as a new tab would, with every chart calculated by the real API.
+
+The keyboard suite checks the chart by keyboard (#19). The eight cards take one tab
+stop, the arrows move between them and stop at the edges without scrolling the page,
+and Tab comes back to the card used last. Enter and Space open and close a branch's
+hidden stems and keep `aria-expanded` in step; on a stem they do nothing. T turns the
+card with focus once, even held down, and is only a letter elsewhere; the cards are
+named by their pillar and the side they show. A hint above the card with keyboard
+focus says its keys; a click shows the pointer's hint instead. Escape closes the open
+topic. `?` lists the keys while the chart has focus, and Escape closes only the dialog
+and gives focus back. ⌘K or Ctrl+K finds a command and runs it as its control would, a
+topic in one step of the history. Every control of the chart is reached by Tab, the
+cards at one stop. In WebKit the suite steps with Option+Tab, as Safari does without
+Full Keyboard Access.
+
+`settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
+change interrupts counts as done, and one that starts meanwhile is waited for too.

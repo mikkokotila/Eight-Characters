@@ -110,7 +110,9 @@
     </nav>
 
     <p id="pillar-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
-    <div class="pillars" id="pillars"></div>
+    <span id="pillars-label" class="sr-only" data-i18n="pillars_label">Pilarit</span>
+    <p id="pillars-keys" class="sr-only" data-i18n="pillars_keys"></p>
+    <div class="pillars" id="pillars" role="group" aria-labelledby="pillars-label" aria-describedby="pillars-keys"></div>
   </div>
 
   <aside id="chart-panel" class="chart-panel hidden" aria-labelledby="chart-panel-title">
@@ -130,6 +132,56 @@
 
   <p id="context-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
   <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+
+  <!-- The keys (? while the chart has focus), and the commands (⌘K or Ctrl+K). -->
+  <dialog id="keys-dialog" class="chart-dialog" aria-labelledby="keys-dialog-title">
+    <div class="chart-dialog-bar">
+      <h2 id="keys-dialog-title" class="chart-dialog-title" data-i18n="keys_title">Näppäimet</h2>
+      <button type="button" class="panel-close" data-close-dialog data-i18n="panel_close">Sulje</button>
+    </div>
+    <dl class="key-list">
+      <div class="key-row">
+        <dt><kbd class="key-arrow is-left"><span class="sr-only" data-i18n="key_left">Vasen nuoli</span></kbd>
+          <kbd class="key-arrow is-right"><span class="sr-only" data-i18n="key_right">Oikea nuoli</span></kbd></dt>
+        <dd data-i18n="key_move_pillars">Pilarista toiseen</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd class="key-arrow is-up"><span class="sr-only" data-i18n="key_up">Ylänuoli</span></kbd>
+          <kbd class="key-arrow is-down"><span class="sr-only" data-i18n="key_down">Alanuoli</span></kbd></dt>
+        <dd data-i18n="key_move_rows">Rungon ja haaran välillä</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd>Enter</kbd> <kbd data-i18n="key_space">Välilyönti</kbd></dt>
+        <dd data-i18n="key_hidden_stems">Haaran piilorungot</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd>T</kbd></dt>
+        <dd data-i18n="key_turn">Kortti kymmeneen jumalaan ja takaisin</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd>Esc</kbd></dt>
+        <dd data-i18n="key_close">Sulkee avoimen</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd>Ctrl</kbd> <kbd>K</kbd> · <kbd>Cmd</kbd> <kbd>K</kbd></dt>
+        <dd data-i18n="key_palette">Komennot</dd>
+      </div>
+      <div class="key-row">
+        <dt><kbd>?</kbd></dt>
+        <dd data-i18n="key_help">Nämä näppäimet</dd>
+      </div>
+    </dl>
+    <p class="key-note" data-i18n="key_note"></p>
+  </dialog>
+
+  <dialog id="command-palette" class="chart-dialog palette" aria-labelledby="palette-title">
+    <h2 id="palette-title" class="sr-only" data-i18n="palette_title">Komennot</h2>
+    <input type="text" id="palette-input" class="palette-input" role="combobox" aria-expanded="true"
+      aria-controls="palette-list" aria-autocomplete="list" aria-labelledby="palette-title"
+      autocomplete="off" spellcheck="false" data-i18n-placeholder="palette_placeholder">
+    <ul id="palette-list" class="palette-list" role="listbox" aria-labelledby="palette-title"></ul>
+    <p id="palette-empty" class="palette-empty hidden" data-i18n="palette_empty">Ei komentoa</p>
+  </dialog>
 </div>
 
 <script src="/static/localization.js?v={{ app_version }}"></script>
@@ -137,6 +189,7 @@
 <script src="/static/roles.js?v={{ app_version }}"></script>
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>
 <script src="/static/pillar-changes.js?v={{ app_version }}"></script>
+<script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

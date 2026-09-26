@@ -10,6 +10,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Day Master season and roots: `Standard-Day-Master-Context.md`
 - Whole-chart roles and visible-stem roots: `Standard-Roles.md`
 - Chart links, history and Copy link: `Standard-Links.md`
+- The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
 - Developer endpoint internals: `Developer/API.md`
 - Standard view design tokens: `Developer/Design-Tokens.md`
 - Convention settings and output shape: `conventions-and-output.md`
