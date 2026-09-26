@@ -12,6 +12,8 @@ Master, beside that element's colour. Its two roles stand under it, each with a
 mark in two columns, the visible stems and the hidden stems: a filled dot where
 the role is visible, a ring where it is hidden, and a small dot where it is not.
 A role the chart lacks is set in the secondary ink, and can still be selected.
+Resting the pointer on a role, or on a group, rings every place it occurs on the
+chart before its page is opened (see [Day Master context](Standard-Day-Master-Context.md)).
 
 Each role, and each group with its heading, is read to assistive technology as
 one of four states: Visible only, Hidden only, Visible and hidden, or Not present.

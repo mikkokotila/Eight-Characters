@@ -38,6 +38,12 @@ described by the keys above.
 - Escape in a dialog closes the dialog only; an open topic stays open. Focus returns to
   where it was.
 
+## The panel
+
+A control in the panel with keyboard focus rings on the chart what it names, at once:
+a role where it occurs, a stem's roots, a relationship's cards and arc. The ring goes
+when focus moves on.
+
 In Safari, Tab moves between text fields and the cards only unless Full Keyboard Access
 is on; Option+Tab reaches every control.
 

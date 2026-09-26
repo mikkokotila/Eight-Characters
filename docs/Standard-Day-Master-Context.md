@@ -18,6 +18,28 @@ A stem is one line of text:
 The outlines belong to the chart, not the panel. Pillars are named as their
 column headers name them.
 
+**Each line points at the chart.** A page highlights all its evidence at once;
+a line in it points at its own part on the chart, with a dark ring:
+- a stem, its card;
+- a hidden stem, its branch's card, and its row wherever hidden stems show (on the
+  card's back or opened below it);
+- a relationship, its cards and its arc;
+- a role or a group of roles, every place it occurs;
+- a stem's roots control, the roots it leads to.
+
+When it rings:
+- **Resting the pointer** on a line for half a second rings it. While a ring
+  shows, the next line rings at once. The ring goes shortly after the pointer
+  leaves every line.
+- **A click or tap** on a line that leads nowhere else keeps its ring until it is
+  clicked again or the page changes. That serves touch, which has no hover, and a
+  pointer that moves over to the chart to look closer. A control keeps its own
+  action.
+- **Keyboard focus** on a control in the panel rings its part at once.
+
+Meanwhile the page's other outlines step back and the other arcs fade. Nothing on
+the chart moves, opens, turns or changes colour.
+
 Only one relationship or context detail is open at a time. Switching topics
 clears the previous highlights without moving the pillars, changing their natal
 elements, flipping cards, or opening hidden-stem panels. From 1200px wide the chart
