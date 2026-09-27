@@ -24,7 +24,10 @@ The chart lives in the address's fragment, the part after `#`:
 - `topic`, only when one is open: `season`, `roots`, `roles`, `roles/<role>`,
   `roles/stem/<pillar>`, `roles/<role>/stem/<pillar>` (a stem's roots reached
   from a role's page), `relationships`, `relationships/<id>` (the API's
-  relationship id), or `pillar/<pillar>` (a pillar's exact changes).
+  relationship id), `pillar/<pillar>` (a pillar's exact changes), or, in an
+  English chart, `day-master` (the Day Master's page of
+  [readings](Standard-Readings.md)). Which readings are open is a reader's own
+  and not part of the link.
 
 Browsers never send the fragment to the server, so a birth in a link stays out of
 server logs. The chart itself is still calculated by the API, which receives the

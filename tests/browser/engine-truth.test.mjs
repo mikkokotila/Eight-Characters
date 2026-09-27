@@ -37,8 +37,11 @@ async function reading(page) {
     marks: await marks(page),
     yearStemTenGod: await page.locator('.card.stem[data-pillar="year"] .ten-god-name').textContent(),
     roots: await page.locator('button[data-context="roots"]').textContent(),
-    // Their list is closed: its chips' text, without the markup's line breaks.
-    relationships: (await page.locator('.relationship-chip').allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
+    // Their list is closed: its chips' names, without the markup's line breaks. (In English
+    // a chip also reads the canon's first sentence for it: reading.test.mjs.)
+    relationships: await page.locator('.relationship-chip').evaluateAll((chips) => chips.map((chip) => [...chip.children]
+      .filter((node) => !node.matches('.relationship-mark, .canon-chip-line'))
+      .map((node) => node.textContent).join('').replace(/\s+/g, ' ').trim())),
   };
   await page.locator('button[data-context="roles"]').click();
   state.roles = await page.locator('#context-detail').innerText();

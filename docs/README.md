@@ -12,6 +12,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Chart links, history and Copy link: `Standard-Links.md`
 - Copying a chart as text, and printing it: `Standard-Copy-and-Print.md`
 - Two charts side by side: `Standard-Compare.md`
+- What the canon says of a chart, in its pages: `Standard-Readings.md`
 - The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
 - Developer endpoint internals: `Developer/API.md`
 - Standard view design tokens, and the dark theme: `Developer/Design-Tokens.md`

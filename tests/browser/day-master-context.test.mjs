@@ -10,7 +10,9 @@ for (const profile of profiles) {
     check('Day Master and exact roots are visible without changing chart geometry', async (page) => {
       await openChart(page);
       assert.equal(await page.locator('#day-master-heading').innerText(), 'Day Master · Ji — Yin Earth');
-      assert.equal(await page.locator('[data-context]').count(), 3);
+      // Three topics beside the Day Master line (in English the line itself opens the Day
+      // Master's own page: reading.test.mjs).
+      assert.equal(await page.locator('#context-controls [data-context]').count(), 3);
       assert.equal(await page.locator('[data-context="roots"]').innerText(), 'Roots in 3 branches');
       const before = await geometry(page);
       const colors = await natalColors(page);

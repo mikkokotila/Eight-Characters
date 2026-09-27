@@ -208,12 +208,17 @@ for (const profile of profiles) {
         await page.locator('button[data-context="roles"]').click();
         await page.locator('[data-close-panel]').focus();
         await page.keyboard.press(TAB);
+        // In English the roles' own reading comes first; it names nothing on the chart.
+        assert.equal(await page.evaluate(() => document.activeElement.closest('.canon-line')?.dataset.canonPart), 'about-roles');
+        assert.deepEqual(await ringed(page), []);
+        await page.keyboard.press(TAB);
         const roles = payload.role_profile.groups.flatMap((group) => group.roles);
         const first = roles[0];
         assert.equal(await page.evaluate(() => document.activeElement.dataset.role), first.ten_god);
         assert.deepEqual(await ringed(page), expected([...first.visible, ...first.hidden]));
         await page.keyboard.press(TAB);
         assert.deepEqual(await ringed(page), expected([...roles[1].visible, ...roles[1].hidden]));
+        await page.keyboard.press(`Shift+${TAB}`);
         await page.keyboard.press(`Shift+${TAB}`);
         await page.keyboard.press(`Shift+${TAB}`);
         assert.equal(await page.evaluate(() => document.activeElement.matches('[data-close-panel]')), true);

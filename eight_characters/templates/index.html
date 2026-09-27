@@ -132,6 +132,8 @@
       <h3 id="relationships-heading" class="panel-heading" data-i18n="relationships">Yhteydet</h3>
       <div id="relationship-list" class="relationship-list"></div>
       <p id="relationship-empty" class="relationship-empty hidden" data-i18n="relationship_empty"></p>
+      <!-- What each kind of relationship in the list is, from the canon (English only). -->
+      <div id="relationship-about"></div>
     </section>
     <section id="pillar-detail" class="relationship-detail pillar-detail hidden" aria-labelledby="pillar-detail-title"></section>
     <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
@@ -161,6 +163,11 @@
       <div class="key-row">
         <dt><kbd>Enter</kbd> <kbd data-i18n="key_space">Välilyönti</kbd></dt>
         <dd data-i18n="key_hidden_stems">Haaran piilorungot</dd>
+      </div>
+      <!-- Readings are English only, and so is their key. -->
+      <div class="key-row hidden" id="key-read">
+        <dt><kbd>R</kbd></dt>
+        <dd>Read what the focused card means</dd>
       </div>
       <div class="key-row">
         <dt><kbd>T</kbd></dt>
@@ -220,6 +227,7 @@
 
 <script src="/static/localization.js?v={{ app_version }}"></script>
 <script src="/static/spotlight.js?v={{ app_version }}"></script>
+<script src="/static/readings.js?v={{ app_version }}"></script>
 <script src="/static/relationships.js?v={{ app_version }}"></script>
 <script src="/static/roles.js?v={{ app_version }}"></script>
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>

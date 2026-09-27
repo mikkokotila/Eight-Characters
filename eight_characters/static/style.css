@@ -111,7 +111,10 @@
   --tracking-2: 0.18em;  /* capitals */
   --tracking-3: 0.3em;   /* the eyebrow above a title */
 
-  /* ── The pillars and the panel beside them ── */
+  /* ── The page, the pillars and the panel beside them ── */
+  /* The page's margin above and below what it shows; the panel beside the chart keeps
+     it too, so a full panel never makes the page scroll. */
+  --page-block: var(--space-7);
   --chart-width: 960px;
   --card-min-height: 180px;
   --hidden-stem-row: 20px;
@@ -185,7 +188,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-7) var(--space-4);
+  padding: var(--page-block) var(--space-4);
 }
 
 
@@ -1643,7 +1646,9 @@ kbd {
 }
 
 /* From 1200px wide the panel stands beside the chart column and scrolls on its
-   own; the column moves over once, when the panel first opens. From 1436px wide
+   own; the column moves over once, when the panel first opens. It keeps the page's
+   margin above and below, scrolled or not: however long its page, the page itself does
+   not grow, and no scroll bar comes and goes to move the column again. From 1436px wide
    (both beside each other, and the page's gutters) the column keeps its full width. */
 @media (min-width: 1200px) {
   .chart-container.has-panel {
@@ -1655,8 +1660,8 @@ kbd {
   }
   .chart-panel {
     position: sticky;
-    top: var(--space-5);
-    max-height: calc(100vh - 2 * var(--space-5));
+    top: var(--page-block);
+    max-height: calc(100vh - 2 * var(--page-block));
     overflow-y: auto;
     padding: var(--space-5);
     border: 1px solid var(--line-1);
@@ -1765,8 +1770,10 @@ kbd {
   font-family: var(--font-serif);
   font-size: var(--text-3);
 }
-/* Drawn rather than typed, like the back arrow: the page fonts have no arrow glyphs. */
-.pillar-change-arrow::before {
+/* Drawn rather than typed, like the back arrow: the page fonts have no arrow glyphs.
+   The canon's own arrow, in a reading, is drawn the same way. */
+.pillar-change-arrow::before,
+.canon-arrow::before {
   content: '';
   display: inline-block;
   width: 0.9em;
@@ -1833,6 +1840,230 @@ kbd {
 }
 
 
+/* ── Readings: the canon's taxonomy, in the pages the chart already has ──
+   Each reading is one line that opens in place, with the chevron the branches use for
+   their hidden stems. The canon speaks in the serif; the app's own words stay in the
+   sans. Readings are English only: in another language none of this is drawn. */
+
+/* The Day Master line opens the Day Master's page; at rest it is the heading as it was.
+   Its target reaches past the text, into the row's own room. */
+.canon-day-master-line {
+  position: relative;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: var(--tracking-1);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: var(--space-1);
+  transition: text-decoration-color 0.2s ease;
+}
+.canon-day-master-line::after {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-2)) 0;
+}
+.canon-day-master-line:hover,
+.canon-day-master-line[aria-expanded='true'] { text-decoration-color: var(--line-2); }
+.canon-day-master-line:focus-visible { outline: 2px solid var(--ink-2); outline-offset: var(--space-1); border-radius: 2px; }
+
+.canon-lines { margin-top: var(--space-5); }
+.role-occurrence-body > .canon-lines { margin-top: var(--space-2); }
+.relationship-member .canon-lines { margin-top: var(--space-3); }
+
+/* A reading's key: what it is, as the panel's labels name a place. */
+.canon-line-key {
+  font-family: var(--font-serif);
+  font-size: var(--text-1);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+/* One reading: its key, its first sentence and the chevron; the rest opens beneath. */
+.canon-line,
+.canon-here { border-top: 1px solid var(--line-1); }
+.canon-lines > :last-child { border-bottom: 1px solid var(--line-1); }
+/* Where a relationship's page follows the list, its own rule closes the list's readings. */
+.relationships:has(~ .relationship-detail:not(.hidden)) .canon-lines > :last-child { border-bottom: 0; }
+.canon-line-toggle {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas: 'key chevron' 'head chevron';
+  align-items: center;
+  column-gap: var(--space-3);
+  row-gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3) var(--space-1) var(--space-3) 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  text-align: left;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.canon-line-toggle .canon-line-key { grid-area: key; text-wrap: balance; }
+.canon-line-head {
+  grid-area: head;
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 500;
+  line-height: 1.35;
+  letter-spacing: var(--tracking-1);
+  text-wrap: pretty;
+}
+.canon-line-chevron {
+  grid-area: chevron;
+  width: 18px;
+  height: 18px;
+  color: var(--ink-2);
+  transition: transform 0.2s ease;
+}
+.canon-line-toggle[aria-expanded='true'] .canon-line-chevron { transform: rotate(180deg); }
+.canon-line-toggle:hover .canon-line-chevron { color: var(--ink-1); }
+.canon-line-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 4px; }
+.canon-line-passage {
+  max-width: 35em;
+  padding: 0 var(--space-6) var(--space-4) 0;
+}
+.canon-text {
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 400;
+  line-height: 1.55;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+  text-wrap: pretty;
+}
+.canon-text + .canon-text { margin-top: var(--space-3); }
+.canon-text strong,
+.canon-line-head strong { font-weight: 600; }
+
+/* Where a reading leads: another page, and the line it names there. */
+.canon-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+.canon-link {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 16px;
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.canon-link:hover { background: var(--surface-2); border-color: var(--line-2); }
+.canon-link:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+/* A pillar's relationships, each with its own first sentence. */
+.canon-here { padding: var(--space-3) 0; }
+.canon-here .canon-links { margin-top: var(--space-2); }
+.canon-here .canon-link { border-radius: 10px; }
+.canon-link-quote {
+  display: block;
+  margin-top: var(--space-1);
+  font-family: var(--font-serif);
+  font-size: var(--text-2);
+  font-weight: 400;
+  line-height: 1.35;
+  letter-spacing: var(--tracking-1);
+}
+
+/* What decides a relationship's reading in this chart, before the entry. */
+.canon-condition {
+  margin-bottom: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border-left: 2px solid var(--ink-1);
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  line-height: 1.6;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+}
+.canon-condition q { font-family: var(--font-serif); font-size: var(--text-2); font-style: italic; }
+
+/* The list of relationships: each one's first sentence under its name. */
+.relationship-chip:has(.canon-chip-line) {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  text-align: left;
+  border-radius: 14px;
+}
+.canon-chip-line {
+  flex-basis: 100%;
+  padding-left: var(--space-5);
+  font-family: var(--font-serif);
+  font-size: var(--text-2);
+  line-height: 1.35;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+}
+
+/* The cycle: the Day Master's stage on each branch, as one sentence and as a ring. */
+.canon-sentence {
+  margin-bottom: var(--space-3);
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  line-height: 1.5;
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+}
+.canon-clause {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  letter-spacing: var(--tracking-1);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--line-1);
+  text-underline-offset: var(--space-1);
+}
+.canon-clause:hover { text-decoration-color: var(--line-2); }
+.canon-clause:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 2px; }
+.canon-ring { display: block; width: 100%; max-width: 340px; margin: 0 auto var(--space-4); }
+.canon-ring text { font-family: var(--font-sans); font-size: var(--text-1); fill: var(--ink-2); }
+.canon-ring .canon-ring-stage.is-on { fill: var(--ink-1); font-weight: 700; }
+.canon-ring .canon-ring-branch { font-family: var(--font-glyph); }
+.canon-ring .canon-ring-pillar { font-weight: 500; letter-spacing: var(--tracking-2); fill: var(--ink-1); }
+.canon-ring .canon-ring-center { font-family: var(--font-glyph); font-size: var(--text-5); fill: var(--ink-1); }
+.canon-ring-track { fill: none; stroke: var(--line-2); }
+.canon-ring-off { fill: var(--ink-2); }
+.canon-ring-on { fill: var(--ink-1); }
+
+/* The line a link just turned to, for a moment; without motion, it holds and goes. */
+@keyframes canon-arrive {
+  from { background: var(--surface-3); }
+  to { background: transparent; }
+}
+.canon-line.is-arrived { animation: canon-arrive 1.4s ease-out; }
+@media (prefers-reduced-motion: reduce) {
+  .canon-line.is-arrived { animation-timing-function: steps(1, end); }
+  .canon-day-master-line, .canon-line-chevron, .canon-link { transition: none; }
+}
+@media (max-width: 640px) {
+  .canon-link { min-height: 44px; }
+}
+
 /* ═══════════════════════════════════════════════════════
    ANIMATION & RESPONSIVE
    ═══════════════════════════════════════════════════════ */
@@ -1881,7 +2112,8 @@ kbd {
 .is-embedded #back-btn,
 .is-embedded #new-chart-btn,
 .is-embedded #compare-btn { display: none; }
-.is-embedded body { padding: var(--space-4); }
+.is-embedded { --page-block: var(--space-4); }
+.is-embedded body { padding: var(--page-block) var(--space-4); }
 
 /* ── A comparison: two charts side by side, each in its own frame ──
    The frames share the page's width and height; each chart scrolls in its own, and
@@ -2014,6 +2246,13 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .context-evidence-row,
   .role-occurrence,
   .role-group { break-inside: avoid; }
+  /* A reading prints as it is open: its line, and its passage when that is open. */
+  .canon-line-chevron,
+  .canon-links,
+  .canon-here { display: none !important; }
+  .canon-line-toggle { break-after: avoid; }
+  .canon-day-master-line,
+  .canon-clause { text-decoration: none; }
   /* A heading goes to the next page with what it heads. */
   .relationship-detail-heading,
   .relationship-meta,

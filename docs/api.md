@@ -55,6 +55,7 @@ Optional request fields:
 - `include_interactions` (`false` by default)
 - `include_day_master_context` (`false` by default)
 - `include_role_profile` (`false` by default)
+- `include_reading` (`false` by default)
 - `lang` (`fi` by default, used when `include_chart=true`)
 
 Response always includes:
@@ -75,6 +76,7 @@ Response conditionally includes:
 - `interactions` (when `include_interactions=true`)
 - `day_master_context` (when `include_day_master_context=true`)
 - `role_profile` (when `include_role_profile=true`)
+- `reading` (when `include_reading=true`)
 
 `ten_gods` gives, for each pillar, the ten god of its stem and of every
 hidden stem of its branch, relative to the Day Master (the day stem). Hidden
@@ -236,6 +238,73 @@ matches; it still appears as visible-only Indirect Resource.
 No strength, favorability, or transformation is inferred. This flag does not
 implicitly include any other enrichment. The existing `day_master_context`
 response, including `support`, remains unchanged. See [Roles](Standard-Roles.md).
+
+#### Canon readings (`include_reading`)
+
+Set `include_reading: true` to receive `reading`: the passages of the canon,
+`canon/Taxonomy.md`, that this chart selects. The policy is `canon_taxonomy_v1`.
+The `language` is `en` whatever `lang` is, because the canon is English.
+- **A paragraph** is `{ "label": string | null, "text": string }`, in the canon's
+  own words.
+- **A label** is the canon's own, such as `Month–Day`.
+- **`text`** keeps the canon's two inline marks, `*emphasis*` and `**strong**`.
+
+- **`day_master`:**
+  - `stem` and the canon's `title` for it;
+  - `introduction`, the Day Master section's own;
+  - `core`;
+  - `grounds_introduction`, on how any stem meets any branch;
+  - `grounds`, on how this stem meets any ground;
+  - `cycle`:
+    - `stages`: the Day Master's life stage, 1 to 12, on each pillar's branch;
+    - `ring`: the twelve stages in order, each with its `stage`, `branch`,
+      `name` and `chinese`;
+    - `introduction`, `mapping_introduction`, the stem's `narrative`, and
+      `reconception`.
+- **`pillars`,** for `year`, `month`, `day` and `hour`:
+  - `stem` and `branch`;
+  - `lens`: the Day Master in this pillar;
+  - `stem_reading`:
+    - `kind`: `day_master` on the Day, otherwise `ten_god`;
+    - `ten_god`;
+    - `paragraphs`: the Day Master's core, or the Ten God on this stem;
+  - `own_stage`: the life stage of the pillar's own stem on its branch, with the
+    stage's core passage; `null` on the Day;
+  - `ground`, the branch in this pillar, and `ground_about`, the branch itself;
+  - `meets`: the Day Master on this branch. Six of these passages end with a
+    sentence that holds only for a Day Pillar; in the other pillars that
+    sentence is left out;
+  - `stage`: the Day Master's life stage on this branch, with the stage's
+    passage for this pillar.
+- **`roles_introduction`.**
+- **`roles`,** for each Ten God:
+  - the canon's `name` and `relation`;
+  - `core`;
+  - `stems`: its passage on each stem where it can stand, `year`, `month` and
+    `hour`.
+- **`branches_introduction`.**
+- **`relationships`,** keyed by the same ids as `interactions`:
+  - `kind`;
+  - the kind's `introduction`;
+  - the pillar `pairing`, which is `null` for a frame;
+  - the `entry`: `title` and `paragraphs`;
+  - for a stem combination: `with_day_master` or `neither_day_master`,
+    `dynamic` and `mechanics`;
+  - `condition`, where the chart settles a condition the entry states. It holds
+    the `season` and the entry's own `sentence`. Today that is the Zi–Wu clash.
+
+Nothing is assessed: no strength, transformation, favorable or unfavorable
+verdict, or prediction.
+- **Other sections.** The flag adds no other section. The relationships are
+  read from the same detection as `interactions`, but `interactions` itself
+  must be requested.
+- **Checks at start.** The API checks the canon's exact words it relies on when
+  it starts, and does not start if they changed.
+- **The canon's own example.** It is Helsinki, 1976-06-29 at 07:02. Its
+  `cycle.stages` are Tomb (9), Embryo (11), Emperor's Peak (5) and Death (8),
+  from the year to the hour.
+
+See [Readings](Standard-Readings.md).
 
 ### `POST /api/evolution_explorer`
 
