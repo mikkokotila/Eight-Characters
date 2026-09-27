@@ -8,13 +8,13 @@
   };
   const COMPANIONS = ['friend', 'rob_wealth'];
   const RESOURCES = ['direct_resource', 'indirect_resource'];
-  const create = ({ root, translate: t, escape: esc, spot, beforeSelect }) => {
+  const create = ({ root, translate: t, escape: esc, spot, canon, beforeSelect }) => {
     const summary = root.querySelector('#day-master-context');
     const heading = root.querySelector('#day-master-heading');
     const controls = root.querySelector('#context-controls');
     const detail = root.querySelector('#context-detail');
     const status = root.querySelector('#context-status');
-    if (!summary || !heading || !controls || !detail || !status || !spot) {
+    if (!summary || !heading || !controls || !detail || !status || !spot || !canon) {
       throw new Error('Day Master context view is incomplete.');
     }
     let selected = null;
@@ -103,13 +103,15 @@
       </div>`;
     };
 
-    const branchMarkup = (pillar, evidence, roots = false) => {
+    // A branch with its evidence; `reading`, what the canon says of it, follows that.
+    const branchMarkup = (pillar, evidence, roots = false, reading = '') => {
       const branch = chart[pillar].branch;
       return `<div class="relationship-member"${spot.attr([`branch:${pillar}`])}>
         <div class="relationship-position">${esc(t('pillar_' + pillar))}</div>
         <div class="relationship-identity">${esc(branch.pinyin)} ${esc(branch.char)}</div>
         <div class="relationship-element">${esc(branch.element_label)}</div>
         <div class="context-evidence-list">${evidence.map((e) => evidenceMarkup(e, { rootMatch: roots })).join('')}</div>
+        ${reading}
       </div>`;
     };
     const makePage = (title, meta, content, note) => `
@@ -126,7 +128,7 @@
       });
     };
     const roles = window.EC_ROLES.create({
-      root, translate: t, escape: esc, spot, makePage, branchMarkup, evidenceMarkup,
+      root, translate: t, escape: esc, spot, canon, makePage, branchMarkup, evidenceMarkup,
       show: (page, focusSelector) => {
         require(selected === 'roles');
         clearHighlights();
@@ -142,7 +144,7 @@
     const clear = () => {
       selected = null;
       clearHighlights();
-      controls.querySelectorAll('button').forEach((button) => button.setAttribute('aria-expanded', 'false'));
+      summary.querySelectorAll('button[data-context]').forEach((button) => button.setAttribute('aria-expanded', 'false'));
       detail.classList.add('hidden');
       detail.innerHTML = '';
       delete detail.dataset.topic;
@@ -164,7 +166,8 @@
       detail.classList.remove('hidden');
       status.textContent = t('context_selected', { topic: page.title });
     };
-    controls.addEventListener('click', (event) => {
+    // The topics: the Day Master line, when it opens a page, and the controls beside it.
+    summary.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-context]');
       if (!button) return;
       const key = button.dataset.context;
@@ -178,7 +181,7 @@
       showPage(pages[key]);
     });
     const clearAndReturnFocus = () => {
-      const button = controls.querySelector('[aria-expanded="true"]');
+      const button = summary.querySelector('button[data-context][aria-expanded="true"]');
       clear();
       if (button) button.focus();
     };
@@ -200,27 +203,39 @@
       const season = data.season;
       const rootPillars = DISPLAY.filter((pillar) => data.roots.some((e) => e.pillar === pillar));
       const rootsLabel = t(rootPillars.length === 0 ? 'context_roots_none' : rootPillars.length === 1 ? 'context_roots_one' : 'context_roots_many', { count: rootPillars.length });
-      heading.textContent = `${t('ten_god_day_master')} · ${dm.pinyin} — ${elementLabel(dm)}`;
+      const line = `${t('ten_god_day_master')} · ${dm.pinyin} — ${elementLabel(dm)}`;
+      // With a reading, the line opens the Day Master's page; otherwise it stays a heading.
+      heading.innerHTML = canon.has()
+        ? `<button type="button" class="canon-day-master-line" data-context="day-master" aria-expanded="false" aria-controls="context-detail">${esc(line)}</button>`
+        : esc(line);
       const labels = {
         season: t('context_month', { month: season.month_branch.pinyin }),
         roots: rootsLabel,
         roles: t('roles_title'),
       };
       const rootsContent = rootPillars.length
-        ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">${rootPillars.map((pillar) => branchMarkup(pillar, data.roots.filter((e) => e.pillar === pillar), true)).join('')}</div>`
+        ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">${rootPillars.map((pillar) => branchMarkup(pillar, data.roots.filter((e) => e.pillar === pillar), true, canon.rootGround(pillar))).join('')}</div>`
         : `<p class="relationship-empty">${esc(t('context_no_roots'))}</p>`;
+      const withReadings = (note) => [note, canon.note()].filter(Boolean).join(' ');
       pages = {
         season: {
           path: 'season', title: t('context_season'), evidence: season.hidden_stems,
           markup: makePage(t('context_season'), t('context_season_group', { season: t('context_' + season.name), element: t('element_' + season.element) }),
-            `<div class="relationship-members" style="--member-count: 1">${branchMarkup('month', season.hidden_stems)}</div>`, t('context_season_note')),
+            `<div class="relationship-members" style="--member-count: 1">${branchMarkup('month', season.hidden_stems, false, canon.season())}</div>`, withReadings(t('context_season_note'))),
         },
         roots: {
           path: 'roots', title: t('context_roots'), evidence: data.roots,
-          markup: makePage(t('context_roots'), rootsLabel, rootsContent, t('context_roots_note')),
+          markup: makePage(t('context_roots'), rootsLabel, rootsContent, withReadings(t('context_roots_note'))),
         },
         roles: roles.render(roleProfile, chartData, gods),
       };
+      // The Day Master's own page, which only the canon's readings fill.
+      if (canon.has()) {
+        pages['day-master'] = {
+          path: 'day-master', title: line, evidence: [],
+          markup: makePage(line, canon.dayMasterTitle(), canon.dayMaster(), canon.note()),
+        };
+      }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
         <button type="button" class="reading-toggle context-toggle" data-context="${key}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}</button>`).join('');
     };

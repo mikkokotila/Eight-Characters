@@ -243,6 +243,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const applyLanguage = () => {
     document.documentElement.lang = currentLanguage;
+    // Readings, and so their key, are English only.
+    document.getElementById('key-read').classList.toggle('hidden', currentLanguage !== 'en');
     const textNodes = document.querySelectorAll('[data-i18n]');
     textNodes.forEach((node) => {
       const key = node.getAttribute('data-i18n');
@@ -511,10 +513,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // it. Anything missing or inconsistent throws before the chart view is shown.
   const showChart = async (request, place) => {
     const serial = ++drawing;
+    // The canon speaks English: its readings come with an English chart only.
+    const withReading = request.lang === 'en';
     const pillarsRes = await fetch('/api/four_pillars', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
+      body: JSON.stringify({ ...request, include_reading: withReading }),
     });
     const pillarsData = await pillarsRes.json();
     if (serial !== drawing) return false;
@@ -550,6 +554,9 @@ document.addEventListener('DOMContentLoaded', () => {
     populateTenGods(tenGodsData);
     if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
     populateHiddenStems(pillarsData.hidden_stems);
+    // Read before the pages that quote it are built.
+    if (withReading && !pillarsData.reading) throw new Error(t('chart_error'));
+    canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
     relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
@@ -752,16 +759,23 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // A line in the panel points at what it names on the chart (spotlight.js).
   const spot = window.EC_SPOTLIGHT.create({ root: chartView, escape: esc });
+  // The canon's readings, which the pages below quote (readings.js). A link in one opens
+  // its topic as the palette does, and then the line it names.
+  const canonReadings = window.EC_READINGS.create({
+    root: chartView, escape: esc, spot,
+    roleName: (name) => requiredTranslation('ten_god_' + name),
+    go: (path, part) => goToReading(path, part),
+  });
   const relationships = window.EC_RELATIONSHIPS.create({
-    root: chartView, translate: requiredTranslation, escape: esc, spot,
+    root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
     beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
-    root: chartView, translate: requiredTranslation, escape: esc, spot,
+    root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
     beforeSelect: () => { relationships.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
   });
   const pillarChanges = window.EC_PILLAR_CHANGES.create({
-    root: chartView, translate: requiredTranslation, escape: esc,
+    root: chartView, translate: requiredTranslation, escape: esc, canon: canonReadings,
     format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); setRelationshipsOpen(false); },
   });
@@ -1087,6 +1101,13 @@ document.addEventListener('DOMContentLoaded', () => {
     cardHint.textContent = requiredTranslation(card.classList.contains('branch') ? 'key_hint_branch' : 'key_hint_stem');
     placeCardHint();
     cardHint.classList.remove('hidden');
+    // While a pillar's reading is open, the keys turn its pages: the card's pillar
+    // opens, at the card's own line, and what is open stays open.
+    if (canonReadings.has() && currentTopic()?.startsWith('pillar/')) {
+      const identity = chartView.querySelector(`.pillar-identity[data-pillar="${card.dataset.pillar}"]`);
+      if (identity.getAttribute('aria-expanded') !== 'true') identity.click();
+      canonReadings.arrive(chartPanel.querySelector('#pillar-detail'), card.classList.contains('stem') ? 'stem' : 'ground');
+    }
   });
   pillarsContainer.addEventListener('focusout', (event) => {
     if (event.target === hintedCard) hideCardHint();
@@ -1118,6 +1139,12 @@ document.addEventListener('DOMContentLoaded', () => {
       event.preventDefault();
       flipCard(card);
       syncDisplaySwitch();
+      return;
+    }
+    // R reads the card: its pillar's page, with the card's own line open.
+    if ((event.key === 'r' || event.key === 'R') && !event.repeat && canonReadings.has()) {
+      event.preventDefault();
+      goToReading(`pillar/${pillar}`, component === 'stem' ? 'stem' : 'ground');
     }
   });
 
@@ -1140,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'zi', 'display', 'topic'];
   const DISPLAYS = ['characters', 'ten-gods', 'hidden-stems'];
   // The pages a topic can show. Whether this chart has the one named is known once it is drawn.
-  const TOPIC_PATH = /^(season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year))$/;
+  const TOPIC_PATH = /^(day-master|season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year))$/;
   const linkError = (part) => new Error(t('link_error', { part }));
   const formAddress = () => `${location.pathname}${location.search}`;
 
@@ -1336,7 +1363,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (first === 'pillar') {
       need(chartView.querySelector(`.pillar-identity[data-pillar="${rest[0]}"]`)).click();
     } else {
-      need(chartView.querySelector(`#context-controls button[data-context="${first}"]`)).click();
+      need(chartView.querySelector(`#day-master-context button[data-context="${first}"]`)).click();
       // roles/<role>, roles/stem/<pillar>, or roles/<role>/stem/<pillar>
       const role = rest[0] === 'stem' ? '' : rest.shift();
       if (role) need(contextDetail.querySelector(`button[data-role="${role}"]`)).click();
@@ -1534,6 +1561,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     followView();
   };
+  // A reading's link opens its topic, and then its line: on the page's own section, the
+  // last one shown (a chosen relationship's page shows below the list).
+  const goToReading = (path, part) => {
+    goToTopic(path);
+    if (!part) return;
+    const section = [...chartPanel.querySelectorAll(':scope > section:not(.hidden)')].at(-1);
+    if (!section || !canonReadings.arrive(section, part, true)) throw linkError('topic');
+  };
   const ROLES = ['friend', 'rob_wealth', 'eating_god', 'hurting_officer', 'indirect_wealth', 'direct_wealth',
     'seven_killings', 'direct_officer', 'indirect_resource', 'direct_resource'];
   // What the chart offers now, named as its controls name it.
@@ -1541,7 +1576,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const commands = [];
     const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
     const topics = requiredTranslation('palette_topics');
-    chartView.querySelectorAll('#context-controls button[data-context]').forEach((button) => {
+    chartView.querySelectorAll('#day-master-context button[data-context]').forEach((button) => {
       add(topics, button.textContent, () => goToTopic(button.dataset.context));
     });
     add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));

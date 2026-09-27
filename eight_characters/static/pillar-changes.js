@@ -20,10 +20,10 @@
   };
   const CLOCKS = ['true_solar', 'civil'];
 
-  const create = ({ root, translate: t, escape: esc, format, beforeSelect }) => {
+  const create = ({ root, translate: t, escape: esc, format, canon, beforeSelect }) => {
     const detail = root.querySelector('#pillar-detail');
     const status = root.querySelector('#pillar-status');
-    if (!detail || !status) throw new Error('Pillar change view is incomplete.');
+    if (!detail || !status || !canon) throw new Error('Pillar change view is incomplete.');
     let entries = {};
     let readings = {};
     let selected = null;
@@ -108,10 +108,13 @@
       buttonFor(name).setAttribute('aria-expanded', 'true');
       const notes = [t('pillar_changes_note')];
       if (name === 'year' || name === 'month') notes.push(t('pillar_changes_term_note'));
+      if (canon.has()) notes.push(canon.note());
+      // What the canon says of the pillar sits under its title, before its changes.
       detail.innerHTML = `
         <div class="relationship-detail-heading">
           <h3 id="pillar-detail-title">${esc(titleFor(name))}</h3>
         </div>
+        ${canon.pillar(name)}
         <div class="pillar-change-sides">
           ${sideMarkup(entry, 'previous')}
           ${sideMarkup(entry, 'next')}

@@ -38,13 +38,14 @@
     return arcs;
   };
 
-  const create = ({ root, translate: t, escape: esc, spot, beforeSelect }) => {
+  const create = ({ root, translate: t, escape: esc, spot, canon, beforeSelect }) => {
     const list = root.querySelector('#relationship-list');
     const empty = root.querySelector('#relationship-empty');
+    const about = root.querySelector('#relationship-about');
     const detail = root.querySelector('#relationship-detail');
     const status = root.querySelector('#relationship-status');
     const pillars = root.querySelector('#pillars');
-    if (!list || !empty || !detail || !status || !pillars || !spot) {
+    if (!list || !empty || !about || !detail || !status || !pillars || !spot || !canon) {
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
@@ -134,15 +135,17 @@
       const displayMembers = [...relationship.members].sort(
         (a, b) => DISPLAY_ORDER.indexOf(a.pillar) - DISPLAY_ORDER.indexOf(b.pillar)
       );
+      // What the canon says of it sits under its finding, before its members.
       detail.innerHTML = `
         <div class="relationship-detail-heading">
           <h3 id="relationship-detail-title">${esc(labelFor(relationship))}</h3>
         </div>
         <p class="relationship-meta">${esc(meta.join(' · '))}</p>
+        ${canon.relationship(relationship.id)}
         <div class="relationship-members" style="--member-count: ${relationship.members.length}">
           ${displayMembers.map((member) => memberMarkup(relationship, member)).join('')}
         </div>
-        <p class="relationship-note">${esc(t(noteKey))}</p>`;
+        <p class="relationship-note">${esc([t(noteKey), canon.note()].filter(Boolean).join(' '))}</p>`;
       detail.classList.remove('hidden');
       status.textContent = t('relationship_selected', {relationship: labelFor(relationship)});
     };
@@ -242,12 +245,19 @@
             ...relationship.members.map((member) => `${relationship.component}:${member.pillar}`), `arc:${relationship.id}`])}
           aria-expanded="false" aria-controls="relationship-detail">
           <span class="relationship-mark" aria-hidden="true"></span>
-          <span>${esc(labelFor(relationship))}</span>
+          <span>${esc(labelFor(relationship))}</span>${canon.chipLine(relationship.id)}
         </button>`).join('');
       empty.classList.toggle('hidden', relationships.length !== 0);
+      about.innerHTML = canon.relationshipsAbout();
     };
 
-    return { render, clear };
+    // A relationship's name as the list names it, for the pages that link to it.
+    const labelOf = (id) => {
+      const relationship = entries.find((entry) => entry.id === id);
+      if (!relationship) throw new Error(`Unknown relationship ${id}.`);
+      return labelFor(relationship);
+    };
+    return { render, clear, labelOf };
   };
 
   window.EC_RELATIONSHIPS = { create };

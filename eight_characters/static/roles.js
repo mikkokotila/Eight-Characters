@@ -19,9 +19,10 @@
     hidden_only: ['absent', 'hidden'], absent: ['absent', 'absent'],
   };
   const occurrenceId = (e) => e.component === 'stem' ? `visible:${e.pillar}` : `hidden:${e.pillar}:${e.char}`;
-  const create = ({ root, translate: t, escape: esc, spot, makePage, branchMarkup, evidenceMarkup, show }) => {
+  const create = ({ root, translate: t, escape: esc, spot, canon, makePage, branchMarkup, evidenceMarkup, show }) => {
     const detail = root.querySelector('#context-detail');
-    if (!detail || !spot || typeof show !== 'function') throw new Error('Roles view is incomplete.');
+    if (!detail || !spot || !canon || typeof show !== 'function') throw new Error('Roles view is incomplete.');
+    const withReadings = (note) => [note, canon.note()].filter(Boolean).join(' ');
     let profile;
     let chart = {};
     let roleMap = {};
@@ -111,6 +112,7 @@
     const buildOverview = () => ({
       path: 'roles', title: t('roles_title'), evidence: [],
       markup: makePage(t('roles_title'), t('roles_overview_meta'), `
+        ${canon.rolesAbout()}
         <div class="role-overview">
           <div class="role-overview-columns" aria-hidden="true">
             <span>${esc(t('roles_column_visible'))}</span><span>${esc(t('roles_column_hidden'))}</span>
@@ -139,7 +141,7 @@
               <div class="role-occurrence-body">${evidenceMarkup({ ...s, component: 'stem' })}${rootButton(s)}</div>
             </div>`;
           }).join('')}</div>
-        </section>`, t('roles_overview_note')),
+        </section>`, withReadings(t('roles_overview_note'))),
     });
 
     const exactVisibleMarkup = (record, name) => {
@@ -154,6 +156,7 @@
     const roleSource = (record, name) => `
       <div class="role-occurrence" data-role-occurrence="${esc(record.id)}"${spot.attr([spot.of(record)])}>${placeMarkup(record.pillar, record.branch)}
         <div class="role-occurrence-body">${evidenceMarkup(record, { role: false })}
+          ${record.component === 'stem' ? canon.roleStem(name, record.pillar) : ''}
           ${record.component === 'stem' ? rootButton(stemMap[record.pillar], name) : exactVisibleMarkup(record, name)}
         </div>
       </div>`;
@@ -168,7 +171,7 @@
                 : `<p class="relationship-meta">${esc(t('context_absent'))}</p>`}
             </section>`).join('')}</div>`;
       return { path: `roles/${name}`, title: roleName(name), evidence: [...role.visible, ...role.hidden],
-        markup: makePage(roleName(name), pLabel(role.presence), `${backButton('', '', name)}${content}`, t('roles_role_note')) };
+        markup: makePage(roleName(name), pLabel(role.presence), `${backButton('', '', name)}${canon.roleCore(name)}${content}`, withReadings(t('roles_role_note'))) };
     };
     const buildRootPage = (pillar, fromRole) => {
       const s = stemMap[pillar];
