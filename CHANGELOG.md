@@ -1,5 +1,62 @@
 # Changelog
 
+## 0.28.0
+
+Readings: the canon's taxonomy, `canon/Taxonomy.md`, in the pages the chart already has.
+
+### Changed
+- **Readings.** In an English chart, each page reads what the canon says of this chart. The engine chooses the passages that apply:
+  - the Day Master;
+  - each pillar's stem and branch;
+  - the life stages;
+  - the relationships it finds.
+
+  The words are the canon's, and nothing assesses strength or predicts. The cards stay as they are.
+- **A reading is one line:** a key, the passage's own first sentence, and the hidden stems' chevron. The rest opens beneath, and what is open stays open from page to page. A line points at its cards, as the panel's other lines do.
+- **A pillar's page** reads:
+  - the Day Master's lens on the pillar;
+  - who stands on its stem, and that stem's own stage on its branch;
+  - its ground;
+  - the Day Master on this ground, and its stage here;
+  - the relationships that touch the pillar.
+- **The Day Master line** opens the Day Master's own page, `topic=day-master`. The page reads:
+  - what the Day Master is, and how it meets any ground;
+  - its lens on each pillar;
+  - its cycle, as a sentence and as a ring of the twelve stages with this chart's branches on it;
+  - the twelve stages;
+  - the pattern of reconception.
+- **Relationships** read their first sentence in the list, what each kind is, and on each page:
+  - the canon's pairing;
+  - for a stem combination, the Day Master's part in it, its dynamic and its mechanics;
+  - the entry.
+
+  A condition the chart settles, the Zi–Wu clash's season, is said before the entry.
+- **Roles, the season and the roots** read their own lines beside their evidence.
+- **Links in a reading** open their page at the line they name, in one step of the history.
+- **R on a focused card** opens its pillar at the card's own line. While a pillar's page is open, the arrow keys turn it.
+- **English only.** The canon is English. A Finnish chart asks for no reading, and every Finnish page is as it was, pixel for pixel.
+- **The API.** `POST /api/four_pillars` takes `include_reading` and returns `reading` under the policy `canon_taxonomy_v1`:
+  - the canon is packaged with the app and parsed into keyed passages;
+  - a malformed canon is refused;
+  - the exact words the reading relies on are checked when the app starts.
+
+  A new `life_stages` module gives the life stage of any stem on any branch. It matches the canon's table and lunar_python on all 120 cells.
+- **The canon writes pinyin without diacritics,** as the app does: its 148 marked letters are plain. A test refuses any diacritic. The canon's arrow is drawn, as the app's other arrows are, since the page fonts have none.
+- **A full panel keeps the page's margins.** Beside the chart, from 1200px, a panel at its full height made the page 48px taller than the window. Where scroll bars take room, the bar then moved the chart a second time, as the Roles page already did. The panel now keeps the page's margin above and below, as the `--page-block` token.
+- **What is not in yet** is listed in #39, found by building the reading for every path the engine can select. 523 of the canon's 579 paragraphs reach some chart's reading. The rest are the punishments, harms and directional combinations Standard does not detect yet. A test keeps that list exact.
+- **Docs.**
+  - New: `docs/Standard-Readings.md`.
+  - `docs/api.md` documents `include_reading`.
+  - The keyboard and links pages name R and `topic=day-master`.
+- **Tests.**
+  - Python: the canon parser, including every paragraph read once and five malformed canons refused.
+  - Python: the life stages against the canon and lunar_python.
+  - Python: the reading, for every Day Master in every pillar on every branch, and every relationship.
+  - Python: what no reading can show.
+  - A browser suite for readings, `reading.test.mjs`.
+  - The foundations suite's font, glyph and contrast audits also visit the readings, open.
+- Version bumped to `0.28.0`; the static assets' cache keys and the regression fixture's `engine.version` follow it.
+
 ## 0.27.0
 
 Stage 5 of the Standard view overhaul (#20), part 3: two charts side by side.
