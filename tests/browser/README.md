@@ -52,6 +52,25 @@ absent roles, unrooted visible stems, repeated visible identities, nested back/f
 navigation, exclusive selection, card gestures, Finnish layouts, and corrupted
 profile rejection. `chart-helpers.mjs` is shared by the role, context, and relationship suites.
 
+The readings suite (`reading.test.mjs`) reads the canon's own example chart and
+charts with each kind of relationship, each well clear of an hour's or a month's
+change. It checks:
+- that an English chart asks for its reading and a Finnish one asks for none and
+  shows none, in every page and across the language switch;
+- that each line's words are the API's own, first sentence and passage;
+- that kinds of reading stay open from page to page;
+- the Day Master's page, its cycle and ring, and its link after a reload;
+- that links open their page at their line, one step in the history;
+- R and the arrow keys;
+- that a full panel keeps the page's margins;
+- relationship conditions, stem combinations with and without the Day Master,
+  and frames;
+- the refusal of a reading that does not match its chart;
+- print.
+
+The foundations suite's font, glyph and contrast audits also visit the Day
+Master's page, a pillar's and a relationship's with every reading open.
+
 The location suite checks that places sharing a name are told apart by region and
 coordinates, that the picked place's coordinates reach the chart and the evolution
 explorer, that a slow answer for an earlier query never replaces the list, that a

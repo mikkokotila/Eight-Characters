@@ -18,7 +18,7 @@ for (const profile of profiles) {
       const before = await geometry(page);
       const colors = await natalColors(page);
       assert.equal(await page.locator('[data-context="support"]').count(), 0);
-      assert.equal(await page.locator('[data-context]').count(), 3);
+      assert.equal(await page.locator('#context-controls [data-context]').count(), 3);
       await page.locator('[data-context="roles"]').click();
       await count(page, '[data-role-group]', 5);
       await count(page, '[data-role]', 10);

@@ -131,10 +131,10 @@ for (const profile of profiles) {
           const [card, box] = await Promise.all([page.locator(selector).boundingBox(), hint.boundingBox()]);
           return { above: box.y + box.height <= card.y + 0.5, centred: Math.abs(box.x + box.width / 2 - (card.x + card.width / 2)) < 1 };
         };
-        assert.equal(await hint.textContent(), 'T: Ten Gods');
+        assert.equal(await hint.textContent(), 'R: read · T: Ten Gods');
         assert.deepEqual(await place('.card.stem[data-pillar="hour"]'), { above: true, centred: true });
         await press(page, 'ArrowDown');
-        assert.equal(await hint.textContent(), 'Enter: hidden stems · T: Ten Gods');
+        assert.equal(await hint.textContent(), 'Enter: hidden stems · R: read · T: Ten Gods');
         assert.deepEqual(await place('.card.branch[data-pillar="hour"]'), { above: true, centred: true });
         await press(page, TAB);
         assert.equal(await hint.isHidden(), true);
@@ -162,9 +162,11 @@ for (const profile of profiles) {
       await press(page, 'ArrowDown', '?');
       assert.deepEqual(await openDialogs(page), ['keys-dialog']);
       const dialog = page.getByRole('dialog', { name: 'Keys' });
-      assert.equal(await dialog.locator('.key-row').count(), 7);
+      // In English, R reads the focused card; a Finnish chart has no readings, and no R.
+      assert.equal(await dialog.locator('.key-row').filter({ visible: true }).count(), 8);
       assert.deepEqual(await dialog.locator('dd').allTextContents(), ['Between pillars', 'Between stem and branch',
-        "A branch's hidden stems", 'A card to its Ten Gods and back', 'Closes what is open', 'Commands', 'These keys']);
+        "A branch's hidden stems", 'Read what the focused card means', 'A card to its Ten Gods and back',
+        'Closes what is open', 'Commands', 'These keys']);
       assert.equal(await dialog.locator('.key-arrow .sr-only').first().textContent(), 'Left arrow');
       assert.equal(await page.evaluate(() => document.getElementById('keys-dialog').contains(document.activeElement)), true);
       await press(page, 'Escape');
@@ -199,7 +201,8 @@ for (const profile of profiles) {
       assert.deepEqual(await openDialogs(page), ['command-palette']);
       assert.equal(await focused(page), 'palette-input');
       const all = await options();
-      for (const expected of ['Chou month Topic', 'Relationships (1) Topic', 'Hour–Year · Stem combination Relationships',
+      for (const expected of ['Day Master · Ji — Yin Earth Topic', 'Chou month Topic', 'Relationships (1) Topic',
+        'Hour–Year · Stem combination Relationships',
         'Direct Wealth Roles', 'Hour · 壬申 Ren Shen Pillar', 'Ten Gods Show', 'FI Language', 'Evolution View',
         'Copy link Chart', 'Edit Chart', 'New chart Chart', 'Keys Chart']) {
         assert.ok(all.includes(expected), `${expected} in ${JSON.stringify(all)}`);
@@ -253,7 +256,9 @@ for (const profile of profiles) {
         await press(page, TAB);
       }
       assert.deepEqual(reached, ['Characters', 'Ten Gods', 'Hidden stems', 'Standard', 'Evolution', 'FI', 'EN',
-        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
+        // In English the Day Master line opens the Day Master's page of readings.
+        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'Day Master · Ji — Yin Earth',
+        'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
         '壬申 Ren Shen', 'hour stem', '己丑 Ji Chou', '癸丑 Gui Chou', '丁卯 Ding Mao']);
     });
   });

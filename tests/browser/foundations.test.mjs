@@ -110,6 +110,28 @@ const AUDIT = () => {
   window.__ecAudit = { textElements, describe, firstFamily, contrastFailures, chevronFailures, dotFailures, parse, backdrop, inkOn };
 };
 
+// The canon's readings in English (reading.test.mjs), every line open: the Day Master's
+// page, a pillar's and a relationship's. `inspect` runs in each.
+async function visitReadings(page, inspect) {
+  const pages = {
+    "Day Master's page": () => page.locator('.canon-day-master-line').click(),
+    "hour's page": () => page.locator('.pillar-identity[data-pillar="hour"]').click(),
+    "relationship's page": async () => {
+      await openRelationships(page);
+      await page.locator('.relationship-chip').first().click();
+    },
+  };
+  for (const [name, open] of Object.entries(pages)) {
+    await open();
+    await page.locator('#chart-panel .canon-line-toggle').evaluateAll((buttons) => buttons
+      .filter((button) => button.checkVisibility() && button.getAttribute('aria-expanded') === 'false')
+      .forEach((button) => button.click()));
+    await settled(page);
+    await inspect(`en ${name}, readings open`);
+    await page.keyboard.press('Escape');
+  }
+}
+
 // Every chart state and detail page, in both languages; `inspect` runs in each.
 async function visitStates(page, inspect) {
   for (const lang of ['en', 'fi']) {
@@ -160,6 +182,7 @@ async function visitStates(page, inspect) {
       await inspect(`${lang} ${pillar} changes`);
       await page.keyboard.press('Escape');
     }
+    if (lang === 'en') await visitReadings(page, inspect);
     await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
     await inspect(`${lang} Zi-hour chart`);
     await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
@@ -225,6 +248,12 @@ for (const profile of profiles) {
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with roles`);
         await page.locator('.pillar-identity[data-pillar="year"]').click();
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} chart with a pillar's changes`);
+        if (lang === 'en') {
+          await page.keyboard.press('Escape');
+          await visitReadings(page, async (state) => {
+            assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], state);
+          });
+        }
         await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} Zi-hour chart`);
         await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
@@ -274,6 +303,11 @@ for (const profile of profiles) {
           await page.locator(`.pillar-identity[data-pillar="${pillar}"]`).click();
           failures.push(...await systemGlyphFailures(page, cdp, `${lang} ${pillar} changes`));
           await page.keyboard.press('Escape');
+        }
+        if (lang === 'en') {
+          await visitReadings(page, async (state) => {
+            failures.push(...await systemGlyphFailures(page, cdp, state));
+          });
         }
         await openChart(page, { lang, place: HELSINKI, date: '1988-06-15', time: '00:50' });
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} Zi-hour chart`));
