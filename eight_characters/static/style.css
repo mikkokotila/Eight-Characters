@@ -111,7 +111,10 @@
   --tracking-2: 0.18em;  /* capitals */
   --tracking-3: 0.3em;   /* the eyebrow above a title */
 
-  /* ── The pillars and the panel beside them ── */
+  /* ── The page, the pillars and the panel beside them ── */
+  /* The page's margin above and below what it shows; the panel beside the chart keeps
+     it too, so a full panel never makes the page scroll. */
+  --page-block: var(--space-7);
   --chart-width: 960px;
   --card-min-height: 180px;
   --hidden-stem-row: 20px;
@@ -185,7 +188,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-7) var(--space-4);
+  padding: var(--page-block) var(--space-4);
 }
 
 
@@ -1643,7 +1646,9 @@ kbd {
 }
 
 /* From 1200px wide the panel stands beside the chart column and scrolls on its
-   own; the column moves over once, when the panel first opens. From 1436px wide
+   own; the column moves over once, when the panel first opens. It keeps the page's
+   margin above and below, scrolled or not: however long its page, the page itself does
+   not grow, and no scroll bar comes and goes to move the column again. From 1436px wide
    (both beside each other, and the page's gutters) the column keeps its full width. */
 @media (min-width: 1200px) {
   .chart-container.has-panel {
@@ -1655,8 +1660,8 @@ kbd {
   }
   .chart-panel {
     position: sticky;
-    top: var(--space-5);
-    max-height: calc(100vh - 2 * var(--space-5));
+    top: var(--page-block);
+    max-height: calc(100vh - 2 * var(--page-block));
     overflow-y: auto;
     padding: var(--space-5);
     border: 1px solid var(--line-1);
@@ -1881,7 +1886,8 @@ kbd {
 .is-embedded #back-btn,
 .is-embedded #new-chart-btn,
 .is-embedded #compare-btn { display: none; }
-.is-embedded body { padding: var(--space-4); }
+.is-embedded { --page-block: var(--space-4); }
+.is-embedded body { padding: var(--page-block) var(--space-4); }
 
 /* ── A comparison: two charts side by side, each in its own frame ──
    The frames share the page's width and height; each chart scrolls in its own, and
