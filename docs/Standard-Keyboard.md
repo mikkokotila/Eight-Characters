@@ -14,8 +14,15 @@ The eight cards take a single tab stop between them, and keys of their own.
   they do nothing.
 - T turns the card with focus to its Ten Gods and back, as a long press does. Held
   down, it turns the card once.
-- A hint above the card with keyboard focus says its keys: "T: Ten Gods", and on a
-  branch "Enter: hidden stems · T: Ten Gods".
+- R, in an English chart, reads the card with focus. It opens the card's pillar with
+  the card's own reading open: who stands on a stem, or the ground of a branch. While
+  a pillar's page is open, the arrow keys turn it too. The focused card's pillar opens
+  at its line, and the readings that are open stay open. See
+  [Readings](Standard-Readings.md). A Finnish chart has no readings, and no R.
+- A hint above the card with keyboard focus says its keys. In an English chart that
+  is "R: read · T: Ten Gods", and on a branch "Enter: hidden stems · R: read · T: Ten
+  Gods". In Finnish it is "T: kymmenen jumalaa", and on a branch "Enter: piilorungot ·
+  T: kymmenen jumalaa".
 - Escape closes the open topic, as it does anywhere on the chart.
 
 A branch card is a button that opens its hidden stems (`aria-expanded`); a stem card
