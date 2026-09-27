@@ -10,6 +10,7 @@ from eight_characters.canon import BRANCH_CHARS, STEM_CHARS, CanonError, load_ca
 from eight_characters.interactions import detect_interactions
 from eight_characters.main import _load_ten_gods_lookup, app
 from eight_characters.reading import build_reading, check_reading_canon
+from tests.test_canon import parsed_texts
 
 PILLARS = ('year', 'month', 'day', 'hour')
 GODS = dict(
@@ -326,6 +327,66 @@ class TestReadingSelection(unittest.TestCase):
                 'autumn': 'In neutral seasons',
             }[season]
             self.assertIn(expected, clash['condition']['sentence'])
+
+
+def every_selection():
+    """Pillars for every path a reading takes: every Day Master under every stem on every
+    branch, in every pillar; every stem pair and branch pair in every pillar pairing; and
+    every frame in every placement."""
+    for day_master, stem, branch, pillar in itertools.product(
+        STEM_CHARS, STEM_CHARS, BRANCH_CHARS, PILLARS
+    ):
+        pillars = {name: ('甲', '子') for name in PILLARS}
+        pillars['day'] = (day_master, branch if pillar == 'day' else '子')
+        if pillar != 'day':
+            pillars[pillar] = (stem, branch)
+        yield pillars
+    for first, second in itertools.combinations(PILLARS, 2):
+        for a, b in itertools.product(STEM_CHARS, repeat=2):
+            pillars = {name: ('甲', '子') for name in PILLARS}
+            pillars[first], pillars[second] = (a, '子'), (b, '子')
+            yield pillars
+        for a, b in itertools.product(BRANCH_CHARS, repeat=2):
+            pillars = {name: ('甲', '寅') for name in PILLARS}
+            pillars[first], pillars[second] = ('甲', a), ('甲', b)
+            yield pillars
+    for frame in ('申子辰', '亥卯未', '寅午戌', '巳酉丑'):
+        for members in itertools.permutations(PILLARS, 3):
+            pillars = {name: ('甲', '寅') for name in PILLARS}
+            for name, branch in zip(members, frame, strict=True):
+                pillars[name] = ('甲', branch)
+            yield pillars
+
+
+def paragraph_texts(value, found):
+    if isinstance(value, dict):
+        if set(value) == {'label', 'text'}:
+            found.add(value['text'])
+        for inner in value.values():
+            paragraph_texts(inner, found)
+    elif isinstance(value, list):
+        for inner in value:
+            paragraph_texts(inner, found)
+    return found
+
+
+class TestWhatTheReadingsCover(unittest.TestCase):
+    def test_every_paragraph_is_read_but_those_of_families_not_yet_detected(self):
+        # Standard does not detect directional combinations, punishments or harms yet,
+        # so no chart's reading holds their paragraphs; every other paragraph of the
+        # canon is in some chart's reading. What is left is listed in the ticket for the
+        # rest of the canon.
+        canon = load_canon()
+        shown = set()
+        for pillars in every_selection():
+            paragraph_texts(reading(pillars), shown)
+        not_yet = set()
+        for family in ('directional', 'punishments', 'harms'):
+            not_yet |= {p['text'] for p in canon[family]['introduction']}
+            for entry in canon[family]['entries'].values():
+                not_yet |= {p['text'] for p in entry['paragraphs']}
+        self.assertEqual(set(parsed_texts(canon)) - shown, not_yet)
+        self.assertEqual(not_yet & shown, set())
 
 
 class TestReadingCanonChecks(unittest.TestCase):

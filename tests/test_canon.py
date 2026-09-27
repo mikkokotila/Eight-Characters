@@ -1,9 +1,12 @@
 import re
+import tomllib
 import unicodedata
 import unittest
 from collections import Counter
+from fnmatch import fnmatch
 from pathlib import Path
 
+import eight_characters
 from eight_characters.canon import (
     BRANCH_CHARS,
     CANON_PATH,
@@ -15,7 +18,8 @@ from eight_characters.canon import (
 )
 from eight_characters.ten_gods import TEN_GOD_NAMES
 
-REPO_CANON = Path(__file__).resolve().parents[1] / 'canon' / 'Taxonomy.md'
+REPO = Path(__file__).resolve().parents[1]
+REPO_CANON = REPO / 'canon' / 'Taxonomy.md'
 PILLARS = ('year', 'month', 'day', 'hour')
 LABEL = re.compile(r'^\*\*([^*]+?):\*\*\s*(.*)$')
 TABLE_LINE = re.compile(r'^\*\*[^*]+\*\*\s*Birth: ')
@@ -78,6 +82,14 @@ class TestCanon(unittest.TestCase):
             REPO_CANON.read_bytes(),
             'Copy canon/Taxonomy.md to eight_characters/resources/canon/Taxonomy.md.',
         )
+
+    def test_the_package_data_ships_the_canon(self):
+        # The API refuses to start without the canon, so the wheel must carry it.
+        pyproject = tomllib.loads((REPO / 'pyproject.toml').read_text(encoding='utf-8'))
+        globs = pyproject['tool']['setuptools']['package-data']['eight_characters']
+        package = Path(eight_characters.__file__).resolve().parent
+        relative = CANON_PATH.relative_to(package).as_posix()
+        self.assertTrue(any(fnmatch(relative, glob) for glob in globs), relative)
 
     def test_every_paragraph_is_read_once(self):
         raw = [p for p in raw_paragraphs(self.markdown) if not TABLE_LINE.match(p)]
