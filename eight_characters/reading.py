@@ -60,7 +60,7 @@ _COMBINATION_NAME: dict[str, str] = {
     '乙': 'Yi',
     '丙': 'Bing',
     '丁': 'Ding',
-    '戊': 'Wù',
+    '戊': 'Wu',
     '己': 'Ji',
     '庚': 'Geng',
     '辛': 'Xin',

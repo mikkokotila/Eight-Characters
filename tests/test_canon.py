@@ -1,4 +1,5 @@
 import re
+import unicodedata
 import unittest
 from collections import Counter
 from pathlib import Path
@@ -140,6 +141,24 @@ class TestCanon(unittest.TestCase):
         )
         for stem in STEM_CHARS:
             self.assertEqual(sorted(table[stem].values()), list(range(1, 13)))
+
+    def test_the_canon_writes_no_diacritics(self):
+        # Pinyin is written without tone marks, as everywhere in the app. Outside the
+        # Chinese characters, the canon uses ASCII and these marks only; the page fonts
+        # draw them all, and the arrow is drawn by the page (readings.js).
+        allowed = set('·×–—→')
+        found = {
+            char
+            for char in self.markdown
+            if not char.isascii() and not unicodedata.name(char).startswith('CJK')
+        }
+        self.assertEqual(found - allowed, set())
+        self.assertFalse(
+            any(
+                unicodedata.category(char) == 'Mn'
+                for char in unicodedata.normalize('NFD', self.markdown)
+            )
+        )
 
     def test_inline_marks_are_kept_as_marks(self):
         self.assertIn(

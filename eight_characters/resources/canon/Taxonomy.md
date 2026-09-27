@@ -124,7 +124,7 @@ The force that nourishes you unconditionally. Opposite polarity means the nouris
 
 The *elemental texture* — how does my particular element experience all relationships?
 
-## **甲 Jiǎ — Yang Wood**
+## **甲 Jia — Yang Wood**
 
 The great tree. Rigid, vertical, principled, ambitious. Jia grows upward and does not bend. Every experience is processed through the question of whether it helps you stand taller or cuts you down. You don't adapt to obstacles — you grow through them or break against them. Compromise feels like bending, and bending feels like the thing closest to death. Your strength is conviction. Your weakness is that conviction and stubbornness share the same root.
 
@@ -138,7 +138,7 @@ The great tree. Rigid, vertical, principled, ambitious. Jia grows upward and doe
 
 ---
 
-## **乙 Yǐ — Yin Wood**
+## **乙 Yi — Yin Wood**
 
 The vine, the grass, the flower, the creeping root. Flexible, adaptive, yielding, quietly relentless. Yi finds the indirect path around every obstacle. Where Jia breaks, you bend. Where Jia confronts, you wrap around. Your genius is survival through softness — but softness is not weakness. The vine that yields to the storm is still standing when the oak is splintered. Your strength is adaptability. Your weakness is that you can lose your own shape entirely, becoming whatever the relationship demands.
 
@@ -152,7 +152,7 @@ The vine, the grass, the flower, the creeping root. Flexible, adaptive, yielding
 
 ---
 
-## **丙 Bǐng — Yang Fire**
+## **丙 Bing — Yang Fire**
 
 The sun. Constant, radiant, impersonal, generous beyond reason. Bing shines on everything without discrimination — the worthy and the unworthy, the grateful and the oblivious, all receive the same light. You cannot help but give. Your fundamental mode is emission: energy flows outward from you at all times, and the question is never whether to shine but whether there will be anything left when the shining stops. Your strength is warmth that transforms everything it touches. Your weakness is that you cannot conserve yourself.
 
@@ -166,7 +166,7 @@ The sun. Constant, radiant, impersonal, generous beyond reason. Bing shines on e
 
 ---
 
-## **丁 Dīng — Yin Fire**
+## **丁 Ding — Yin Fire**
 
 The candle, the hearth, the forge fire, the lantern in the window. Focused, intimate, purposeful. Where Bing shines on everything, Ding chooses what to illuminate. Your warmth is deliberate, aimed, conditional — not because you're stingy but because your fire only burns well when it has a purpose. A candle lighting a room is beautiful. A candle with nothing to illuminate is just wax disappearing. Your strength is precision of purpose. Your weakness is that without a clear target, you flicker.
 
@@ -180,7 +180,7 @@ The candle, the hearth, the forge fire, the lantern in the window. Focused, inti
 
 ---
 
-## **戊 Wù — Yang Earth**
+## **戊 Wu — Yang Earth**
 
 The mountain, the plateau, the great wall. Massive, stable, immovable, patient beyond any human timescale. Wu absorbs everything and changes slowly. When things accumulate on you — people, responsibilities, expectations — you bear them without complaint and without visibly shifting. Your fundamental mode is reception and endurance: things land on you, and you hold them. Your strength is that nothing moves you. Your weakness is that nothing moves you — including yourself.
 
@@ -194,7 +194,7 @@ The mountain, the plateau, the great wall. Massive, stable, immovable, patient b
 
 ---
 
-## **己 Jǐ — Yin Earth**
+## **己 Ji — Yin Earth**
 
 The garden soil, the fertile field, the riverbank, the valley floor. Receptive, nurturing, transformative, quietly productive. Ji takes what is given — seeds, rain, waste, anything — and converts it into something living. You don't impose form on the world; you receive the world's material and make it grow. Your fundamental mode is integration: everything that enters your field becomes part of your ecosystem. Your strength is fertility. Your weakness is that you have trouble distinguishing between what should be planted in you and what should be kept out.
 
@@ -208,7 +208,7 @@ The garden soil, the fertile field, the riverbank, the valley floor. Receptive, 
 
 ---
 
-## **庚 Gēng — Yang Metal**
+## **庚 Geng — Yang Metal**
 
 The axe, the sword, the unrefined ore, the engine block. Hard, decisive, unyielding, defined by edge. Geng's fundamental mode is cutting: separating what matters from what doesn't, deciding without hesitation, acting without second-guessing. You are the element that was made to be tested — and you define yourself by whether you pass. Untested Metal is just rock. Tested Metal is a blade. Your strength is decisiveness and clarity. Your weakness is that you experience nuance as impurity and vulnerability as rust.
 
@@ -222,7 +222,7 @@ The axe, the sword, the unrefined ore, the engine block. Hard, decisive, unyield
 
 ---
 
-## **辛 Xīn — Yin Metal**
+## **辛 Xin — Yin Metal**
 
 The jewel, the needle, the scalpel, the refined precious metal. Precise, beautiful, sensitive, valuable. Where Geng is the raw blade, Xin is the finished gem — defined not by force but by refinement. Your fundamental mode is discrimination: knowing the difference between the exquisite and the crude, between the genuine and the counterfeit, between what deserves your attention and what degrades it. Your strength is aesthetic and moral clarity. Your weakness is that sensitivity to quality becomes sensitivity to everything, and the world is mostly crude.
 
@@ -236,7 +236,7 @@ The jewel, the needle, the scalpel, the refined precious metal. Precise, beautif
 
 ---
 
-## **壬 Rén — Yang Water**
+## **壬 Ren — Yang Water**
 
 The ocean, the great river, the flood. Vast, strategic, relentless, impossible to permanently contain. Ren moves outward, fills every available space, finds the lowest point, and wears down anything in its path not through force but through refusal to stop. Your fundamental mode is flow: energy moves through you and from you constantly, seeking the path of least resistance while maintaining an inexorable pressure that reshapes landscapes over time. Your strength is strategic intelligence and boundless generosity. Your weakness is that generosity and self-destruction look identical from the ocean's perspective.
 
@@ -250,7 +250,7 @@ The ocean, the great river, the flood. Vast, strategic, relentless, impossible t
 
 ---
 
-## **癸 Guǐ — Yin Water**
+## **癸 Gui — Yin Water**
 
 The rain, the mist, the dew, the underground spring, the tears. Subtle, pervasive, empathic, nourishing in ways that are almost invisible. Where Ren is the ocean that commands attention, Gui is the moisture in the air that you only notice when it's gone. Your fundamental mode is permeation: you enter systems, relationships, and spaces not through force but through the gentle, persistent presence that eventually saturates everything it touches. Your strength is empathy so deep it borders on dissolution. Your weakness is that same dissolution — the boundary between yourself and what you nourish is the thinnest in the entire system.
 
@@ -266,7 +266,7 @@ The rain, the mist, the dew, the underground spring, the tears. Subtle, pervasiv
 
 The *environmental ground* — what hidden contents and stored energies define the terrain of each pillar?
 
-## **子 Zǐ — Rat (Pure Water)**
+## **子 Zi — Rat (Pure Water)**
 
 Midnight. The dead of winter. The single most concentrated point of Water in the entire system — one hidden stem only (Gui, Yin Water), no secondary elements, no dilution. Like the Horse, the Rat is yang by position and yin in what it carries: the surface is the absolute of Water, the substance inside is the subtle rain. Zi is the bottom of the cycle, the moment when darkness is absolute and the first spark of yang is born within it. As an animal, the Rat is small, quick, resourceful, and survives where others cannot. As an energy, Zi is the purest expression of Water: deep, still, potent, undiluted. Whatever pillar it sits on, it brings singular concentration and the power of an element with nothing competing inside it.
 
@@ -280,7 +280,7 @@ Midnight. The dead of winter. The single most concentrated point of Water in the
 
 ---
 
-## **丑 Chǒu — Ox (Yin Earth, stores Metal)**
+## **丑 Chou — Ox (Yin Earth, stores Metal)**
 
 The coldest earth. Late winter, the frozen field in the dead hours after midnight. Chou is a Storage Branch that stores Metal — meaning it holds, locked away inside frozen ground, the element of structure, precision, and resource. Its hidden stems are Ji (Yin Earth, principal), Gui (Yin Water, secondary), and Xin (Yin Metal, residual). Three elements coexist inside the Ox: Earth that contains, Metal that waits, Water that seeps. As an animal, the Ox is patient, enduring, hardworking, and slow to anger but devastating when finally provoked. As an energy, Chou is the treasury that holds its contents tight and releases them only under specific conditions — a clash, a combination, or the slow turning of time.
 
@@ -294,9 +294,9 @@ The coldest earth. Late winter, the frozen field in the dead hours after midnigh
 
 ---
 
-## **寅 Yín — Tiger (Yang Wood)**
+## **寅 Yin — Tiger (Yang Wood)**
 
-The first roar of spring. Pre-dawn, the moment just before sunrise when the world shifts from darkness to the first suggestion of light. Yin is Yang Wood at its point of explosive emergence — the energy that has been compressed through winter now breaking through the frozen ground. Its hidden stems are Jia (Yang Wood, principal), Bing (Yang Fire, secondary), and Wù (Yang Earth, residual). Three elements converge in the Tiger: Wood that leads, Fire that begins to kindle, Earth that grounds the explosion. As an animal, the Tiger is bold, solitary, powerful, and impossible to ignore. As an energy, Yin is the beginning of the active cycle — ambition, initiative, and the force that shatters dormancy.
+The first roar of spring. Pre-dawn, the moment just before sunrise when the world shifts from darkness to the first suggestion of light. Yin is Yang Wood at its point of explosive emergence — the energy that has been compressed through winter now breaking through the frozen ground. Its hidden stems are Jia (Yang Wood, principal), Bing (Yang Fire, secondary), and Wu (Yang Earth, residual). Three elements converge in the Tiger: Wood that leads, Fire that begins to kindle, Earth that grounds the explosion. As an animal, the Tiger is bold, solitary, powerful, and impossible to ignore. As an energy, Yin is the beginning of the active cycle — ambition, initiative, and the force that shatters dormancy.
 
 **Year:** You were born into an environment of emerging power. The ancestral ground was charged with the energy of something breaking through — a family in ascent, a lineage shaking off stagnation, an inherited context of bold, forward-moving ambition. The Tiger on the Year Branch means the origin carried explosive potential: not established wealth or settled tradition, but the raw energy of beginning. The family may have been pioneers, immigrants, first-generation builders — people whose defining quality was the courage to break new ground. The inheritance is initiative itself: the assumption that the world is something you enter with force.
 
@@ -308,7 +308,7 @@ The first roar of spring. Pre-dawn, the moment just before sunrise when the worl
 
 ---
 
-## **卯 Mǎo — Rabbit (Pure Yin Wood)**
+## **卯 Mao — Rabbit (Pure Yin Wood)**
 
 Mid-spring. The hour of sunrise. Mao is the second pure Branch — one hidden stem only (Yi, Yin Wood), no secondary elements, no dilution. Where Zi is pure Water at midnight, Mao is pure Wood at dawn: gentle, growing, reaching toward the light with no competing agenda. As an animal, the Rabbit is soft, perceptive, socially graceful, and survives through awareness rather than force. As an energy, Mao is growth in its most refined, undiluted form — the vine, the new leaf, the creative impulse before it has been shaped by any external demand. Whatever pillar it sits on, it brings purity of expression, aesthetic sensitivity, and the vulnerability that comes with having no armor.
 
@@ -322,9 +322,9 @@ Mid-spring. The hour of sunrise. Mao is the second pure Branch — one hidden st
 
 ---
 
-## **辰 Chén — Dragon (Yang Earth, stores Water)**
+## **辰 Chen — Dragon (Yang Earth, stores Water)**
 
-Late spring. The morning hour when mist still clings to the ground. Chen is a Storage Branch that stores Water — the only earth that holds the ocean inside it. Its hidden stems are Wù (Yang Earth, principal), Yi (Yin Wood, secondary), and Gui (Yin Water, residual). Three elements coexist inside the Dragon: Earth that dominates the surface, Wood that grows within it, Water that lies buried at the deepest level. As an animal, the Dragon is mythical, vast, unpredictable, and the only creature in the zodiac that doesn't walk the earth in ordinary form. As an energy, Chen is the storehouse of hidden depths — a surface of solid earth concealing a reservoir that can be released under the right conditions.
+Late spring. The morning hour when mist still clings to the ground. Chen is a Storage Branch that stores Water — the only earth that holds the ocean inside it. Its hidden stems are Wu (Yang Earth, principal), Yi (Yin Wood, secondary), and Gui (Yin Water, residual). Three elements coexist inside the Dragon: Earth that dominates the surface, Wood that grows within it, Water that lies buried at the deepest level. As an animal, the Dragon is mythical, vast, unpredictable, and the only creature in the zodiac that doesn't walk the earth in ordinary form. As an energy, Chen is the storehouse of hidden depths — a surface of solid earth concealing a reservoir that can be released under the right conditions.
 
 **Year:** You were born into an environment of hidden reserves. The ancestral ground looks like solid earth on the surface — stable, established, grounded — but beneath it lies something vast and concealed. The family may have carried hidden wealth, hidden knowledge, hidden emotional depth, or hidden trauma: the Dragon's storage is indiscriminate about what it holds, only that it holds it deep. The inheritance is complexity disguised as stability. The family looked one way from the outside and contained something entirely different within. The question the Dragon year poses is whether the hidden water is a treasure or a flood waiting for the dam to break.
 
@@ -336,9 +336,9 @@ Late spring. The morning hour when mist still clings to the ground. Chen is a St
 
 ---
 
-## **巳 Sì — Snake (Yin Fire)**
+## **巳 Si — Snake (Yin Fire)**
 
-Early summer. Late morning, approaching the heat of the day. Si is Yin Fire at its point of concentrated, intelligent power — not the indiscriminate radiance of the sun but the focused, deliberate warmth of the forge. Like the Pig, the Snake is yin by position and yang in what it carries. Its hidden stems are Bing (Yang Fire, principal), Geng (Yang Metal, secondary), and Wù (Yang Earth, residual). Three elements coexist inside the Snake: Fire that leads, Metal that is being forged, and Earth that supports — the only Branch where Metal is born from Fire's crucible. As an animal, the Snake is intelligent, intuitive, patient, and strikes with precision rather than force. As an energy, Si is transformation through concentrated heat — the alchemist's fire that converts raw material into something refined.
+Early summer. Late morning, approaching the heat of the day. Si is Yin Fire at its point of concentrated, intelligent power — not the indiscriminate radiance of the sun but the focused, deliberate warmth of the forge. Like the Pig, the Snake is yin by position and yang in what it carries. Its hidden stems are Bing (Yang Fire, principal), Geng (Yang Metal, secondary), and Wu (Yang Earth, residual). Three elements coexist inside the Snake: Fire that leads, Metal that is being forged, and Earth that supports — the only Branch where Metal is born from Fire's crucible. As an animal, the Snake is intelligent, intuitive, patient, and strikes with precision rather than force. As an energy, Si is transformation through concentrated heat — the alchemist's fire that converts raw material into something refined.
 
 **Year:** You were born into an environment of intelligent intensity. The ancestral ground was warm, sharp, and transformative — a family that operated through perception rather than brute force, that knew things without being told, that wielded influence through understanding rather than volume. The Snake's year means the inheritance is a particular kind of intelligence: not academic but intuitive, not broad but penetrating. The family may have been secretive, strategic, or deeply private. The hidden Metal inside Si means the ancestral ground contained forged resources — wealth or knowledge that was refined through pressure rather than inherited easily. The origin story is one of transformation: something raw went in, and something refined came out.
 
@@ -350,7 +350,7 @@ Early summer. Late morning, approaching the heat of the day. Si is Yin Fire at i
 
 ---
 
-## **午 Wǔ — Horse (Yang Fire)**
+## **午 Wu — Horse (Yang Fire)**
 
 High noon. Midsummer. The absolute peak of heat, light, and yang energy in the entire cycle. Wu is Fire at its zenith — not approaching or receding but fully, blazingly present. Its hidden stems are Ding (Yin Fire, principal) and Ji (Yin Earth, secondary). Only two elements inside the Horse, both yin despite the Branch being yang: intimate fire and receptive earth beneath the most overtly powerful position in the cycle. As an animal, the Horse is fast, free, proud, and cannot be confined without damage to its spirit. As an energy, Wu is the moment of maximum expression — everything visible, everything exposed, nothing held in reserve.
 
@@ -364,7 +364,7 @@ High noon. Midsummer. The absolute peak of heat, light, and yang energy in the e
 
 ---
 
-## **未 Wèi — Goat (Yin Earth, stores Wood)**
+## **未 Wei — Goat (Yin Earth, stores Wood)**
 
 Late summer. The afternoon hour when the heat begins its slow decline. Wei is a Storage Branch that stores Wood — the creative, growing element sealed inside warm earth, preserving what spring produced. Its hidden stems are Ji (Yin Earth, principal), Ding (Yin Fire, secondary), and Yi (Yin Wood, residual). Three yin elements coexist inside the Goat: Earth that nurtures, Fire that warms, Wood that is preserved. Everything inside is yin — this is the most consistently gentle, receptive storage in the system. As an animal, the Goat is mild, artistic, empathetic, and follows its own internal rhythm regardless of external pressure. As an energy, Wei is the warm earth that holds summer's harvest in trust, preserving what was grown for future use.
 
@@ -378,9 +378,9 @@ Late summer. The afternoon hour when the heat begins its slow decline. Wei is a 
 
 ---
 
-## **申 Shēn — Monkey (Yang Metal)**
+## **申 Shen — Monkey (Yang Metal)**
 
-Early autumn. Late afternoon, the hour when the sun begins its descent and the air sharpens. Shen is Metal at its point of assertive emergence — the season turning from the generosity of summer to the discipline of fall. Its hidden stems are Geng (Yang Metal, principal), Ren (Yang Water, secondary), and Wù (Yang Earth, residual). Three yang elements coexist inside the Monkey: Metal that leads, Water that is being generated, Earth that provides foundation. As an animal, the Monkey is clever, adaptable, irreverent, and solves problems through ingenuity rather than convention. As an energy, Shen is the turn toward structure and harvest — the moment when abundance must be organized, when excess must be cut, when intelligence shifts from creation to assessment.
+Early autumn. Late afternoon, the hour when the sun begins its descent and the air sharpens. Shen is Metal at its point of assertive emergence — the season turning from the generosity of summer to the discipline of fall. Its hidden stems are Geng (Yang Metal, principal), Ren (Yang Water, secondary), and Wu (Yang Earth, residual). Three yang elements coexist inside the Monkey: Metal that leads, Water that is being generated, Earth that provides foundation. As an animal, the Monkey is clever, adaptable, irreverent, and solves problems through ingenuity rather than convention. As an energy, Shen is the turn toward structure and harvest — the moment when abundance must be organized, when excess must be cut, when intelligence shifts from creation to assessment.
 
 **Year:** You were born into an environment of sharp intelligence and emerging structure. The ancestral ground was clever, resourceful, and possibly disruptive — a family that valued wit over convention, that adapted rather than followed, that found angles where others saw walls. The Monkey's year means the inheritance is mental quickness and the instinct to question established approaches. The hidden Water inside Shen means the ancestral ground contained nascent nourishment — resources in the process of being generated, potential that was actively forming rather than already complete. The origin story is one of intelligence in motion, of a family that survived by being smarter than its circumstances.
 
@@ -392,7 +392,7 @@ Early autumn. Late afternoon, the hour when the sun begins its descent and the a
 
 ---
 
-## **酉 Yǒu — Rooster (Pure Yin Metal)**
+## **酉 You — Rooster (Pure Yin Metal)**
 
 Mid-autumn. The hour of sunset. You is the third pure Branch — one hidden stem only (Xin, Yin Metal), no secondary elements, no dilution. Where Zi is pure Water at midnight and Mao is pure Wood at dawn, You is pure Metal at dusk: refined, precise, singular, and defined by the quality of its edge. As an animal, the Rooster is meticulous, proud, punctual, and announces itself with absolute clarity. As an energy, You is refinement in its most concentrated form — the jewel without setting, the blade without handle, the standard of quality against which everything else is measured.
 
@@ -406,9 +406,9 @@ Mid-autumn. The hour of sunset. You is the third pure Branch — one hidden stem
 
 ---
 
-## **戌 Xū — Dog (Yang Earth, stores Fire)**
+## **戌 Xu — Dog (Yang Earth, stores Fire)**
 
-Late autumn. The evening hour when the last light fades. Xu is a Storage Branch that stores Fire — the warmth and brilliance of summer sealed inside autumn earth, preserved against the coming cold. Its hidden stems are Wù (Yang Earth, principal), Xin (Yin Metal, secondary), and Ding (Yin Fire, residual). Three elements coexist inside the Dog: Earth that guards, Metal that has been forged, Fire that is stored as embers. As an animal, the Dog is loyal, vigilant, protective, and guards what it loves with an intensity that can become ferocity. As an energy, Xu is the gatekeeper between the light and the dark — the last stronghold of warmth before winter, the sentinel that holds the line.
+Late autumn. The evening hour when the last light fades. Xu is a Storage Branch that stores Fire — the warmth and brilliance of summer sealed inside autumn earth, preserved against the coming cold. Its hidden stems are Wu (Yang Earth, principal), Xin (Yin Metal, secondary), and Ding (Yin Fire, residual). Three elements coexist inside the Dog: Earth that guards, Metal that has been forged, Fire that is stored as embers. As an animal, the Dog is loyal, vigilant, protective, and guards what it loves with an intensity that can become ferocity. As an energy, Xu is the gatekeeper between the light and the dark — the last stronghold of warmth before winter, the sentinel that holds the line.
 
 **Year:** You were born into an environment of fierce loyalty and guarded warmth. The ancestral ground was protective, watchful, and organized around the defense of what mattered — a family that drew a hard line between inside and outside, between those it loved and those it didn't trust. The Dog's year means the inheritance is vigilance: the assumption that the world requires guarding was installed before your first memory. The stored Fire inside Xu means the family kept its warmth hidden — affection, passion, generosity existed but were sealed beneath a protective exterior. The origin story is one of guarded love: the family felt deeply but showed it only to those who had earned the right.
 
@@ -420,7 +420,7 @@ Late autumn. The evening hour when the last light fades. Xu is a Storage Branch 
 
 ---
 
-## **亥 Hài — Pig (Yin Water)**
+## **亥 Hai — Pig (Yin Water)**
 
 Early winter. The hour before midnight, the last moment of the cycle before it returns to Zi's absolute darkness. Hai is Yin Water at its point of deep, gestating power — not the ocean's vastness but the underground river, the womb, the place where the next cycle is already forming in the dark. Its hidden stems are Ren (Yang Water, principal) and Jia (Yang Wood, secondary). Two yang elements hide inside this yin Branch: the ocean and the great tree, both concealed in the water's dark interior. As an animal, the Pig is generous, trusting, pleasure-loving, and possesses a depth that its easy nature disguises. As an energy, Hai is the dark water that carries the seeds of the next spring — gestation, potential, the immense creative power of things not yet born.
 
@@ -440,7 +440,7 @@ A note before the entries. Stems and Branches alternate polarity in step, so the
 
 Two further things to carry into every entry. First, the polarity distinction from the Ten Gods section applies here in full: when a Branch's principal hidden stem controls the Stem, it is the Merciless if the two share a polarity and the Magistrate if they do not, and the two are not the same experience — the entries for Jia on the Rooster and Bing on the Rat make the point explicitly. Second, where a Stem meets its combining partner among a Branch's hidden stems, the attraction of the Five Stem Combinations is present beneath the surface. The pillars where this happens on the pillar's own ground — 丁亥, 戊子, 辛巳, and 壬午 through the principal stem, 甲午 and 癸巳 through a hidden one — are noted in their entries, because on a Day Pillar it means the self is bound to what it sits on. Where an entry's chemistry and the Twelve Life Stages disagree about the same pairing, the entry says so.
 
-## **甲 Jiǎ — Yang Wood sitting on each Branch**
+## **甲 Jia — Yang Wood sitting on each Branch**
 
 The great tree. Its roots reach downward into whatever ground it's given. The quality of that ground — whether it feeds the roots, burns the trunk, or chops at the bark — defines whether the tree stands tall or struggles to survive. Jia needs Water beneath it to thrive, tolerates Earth as something it can penetrate, fears Metal as the axe, and is drained by Fire beneath as a tree burning from its own base.
 
@@ -448,7 +448,7 @@ The great tree. Its roots reach downward into whatever ground it's given. The qu
 
 **丑 Chou (Ox — Earth storing Metal):** The tree rooted in frozen ground. The soil is cold, dense, and slow to release what it holds. Hidden inside the Ox is Metal (the axe, buried in the earth) and a trace of Water (seeping through frozen soil). The tree can grow here, but the ground resists — nutrients are locked, the season feels perpetually late, and the hidden Metal means there's something sharp buried near the roots. The foundation demands patience. What it offers comes slowly, and what it conceals can wound.
 
-**寅 Yín (Tiger — Yang Wood):** The tree rooted in its own element. This is Jia sitting on its own domain — the Tiger's principal hidden stem is Jia itself. The foundation is home territory: the tree is rooted in a forest. The ground also contains hidden Fire (Bing) and a trace of Earth (Wu), meaning the root system holds the beginning of the productive chain — output and wealth already germinating beneath. This is the most self-sufficient foundation: the tree is at home, and the soil already contains the seeds of everything it will produce.
+**寅 Yin (Tiger — Yang Wood):** The tree rooted in its own element. This is Jia sitting on its own domain — the Tiger's principal hidden stem is Jia itself. The foundation is home territory: the tree is rooted in a forest. The ground also contains hidden Fire (Bing) and a trace of Earth (Wu), meaning the root system holds the beginning of the productive chain — output and wealth already germinating beneath. This is the most self-sufficient foundation: the tree is at home, and the soil already contains the seeds of everything it will produce.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The tree at its Emperor's Peak. Pure Yi Wood beneath Jia is the Rabbit at mid-spring, and this is Jia's strongest rooting in the entire cycle — the Yang Blade (羊刃), the point where the great tree's power is at its maximum. The ground is its own element in yin form, and the mismatch of force cuts the other way from how it first appears: the soft garden does not underqualify the oak, it feeds it past the point of safety. The root holds absolutely. What the foundation lacks is not depth but restraint — there is nothing beneath the tree except more Wood, and a tree with unlimited support and no Metal to prune it grows until it splits. For a weak Jia this is the foundation that saves the chart. For a strong Jia it is the foundation that makes it dangerous.
 
@@ -460,7 +460,7 @@ The great tree. Its roots reach downward into whatever ground it's given. The qu
 
 **未 Wei (Goat — Earth storing Wood):** The tree rooted in warm earth that holds its own element in storage. The Goat's surface is Yin Earth — soil the tree can penetrate — and inside it lies stored Yi Wood (kindred growth), Ding Fire (residual heat), and Ji Earth. The foundation is warm, receptive, and holds a reserve of Wood's own energy. This is a tree planted in a summer garden: the soil is cultivated, the warmth is nurturing rather than consuming, and the stored Wood means the tree's own element is preserved in the ground for future access. A gentle, supportive foundation with hidden depth.
 
-**申 Shen (Monkey — Yang Metal):** The tree with an axe at its root. The Monkey's principal energy is Geng (Yang Metal) — the element that directly attacks Yang Wood. The foundation is hostile: the ground contains the blade. Hidden Ren Water offers some relief — resource seeping from beneath the Metal — and Wù Earth provides structure. But the dominant experience is pressure from below: the tree is being cut at its base. This is Jia's most challenging foundation. Survival depends entirely on whether the Water inside the Monkey can temper the Metal before the Metal fells the tree.
+**申 Shen (Monkey — Yang Metal):** The tree with an axe at its root. The Monkey's principal energy is Geng (Yang Metal) — the element that directly attacks Yang Wood. The foundation is hostile: the ground contains the blade. Hidden Ren Water offers some relief — resource seeping from beneath the Metal — and Wu Earth provides structure. But the dominant experience is pressure from below: the tree is being cut at its base. This is Jia's most challenging foundation. Survival depends entirely on whether the Water inside the Monkey can temper the Metal before the Metal fells the tree.
 
 **酉 You (Rooster — pure Yin Metal):** The tree with a pruning blade at its root. Pure Xin Metal — undiluted, concentrated, and sharp, but of the opposite polarity to Jia, and that changes everything: where the Monkey's Geng is the Merciless, the axe that attacks the trunk, the Rooster's Xin is the Magistrate, the legitimate authority that shapes rather than fells. Xin doesn't hack like Geng, it carves. The tree is being sculpted by the ground beneath it, and for a Jia with roots elsewhere the sculpting is a gift — this is the foundation that turns the wild oak into timber, the principled individualist into someone institutions can use. The cost is that there is no dilution within this Branch: no Water to soften the edge, no Earth to buffer it, and a Jia with no support elsewhere feels the pruning as cutting. This is also Jia's Embryo point in the life cycle — the seed of the next tree forming inside the blade.
 
@@ -470,7 +470,7 @@ The great tree. Its roots reach downward into whatever ground it's given. The qu
 
 ---
 
-## **乙 Yǐ — Yin Wood sitting on each Branch**
+## **乙 Yi — Yin Wood sitting on each Branch**
 
 The vine. Its roots are shallow but tenacious, wrapping around whatever surface is available, finding the crack in the wall, the seam in the rock. Yi doesn't need deep soil — it needs something to hold onto. The quality of the ground determines whether the vine finds purchase or slips, whether it climbs toward light or is buried by what's beneath it.
 
@@ -478,7 +478,7 @@ The vine. Its roots are shallow but tenacious, wrapping around whatever surface 
 
 **丑 Chou (Ox — Earth storing Metal):** The vine clinging to frozen ground. The soil is dense and cold, and the vine must find the cracks to penetrate it. Hidden Metal (Xin) inside the Ox is the refined blade — a threat to Wood, but Yin Metal and Yin Wood can combine harmoniously (Yi-Xin is not the same hostile dynamic as Jia-Geng). Hidden Water (Gui) seeps through the frozen earth, offering faint nourishment. The foundation is difficult but not impossible: the vine has to work hard for what it gets, but what it gets has substance. This is the plant that breaks through concrete — slow, stubborn, eventually triumphant.
 
-**寅 Yín (Tiger — Yang Wood):** The vine climbing a great tree. The ground beneath is Jia — the towering oak of Yang Wood. Yi finds its own element here but in its dominant yang form: the foundation is strong, ambitious, and possibly overshadowing. The vine can climb the tree and reach extraordinary heights it could never achieve alone. But the tree sets the direction, and the vine follows. The hidden Fire and Earth inside the Tiger give the foundation productive energy and wealth. This is a powerful support structure for Yi — as long as the vine doesn't mind that the tree does the standing.
+**寅 Yin (Tiger — Yang Wood):** The vine climbing a great tree. The ground beneath is Jia — the towering oak of Yang Wood. Yi finds its own element here but in its dominant yang form: the foundation is strong, ambitious, and possibly overshadowing. The vine can climb the tree and reach extraordinary heights it could never achieve alone. But the tree sets the direction, and the vine follows. The hidden Fire and Earth inside the Tiger give the foundation productive energy and wealth. This is a powerful support structure for Yi — as long as the vine doesn't mind that the tree does the standing.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The vine rooted in its own soil. This is Yi sitting on its own domain — pure Yin Wood, undiluted, no competing elements. The foundation is home: the ground is made entirely of the vine's own substance. The root holds perfectly, the identity is confirmed, and the environment demands nothing that the vine isn't already. The risk is the same as any pure-element mirror: there's no tension, no challenge, no foreign element to push growth in a new direction. The vine is comfortable. Whether comfort is enough depends on everything else in the chart.
 
@@ -500,7 +500,7 @@ The vine. Its roots are shallow but tenacious, wrapping around whatever surface 
 
 ---
 
-## **丙 Bǐng — Yang Fire sitting on each Branch**
+## **丙 Bing — Yang Fire sitting on each Branch**
 
 The sun. It does not root — it radiates. The ground beneath Bing determines not where the sun draws nourishment but what it illuminates, what it warms, and what it burns. Bing needs Wood beneath it for fuel, tolerates Earth as a receptive surface, is weakened by Water beneath as clouds rising from below, and finds Metal beneath as something to melt. The sun doesn't negotiate with its ground — it shines on it.
 
@@ -508,13 +508,13 @@ The sun. It does not root — it radiates. The ground beneath Bing determines no
 
 **丑 Chou (Ox — Earth storing Metal):** The sun over frozen earth. The ground receives the light but slowly — Earth absorbs Fire's output, and the Ox's cold, dense structure takes a long time to warm. Hidden Metal inside is being melted by the sun's heat from above, and hidden Water seeps through the frozen soil, adding a trace of the controlling element. The foundation is a slow project: Bing must warm this ground over time, and the ground resists by being dense and cold. But the stored Metal means there's something valuable being refined by the heat — the sun's work here is not wasted, it's just slow.
 
-**寅 Yín (Tiger — Yang Wood):** The sun rising over a great forest. The ground beneath is Wood — the element that feeds Fire. The Tiger's principal Jia Wood is the most powerful fuel available: the great tree igniting in the dawn. This is Bing's most naturally sustained foundation — the fire is fed from below by its parent element. Hidden Fire (Bing itself) and Earth (Wu) mean the ground already contains the sun's own element and its output. The foundation is abundant, generous, and self-reinforcing. The sun over the forest can shine all day because the fuel never runs out. The risk is conflagration: too much fuel can make the Fire uncontrollable.
+**寅 Yin (Tiger — Yang Wood):** The sun rising over a great forest. The ground beneath is Wood — the element that feeds Fire. The Tiger's principal Jia Wood is the most powerful fuel available: the great tree igniting in the dawn. This is Bing's most naturally sustained foundation — the fire is fed from below by its parent element. Hidden Fire (Bing itself) and Earth (Wu) mean the ground already contains the sun's own element and its output. The foundation is abundant, generous, and self-reinforcing. The sun over the forest can shine all day because the fuel never runs out. The risk is conflagration: too much fuel can make the Fire uncontrollable.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The sun over a gentle garden. The ground is pure Yin Wood — softer fuel than the Tiger's great tree, feeding the Fire with delicacy rather than abundance. Yi Wood beneath Bing creates a warm, aesthetically pleasing dynamic: the sun illuminating flowers. The nourishment is real but not abundant — a candle's fuel rather than a bonfire's. The foundation sustains Bing gently, requiring the sun to moderate its own output to match the fuel supply. This is a more refined, more beautiful, and more fragile version of the Wood-beneath-Fire relationship.
 
 **辰 Chen (Dragon — Earth storing Water):** The sun over the Dragon's misty terrain. The ground is Yang Earth — receiving Bing's output — but storing Water beneath: the controlling element, sealed in the earth, waiting. The foundation is deceptively comfortable: the surface absorbs the sun's heat obediently, but the hidden water represents a latent threat. Bing shines on the Dragon and feels productive — Fire generates Earth — but the stored Water inside can emerge under certain conditions (combinations, clashes) and douse the flame. The foundation is a landscape that works until the fog rolls in.
 
-**巳 Si (Snake — Yin Fire):** The sun at home. Si's principal hidden stem is Bing itself — this is Fire sitting on its own territory. The Snake also holds Wù Earth (output being generated) and Geng Metal (being melted and refined in the forge). The foundation is native ground: the sun is where it belongs, and the alchemy happening beneath is productive and purposeful. Metal is being forged by the heat, Earth is being generated, and Bing's own fire is reflected back. This is one of the most powerful positions for Bing — the foundation confirms its identity and converts its energy into useful transformation.
+**巳 Si (Snake — Yin Fire):** The sun at home. Si's principal hidden stem is Bing itself — this is Fire sitting on its own territory. The Snake also holds Wu Earth (output being generated) and Geng Metal (being melted and refined in the forge). The foundation is native ground: the sun is where it belongs, and the alchemy happening beneath is productive and purposeful. Metal is being forged by the heat, Earth is being generated, and Bing's own fire is reflected back. This is one of the most powerful positions for Bing — the foundation confirms its identity and converts its energy into useful transformation.
 
 **午 Wu (Horse — Yang Fire):** The sun at its zenith over a fire-covered field. This is peak Fire on peak Fire — Bing's Emperor's Peak and Yang Blade (羊刃), the most intense expression possible. The Horse's Ding (Yin Fire) and Ji (Yin Earth) beneath means the ground is ablaze and everything is being consumed. The foundation amplifies Bing to its maximum, which is either magnificent or catastrophic depending on the chart's balance. If the chart needs Fire, this is sovereign power. If the chart is already Fire-heavy, this is the sun that has burned away everything beneath it and now shines on scorched earth. The beauty and the danger are identical.
 
@@ -530,7 +530,7 @@ The sun. It does not root — it radiates. The ground beneath Bing determines no
 
 ---
 
-## **丁 Dīng — Yin Fire sitting on each Branch**
+## **丁 Ding — Yin Fire sitting on each Branch**
 
 The candle, the hearth, the forge. Ding doesn't blaze indiscriminately — it needs purpose, a wick, something specific to illuminate. The ground beneath Ding determines whether the flame has fuel and focus or flickers in a draft. Where Bing shines regardless, Ding's relationship with its foundation is intimate and conditional: the wrong ground extinguishes it, the right ground gives it something worth burning for.
 
@@ -538,7 +538,7 @@ The candle, the hearth, the forge. Ding doesn't blaze indiscriminately — it ne
 
 **丑 Chou (Ox — Earth storing Metal):** The candle over frozen earth. The ground receives the flame's heat but barely responds — the Ox is too cold, too dense, too slow to warm. Hidden Metal (Xin) being gently heated, hidden Water (Gui) resisting the warmth. The foundation is a patient project: Ding must burn steadily for a very long time before this ground thaws enough to be useful. The candle's focused heat is actually well-suited to this — unlike Bing's indiscriminate blaze, Ding can concentrate on one spot until it yields. But the process is exhausting, and the ground gives back slowly.
 
-**寅 Yín (Tiger — Yang Wood):** The candle given a great log. The Tiger's Jia Wood is abundant fuel — almost too abundant for Ding's focused flame. The foundation feeds the fire generously, but the mismatch of scale means Ding must work to consume what Jia provides. Hidden Fire (Bing) and Earth (Wu) inside the Tiger mean the ground already contains a larger version of Ding's own element. The candle sitting on a forest floor: well-fueled but potentially overshadowed. The foundation supports Ding's survival while possibly overwhelming its intimate, purposeful nature with raw abundance. In the traditional reverse cycle this is Ding's Death point — the candle smothered by the log it cannot burn. The two readings agree more than they appear to: fuel the flame cannot consume is not fuel but weight, and Ding on the Tiger lives or dies by whether the chart gives it the time and the air to burn through what it has been handed.
+**寅 Yin (Tiger — Yang Wood):** The candle given a great log. The Tiger's Jia Wood is abundant fuel — almost too abundant for Ding's focused flame. The foundation feeds the fire generously, but the mismatch of scale means Ding must work to consume what Jia provides. Hidden Fire (Bing) and Earth (Wu) inside the Tiger mean the ground already contains a larger version of Ding's own element. The candle sitting on a forest floor: well-fueled but potentially overshadowed. The foundation supports Ding's survival while possibly overwhelming its intimate, purposeful nature with raw abundance. In the traditional reverse cycle this is Ding's Death point — the candle smothered by the log it cannot burn. The two readings agree more than they appear to: fuel the flame cannot consume is not fuel but weight, and Ding on the Tiger lives or dies by whether the chart gives it the time and the air to burn through what it has been handed.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The candle given a perfect wick. Pure Yi Wood — exactly the right fuel for Yin Fire, matched in polarity and scale. The vine feeds the flame with precisely what it needs: not too much, not too little, a gentle, sustained supply that lets the candle burn at its most efficient, most beautiful. This is one of Ding's best foundations — the fuel is pure, proportionate, and aligned. The candle illuminates the garden, and the garden feeds the candle. The relationship is symbiotic, intimate, and aesthetically harmonious.
 
@@ -560,37 +560,37 @@ The candle, the hearth, the forge. Ding doesn't blaze indiscriminately — it ne
 
 ---
 
-## **戊 Wù — Yang Earth sitting on each Branch**
+## **戊 Wu — Yang Earth sitting on each Branch**
 
-The mountain. It doesn't root — it simply is. The ground beneath Wù determines what the mountain rests upon: whether it sits on bedrock, on water, on fire, or on air. Wù absorbs everything beneath it and integrates it into its mass. The question for each Branch is not whether the mountain can survive the ground — the mountain survives everything — but whether the ground adds substance or creates hollowness beneath the surface.
+The mountain. It doesn't root — it simply is. The ground beneath Wu determines what the mountain rests upon: whether it sits on bedrock, on water, on fire, or on air. Wu absorbs everything beneath it and integrates it into its mass. The question for each Branch is not whether the mountain can survive the ground — the mountain survives everything — but whether the ground adds substance or creates hollowness beneath the surface.
 
-**子 Zi (Rat — pure Water):** The mountain over a subterranean lake. Pure Water beneath Yang Earth is the element that Earth controls — the mountain sits on what it dams. Gui Water beneath Wù creates a reservoir under the mountain's weight: contained, pressurized, invisible from above. The foundation is productive — Earth controlling Water generates Wealth — but the hidden water creates structural questions. What happens if the dam develops cracks? The mountain appears solid, but there is an entire underground lake pressing against its base. The foundation is stable until it isn't. And the mountain is drawn to the lake: Wù and Gui are combining partners, reaching toward Fire together, so the reservoir under this mountain is not only pressure but attraction — Earned Fortune the Day Master is bound to. As a Day Pillar, the self is bound to what it sits on, and the spouse palace is held tightly, sometimes too tightly.
+**子 Zi (Rat — pure Water):** The mountain over a subterranean lake. Pure Water beneath Yang Earth is the element that Earth controls — the mountain sits on what it dams. Gui Water beneath Wu creates a reservoir under the mountain's weight: contained, pressurized, invisible from above. The foundation is productive — Earth controlling Water generates Wealth — but the hidden water creates structural questions. What happens if the dam develops cracks? The mountain appears solid, but there is an entire underground lake pressing against its base. The foundation is stable until it isn't. And the mountain is drawn to the lake: Wu and Gui are combining partners, reaching toward Fire together, so the reservoir under this mountain is not only pressure but attraction — Earned Fortune the Day Master is bound to. As a Day Pillar, the self is bound to what it sits on, and the spouse palace is held tightly, sometimes too tightly.
 
-**丑 Chou (Ox — Earth storing Metal):** The mountain on its own bedrock. The Ox is Yin Earth — kindred element, dense and cold. The mountain sits on compatible ground, and inside is stored Metal (Xin), which Earth generates. The foundation is deeply grounded and productive: the mountain rests on earth that contains forged resources, a treasury of Metal being generated by the Earth's own weight and pressure. Hidden Water (Gui) adds a trace of what the mountain controls. This is one of Wù's most stable foundations — the mountain on geological bedrock, with mineral wealth forming in its depths.
+**丑 Chou (Ox — Earth storing Metal):** The mountain on its own bedrock. The Ox is Yin Earth — kindred element, dense and cold. The mountain sits on compatible ground, and inside is stored Metal (Xin), which Earth generates. The foundation is deeply grounded and productive: the mountain rests on earth that contains forged resources, a treasury of Metal being generated by the Earth's own weight and pressure. Hidden Water (Gui) adds a trace of what the mountain controls. This is one of Wu's most stable foundations — the mountain on geological bedrock, with mineral wealth forming in its depths.
 
-**寅 Yín (Tiger — Yang Wood):** The mountain with trees pushing through its surface. The Tiger's Jia Wood is the element that controls Earth — roots splitting rock, vegetation claiming territory. The foundation is adversarial: what lies beneath is actively trying to break through the mountain's surface. Hidden Fire (Bing) and Earth (Wù) moderate this — Fire drains the Wood, Earth reinforces the mountain. The foundation is a contest between stone and forest, between the mountain's desire to remain unchanged and Wood's relentless growth. The trees will eventually crack the rock, but the mountain was here first.
+**寅 Yin (Tiger — Yang Wood):** The mountain with trees pushing through its surface. The Tiger's Jia Wood is the element that controls Earth — roots splitting rock, vegetation claiming territory. The foundation is adversarial: what lies beneath is actively trying to break through the mountain's surface. Hidden Fire (Bing) and Earth (Wu) moderate this — Fire drains the Wood, Earth reinforces the mountain. The foundation is a contest between stone and forest, between the mountain's desire to remain unchanged and Wood's relentless growth. The trees will eventually crack the rock, but the mountain was here first.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The mountain with vines climbing its face. Pure Yi Wood — the controlling element, but in its softest form. Where the Tiger's trees crack the rock, the Rabbit's vines simply cover it. The control is gentle, aesthetic, almost decorative. The foundation is a slow, patient challenge to the mountain's barren surface: life insisting on growing where stone would prefer to remain bare. The mountain is softened, not broken. The vine doesn't threaten the structure — it changes the surface, making the mountain more beautiful and less imposing, whether the mountain likes it or not.
 
 **辰 Chen (Dragon — Earth storing Water):** The mountain on a dragon's back. The Dragon is Yang Earth — the same element — with Water stored within and Wood growing inside. The foundation is kindred ground with hidden complexity: the mountain sits on its own element, but beneath the surface lies the element it controls (Water) and the element that controls it (Wood). The foundation amplifies the mountain's mass while concealing tensions within. This is the mountain that looks most stable from above but contains the most interesting geology — caves, aquifers, and root systems all hidden beneath the visible surface.
 
-**巳 Si (Snake — Yin Fire):** The mountain warmed by volcanic activity. The Snake's Fire is the element that generates Earth — the foundation is actively adding mass to the mountain. Hidden Bing Fire feeds Earth from below, Wù Earth (the mountain's own element) reinforces the structure, and Geng Metal is being forged in the heat. The foundation is productive and self-reinforcing: the volcanic heat creates new earth, new mineral deposits, new density. This is a mountain being built from below — growing, gaining mass, becoming more imposing. The foundation is the most generative possible for Wù: creation through heat.
+**巳 Si (Snake — Yin Fire):** The mountain warmed by volcanic activity. The Snake's Fire is the element that generates Earth — the foundation is actively adding mass to the mountain. Hidden Bing Fire feeds Earth from below, Wu Earth (the mountain's own element) reinforces the structure, and Geng Metal is being forged in the heat. The foundation is productive and self-reinforcing: the volcanic heat creates new earth, new mineral deposits, new density. This is a mountain being built from below — growing, gaining mass, becoming more imposing. The foundation is the most generative possible for Wu: creation through heat.
 
-**午 Wu (Horse — Yang Fire):** The mountain over an erupting caldera. The Horse is peak Fire — Wù Earth's Emperor's Peak and Yang Blade (羊刃), maximum generation of Earth from below. The foundation is an extreme version of what Si offers: heat so intense that it produces Earth relentlessly, adding mass at an unsustainable rate. The mountain grows rapidly but sits on an active eruption. Hidden Ding and Ji mean more Fire and more Earth — everything beneath is generating more of what the mountain already is. The foundation is powerful but volatile. The mountain is getting larger, but it's sitting on something that could blow.
+**午 Wu (Horse — Yang Fire):** The mountain over an erupting caldera. The Horse is peak Fire — Wu Earth's Emperor's Peak and Yang Blade (羊刃), maximum generation of Earth from below. The foundation is an extreme version of what Si offers: heat so intense that it produces Earth relentlessly, adding mass at an unsustainable rate. The mountain grows rapidly but sits on an active eruption. Hidden Ding and Ji mean more Fire and more Earth — everything beneath is generating more of what the mountain already is. The foundation is powerful but volatile. The mountain is getting larger, but it's sitting on something that could blow.
 
-**未 Wei (Goat — Earth storing Wood):** The mountain over a warm meadow. The Goat's Yin Earth is gentle, receptive ground — kindred element in its softest form. Inside is stored Wood (the controlling element), Ding Fire (gentle generation), and more Earth. The foundation is a comfortable, warm resting place for the mountain — soft ground that shares its nature and stores just enough tension (Wood) to keep things interesting. The mountain here is not being built or challenged — it's simply sitting in a gentle landscape that accommodates its weight. The most relaxed version of Wù's relationship with its ground.
+**未 Wei (Goat — Earth storing Wood):** The mountain over a warm meadow. The Goat's Yin Earth is gentle, receptive ground — kindred element in its softest form. Inside is stored Wood (the controlling element), Ding Fire (gentle generation), and more Earth. The foundation is a comfortable, warm resting place for the mountain — soft ground that shares its nature and stores just enough tension (Wood) to keep things interesting. The mountain here is not being built or challenged — it's simply sitting in a gentle landscape that accommodates its weight. The most relaxed version of Wu's relationship with its ground.
 
 **申 Shen (Monkey — Yang Metal):** The mountain yielding its mineral wealth. The Monkey's Geng Metal is what Earth generates — the mountain's output, the treasure in the rock being drawn out. The foundation is draining: Metal beneath Earth means the mountain is being mined from below, its substance converted into something more refined. Hidden Water (Ren) adds further drain — the element Earth controls is flowing out alongside the Metal. The foundation is productive but depleting. The mountain is creating something valuable and losing density in the process. What it produces is precious; what it costs is mass.
 
-**酉 You (Rooster — pure Yin Metal):** The mountain yielding a single perfect gem. Pure Xin Metal — concentrated, undiluted output drawn from the mountain's core. The drain is refined, precise, and relentless. The foundation is a mine producing the highest-quality Metal possible, but at the cost of the mountain's substance. The Rooster takes from Wù with the precision of a jeweler extracting a stone: carefully, beautifully, and without concern for what's left of the rock. The foundation creates extraordinary refinement from Earth's raw mass, and the mountain must decide whether the beauty of what it produces is worth the hollowing.
+**酉 You (Rooster — pure Yin Metal):** The mountain yielding a single perfect gem. Pure Xin Metal — concentrated, undiluted output drawn from the mountain's core. The drain is refined, precise, and relentless. The foundation is a mine producing the highest-quality Metal possible, but at the cost of the mountain's substance. The Rooster takes from Wu with the precision of a jeweler extracting a stone: carefully, beautifully, and without concern for what's left of the rock. The foundation creates extraordinary refinement from Earth's raw mass, and the mountain must decide whether the beauty of what it produces is worth the hollowing.
 
-**戌 Xu (Dog — Earth storing Fire):** The mountain on guarded terrain with embers sealed inside. The Dog is Yang Earth — kindred element, protective and loyal — with stored Fire (the generating element), hidden Metal (Xin), and more Earth. The foundation is a fortress beneath a fortress: the mountain rests on guarded earth that contains warmth, resources, and protective structure. This is one of Wù's most complete foundations — the ground shares its nature, stores what feeds it, contains what it produces, and guards all of it fiercely. The mountain sits on a loyal foundation that holds everything the mountain needs.
+**戌 Xu (Dog — Earth storing Fire):** The mountain on guarded terrain with embers sealed inside. The Dog is Yang Earth — kindred element, protective and loyal — with stored Fire (the generating element), hidden Metal (Xin), and more Earth. The foundation is a fortress beneath a fortress: the mountain rests on guarded earth that contains warmth, resources, and protective structure. This is one of Wu's most complete foundations — the ground shares its nature, stores what feeds it, contains what it produces, and guards all of it fiercely. The mountain sits on a loyal foundation that holds everything the mountain needs.
 
-**亥 Hai (Pig — Yin Water):** The mountain over deep dark water. The Pig's Ren Water is the most powerful expression of the element Earth controls — a vast underground ocean pressing upward against the mountain's base. Hidden Jia Wood adds the element that controls Earth, growing inside the flood. The foundation is the most adversarial possible for Wù: beneath the mountain lies both the water it must contain and the wood that splits its stone, both hidden in the dark. The mountain holds, because mountains hold — but the ground is not its ally. It is the thing the mountain must dominate simply to remain standing.
+**亥 Hai (Pig — Yin Water):** The mountain over deep dark water. The Pig's Ren Water is the most powerful expression of the element Earth controls — a vast underground ocean pressing upward against the mountain's base. Hidden Jia Wood adds the element that controls Earth, growing inside the flood. The foundation is the most adversarial possible for Wu: beneath the mountain lies both the water it must contain and the wood that splits its stone, both hidden in the dark. The mountain holds, because mountains hold — but the ground is not its ally. It is the thing the mountain must dominate simply to remain standing.
 
 ---
 
-## **己 Jǐ — Yin Earth sitting on each Branch**
+## **己 Ji — Yin Earth sitting on each Branch**
 
 The garden soil. Whatever is placed in it, grows. Whatever falls on it, is absorbed. Ji doesn't tower over its ground like Wu — it merges with it, integrates it, becomes richer or more contaminated depending on what the Branch brings. The ground beneath Ji determines the quality of the soil: what minerals are in it, how much water it holds, what's growing or rotting inside it.
 
@@ -598,13 +598,13 @@ The garden soil. Whatever is placed in it, grows. Whatever falls on it, is absor
 
 **丑 Chou (Ox — Earth storing Metal):** The soil over its own deep layer. The Ox is Yin Earth — identical element, cold and dense. Ji over Chou is garden soil over subsoil: the surface is workable, and beneath it lies the same substance in its frozen, compressed form, storing Metal (Xin) and a trace of Water (Gui). The foundation is deeply compatible: layer upon layer of the same material, with forged resources forming in the cold beneath. The soil has depth here, substance, and hidden mineral wealth. This is agricultural land with good geology — not exciting, but reliable across generations.
 
-**寅 Yín (Tiger — Yang Wood):** The soil with a great tree growing in it. The Tiger's Jia Wood is the element that controls Ji — roots driving through the garden, taking nutrients, claiming territory. The hidden Fire (Bing) and Earth (Wu) partially compensate: Fire drains the Wood's aggression and adds warmth to the soil. The foundation is one of productive tension: the tree takes from the soil but also prevents erosion, and the decaying leaves eventually return what was taken. The garden soil serves the tree, and the relationship is draining but not without reciprocity if the cycle is allowed to complete. Jia is Ji's opposite polarity — the Magistrate, legitimate authority, not the Merciless — and Jia and Ji are combining partners, so the soil is drawn to the very tree that exhausts it. In the traditional reverse cycle this is also Ji's Death point (Yin Earth follows Yin Fire). The reciprocity named above is real, but it arrives on the tree's schedule, not the soil's.
+**寅 Yin (Tiger — Yang Wood):** The soil with a great tree growing in it. The Tiger's Jia Wood is the element that controls Ji — roots driving through the garden, taking nutrients, claiming territory. The hidden Fire (Bing) and Earth (Wu) partially compensate: Fire drains the Wood's aggression and adds warmth to the soil. The foundation is one of productive tension: the tree takes from the soil but also prevents erosion, and the decaying leaves eventually return what was taken. The garden soil serves the tree, and the relationship is draining but not without reciprocity if the cycle is allowed to complete. Jia is Ji's opposite polarity — the Magistrate, legitimate authority, not the Merciless — and Jia and Ji are combining partners, so the soil is drawn to the very tree that exhausts it. In the traditional reverse cycle this is also Ji's Death point (Yin Earth follows Yin Fire). The reciprocity named above is real, but it arrives on the tree's schedule, not the soil's.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The soil with flowers growing in it. Pure Yi Wood — the controlling element in its gentlest form. The garden is doing what gardens do: growing beautiful things that feed on the soil's nutrients. The foundation is natural and harmonious in function even though the elemental relationship is one of control. Ji exists to grow things; Mao is the thing that grows. The drain is gentle, proportionate, and exactly what garden soil was made for. This is Ji fulfilling its deepest purpose. The question is whether the garden ever gets replenished or whether it grows flowers until it's exhausted.
 
 **辰 Chen (Dragon — Earth storing Water):** The soil over the Dragon's complex storehouse. Ji sits on Yang Earth — heavier, denser ground beneath the garden's soft surface. Inside is stored Water (Gui/wealth) and secondary Wood (Yi/the element controlling Ji). The foundation is rich, layered, and mirrors the garden's own complexity: beneath the workable surface lies depth that Ji can draw from over time. The stored Water is wealth waiting to be accessed. The hidden Wood is something growing in the dark beneath the garden. The soil has more going on underground than it shows on the surface.
 
-**巳 Si (Snake — Yin Fire):** The soil warmed from below. The Snake's Fire generates Earth — the ground beneath is actively feeding Ji, adding substance, warming the garden from its foundations. Hidden Bing Fire amplifies the generation, Wù Earth adds density, and Geng Metal (Ji's output) is being forged in the heat. The foundation is nurturing: the soil is being made richer by volcanic warmth beneath. This is the garden with geothermal heating — everything planted grows faster, the soil stays warm through cold seasons, and the productive chain is working beneath the surface. One of Ji's most favorable foundations.
+**巳 Si (Snake — Yin Fire):** The soil warmed from below. The Snake's Fire generates Earth — the ground beneath is actively feeding Ji, adding substance, warming the garden from its foundations. Hidden Bing Fire amplifies the generation, Wu Earth adds density, and Geng Metal (Ji's output) is being forged in the heat. The foundation is nurturing: the soil is being made richer by volcanic warmth beneath. This is the garden with geothermal heating — everything planted grows faster, the soil stays warm through cold seasons, and the productive chain is working beneath the surface. One of Ji's most favorable foundations.
 
 **午 Wu (Horse — Yang Fire):** The soil baked by high noon. The Horse's peak Fire generates Earth aggressively — too much heat can bake the garden dry. Hidden Ding and Ji mean more Fire and more Earth, creating an oven beneath the garden's surface. The foundation adds substance to Ji but risks turning soft soil into hardpan: earth so dried and heated that nothing can grow in it. The generation is too intense. The garden needs heat in moderation; the Horse provides it without restraint. The foundation is powerful but must be tempered by Water from elsewhere, or the productive soil becomes brick.
 
@@ -620,7 +620,7 @@ The garden soil. Whatever is placed in it, grows. Whatever falls on it, is absor
 
 ---
 
-## **庚 Gēng — Yang Metal sitting on each Branch**
+## **庚 Geng — Yang Metal sitting on each Branch**
 
 The axe, the raw blade, the unrefined ore. Geng doesn't settle into the ground — it strikes it, tests it, or is forged by it. The Branch beneath Geng determines whether the metal is tempered, corroded, buried, or sharpened. Geng needs Earth beneath it for reinforcement, tolerates Fire as the forge that refines it, fears Water beneath as the current that carries it away, and finds Wood beneath as something to cut.
 
@@ -628,13 +628,13 @@ The axe, the raw blade, the unrefined ore. Geng doesn't settle into the ground �
 
 **丑 Chou (Ox — Earth storing Metal):** The blade buried in earth that stores its own kind. The Ox is Yin Earth — the element that generates Metal — with Xin Metal stored inside and Gui Water as a trace. The foundation feeds Geng: Earth beneath Metal is the mother supporting the child. The stored Xin means the ground contains kindred metal, an ore deposit that reinforces Geng's nature. The foundation is one of the most supportive possible: the blade is being maintained, the metal is being nourished, and the ground holds reserves of Geng's own substance. The forge has a reliable supply line.
 
-**寅 Yín (Tiger — Yang Wood):** The axe buried in the great tree. The Tiger's Jia Wood is what Geng controls — the element the blade was made to cut. The foundation gives Geng purpose: there is something beneath that needs to be felled, shaped, or transformed. Hidden Fire (Bing) inside the Tiger threatens Geng — the forge heat that melts the blade — and hidden Earth (Wu) provides some buffering support. The foundation is a working relationship: the axe has met its material. Whether this becomes productive craftsmanship or mutual destruction depends on whether the cutting is controlled.
+**寅 Yin (Tiger — Yang Wood):** The axe buried in the great tree. The Tiger's Jia Wood is what Geng controls — the element the blade was made to cut. The foundation gives Geng purpose: there is something beneath that needs to be felled, shaped, or transformed. Hidden Fire (Bing) inside the Tiger threatens Geng — the forge heat that melts the blade — and hidden Earth (Wu) provides some buffering support. The foundation is a working relationship: the axe has met its material. Whether this becomes productive craftsmanship or mutual destruction depends on whether the cutting is controlled.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The axe over delicate wood. Pure Yi Wood — what Geng controls, but in its softest form. The foundation gives Geng something to dominate without resistance. The blade against the vine: effortless, overpowering, potentially pointless. Where the Tiger gives the axe a worthy adversary, the Rabbit gives it something that submits before the swing is finished. The foundation is productive (Geng controls Wood/wealth) but the ease can become purposelessness. The blade that only ever cuts soft things eventually forgets what it means to be sharp.
 
 **辰 Chen (Dragon — Earth storing Water):** The blade encased in earth with water hidden beneath. The Dragon's Yang Earth generates Geng — the mother element feeding the metal. Inside is stored Water (Gui, Geng's output) and secondary Wood (Yi, what Geng controls). The foundation feeds Geng while containing both its output and its purpose: the Earth nourishes the blade, the stored Water represents accumulated productivity, and the hidden Wood is material waiting to be worked. The foundation is rich and complete — the blade has support, product, and material all stored in the same ground.
 
-**巳 Si (Snake — Yin Fire):** The blade in the forge. The Snake's Fire is the element that controls Metal — the force that melts, reshapes, and refines. For Geng, this is the crucible: the raw ore being hammered into something useful. Hidden Bing Fire intensifies the heat, Wù Earth provides support, and Geng itself appears as a residual stem inside Si — meaning the ground contains a trace of the blade's own element being forged. The foundation is transformative: the metal is being destroyed in its crude form and remade in a finer one. Painful, necessary, and the origin of every great blade.
+**巳 Si (Snake — Yin Fire):** The blade in the forge. The Snake's Fire is the element that controls Metal — the force that melts, reshapes, and refines. For Geng, this is the crucible: the raw ore being hammered into something useful. Hidden Bing Fire intensifies the heat, Wu Earth provides support, and Geng itself appears as a residual stem inside Si — meaning the ground contains a trace of the blade's own element being forged. The foundation is transformative: the metal is being destroyed in its crude form and remade in a finer one. Painful, necessary, and the origin of every great blade.
 
 **午 Wu (Horse — Yang Fire):** The blade in the maximum furnace. The Horse is peak Fire — the most intense forging heat possible. Hidden Ding and Ji add more Fire and Earth. The foundation is the ultimate crucible: the metal is being melted completely, forced to lose its current form before it can take a new one. This is Geng's most intense transformation — the difference between tempering and destruction depends entirely on whether the heat is controlled and whether the blade is cooled (Water) at the right moment. Too much forge with no quenching, and the metal is ruined. With proper quenching, this produces the finest steel.
 
@@ -650,7 +650,7 @@ The axe, the raw blade, the unrefined ore. Geng doesn't settle into the ground �
 
 ---
 
-## **辛 Xīn — Yin Metal sitting on each Branch**
+## **辛 Xin — Yin Metal sitting on each Branch**
 
 The jewel, the needle, the scalpel. Xin doesn't strike the ground — it rests on it, and the ground either cradles it or scratches it. The Branch beneath Xin determines whether the gem is displayed on velvet or dropped in gravel. Xin is more sensitive to its foundation than any other stem: the wrong ground doesn't just weaken it, it tarnishes it, and tarnish is what Xin fears most.
 
@@ -658,13 +658,13 @@ The jewel, the needle, the scalpel. Xin doesn't strike the ground — it rests o
 
 **丑 Chou (Ox — Earth storing Metal):** The jewel in its vault. The Ox's Yin Earth is the generating element — the mother that produces Metal — and hidden Xin inside means the ground contains more of Xin's own kind. The foundation is maximum security: the gem is stored in its native earth, surrounded by kindred metal, with a trace of Water (Gui) keeping the surface clean. This is the jewel box, the museum case, the vault where precious things are kept safe. The foundation is deeply supportive but possibly stifling — the gem is maintained perfectly and never worn. Safety without display.
 
-**寅 Yín (Tiger — Yang Wood):** The jewel in the forest. The Tiger's Jia Wood is what Xin controls — Yin Metal pruning Yang Wood. The relationship is one of refined control over raw growth: the scalpel meeting the tree. Hidden Fire (Bing) inside the Tiger threatens Xin — the forge that melts the gem — and hidden Earth (Wu) provides some maternal protection. The foundation is complex: Xin has material to work with (Wood) but is threatened from within (Fire). The jewel in the forest is both sculptor and artifact at risk.
+**寅 Yin (Tiger — Yang Wood):** The jewel in the forest. The Tiger's Jia Wood is what Xin controls — Yin Metal pruning Yang Wood. The relationship is one of refined control over raw growth: the scalpel meeting the tree. Hidden Fire (Bing) inside the Tiger threatens Xin — the forge that melts the gem — and hidden Earth (Wu) provides some maternal protection. The foundation is complex: Xin has material to work with (Wood) but is threatened from within (Fire). The jewel in the forest is both sculptor and artifact at risk.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The jewel among flowers. Pure Yi Wood — what Xin controls, matched in polarity. Yin Metal and Yin Wood: the needle and the vine, the pin and the blossom. The relationship is delicate, mutual, almost intimate. The foundation gives Xin something gentle to work with and shape — not raw lumber but living beauty. The jewel among flowers is an image of refinement meeting refinement, control exercised with grace. The foundation is harmonious but fragile — both elements are yin, both are delicate, and together they create something beautiful that doesn't survive rough handling.
 
 **辰 Chen (Dragon — Earth storing Water):** The jewel in the Dragon's hoard. The Dragon's Yang Earth generates Metal — the mother element feeding the gem — and stored Water (Gui) is Xin's output waiting inside. Hidden Wood (Yi) adds complexity. The foundation is the mythic treasury: the gem held in rich earth, surrounded by the fruits of its own production (Water — output, not wealth) and a trace of the material it was made to work (Wood — Xin's wealth). The jewel in the Dragon's den is both treasure and prisoner — magnificently housed, potentially trapped by the complexity of what surrounds it.
 
-**巳 Si (Snake — Yin Fire):** The jewel in the alchemist's fire. The Snake's Fire controls Metal — the element that melts and transforms the gem. Hidden Bing Fire intensifies the heat, Wù Earth provides some protective buffer, and Geng Metal (kindred but yang) is also being forged inside. The foundation is dangerous for Xin: the refined gem is placed in a crucible where raw metal is shaped. Xin's sensitivity makes this more painful than Geng experiences the same forge — the jewel doesn't need to be hammered, and the forge doesn't care. The foundation transforms but may destroy the very refinement that makes Xin valuable. Two things complicate this. Bing is Xin's opposite polarity — the Magistrate, not the Merciless — and Bing and Xin are combining partners: the jewel is drawn to the sun that could melt it, and the two reach toward Water together. The Snake's hidden Wù Earth is Xin's True Patron, and its Geng is Xin's Rival. As a Day Pillar, the self is bound to what it sits on — the gem bound to the fire, dangerous and magnetic. In the traditional reverse cycle this is also Xin's Death point: refinement consumed by what it loves.
+**巳 Si (Snake — Yin Fire):** The jewel in the alchemist's fire. The Snake's Fire controls Metal — the element that melts and transforms the gem. Hidden Bing Fire intensifies the heat, Wu Earth provides some protective buffer, and Geng Metal (kindred but yang) is also being forged inside. The foundation is dangerous for Xin: the refined gem is placed in a crucible where raw metal is shaped. Xin's sensitivity makes this more painful than Geng experiences the same forge — the jewel doesn't need to be hammered, and the forge doesn't care. The foundation transforms but may destroy the very refinement that makes Xin valuable. Two things complicate this. Bing is Xin's opposite polarity — the Magistrate, not the Merciless — and Bing and Xin are combining partners: the jewel is drawn to the sun that could melt it, and the two reach toward Water together. The Snake's hidden Wu Earth is Xin's True Patron, and its Geng is Xin's Rival. As a Day Pillar, the self is bound to what it sits on — the gem bound to the fire, dangerous and magnetic. In the traditional reverse cycle this is also Xin's Death point: refinement consumed by what it loves.
 
 **午 Wu (Horse — Yang Fire):** The jewel in the inferno. Peak Fire — the maximum controlling force against Metal. For Xin specifically, this is devastating: the delicate gem in the hottest possible furnace. Hidden Ding and Ji add more Fire and Earth, but the Fire dominates. The foundation melts Xin's refinement, its precision, its carefully maintained surface. Where Geng can emerge from the Horse's forge as better steel, Xin risks being reduced to a puddle of what was once exquisite. The foundation is Xin's most hostile position. Survival requires enormous Water support from elsewhere.
 
@@ -680,7 +680,7 @@ The jewel, the needle, the scalpel. Xin doesn't strike the ground — it rests o
 
 ---
 
-## **壬 Rén — Yang Water sitting on each Branch**
+## **壬 Ren — Yang Water sitting on each Branch**
 
 The ocean. It doesn't sit on the ground — it covers it, fills it, reshapes it. The Branch beneath Ren determines what lies beneath the waterline: bedrock, a reef, a volcanic vent, an abyss. Ren absorbs every ground it encounters and integrates it into its own depth. The question is never whether the ocean can survive the ground — the ocean covers everything — but what the ground does to the current, the temperature, the chemistry of the water above it.
 
@@ -688,19 +688,19 @@ The ocean. It doesn't sit on the ground — it covers it, fills it, reshapes it.
 
 **丑 Chou (Ox — Earth storing Metal):** The ocean over a frozen seabed containing mineral deposits. The Ox's Yin Earth is the element that controls Water — a dam, a barrier, something that wants to contain the ocean's movement. Hidden Metal (Xin) is Resource — the True Patron, buried in the cold ground beneath. Hidden Water (Gui) seeps through the frozen earth, connecting the ocean to its underground reserves. The foundation contains what Ren needs most (Metal/resource) but locks it in frozen Earth (the controlling element). The nourishment is there. It's just frozen shut. The ocean must wait for the thaw — or find a way to break through the permafrost.
 
-**寅 Yín (Tiger — Yang Wood):** The ocean feeding a coastal forest. The Tiger's Jia Wood is what Ren produces — the element that drains Water. The foundation is a mangrove: the ocean's edge where water and wood intertwine, each feeding the other but the net direction of energy flowing from Water to Wood. Hidden Fire (Bing) and Earth (Wu) add more draining and controlling elements beneath. The foundation is alive, verdant, and expensive for the ocean — everything growing at the waterline takes from the water. The view is beautiful. The current is outbound.
+**寅 Yin (Tiger — Yang Wood):** The ocean feeding a coastal forest. The Tiger's Jia Wood is what Ren produces — the element that drains Water. The foundation is a mangrove: the ocean's edge where water and wood intertwine, each feeding the other but the net direction of energy flowing from Water to Wood. Hidden Fire (Bing) and Earth (Wu) add more draining and controlling elements beneath. The foundation is alive, verdant, and expensive for the ocean — everything growing at the waterline takes from the water. The view is beautiful. The current is outbound.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The ocean feeding a gentle shoreline garden. Pure Yi Wood — Ren's output in its softest form. The foundation draws from the ocean but gently, like a tidal garden that takes only what the retreating tide leaves behind. The drain is mild, proportionate, and aesthetically harmonious. The ocean meeting the vine is water meeting its most delicate creation: what grows here is beautiful precisely because the nourishment is effortless. The foundation costs Ren something, but less than any other output position, and what it produces has grace.
 
 **辰 Chen (Dragon — Earth storing Water):** The ocean over the Dragon's storehouse. The Dragon's surface is Yang Earth — the controlling element, the dam — but inside is stored Gui Water, the ocean's own element sealed in the earth. Hidden Yi Wood adds a trace of drain. The foundation is layered: the controlling element on the surface with the ocean's own reserve locked beneath. The Dragon is the vault that holds Water — this is the ocean discovering that the seabed contains an aquifer, a reserve of its own element that can be unlocked. The controlling surface is real, but what it protects is the ocean's own hidden depth. This is a foundation of guarded self-replenishment.
 
-**巳 Si (Snake — Yin Fire):** The ocean over a submarine volcanic vent. The Snake's Fire is what Ren controls — the element Water should dominate. Hidden Bing Fire, Wù Earth, and Geng Metal create a complex geothermal system beneath the waterline. The Fire beneath heats the ocean: the water is being challenged by what it should control, and the heat creates turbulence. But hidden Geng Metal is Resource — the Owl Spirit, being forged in the volcanic heat beneath the sea. The foundation is volatile but extraordinarily productive: the geothermal vent creates the conditions for both threat and nourishment simultaneously.
+**巳 Si (Snake — Yin Fire):** The ocean over a submarine volcanic vent. The Snake's Fire is what Ren controls — the element Water should dominate. Hidden Bing Fire, Wu Earth, and Geng Metal create a complex geothermal system beneath the waterline. The Fire beneath heats the ocean: the water is being challenged by what it should control, and the heat creates turbulence. But hidden Geng Metal is Resource — the Owl Spirit, being forged in the volcanic heat beneath the sea. The foundation is volatile but extraordinarily productive: the geothermal vent creates the conditions for both threat and nourishment simultaneously.
 
 **午 Wu (Horse — Yang Fire):** The ocean over an erupting underwater volcano. The Horse is peak Fire — the maximum challenge to Water's controlling authority. The ocean should quench Fire, but at this intensity the Fire fights back, creating steam, upheaval, and the disruption of the ocean's surface. Hidden Ding and Ji add more Fire and Earth beneath. The foundation is the most turbulent possible for Ren: the element it should control is at sovereign power, and the clash creates drama at every depth level. The ocean over the Horse is where tsunamis are born. The foundation is violent, transformative, and impossible to ignore. And yet the Horse's principal hidden stem is Ding — Ren's combining partner and its Earned Fortune: the ocean is drawn to the small flame at the center of the blaze, and the two reach toward Wood together. As a Day Pillar, the self is bound to what it sits on — wealth and the spouse palace held by attraction rather than control. The Twelve Life Stages read the same ground as Ren's Embryo: the seed of the next ocean forming inside peak Fire.
 
 **未 Wei (Goat — Earth storing Wood):** The ocean over warm, soft seabed with growth stored inside. The Goat's Yin Earth controls Water gently — more a sandbar than a dam. Inside is stored Wood (Yi, drain), Ding Fire (mild heat), and more Earth. The foundation is a warm, shallow lagoon: the ocean's power is reduced by the gentle ground, the current is slow, the depth is limited. The stored Wood means growth is happening in the warm shallows. The foundation is comfortable and mildly constraining — the ocean here isn't vast, it's domestic. The lagoon is beautiful but the ocean might chafe at the reduced scope.
 
-**申 Shen (Monkey — Yang Metal):** The ocean over the mountain spring. The Monkey's Geng Metal is Ren's Resource — the element that generates Water, the Owl Spirit, and the first thing a depleted Ren needs. Hidden Ren Water inside means the ground contains the ocean's own element, and Wù Earth provides structural support. The foundation is profoundly nourishing: Metal beneath Water is the spring feeding the ocean from below. The current flows inward. For the first time in the sequence, the ground is giving to the ocean rather than taking from it. The foundation is what Ren has been looking for — the source that replenishes what was always being depleted.
+**申 Shen (Monkey — Yang Metal):** The ocean over the mountain spring. The Monkey's Geng Metal is Ren's Resource — the element that generates Water, the Owl Spirit, and the first thing a depleted Ren needs. Hidden Ren Water inside means the ground contains the ocean's own element, and Wu Earth provides structural support. The foundation is profoundly nourishing: Metal beneath Water is the spring feeding the ocean from below. The current flows inward. For the first time in the sequence, the ground is giving to the ocean rather than taking from it. The foundation is what Ren has been looking for — the source that replenishes what was always being depleted.
 
 **酉 You (Rooster — pure Yin Metal):** The ocean over a pure underground spring. Undiluted Xin Metal — the True Patron in its most refined, concentrated form. The foundation is the cleanest possible source of nourishment for Ren: pure resource, no competing elements, no mixed agenda. The spring beneath is crystalline, and what it feeds into the ocean is precisely what the ocean needs. The foundation is beautiful and sustaining in equal measure. The Rooster beneath Ren is the answer to the chart's perennial question — where does the ocean get its water? — answered with maximum clarity: from here, from this pure, refined, inexhaustible spring.
 
@@ -710,7 +710,7 @@ The ocean. It doesn't sit on the ground — it covers it, fills it, reshapes it.
 
 ---
 
-## **癸 Guǐ — Yin Water sitting on each Branch**
+## **癸 Gui — Yin Water sitting on each Branch**
 
 The rain, the mist, the underground spring. Gui doesn't crash against the ground — it seeps into it, condenses on it, nourishes it from within. The Branch beneath Gui determines what the moisture saturates: whether it feeds a garden, fills a cave, evaporates on hot stone, or collects in a cold vessel. Gui is the most permeable stem, and its relationship with the ground is one of intimate, boundary-less merging.
 
@@ -718,19 +718,19 @@ The rain, the mist, the underground spring. Gui doesn't crash against the ground
 
 **丑 Chou (Ox — Earth storing Metal):** The rain seeping into frozen ground that holds precious mineral. The Ox's Yin Earth is the controlling element — the ground that absorbs and constrains the moisture. Hidden Metal (Xin) is Gui's resource — the refined spring source buried in frozen earth. Hidden Gui Water means the rain's own element is already present in trace. The foundation constrains the rain but contains what feeds it: the resource is there, locked in ice. The moisture must be patient — what the frozen ground holds will eventually be released, but not on the rain's schedule. On the earth's.
 
-**寅 Yín (Tiger — Yang Wood):** The rain nourishing a great forest. The Tiger's Jia Wood is what Gui produces — the element that drinks the rain. The foundation is output in its most massive form: the great tree consuming the drizzle entirely. Hidden Fire (Bing) and Earth (Wu) add more demanding elements beneath. The foundation is expensive for Gui — the rain falls on a forest that absorbs every drop and asks for more. The mist feeding the giant: beautiful, purposeful, and utterly self-emptying. Gui's delicate nature makes this drain severe. The rain cloud that tries to water a forest doesn't last long.
+**寅 Yin (Tiger — Yang Wood):** The rain nourishing a great forest. The Tiger's Jia Wood is what Gui produces — the element that drinks the rain. The foundation is output in its most massive form: the great tree consuming the drizzle entirely. Hidden Fire (Bing) and Earth (Wu) add more demanding elements beneath. The foundation is expensive for Gui — the rain falls on a forest that absorbs every drop and asks for more. The mist feeding the giant: beautiful, purposeful, and utterly self-emptying. Gui's delicate nature makes this drain severe. The rain cloud that tries to water a forest doesn't last long.
 
 **卯 Mao (Rabbit — pure Yin Wood):** The rain falling on flowers. Pure Yi Wood — Gui's output in its most proportionate, harmonious form. The moisture feeds the vine, the vine grows gently, and the exchange is scaled to what the rain can afford. Where the Tiger overwhelms, the Rabbit receives gratefully. The foundation is the most natural expression of Gui's nurturing function: gentle water feeding gentle growth, each matched in scale and polarity. The rain on the garden is one of Gui's most beautiful foundations — sustainable, meaningful, and quiet.
 
 **辰 Chen (Dragon — Earth storing Water):** The rain over the Dragon's misty terrain. The Dragon's Yang Earth constrains Gui — the controlling element on the surface — but stored Gui Water inside means the rain is joining its own reserve sealed in the earth. Hidden Yi Wood adds a drain. The foundation is a watershed: the rain falls, is collected by the earth, and joins the underground reservoir. The controlling surface is the price of preservation — the rain must submit to the earth's containment in order to reach the stored water within. The foundation is Gui meeting its own hidden lake, if it can get past the Dragon's earthen walls.
 
-**巳 Si (Snake — Yin Fire):** The rain falling on hot stone. The Snake's Fire is what Gui controls — but Yin Water against the Snake's hidden Bing (Yang Fire) and Wù Earth creates a mismatch of force. The rain hisses on the heated surface: some evaporates, some runs off, some finds cracks and penetrates. Hidden Geng Metal is the resource — the spring source forged in the heat beneath. The foundation is harsh for Gui but not without reward: the moisture that survives the heat and reaches the hidden Metal finds genuine nourishment. The cost of getting there is significant. The Snake's hidden Wù Earth is Gui's combining partner — the Magistrate the rain is drawn to, the two reaching toward Fire together — so the hot stone also holds the rain by attraction. As a Day Pillar, the self is bound to what it sits on. This is also Gui's Embryo point in the traditional cycle: the seed of the next rain forming inside the forge.
+**巳 Si (Snake — Yin Fire):** The rain falling on hot stone. The Snake's Fire is what Gui controls — but Yin Water against the Snake's hidden Bing (Yang Fire) and Wu Earth creates a mismatch of force. The rain hisses on the heated surface: some evaporates, some runs off, some finds cracks and penetrates. Hidden Geng Metal is the resource — the spring source forged in the heat beneath. The foundation is harsh for Gui but not without reward: the moisture that survives the heat and reaches the hidden Metal finds genuine nourishment. The cost of getting there is significant. The Snake's hidden Wu Earth is Gui's combining partner — the Magistrate the rain is drawn to, the two reaching toward Fire together — so the hot stone also holds the rain by attraction. As a Day Pillar, the self is bound to what it sits on. This is also Gui's Embryo point in the traditional cycle: the seed of the next rain forming inside the forge.
 
 **午 Wu (Horse — Yang Fire):** The rain against high noon. Peak Fire — the maximum evaporative force against Gui's delicate moisture. The rain doesn't reach the ground; it evaporates before it lands. The Horse's blazing heat turns Gui into steam before it can accomplish anything. Hidden Ding and Ji add more Fire and Earth. The foundation is Gui's most hostile position: the mist against the furnace. The moisture is destroyed on contact. Only massive Water support from elsewhere in the chart gives Gui any chance of persisting over this Branch. Without it, the rain simply disappears.
 
 **未 Wei (Goat — Earth storing Wood):** The rain falling on warm garden soil. The Goat's Yin Earth controls Gui gently — absorbing the moisture, directing it, giving it purpose rather than crushing it. Inside is stored Wood (Yi, gentle growth), Ding Fire (mild warmth), and more Earth. The foundation is a warm, receptive bed for the rain: the soil takes the moisture and converts it into growth. The stored Wood means the garden is already growing, already waiting for the rain to continue what was started. The foundation is one of Gui's most productive: the rain is needed, received, and used. The moisture has purpose here.
 
-**申 Shen (Monkey — Yang Metal):** The rain born from a mountain spring. The Monkey's Geng Metal generates Gui's element — the resource that produces the rain. Hidden Ren Water (the ocean) and Wù Earth add Gui's yang counterpart and structural support. The foundation is the spring that feeds the rain: Gui finds its source here, the place where moisture is generated rather than depleted. The Monkey beneath Gui is the mountaintop where clouds form — the altitude where Metal condenses Water from thin air. The foundation is nourishing, generative, and stabilizing. The rain has found where it comes from. In the traditional reverse cycle this is Gui's Death point — the rain drawn back into the mineral that produced it, consumed by its own source. The two readings describe the same mountain from opposite sides: the spring generates the rain, and rain that returns to the spring ceases to be rain. Whether Gui on the Monkey is being sourced or reabsorbed depends on whether Wood elsewhere in the chart gives the moisture somewhere to go.
+**申 Shen (Monkey — Yang Metal):** The rain born from a mountain spring. The Monkey's Geng Metal generates Gui's element — the resource that produces the rain. Hidden Ren Water (the ocean) and Wu Earth add Gui's yang counterpart and structural support. The foundation is the spring that feeds the rain: Gui finds its source here, the place where moisture is generated rather than depleted. The Monkey beneath Gui is the mountaintop where clouds form — the altitude where Metal condenses Water from thin air. The foundation is nourishing, generative, and stabilizing. The rain has found where it comes from. In the traditional reverse cycle this is Gui's Death point — the rain drawn back into the mineral that produced it, consumed by its own source. The two readings describe the same mountain from opposite sides: the spring generates the rain, and rain that returns to the spring ceases to be rain. Whether Gui on the Monkey is being sourced or reabsorbed depends on whether Wood elsewhere in the chart gives the moisture somewhere to go.
 
 **酉 You (Rooster — pure Yin Metal):** The rain born from a pure crystal spring. Undiluted Xin Metal — Gui's resource in its most refined, matching polarity. Yin Metal producing Yin Water: the generation is natural, gentle, and perfectly harmonious. The foundation is the purest possible source for the rain — no competing elements, no mixed signals, just refined resource flowing into refined moisture. The Rooster beneath Gui is the dewdrop forming on the surface of a silver vessel: small, perfect, inevitable. The foundation is exquisite in its simplicity and profoundly sustaining.
 
@@ -773,15 +773,15 @@ The emotional quality: devotion. Zi-Chou is the harmony of the night — midnigh
 
 ---
 
-### **寅亥合 — Yín-Hai Harmony (Tiger and Pig combining toward Wood)**
+### **寅亥合 — Yin-Hai Harmony (Tiger and Pig combining toward Wood)**
 
-The explosive beginning of spring (Yín) meets the deep gestation of winter (Hai), and together they transform toward Wood. The Tiger's emerging Yang Wood finds the Pig's hidden Jia Wood growing in the dark water, and the combination amplifies both into a powerful Wood force — growth, expansion, creative emergence. The Water in Hai feeds the Wood in Yin: the womb nourishes the birth.
+The explosive beginning of spring (Yin) meets the deep gestation of winter (Hai), and together they transform toward Wood. The Tiger's emerging Yang Wood finds the Pig's hidden Jia Wood growing in the dark water, and the combination amplifies both into a powerful Wood force — growth, expansion, creative emergence. The Water in Hai feeds the Wood in Yin: the womb nourishes the birth.
 
-When this harmony forms, the person experiences a pull between potential and manifestation, between the vast, unformed creative reservoir (Hai) and the bold, forward-moving ambition that breaks ground (Yín). The combination says: what has been gestating in the dark is ready to emerge. The creative power is enormous because it combines depth of preparation with force of expression.
+When this harmony forms, the person experiences a pull between potential and manifestation, between the vast, unformed creative reservoir (Hai) and the bold, forward-moving ambition that breaks ground (Yin). The combination says: what has been gestating in the dark is ready to emerge. The creative power is enormous because it combines depth of preparation with force of expression.
 
 If the combination fails to fully transform, the two Branches still pull toward each other: the Water-position and the Wood-position in the chart are linked, the gestating and the emerging are connected. The person feels that their hidden depth and their visible ambition are aspects of the same thing.
 
-The emotional quality: creative urgency. Yín-Hai is the harmony of the dark hour before dawn meeting the first roar of light. Two potent forces — one hidden, one bursting — finding each other and channeling their combined energy into growth. It is a generative harmony, full of forward momentum. What it produces may be unstoppable.
+The emotional quality: creative urgency. Yin-Hai is the harmony of the dark hour before dawn meeting the first roar of light. Two potent forces — one hidden, one bursting — finding each other and channeling their combined energy into growth. It is a generative harmony, full of forward momentum. What it produces may be unstoppable.
 
 ---
 
@@ -875,17 +875,17 @@ When the full frame activates, creativity becomes the dominant force across the 
 
 ---
 
-### **寅午戌 — Yín-Wu-Xu: Fire Frame (Tiger, Horse, Dog)**
+### **寅午戌 — Yin-Wu-Xu: Fire Frame (Tiger, Horse, Dog)**
 
-Wood's explosive emergence (Yín) feeds Fire's absolute peak (Wu) which is stored in Earth's guarded vault (Xu). The triangle produces Fire — brilliance, visibility, passion, transformation. This is the coalition of radiance: the Tiger's ambitious growth fueling the Horse's blazing noon, which the Dog guards as stored embers against the night. When all three are present, the chart is dominated by Fire energy — everything is illuminated, everything is visible, and the life force burns with maximum intensity.
+Wood's explosive emergence (Yin) feeds Fire's absolute peak (Wu) which is stored in Earth's guarded vault (Xu). The triangle produces Fire — brilliance, visibility, passion, transformation. This is the coalition of radiance: the Tiger's ambitious growth fueling the Horse's blazing noon, which the Dog guards as stored embers against the night. When all three are present, the chart is dominated by Fire energy — everything is illuminated, everything is visible, and the life force burns with maximum intensity.
 
-**Birth point (Yín):** Where the Fire is kindled. The Tiger's Yang Wood is the fuel — the first spark of ambition, the explosive energy that starts the blaze.
+**Birth point (Yin):** Where the Fire is kindled. The Tiger's Yang Wood is the fuel — the first spark of ambition, the explosive energy that starts the blaze.
 
 **Peak point (Wu):** Where the Fire is at full power. The Horse's high noon — nothing hidden, nothing held back, maximum radiance and maximum exposure.
 
 **Storage point (Xu):** Where the Fire is preserved. The Dog's guarded earth holds the embers — the warmth is sealed away, protected, kept alive against the cold. The fire doesn't go out because the Dog refuses to let it.
 
-The half-frames: Yín-Wu without Xu creates a blaze with no storehouse — brilliance that consumes everything and preserves nothing. Wu-Xu without Yin creates peak fire and stored embers without the fuel to reignite — a furnace running on reserves. Yín-Xu without Wu is not a half-frame — the fuel and the vault exist but no blaze burns between them, and until a Wu arrives the two only cradle its absence.
+The half-frames: Yin-Wu without Xu creates a blaze with no storehouse — brilliance that consumes everything and preserves nothing. Wu-Xu without Yin creates peak fire and stored embers without the fuel to reignite — a furnace running on reserves. Yin-Xu without Wu is not a half-frame — the fuel and the vault exist but no blaze burns between them, and until a Wu arrives the two only cradle its absence.
 
 When the full frame activates, the life domains involved become unified under Fire's sovereignty. Visibility, passion, and transformation dominate across those pillar positions.
 
@@ -925,7 +925,7 @@ This is Water not as a river finding its path but as the Ice Age: everything cov
 
 ---
 
-### **寅卯辰 — Yín-Mao-Chen: Eastern Wood (Tiger, Rabbit, Dragon)**
+### **寅卯辰 — Yin-Mao-Chen: Eastern Wood (Tiger, Rabbit, Dragon)**
 
 The full spring. Three consecutive months of explosive, unstoppable growth. Yin breaks the frozen ground with the Tiger's roar, Mao blooms in the Rabbit's perfect sunrise, and Chen carries the Dragon's complex, misty earth into the transitional warmth of late spring. Together they produce an overwhelming force of Wood energy: growth, creativity, expansion, and the relentless push of life emerging from darkness.
 
@@ -1003,7 +1003,7 @@ What the clash liberates: the stored contents. Metal and Wood, previously locked
 
 ---
 
-### **寅申冲 — Yín-Shen Clash (Tiger vs Monkey: Wood vs Metal)**
+### **寅申冲 — Yin-Shen Clash (Tiger vs Monkey: Wood vs Metal)**
 
 The collision between the explosive beginning of spring and the sharp beginning of autumn — growth versus harvest, expansion versus contraction, the forest versus the axe. Yin's Yang Wood drives upward; Shen's Yang Metal drives inward. When they collide, the result is the sound of the axe striking the tree: violent, decisive, and transformative in a direction that depends entirely on which force is stronger.
 
@@ -1019,11 +1019,11 @@ What the clash liberates: the hidden Water in Shen and the hidden Fire in Yin. T
 
 ### **卯酉冲 — Mao-You Clash (Rabbit vs Rooster: Wood vs Metal)**
 
-The collision between pure Yin Wood and pure Yin Metal — the most refined, most concentrated version of the Wood-Metal opposition. Where Yín-Shen is the forest versus the axe (crude, powerful, dynamic), Mao-You is the flower versus the scalpel (precise, delicate, devastating). Both Branches are pure — single hidden stems, no secondary elements, no dilution. The clash is clean, exact, and merciless in its precision.
+The collision between pure Yin Wood and pure Yin Metal — the most refined, most concentrated version of the Wood-Metal opposition. Where Yin-Shen is the forest versus the axe (crude, powerful, dynamic), Mao-You is the flower versus the scalpel (precise, delicate, devastating). Both Branches are pure — single hidden stems, no secondary elements, no dilution. The clash is clean, exact, and merciless in its precision.
 
 The Wood domain and the Metal domain collide at their most refined points. What Mao represents (pure creative expression, beauty, gentle growth) is incompatible with what You represents (pure refinement, precision, the uncompromising standard). The person experiences this as a conflict between their desire to create freely and their insistence on perfection — the artist versus the critic, the flower versus the blade, the impulse to bloom versus the impulse to prune.
 
-The clash is yin on both sides — less explosive than Yín-Shen but more penetrating. The damage is surgical rather than catastrophic. The Rabbit doesn't survive the Rooster's blade intact, and the Rooster doesn't emerge from the encounter with its composure undisturbed. Both are changed. Both are diminished. The pure beauty of each is compromised by the encounter with its opposite.
+The clash is yin on both sides — less explosive than Yin-Shen but more penetrating. The damage is surgical rather than catastrophic. The Rabbit doesn't survive the Rooster's blade intact, and the Rooster doesn't emerge from the encounter with its composure undisturbed. Both are changed. Both are diminished. The pure beauty of each is compromised by the encounter with its opposite.
 
 What the clash liberates: clarity through opposition. The flower that survives the blade is the flower that deserved to survive. The standard that survives the encounter with wild beauty is the standard that was worth keeping. The clash destroys what is merely pretty and merely precise, leaving only what is strong enough to survive the collision. This is the most aesthetically violent clash — the one that hurts beauty in the service of truth.
 
@@ -1047,7 +1047,7 @@ The collision between the Snake's concentrated, intelligent Fire and the Pig's d
 
 The Fire domain and the Water domain collide. What Si represents (focused transformation, intelligent intensity, the deliberate application of heat) is incompatible with what Hai represents (deep potential, gestating creativity, the patient nurturing of things not yet born). The person experiences this as a conflict between their desire to transform things now and their need to let things develop in their own time — the impatient forge versus the patient womb.
 
-The clash carries hidden complexity: Si contains Geng Metal (being forged) and Wù Earth (being generated). Hai contains Jia Wood (being gestated) and Ren Water (the ocean). The collision releases all of these hidden contents — Metal, Earth, Wood, Water — creating a multielement upheaval that affects far more than just the Fire-Water opposition on the surface.
+The clash carries hidden complexity: Si contains Geng Metal (being forged) and Wu Earth (being generated). Hai contains Jia Wood (being gestated) and Ren Water (the ocean). The collision releases all of these hidden contents — Metal, Earth, Wood, Water — creating a multielement upheaval that affects far more than just the Fire-Water opposition on the surface.
 
 What the clash liberates: the Metal inside Si (Resource for Water Day Masters) and the Wood inside Hai (Output energy). The collision breaks both alchemical processes — what was being forged and what was being gestated are both released prematurely. Premature, but available. The unfinished sword and the unfinished creation both enter the world before they're ready, which is either a tragedy of interrupted potential or the necessary birth that only crisis can deliver.
 
@@ -1061,15 +1061,15 @@ The classical tradition identifies two punishment triangles, each with a differe
 
 ---
 
-### **寅巳申刑 — Yín-Si-Shen: The Punishment of Ingratitude (无恩之刑)**
+### **寅巳申刑 — Yin-Si-Shen: The Punishment of Ingratitude (无恩之刑)**
 
-Tiger, Snake, Monkey. Three Branches that are also involved in the Si-Shen harmony and the Yín-Shen clash — they are already in complex relationship, and when all three are present, the complexity becomes a grinding cycle of power, transformation, and aggression that never resolves.
+Tiger, Snake, Monkey. Three Branches that are also involved in the Si-Shen harmony and the Yin-Shen clash — they are already in complex relationship, and when all three are present, the complexity becomes a grinding cycle of power, transformation, and aggression that never resolves.
 
 The Tiger's explosive ambition (Wood) meets the Snake's calculated intensity (Fire) meets the Monkey's sharp cleverness (Metal). Wood feeds Fire — the Tiger gives the Snake its life — and yet the Tiger punishes the Snake; Fire controls Metal and Metal controls Wood, so the triangle closes into a loop in which the gift of generation is answered with aggression and each element is simultaneously the attacker and the attacked. No one wins. Everyone is ground down.
 
-The character of this punishment is ingratitude — the classical name means the punishment without kindness. Nourishment is given and repaid with harm: the one who lifted you turns on you, or the one you lifted does. In a person's chart, it manifests as recurring betrayals inside relationships of obligation — mentor and protégé, patron and client, parent and child, benefactor and beneficiary — and as a cycle in which ambition, intensity, and cleverness each undermine the very thing that fed them.
+The character of this punishment is ingratitude — the classical name means the punishment without kindness. Nourishment is given and repaid with harm: the one who lifted you turns on you, or the one you lifted does. In a person's chart, it manifests as recurring betrayals inside relationships of obligation — mentor and protege, patron and client, parent and child, benefactor and beneficiary — and as a cycle in which ambition, intensity, and cleverness each undermine the very thing that fed them.
 
-**When two of three are present (half-punishment):** Yín-Si creates a friction between ambition and transformative intensity — the person starts fires they can't control. Si-Shen creates a friction between calculation and cleverness — the person outsmarts themselves. Yín-Shen creates a friction between growth and cutting — the person builds and destroys in alternating cycles. Each half-punishment carries its own flavor of grinding repetition.
+**When two of three are present (half-punishment):** Yin-Si creates a friction between ambition and transformative intensity — the person starts fires they can't control. Si-Shen creates a friction between calculation and cleverness — the person outsmarts themselves. Yin-Shen creates a friction between growth and cutting — the person builds and destroys in alternating cycles. Each half-punishment carries its own flavor of grinding repetition.
 
 **Across pillar positions:** The punishment's impact depends on which life domains are involved. Year-Month-Day means the ancestry, career, and self are locked in a three-way cycle of gifts repaid with harm. Month-Day-Hour means the career, self, and private world are grinding against each other. The specific combination determines where the person feels the walls closing in.
 
@@ -1145,11 +1145,11 @@ The emotional quality: the person whose discipline is constantly disrupted by th
 
 ---
 
-### **寅巳害 — Yín-Si Harm (Tiger and Snake harm each other)**
+### **寅巳害 — Yin-Si Harm (Tiger and Snake harm each other)**
 
-Yín (Tiger) wants to harmonize with Hai (Pig), forming the Yín-Hai harmony toward Wood. But Si (Snake) clashes with Hai (Si-Hai clash), attacking the Water that Yin was drawing nourishment from. The Snake destroys the Tiger's creative source by colliding with the Tiger's generative ally. And in reverse: Si wants to harmonize with Shen (Monkey), and Yin clashes with Shen (Yín-Shen clash). The Tiger destroys the Snake's partnership the same way.
+Yin (Tiger) wants to harmonize with Hai (Pig), forming the Yin-Hai harmony toward Wood. But Si (Snake) clashes with Hai (Si-Hai clash), attacking the Water that Yin was drawing nourishment from. The Snake destroys the Tiger's creative source by colliding with the Tiger's generative ally. And in reverse: Si wants to harmonize with Shen (Monkey), and Yin clashes with Shen (Yin-Shen clash). The Tiger destroys the Snake's partnership the same way.
 
-In practice: the ambitious growth domain and the transformative intensity domain interfere with each other through their opposing relationships to the deep creative source. The person's bold ambition (Yín) relies on deep creative potential (Hai), but their intense, calculating side (Si) disrupts that potential through confrontation. The growth and the transformation are working at cross-purposes.
+In practice: the ambitious growth domain and the transformative intensity domain interfere with each other through their opposing relationships to the deep creative source. The person's bold ambition (Yin) relies on deep creative potential (Hai), but their intense, calculating side (Si) disrupts that potential through confrontation. The growth and the transformation are working at cross-purposes.
 
 The emotional quality: the person whose ambition is undermined by their own intensity, whose creative sources are disrupted by their need to control and transform, whose bold forward movement is sabotaged by the very sophistication that should have supported it.
 
@@ -1167,7 +1167,7 @@ The emotional quality: the person whose gentle gifts are undermined by their own
 
 ### **申亥害 — Shen-Hai Harm (Monkey and Pig harm each other)**
 
-Shen (Monkey) wants to harmonize with Si (Snake), forming the Si-Shen harmony toward Water. But Hai (Pig) clashes with Si (Si-Hai clash), attacking the transformative fire that Shen was bonding with. The Pig destroys the Monkey's alchemical alliance by flooding the Monkey's forge-partner. And in reverse: Hai wants to harmonize with Yín (Tiger), and Shen clashes with Yin (Yín-Shen clash). The Monkey destroys the Pig's partnership the same way.
+Shen (Monkey) wants to harmonize with Si (Snake), forming the Si-Shen harmony toward Water. But Hai (Pig) clashes with Si (Si-Hai clash), attacking the transformative fire that Shen was bonding with. The Pig destroys the Monkey's alchemical alliance by flooding the Monkey's forge-partner. And in reverse: Hai wants to harmonize with Yin (Tiger), and Shen clashes with Yin (Yin-Shen clash). The Monkey destroys the Pig's partnership the same way.
 
 In practice: the clever, resourceful domain and the deep, gestating domain interfere with each other through their opposing relationships to the transformative process. The person's ingenuity (Shen) relies on focused transformation (Si), but their deep creative reservoir (Hai) overwhelms that focus through sheer volume. The cleverness and the depth work against each other.
 
@@ -1215,7 +1215,7 @@ The five combinations follow a specific pattern: each pairs a yang Stem with a y
 
 ---
 
-### **甲己合 — Jiǎ-Jǐ Combination: Yang Wood and Yin Earth → transforming toward Earth**
+### **甲己合 — Jia-Ji Combination: Yang Wood and Yin Earth → transforming toward Earth**
 
 The great tree and the garden soil. Jia reaches downward, Ji reaches upward, and the two discover that the tree and its earth are not separate things — the roots and the soil are a single system. The attraction is one of completion: the tree has always needed the soil, the soil has always needed something to grow. When they meet across pillar positions, each recognizes in the other the missing half of a relationship so fundamental it feels like nature itself.
 
@@ -1231,7 +1231,7 @@ The transformation target is Earth. When the combination succeeds, both Stems ab
 
 ---
 
-### **乙庚合 — Yǐ-Gēng Combination: Yin Wood and Yang Metal → transforming toward Metal**
+### **乙庚合 — Yi-Geng Combination: Yin Wood and Yang Metal → transforming toward Metal**
 
 The vine and the axe. The most dramatic of the five combinations because it pairs two elements in a controlling relationship — Metal controls Wood — and yet the attraction overrides the hostility. The vine wraps around the blade not because it doesn't know the blade is sharp but because it cannot help itself. The axe is drawn to the vine not to cut it but to be softened by it. Each is changed by the encounter: the blade becomes less brutal, the vine becomes less formless.
 
@@ -1247,7 +1247,7 @@ The transformation target is Metal. When the combination succeeds, both Stems ab
 
 ---
 
-### **丙辛合 — Bǐng-Xīn Combination: Yang Fire and Yin Metal → transforming toward Water**
+### **丙辛合 — Bing-Xin Combination: Yang Fire and Yin Metal → transforming toward Water**
 
 The sun and the jewel. Bing's indiscriminate radiance meets Xin's exquisite refinement, and the combination produces neither Fire nor Metal but Water — the element that opposes Fire and is generated by Metal. This is the most alchemically surprising combination: two elements that should produce heat and melting instead produce coolness and depth. The sun illuminates the jewel, the jewel reflects the sun, and the interplay of light and reflection creates something liquid, flowing, and deep.
 
@@ -1263,7 +1263,7 @@ The transformation target is Water. When the combination succeeds, both Stems ab
 
 ---
 
-### **丁壬合 — Dīng-Rén Combination: Yin Fire and Yang Water → transforming toward Wood**
+### **丁壬合 — Ding-Ren Combination: Yin Fire and Yang Water → transforming toward Wood**
 
 The candle and the ocean. The most asymmetric combination in apparent scale — the small, focused flame meeting the vast, strategic water — and yet the attraction is magnetic. The candle should be extinguished by the ocean. Instead, the ocean is drawn to the candle's purposeful warmth, and the candle is drawn to the ocean's boundless depth. Together they produce Wood: growth, creative emergence, the living thing that arises when water and warmth collaborate.
 
@@ -1279,17 +1279,17 @@ The transformation target is Wood. When the combination succeeds, both Stems aba
 
 ---
 
-### **戊癸合 — Wù-Guǐ Combination: Yang Earth and Yin Water → transforming toward Fire**
+### **戊癸合 — Wu-Gui Combination: Yang Earth and Yin Water → transforming toward Fire**
 
 The mountain and the rain. The most counterintuitive transformation: Earth and Water, two elements in a controlling relationship (Earth dams Water), produce Fire — the element that seems to have nothing to do with either. The mountain absorbs the rain, and the combination of mass and moisture generates heat — the slow, geological warmth of a planet whose core is molten, the fire that burns at the center of the earth, invisible from the surface but powering everything.
 
 The transformation target is Fire. When the combination succeeds, both Stems abandon their original identities — the mountain stops being inert mass and becomes a source of radiance, the rain stops falling and becomes fuel for a hidden flame. The Yang Earth principle of massive, patient absorption is converted into the Fire principle of warmth and visibility, and the Yin Water principle of subtle, pervasive nourishment is dissolved into the heat that the absorbed moisture generates. The encounter produces not structure or depth but light — the internal fire that results when the mountain has absorbed enough rain to change its own chemistry.
 
-**When Wù is the Day Master combining with Gui:** The self is being pulled from Earth's immovable mass toward Fire's radiance. The person born to absorb, endure, and wait discovers an irresistible attraction to something subtle, gentle, and pervasive (Gui), and the encounter transforms the self from the mountain into the volcano — Earth that has found its internal fire. The patience doesn't disappear, but it acquires a hidden heat. The mountain begins to glow from within. If the transformation is incomplete, the person lives between the mountain's desire for stability and the emerging warmth that destabilizes it — the earth cracking with heat it didn't know it contained.
+**When Wu is the Day Master combining with Gui:** The self is being pulled from Earth's immovable mass toward Fire's radiance. The person born to absorb, endure, and wait discovers an irresistible attraction to something subtle, gentle, and pervasive (Gui), and the encounter transforms the self from the mountain into the volcano — Earth that has found its internal fire. The patience doesn't disappear, but it acquires a hidden heat. The mountain begins to glow from within. If the transformation is incomplete, the person lives between the mountain's desire for stability and the emerging warmth that destabilizes it — the earth cracking with heat it didn't know it contained.
 
-**When Gui is the Day Master combining with Wù:** The self is being pulled from Water's subtle pervasion toward Fire through the medium of Earth's massive absorption. The rain discovers that the mountain it falls upon doesn't just absorb it — it transforms it. The moisture becomes heat. The gentle, empathic, boundary-less rain is converted into something radiant, visible, and defined. The transformation changes the self from the invisible nurturer into the visible source of warmth. If the transformation is incomplete, the person lives between the desire to seep invisibly into everything (Water) and the pull toward being seen and felt as warmth (Fire) — the rain that wants to become a flame.
+**When Gui is the Day Master combining with Wu:** The self is being pulled from Water's subtle pervasion toward Fire through the medium of Earth's massive absorption. The rain discovers that the mountain it falls upon doesn't just absorb it — it transforms it. The moisture becomes heat. The gentle, empathic, boundary-less rain is converted into something radiant, visible, and defined. The transformation changes the self from the invisible nurturer into the visible source of warmth. If the transformation is incomplete, the person lives between the desire to seep invisibly into everything (Water) and the pull toward being seen and felt as warmth (Fire) — the rain that wants to become a flame.
 
-**The relational dynamic:** Wù is yang, Gui is yin — complementary polarity. Earth controls Water, so the combination arises from the controlling relationship. But the transformation into Fire is the most geologically mysterious of the five combinations: neither partner's element produces Fire directly. Earth generates Metal, not Fire. Water generates Wood, not Fire. The Fire arises from the specific interaction between these two — the mountain absorbing the rain and generating heat from the absorption. This is the combination of hidden transformation: the change happens deep inside, invisible to the surface, and the resulting Fire is internal rather than external. In a chart, this combination often correlates with late-blooming intensity — people who appear stable and gentle on the surface while a powerful warmth builds invisibly inside them, eventually emerging as a force that surprises everyone, including themselves.
+**The relational dynamic:** Wu is yang, Gui is yin — complementary polarity. Earth controls Water, so the combination arises from the controlling relationship. But the transformation into Fire is the most geologically mysterious of the five combinations: neither partner's element produces Fire directly. Earth generates Metal, not Fire. Water generates Wood, not Fire. The Fire arises from the specific interaction between these two — the mountain absorbing the rain and generating heat from the absorption. This is the combination of hidden transformation: the change happens deep inside, invisible to the surface, and the resulting Fire is internal rather than external. In a chart, this combination often correlates with late-blooming intensity — people who appear stable and gentle on the surface while a powerful warmth builds invisibly inside them, eventually emerging as a force that surprises everyone, including themselves.
 
 **When neither Stem is the Day Master:** The Earth Stem and the Water Stem are pulled away from their Ten God roles into mutual absorption. The life domains represented become linked through the mysterious alchemy of mass and moisture producing hidden heat. Both Stems' chart functions are diluted by the bond, and the Fire-transforming quality colors the entangled domains with a warmth that seems to come from nowhere.
 
@@ -1339,7 +1339,7 @@ The cycle is the same for every element — the twelve stages always occur in th
 
 # THE TWELVE STAGES
 
-### **1\. 长生 Cháng Shēng — Birth (Long Life)**
+### **1\. 长生 Chang Sheng — Birth (Long Life)**
 
 The element enters the world. Not as a fully formed force but as a new thing, fresh, vital, full of the particular energy that comes from beginning. This is not the explosive emergence of spring — that's the Peak. This is the first breath, the moment the element separates from its source and begins to exist independently. The classical name, "Long Life," tells you something important: what is born at this stage has longevity encoded in it. The element arriving at its Birth point is not fragile — it is fresh. The newborn is closer to its origin than anything else in the cycle, and that proximity to the source gives it a specific kind of power: the power of the beginning, which contains within it the entire journey to come.
 
@@ -1353,7 +1353,7 @@ The element enters the world. Not as a fully formed force but as a new thing, fr
 
 ---
 
-### **2\. 沐浴 Mù Yù — Bathing (Cleansing)**
+### **2\. 沐浴 Mu Yu — Bathing (Cleansing)**
 
 The element, newly born, is bathed — exposed, vulnerable, stripped of protection. The classical name carries a specific cultural resonance: the newborn is washed, and in that washing it is simultaneously purified and made naked. This is the stage of exposure, of being seen without covering, of the element encountering the world before it has developed any defense. The Bathing stage is traditionally associated with romance, attraction, and scandal — because nakedness is simultaneously beautiful and dangerous. The element at this stage is attractive precisely because it's unguarded, and unguarded precisely because it hasn't yet learned to protect itself.
 
@@ -1367,7 +1367,7 @@ The element, newly born, is bathed — exposed, vulnerable, stripped of protecti
 
 ---
 
-### **3\. 冠带 Guān Dài — Capping (Crowning / Coming of Age)**
+### **3\. 冠带 Guan Dai — Capping (Crowning / Coming of Age)**
 
 The element puts on its ceremonial cap — the classical Chinese rite of passage where a young person is formally recognized as an adult. The vulnerability of the Bathing stage is covered, clothed, given social form. The element is no longer naked; it is dressed for the world. This is the stage of preparation, of being ready but not yet tested, of having acquired the appearance of maturity without the full substance. The cap is real — the element genuinely has more structure and presence than it did at Birth or Bathing — but it's still new on the head. The authority is granted, not yet earned. The competence is developing, not yet proven.
 
@@ -1381,7 +1381,7 @@ The element puts on its ceremonial cap — the classical Chinese rite of passage
 
 ---
 
-### **4\. 临官 Lín Guān — Approaching Office (Official's Post)**
+### **4\. 临官 Lin Guan — Approaching Office (Official's Post)**
 
 The element takes its formal position. The cap has been worn, the preparation is complete, and now the element enters the role it was trained for. This is the stage of official function — not the peak of power but the assumption of duty. The element is now productive, useful, integrated into the world's machinery. The classical name, "Approaching Office," carries the specific resonance of a newly appointed official arriving at their post: the authority is real, the responsibility is genuine, and the element is performing its proper function in the world.
 
@@ -1395,7 +1395,7 @@ The element takes its formal position. The cap has been worn, the preparation is
 
 ---
 
-### **5\. 帝旺 Dì Wàng — Emperor's Peak (Sovereign Prosperity)**
+### **5\. 帝旺 Di Wang — Emperor's Peak (Sovereign Prosperity)**
 
 The element at its absolute maximum power. The classical name is not "peak" but "Emperor's Prosperity" — the element is not merely strong but sovereign, ruling its domain with unchecked authority. This is the noon of the element's cycle, the midsummer of its year, the prime of its life. Everything the element can be, it is now. The power is total, the expression is complete, and the element fills every available space with its presence.
 
@@ -1411,7 +1411,7 @@ But the Emperor's Peak is also the moment before decline. The element is so full
 
 ---
 
-### **6\. 衰 Shuāi — Decline**
+### **6\. 衰 Shuai — Decline**
 
 The element begins to weaken. Not death, not sickness — just the first lessening, the first awareness that the peak has passed. The element is still strong, still functional, still capable. But the direction has changed. Where everything before was rising, now everything is gently, inexorably falling. Decline is not dramatic — it's the slow turning of the tide, the first cool breeze after the longest day, the moment you realize you need glasses for the first time.
 
@@ -1427,7 +1427,7 @@ The classical tradition doesn't treat Decline as purely negative. There is a gra
 
 ---
 
-### **7\. 病 Bìng — Sickness**
+### **7\. 病 Bing — Sickness**
 
 The element is weakened to the point of dysfunction. Not dead — still present, still identifiable — but unable to perform its natural function at full capacity. Sickness is the stage where the element's core nature is compromised: Water that can't flow properly, Fire that can't warm, Metal that can't hold its edge. The system is still running, but it's running badly. Something that should work doesn't.
 
@@ -1443,7 +1443,7 @@ The classical tradition associates this stage with literal illness but also with
 
 ---
 
-### **8\. 死 Sǐ — Death**
+### **8\. 死 Si — Death**
 
 The element ceases to function. Not dissolved, not erased — but no longer active. Death in the Life Stage cycle is not annihilation; it is cessation. The element is still present as a thing that existed, but it is no longer doing what it was made to do. Fire at Death is not Fire anymore — it's ash, the memory of heat, the form without the function. The element has stopped expressing its nature.
 
@@ -1459,7 +1459,7 @@ The classical tradition treats Death as a definitive stage but not a final one �
 
 ---
 
-### **9\. 墓 Mù — Tomb (Storage / Graveyard)**
+### **9\. 墓 Mu — Tomb (Storage / Graveyard)**
 
 The dead element is interred. What ceased functioning at Death is now stored — sealed in the earth, locked away, preserved but inaccessible under normal conditions. The Tomb is also called Storage (库), and this double meaning is crucial: the element is simultaneously buried and preserved. What's in the Tomb is not gone — it's locked. The treasure and the corpse share the same vault.
 
@@ -1475,7 +1475,7 @@ The Tomb is the Storage Branch we've already encountered: Chen stores Water, Wei
 
 ---
 
-### **10\. 绝 Jué — Extinction (Void / Severance)**
+### **10\. 绝 Jue — Extinction (Void / Severance)**
 
 The element is completely severed from the manifest world. The Tomb sealed it away; Extinction dissolves even the tomb. This is the absolute nadir — the point in the cycle where the element has no presence, no reserve, no stored potential. It is as close to nonexistence as the cycle allows. The classical name, "Severance," captures the quality: the thread connecting the element to the visible world is cut. There is nothing to draw on, nothing in reserve, nothing stored. The element is in the void between cycles — past death, past burial, past storage, now hovering in the space before the next conception.
 
@@ -1491,7 +1491,7 @@ Yet Extinction is also, paradoxically, the point of maximum freedom. An element 
 
 ---
 
-### **11\. 胎 Tāi — Embryo (Conception)**
+### **11\. 胎 Tai — Embryo (Conception)**
 
 The element reconceives. From the void of Extinction, the first spark of the next cycle ignites. The element is not yet born — Birth is two stages away — but the intention, the seed, the initial organizing principle of the new cycle has formed. Embryo is conception: the moment when what will become a new life is initiated but not yet visible, not yet viable, not yet independent. The element exists as potential without form, as direction without substance.
 
@@ -1507,7 +1507,7 @@ The Embryo stage is remarkable because it occurs in territory that is elementall
 
 ---
 
-### **12\. 养 Yǎng — Nurture (Gestation / Nourishing)**
+### **12\. 养 Yang — Nurture (Gestation / Nourishing)**
 
 The embryo is being fed. The conceived potential is developing, growing, being nourished toward viability. Nurture is the stage between conception and birth — the full gestation period, the nine months, the slow accumulation of substance that will eventually emerge as a new life. The element is not yet born, not yet visible, not yet independent — but it is being actively built. The Nurture stage is the most patient stage in the cycle: the work is happening, but it's invisible, internal, and cannot be rushed.
 
@@ -1527,25 +1527,25 @@ The cycle progresses forward through the Branches for yang Stems and backward fo
 
 ### **Yang Stems (forward progression)**
 
-**甲 Jiǎ — Yang Wood** Birth: 亥 Hai (Pig) · Bathing: 子 Zi (Rat) · Capping: 丑 Chou (Ox) · Office: 寅 Yín (Tiger) · Peak: 卯 Mao (Rabbit) · Decline: 辰 Chen (Dragon) · Sickness: 巳 Si (Snake) · Death: 午 Wu (Horse) · Tomb: 未 Wei (Goat) · Extinction: 申 Shen (Monkey) · Embryo: 酉 You (Rooster) · Nurture: 戌 Xu (Dog)
+**甲 Jia — Yang Wood** Birth: 亥 Hai (Pig) · Bathing: 子 Zi (Rat) · Capping: 丑 Chou (Ox) · Office: 寅 Yin (Tiger) · Peak: 卯 Mao (Rabbit) · Decline: 辰 Chen (Dragon) · Sickness: 巳 Si (Snake) · Death: 午 Wu (Horse) · Tomb: 未 Wei (Goat) · Extinction: 申 Shen (Monkey) · Embryo: 酉 You (Rooster) · Nurture: 戌 Xu (Dog)
 
 Yang Wood is born in the deep water of the Pig — the tree's seed germinates in the dark, gestating winter water. It peaks in the Rabbit — pure Yin Wood, its own element in its most refined expression. It dies in the Horse — the tree consumed by peak Fire, its own output becoming its destroyer. It is entombed in the Goat — stored in warm earth, the wood preserved in the summer garden. It is extinct in the Monkey — severed by Metal at its sharpest. And it reconceives in the Rooster — the seed of new Wood forming inside pure Metal, inside the very element that cut it down. The tree is reborn from the blade.
 
 ---
 
-**丙 Bǐng — Yang Fire (and 戊 Wù — Yang Earth)** Birth: 寅 Yín (Tiger) · Bathing: 卯 Mao (Rabbit) · Capping: 辰 Chen (Dragon) · Office: 巳 Si (Snake) · Peak: 午 Wu (Horse) · Decline: 未 Wei (Goat) · Sickness: 申 Shen (Monkey) · Death: 酉 You (Rooster) · Tomb: 戌 Xu (Dog) · Extinction: 亥 Hai (Pig) · Embryo: 子 Zi (Rat) · Nurture: 丑 Chou (Ox)
+**丙 Bing — Yang Fire (and 戊 Wu — Yang Earth)** Birth: 寅 Yin (Tiger) · Bathing: 卯 Mao (Rabbit) · Capping: 辰 Chen (Dragon) · Office: 巳 Si (Snake) · Peak: 午 Wu (Horse) · Decline: 未 Wei (Goat) · Sickness: 申 Shen (Monkey) · Death: 酉 You (Rooster) · Tomb: 戌 Xu (Dog) · Extinction: 亥 Hai (Pig) · Embryo: 子 Zi (Rat) · Nurture: 丑 Chou (Ox)
 
 Yang Fire is born in the Tiger — the flame kindled by the great tree's explosive spring energy. It peaks in the Horse — high noon, midsummer, the sun at its absolute zenith. It dies in the Rooster — the flame extinguished by pure Metal's autumn cold. It is entombed in the Dog — the embers stored in the loyal guardian's sealed vault. It is extinct in the Pig — severed by the deep winter water. And it reconceives in the Rat — the seed of new Fire forming at midnight, at the absolute bottom of the Water cycle, inside the very darkness that defines Fire's absence. The sun is reborn from the deepest night.
 
 ---
 
-**庚 Gēng — Yang Metal** Birth: 巳 Si (Snake) · Bathing: 午 Wu (Horse) · Capping: 未 Wei (Goat) · Office: 申 Shen (Monkey) · Peak: 酉 You (Rooster) · Decline: 戌 Xu (Dog) · Sickness: 亥 Hai (Pig) · Death: 子 Zi (Rat) · Tomb: 丑 Chou (Ox) · Extinction: 寅 Yín (Tiger) · Embryo: 卯 Mao (Rabbit) · Nurture: 辰 Chen (Dragon)
+**庚 Geng — Yang Metal** Birth: 巳 Si (Snake) · Bathing: 午 Wu (Horse) · Capping: 未 Wei (Goat) · Office: 申 Shen (Monkey) · Peak: 酉 You (Rooster) · Decline: 戌 Xu (Dog) · Sickness: 亥 Hai (Pig) · Death: 子 Zi (Rat) · Tomb: 丑 Chou (Ox) · Extinction: 寅 Yin (Tiger) · Embryo: 卯 Mao (Rabbit) · Nurture: 辰 Chen (Dragon)
 
 Yang Metal is born in the Snake — the blade forged in the alchemist's fire. It peaks in the Rooster — pure Yin Metal, the jewel at the height of autumn's precision. It dies in the Rat — the blade dissolved by deep Water, its substance drained into what it produces. It is entombed in the Ox — stored in frozen earth, the treasury that preserves forged Metal against corrosion. It is extinct in the Tiger — severed by the explosive Wood that it should have controlled. And it reconceives in the Rabbit — the seed of new Metal forming inside pure Yin Wood, inside the very softness the blade was made to cut. The sword is reborn from the flower.
 
 ---
 
-**壬 Rén — Yang Water** Birth: 申 Shen (Monkey) · Bathing: 酉 You (Rooster) · Capping: 戌 Xu (Dog) · Office: 亥 Hai (Pig) · Peak: 子 Zi (Rat) · Decline: 丑 Chou (Ox) · Sickness: 寅 Yín (Tiger) · Death: 卯 Mao (Rabbit) · Tomb: 辰 Chen (Dragon) · Extinction: 巳 Si (Snake) · Embryo: 午 Wu (Horse) · Nurture: 未 Wei (Goat)
+**壬 Ren — Yang Water** Birth: 申 Shen (Monkey) · Bathing: 酉 You (Rooster) · Capping: 戌 Xu (Dog) · Office: 亥 Hai (Pig) · Peak: 子 Zi (Rat) · Decline: 丑 Chou (Ox) · Sickness: 寅 Yin (Tiger) · Death: 卯 Mao (Rabbit) · Tomb: 辰 Chen (Dragon) · Extinction: 巳 Si (Snake) · Embryo: 午 Wu (Horse) · Nurture: 未 Wei (Goat)
 
 Yang Water is born in the Monkey — the ocean's first spring emerging from Metal's mountain, resource generating water for the first time. It peaks in the Rat — pure Water at midnight, the ocean at its deepest, most concentrated point. It dies in the Rabbit — the river drained dry by pure Wood, every drop absorbed by the garden's roots. It is entombed in the Dragon — the ocean sealed in the Dragon's earthen storehouse, water locked in the vault of complex terrain. It is extinct in the Snake — severed by the concentrated Fire that evaporates the last moisture. And it reconceives in the Horse — the seed of new Water forming at high noon, inside peak Fire, inside the very blaze that represents Water's maximum absence. The ocean is reborn from the sun.
 
@@ -1553,25 +1553,25 @@ Yang Water is born in the Monkey — the ocean's first spring emerging from Meta
 
 ### **Yin Stems (reverse progression, traditional method)**
 
-**乙 Yǐ — Yin Wood** Birth: 午 Wu (Horse) · Bathing: 巳 Si (Snake) · Capping: 辰 Chen (Dragon) · Office: 卯 Mao (Rabbit) · Peak: 寅 Yín (Tiger) · Decline: 丑 Chou (Ox) · Sickness: 子 Zi (Rat) · Death: 亥 Hai (Pig) · Tomb: 戌 Xu (Dog) · Extinction: 酉 You (Rooster) · Embryo: 申 Shen (Monkey) · Nurture: 未 Wei (Goat)
+**乙 Yi — Yin Wood** Birth: 午 Wu (Horse) · Bathing: 巳 Si (Snake) · Capping: 辰 Chen (Dragon) · Office: 卯 Mao (Rabbit) · Peak: 寅 Yin (Tiger) · Decline: 丑 Chou (Ox) · Sickness: 子 Zi (Rat) · Death: 亥 Hai (Pig) · Tomb: 戌 Xu (Dog) · Extinction: 酉 You (Rooster) · Embryo: 申 Shen (Monkey) · Nurture: 未 Wei (Goat)
 
 Yin Wood is born in the Horse — the vine sparked to life by Fire's heat, the flower opening in the blaze of noon. It peaks in the Tiger — Yang Wood's domain, where the vine reaches its maximum power by climbing the great tree. It dies in the Pig — the vine drowned in deep winter water, the gentle growth overwhelmed by the flood. It is entombed in the Dog — stored in the guarded earth, the vine's remains sealed behind the watchdog's gate. It is extinct in the Rooster — severed by pure Metal's refined blade. And it reconceives in the Monkey — the seed of new Wood forming inside raw Metal's workshop, inside the clever, sharp intelligence that cut it down. The vine is reborn from the blade's own forge.
 
 ---
 
-**丁 Dīng — Yin Fire (and 己 Jǐ — Yin Earth)** Birth: 酉 You (Rooster) · Bathing: 申 Shen (Monkey) · Capping: 未 Wei (Goat) · Office: 午 Wu (Horse) · Peak: 巳 Si (Snake) · Decline: 辰 Chen (Dragon) · Sickness: 卯 Mao (Rabbit) · Death: 寅 Yín (Tiger) · Tomb: 丑 Chou (Ox) · Extinction: 子 Zi (Rat) · Embryo: 亥 Hai (Pig) · Nurture: 戌 Xu (Dog)
+**丁 Ding — Yin Fire (and 己 Ji — Yin Earth)** Birth: 酉 You (Rooster) · Bathing: 申 Shen (Monkey) · Capping: 未 Wei (Goat) · Office: 午 Wu (Horse) · Peak: 巳 Si (Snake) · Decline: 辰 Chen (Dragon) · Sickness: 卯 Mao (Rabbit) · Death: 寅 Yin (Tiger) · Tomb: 丑 Chou (Ox) · Extinction: 子 Zi (Rat) · Embryo: 亥 Hai (Pig) · Nurture: 戌 Xu (Dog)
 
 Yin Fire is born in the Rooster — the candle lit by Metal's spark, the forge flame kindled by the precision of pure Yin Metal. It peaks in the Snake — concentrated, intelligent fire at its most purposeful and powerful. It dies in the Tiger — the candle consumed by the great tree's explosive Wood, the fuel overwhelming the small flame. It is entombed in the Ox — stored in frozen earth, the candle's embers sealed in the cold vault. It is extinct in the Rat — severed by pure Water at midnight, the flame completely drowned. And it reconceives in the Pig — the seed of new Fire forming in the deepest Water, in the womb of the dark ocean. The candle is reborn from the flood.
 
 ---
 
-**辛 Xīn — Yin Metal** Birth: 子 Zi (Rat) · Bathing: 亥 Hai (Pig) · Capping: 戌 Xu (Dog) · Office: 酉 You (Rooster) · Peak: 申 Shen (Monkey) · Decline: 未 Wei (Goat) · Sickness: 午 Wu (Horse) · Death: 巳 Si (Snake) · Tomb: 辰 Chen (Dragon) · Extinction: 卯 Mao (Rabbit) · Embryo: 寅 Yín (Tiger) · Nurture: 丑 Chou (Ox)
+**辛 Xin — Yin Metal** Birth: 子 Zi (Rat) · Bathing: 亥 Hai (Pig) · Capping: 戌 Xu (Dog) · Office: 酉 You (Rooster) · Peak: 申 Shen (Monkey) · Decline: 未 Wei (Goat) · Sickness: 午 Wu (Horse) · Death: 巳 Si (Snake) · Tomb: 辰 Chen (Dragon) · Extinction: 卯 Mao (Rabbit) · Embryo: 寅 Yin (Tiger) · Nurture: 丑 Chou (Ox)
 
 Yin Metal is born in the Rat — the jewel emerging from deep Water, the precious metal formed in the cold, still depths. It peaks in the Monkey — Yang Metal's domain, where the refined gem reaches its maximum power alongside its raw counterpart. It dies in the Snake — the jewel melted in the alchemist's fire, the delicate refinement destroyed by concentrated heat. It is entombed in the Dragon — stored in the mythic storehouse's complex earth, the gem locked in the Dragon's hoard. It is extinct in the Rabbit — severed by pure Yin Wood, the gentlest possible dissolution. And it reconceives in the Tiger — the seed of new Metal forming inside explosive Yang Wood, inside the forest that should be Metal's raw material. The jewel is reborn from the wildwood.
 
 ---
 
-**癸 Guǐ — Yin Water** Birth: 卯 Mao (Rabbit) · Bathing: 寅 Yín (Tiger) · Capping: 丑 Chou (Ox) · Office: 子 Zi (Rat) · Peak: 亥 Hai (Pig) · Decline: 戌 Xu (Dog) · Sickness: 酉 You (Rooster) · Death: 申 Shen (Monkey) · Tomb: 未 Wei (Goat) · Extinction: 午 Wu (Horse) · Embryo: 巳 Si (Snake) · Nurture: 辰 Chen (Dragon)
+**癸 Gui — Yin Water** Birth: 卯 Mao (Rabbit) · Bathing: 寅 Yin (Tiger) · Capping: 丑 Chou (Ox) · Office: 子 Zi (Rat) · Peak: 亥 Hai (Pig) · Decline: 戌 Xu (Dog) · Sickness: 酉 You (Rooster) · Death: 申 Shen (Monkey) · Tomb: 未 Wei (Goat) · Extinction: 午 Wu (Horse) · Embryo: 巳 Si (Snake) · Nurture: 辰 Chen (Dragon)
 
 Yin Water is born in the Rabbit — the rain condensing on the petals of pure Wood, the dew appearing on the flower at dawn. It peaks in the Pig — deep gestating water at its most abundant, the underground river at full volume. It dies in the Monkey — the rain absorbed by Metal's mountain, the moisture drawn into the mineral that produces it, consumed by its own source. It is entombed in the Goat — stored in warm earth, the rain sealed in the summer garden's soil. It is extinct in the Horse — severed by peak Fire at high noon, the last moisture evaporated. And it reconceives in the Snake — the seed of new Water forming inside the alchemist's concentrated fire, inside the forge. The rain is reborn from the flame.
 
@@ -1581,7 +1581,7 @@ Yin Water is born in the Rabbit — the rain condensing on the petals of pure Wo
 
 The most profound teaching of the Twelve Life Stages is embedded in where each element reconceives. Without exception, the Embryo stage falls in the Branch that clashes with the element's Emperor's Peak — the point on the wheel of maximum opposition to the element at full power — and Extinction falls in the Branch that clashes with its Office:
 
-Wood peaks in Wood (Mao/Yín) and reconceives in Metal (You/Shen). Fire peaks in Fire (Wu/Si) and reconceives in Water (Zi/Hai). Metal peaks in Metal (You/Shen) and reconceives in Wood (Mao/Yín). Water peaks in Water (Zi/Hai) and reconceives in Fire (Wu/Si). Earth, following Fire's cycle, peaks in Fire (Wu/Si) and reconceives in Water (Zi/Hai).
+Wood peaks in Wood (Mao/Yin) and reconceives in Metal (You/Shen). Fire peaks in Fire (Wu/Si) and reconceives in Water (Zi/Hai). Metal peaks in Metal (You/Shen) and reconceives in Wood (Mao/Yin). Water peaks in Water (Zi/Hai) and reconceives in Fire (Wu/Si). Earth, following Fire's cycle, peaks in Fire (Wu/Si) and reconceives in Water (Zi/Hai).
 
 For Wood and Fire, the seed of the next life forms inside the womb of the element that destroyed the last one: the blade that felled the tree carries the seed of the next forest, and the water that drowned the candle carries the spark of the next flame. For Metal, Water, and Earth the relationship inverts, and the destroyer is reconceived inside its own victim: the sword is reborn from the flower it was made to cut, the ocean from the fire it was made to quench, the mountain from the water it was made to dam. Either way the structural claim is the same — the seed of the next cycle forms at the exact point on the wheel where the element's sovereign power is most completely contradicted. The system insists, at the structural level, that destruction and creation are not opposites but phases of the same process.
 
