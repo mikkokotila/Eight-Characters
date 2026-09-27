@@ -1580,8 +1580,11 @@ document.addEventListener('DOMContentLoaded', () => {
       add(topics, button.textContent, () => goToTopic(button.dataset.context));
     });
     add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
+    // A relationship by its name, as the list names it: in English a chip also reads the
+    // canon's first sentence for it.
     relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {
-      add(requiredTranslation('relationships'), chip.textContent, () => goToTopic(`relationships/${chip.dataset.relationship}`));
+      const id = chip.dataset.relationship;
+      add(requiredTranslation('relationships'), relationships.labelOf(id), () => goToTopic(`relationships/${id}`));
     });
     ROLES.forEach((role) => {
       add(requiredTranslation('roles_title'), requiredTranslation('ten_god_' + role), () => goToTopic(`roles/${role}`));
