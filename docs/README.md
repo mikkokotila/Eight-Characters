@@ -5,6 +5,7 @@ This folder contains practical user documentation for running and using the Ba Z
 ## Start Here
 
 - Setup and first run: `../README.md`
+- Your account: creating it, signing in, its language and data: `Account.md`
 - API reference and request examples: `api.md`
 - Standard chart relationships: `Standard-Relationships.md`
 - Day Master season and roots: `Standard-Day-Master-Context.md`

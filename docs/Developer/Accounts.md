@@ -3,7 +3,7 @@
 `eight_characters/accounts/` keeps the app's accounts: one SQLite database, and a
 backup of every record as its own age-encrypted file in a private Git repository,
 from which the database can be rebuilt with one command, and the API that signs people
-in with a code sent by email. The page starts using the API in a later release.
+in with a code sent by email. Charts need an account; the start page does not.
 
 ## Goals
 
@@ -90,11 +90,49 @@ so the database alone cannot be used to test guesses or take over a session.
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.
 
+## The page
+
+Anyone can open the start page, choose its language, search for a place and type a
+birth. Creating the chart asks for an account first.
+
+| Request | Needs an account |
+|---|---|
+| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is read |
+| `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls` | no |
+
+`tests/test_accounts_app.py` holds both lists, so a new request fails it until it is
+put on one.
+
+- **Who is signed in.** `GET /` writes the account (`{email, language, plan,
+  created_at}`, or `null`) into `<script id="account-state">`, sent with
+  `Cache-Control: private, no-cache` so that no shared cache keeps it. The page renews
+  a session in its second half too, and removes the cookie of one that ended.
+- **Signing in** (`static/account.js`). Creating a chart while signed out opens the
+  account dialog: the address, and for a new account its language, chosen and never
+  preset; Cloudflare Turnstile's widget, whose script loads only when the dialog first
+  opens; then the code from the email. The dialog switches to signing in an existing
+  account, which needs no language.
+- **The account's language.** Signing in sets the page to the account's language, and
+  the chart is asked for in it. The page's own language switches change only the page,
+  as before. The account's language, which its emails use, is set in the account
+  dialog, and the page follows it.
+- **A session that ended** (signed out elsewhere, the account deleted, or unused for
+  30 days) answers a chart with `401`: the dialog asks once more, and the chart is asked
+  for again after signing in. Closing the dialog leaves the form, which says that
+  charts need an account, with the birth kept.
+- **A comparison** asks on its own page, before its frames ask for their charts. **The
+  explorer**, given a birth, links to the start page to sign in.
+- **Signed in, the dialog is the account:** its address and plan, its language,
+  Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
+  account, which needs the address typed again. Signing out starts the page again,
+  empty.
+
 ## Settings
 
 Everything that differs between a laptop, CI and the server comes from the environment
 (AGENTS.md). On the server the values live in `/etc/eight-characters/env`, outside Git.
-A missing or malformed value stops the account API with the list of what is wrong.
+The app reads them, and opens the database, as it starts: a missing or malformed value,
+or a database it cannot open, stops it with the reason.
 
 | Variable | Production | On a laptop |
 |---|---|---|
@@ -112,7 +150,32 @@ A missing or malformed value stops the account API with the list of what is wron
 
 SMTP is used with TLS from the first byte (port 465). Cloudflare publishes test keys
 for Turnstile: site key `1x00000000000000000000AA` and secret
-`1x0000000000000000000000000000000AA` always pass.
+`1x0000000000000000000000000000000AA` always pass (the secret is still checked with
+Cloudflare, so asking for a code needs the network).
+
+### On a laptop
+
+```bash
+LOCAL=~/eight-characters-local
+mkdir -p "$LOCAL/mail"
+python -m eight_characters.accounts init --database "$LOCAL/accounts.sqlite3"
+export EC_APP_ORIGIN=http://127.0.0.1:8000
+export EC_DATABASE_PATH="$LOCAL/accounts.sqlite3"
+export EC_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+export EC_MAIL_FROM='BaZi <kirjaudu@example.com>'
+export EC_MAIL_TRANSPORT=directory
+export EC_MAIL_DIRECTORY="$LOCAL/mail"
+export EC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+export EC_TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+export EC_CLIENT_IP_HEADER=peer
+export EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS=5
+export EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT=20
+uvicorn eight_characters.main:app
+```
+
+Open the page at the origin the settings name, `http://127.0.0.1:8000`: requests from
+another, such as `localhost`, are refused. Each email arrives as a `.eml` file in
+`$LOCAL/mail`, its code in the subject. A new `EC_SECRET_KEY` ends every session.
 
 ## The backup
 
