@@ -25,6 +25,10 @@
   // The visible characters counted: the natal eight, and the luck pillar's that act.
   const CHARACTERS = { natal: 8, stem: 10, branch: 9 };
   const total = (elements) => ELEMENTS.reduce((sum, e) => sum + elements[e], 0);
+  // The phase rule, stem_then_branch_v1: what the stem brings acts in the stem phase only,
+  // and what the branch brings acts in both.
+  const ruled = (component, phases) => Array.isArray(phases)
+    && phases.join() === (component === 'stem' ? ['stem'] : PHASES).join();
   const DISPLAY_ORDER = ['hour', 'day', 'month', 'year', 'luck'];
   // Drawn, as the page's other arrows are: the page fonts have no arrow glyphs.
   const CHEVRON = (points) => `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="${points}"></polyline></svg>`;
@@ -73,9 +77,11 @@
         const end = instant(pillar.end_utc);
         require(phases[0].start.getTime() === start.getTime() && phases[1].end.getTime() === end.getTime()
           && phases[0].end.getTime() === phases[1].start.getTime() && start < phases[0].end && phases[1].start < end);
+        require(Number.isInteger(pillar.start_age?.years) && Number.isInteger(pillar.end_age?.years));
         const [visible, ...hidden] = found.occurrences;
-        require(visible?.component === 'stem' && visible.char === stem && hidden.length > 0
-          && hidden.every((e) => e.component === 'hidden_stem' && e.branch === branch));
+        require(visible?.component === 'stem' && visible.char === stem && ruled('stem', visible.phases) && hidden.length > 0
+          && hidden.every((e) => e.component === 'hidden_stem' && e.branch === branch && ruled('branch', e.phases)));
+        require(Array.isArray(found.roots) && found.roots.every((r) => r.branch === branch && ruled('branch', r.phases)));
         require(Number.isInteger(found.day_master_stage) && found.day_master_stage >= 1 && found.day_master_stage <= 12);
         // Each phase counts the natal characters and adds the luck pillar's.
         PHASES.forEach((phase) => {
@@ -84,11 +90,12 @@
             && counts.elements[e] >= context.natal_counts.elements[e]));
           require(total(counts.elements) === CHARACTERS[phase]);
         });
-        require(Array.isArray(found.interactions) && Array.isArray(found.absorbed) && Array.isArray(found.roots));
-        found.interactions.forEach((r) => require(r.members.some((m) => m.pillar === 'luck') && r.phases.length));
-        // A natal half is taken in by a whole the luck pillar forms.
+        require(Array.isArray(found.interactions) && Array.isArray(found.absorbed));
+        found.interactions.forEach((r) => require(['stem', 'branch'].includes(r.component)
+          && r.members.some((m) => m.pillar === 'luck') && ruled(r.component, r.phases)));
+        // A natal half is taken in, for the decade, by a whole the luck pillar forms.
         found.absorbed.forEach((a) => require(typeof a.id === 'string' && Array.isArray(a.by) && a.by.length > 0
-          && a.by.every((id) => found.interactions.some((r) => r.id === id))));
+          && a.by.every((id) => found.interactions.some((r) => r.id === id)) && ruled('branch', a.phases)));
         return {
           sequence: pillar.sequence,
           stem,
@@ -112,6 +119,8 @@
       decades.slice(1).forEach((decade, index) => require(decade.start.getTime() === decades[index].end.getTime()));
       const before = { start: instant(pillars.pre_luck_period.start_utc), end: instant(pillars.pre_luck_period.end_utc) };
       require(before.end.getTime() === decades[0].start.getTime());
+      require(['years', 'months', 'days'].every((part) => Number.isInteger(pillars.start_age?.[part]))
+        && pillars.start_age.years === decades[0].startAge);
       return {
         decades,
         before,

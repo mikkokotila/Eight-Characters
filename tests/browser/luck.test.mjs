@@ -491,6 +491,8 @@ for (const profile of profiles) {
         (payload) => { payload.luck_context.decades[4].interactions[0].members.pop(); },
         // Phases that do not meet.
         (payload) => { payload.luck_pillars.pillars[6].phases[1].start_utc = payload.luck_pillars.pillars[6].phases[1].end_utc; },
+        // A stem combination said to act in the branch phase too, against the phase rule.
+        (payload) => { payload.luck_context.decades[4].interactions[0].phases = ['stem', 'branch']; },
       ];
       // Each is the real API's answer, changed on its way to the page.
       for (const mutate of broken) {
