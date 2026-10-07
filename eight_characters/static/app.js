@@ -567,7 +567,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     renderChart(chartData, Object.fromEntries(
       ['hour', 'day', 'month', 'year'].map((name) => [name, requiredTranslation('pillar_' + name)])));
-    setKeyCard(cardAt(keyCard));
+    // The tab stop stays on its card, or on the Year's when the chart has none such yet:
+    // the luck pillar's are drawn after.
+    setKeyCard(cardAt(keyCard) ?? cardAt({ pillar: 'year', component: keyCard.component }));
     chartDate.textContent = heading;
     chartSolarTime.textContent = solarTime.text;
     pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });

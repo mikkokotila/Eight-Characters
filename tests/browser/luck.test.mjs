@@ -741,6 +741,32 @@ for (const profile of profiles) {
       assert.equal(await focused(page), 'year branch');
     });
 
+    check('after a luck card had focus, a change of language, of convention or of chart draws the chart', async (page) => {
+      await openSample(page);
+      const reachLuck = async () => {
+        await click(page, '#luck-switch [data-luck-show="on"]');
+        await page.locator('.card.stem[data-pillar="year"]').focus();
+        await page.keyboard.press('ArrowRight');
+        assert.equal(await focused(page), 'luck stem');
+      };
+      await reachLuck();
+      await click(page, '[data-chart-lang="fi"]');
+      await page.locator('#chart-view:not([aria-busy])').waitFor();
+      assert.equal(await page.locator('#form-error').isVisible(), false);
+      assert.deepEqual([await linkPart(page, 'lang'), await linkPart(page, 'luck')], ['fi', '5/stem']);
+      assert.equal(await page.locator('.card[tabindex="0"]').getAttribute('data-pillar'), 'year');
+      // Another chart, through the address, as Back and Forward reach one.
+      await reachLuck();
+      const other = sampleLink({ date: '1975-08-15', lang: 'fi' });
+      await page.evaluate((hash) => { location.hash = hash; }, other.slice(other.indexOf('#')));
+      await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('date') === '1975-08-15'
+        && !document.getElementById('chart-view').hasAttribute('aria-busy'));
+      await settled(page);
+      assert.equal(await page.locator('#form-error').isVisible(), false);
+      assert.equal(await page.locator('#chart-view').isVisible(), true);
+      assert.equal(await page.locator('.pillar.is-luck').count(), 1);
+    });
+
     check('a link names the luck pillar standing in the chart, with or without its page', async (page) => {
       await page.clock.setFixedTime(TODAY);
       await openLink(page, sampleLink({ luck: '5/branch' }), { place: HELSINKI });
