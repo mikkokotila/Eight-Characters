@@ -642,11 +642,13 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
     The squash is recorded before anything moves, and the remote moves before the
     checkout. Stopped part way, it stops the backup until it is run again, which
     finishes it; a push that fails while the remote has not moved leaves the history
-    as it was, and the backup goes on.
+    as it was, and the backup goes on. While it moves anything it keeps the writing
+    marker, so that one killed part way leaves no Git lock behind for the next.
     """
     root = work_tree(checkout)
     with checkout_lock(root):
-        _take_up_stopped_run(root, git_dir(root))
+        directory = git_dir(root)
+        _take_up_stopped_run(root, directory)
         require_clean(root)
         records = record_files(root)
         manifest = read_manifest(root)
@@ -700,6 +702,7 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
                     'A squash stopped part way, and its checkout or remote has moved '
                     'since; reconcile them by hand.'
                 )
+        _mark_writing(directory)
         if remote == base:
             pushed = _git_run(
                 root,
@@ -721,6 +724,7 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
                     )
                 # Nothing moved: the backup goes on with its history.
                 store.record_backup_head(base)
+                (directory / WRITING_MARKER).unlink()
                 raise BackupError(
                     f'git push failed ({pushed.returncode}); the history stays as it '
                     f'was: {message}'
@@ -728,6 +732,7 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
         if local == base:
             _git(root, 'update-ref', f'refs/heads/{branch}', squashed, base)
         store.record_backup_head(squashed)
+        (directory / WRITING_MARKER).unlink()
         # The old commits are gone from the remote; drop them here too.
         _git(root, 'reflog', 'expire', '--expire=now', '--all')
         _git(root, 'gc', '--quiet', '--prune=now')
