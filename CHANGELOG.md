@@ -20,6 +20,8 @@ Luck pillars on the chart. This is the third slice of the luck pillar design: th
   - its relationships with the natal chart and when each acts; a whole names the natal half it takes in, and each points at its natal cards;
   - the elements counted with the luck pillar: ten characters in the stem phase, nine in the branch phase.
 - **The years before the first decade**, with a page of their own.
+- **Today, where there is one.** A birth still to come, or a life past its last decade, has no today on the ribbon; ‹ and › then start from just beyond that end.
+- **A nominal timeline says so.** The luck pillars' allowance around a jie is 3 s, wider than the natal chart's 0.5 s. A birth within it gets a notice under the chart's name, and each decade's page says that its dates are nominal: on the jie's other side the decades and their starting age change, and at Lichun so does their direction.
 - **Links** to a phase: `topic=luck/before` and `topic=luck/<decade>/<stem|branch>`.
 - **Strict reading.** The page checks the luck pillars as it reads them: decades in sequence and meeting end to end, two phases each that meet, relationships that name the luck pillar, counts that add up. Otherwise no chart is drawn, and the form says why.
 - **Finnish, provisional until confirmed:** Sukupuoli (valinnainen), Ei annettu, Nainen, Mies; Onnenpilarit, Onnenpilari; Ennen, Tänään, Edellinen vaihe, Seuraava vaihe; Itä, Etelä, Länsi, Pohjoinen; eteenpäin, taaksepäin; Rungon vaihe, Haaran vaihe; Mitä se tuo, uusi tälle kartalle; Päivän mestarin juuret, Syntymäkartan kanssa. The twelve stages: Syntymä, Kylpy, Kruunaus, Virkaan astuminen, Keisarin huippu, Heikkeneminen, Sairaus, Kuolema, Hauta, Sammuminen, Alkio, Hoiva.
@@ -28,7 +30,8 @@ Luck pillars on the chart. This is the third slice of the luck pillar design: th
 - `tests/browser/luck.test.mjs`, desktop and mobile, on the design's sample with the clock at 7 October 2026:
   - the optional gender, the ribbon, Today and both phases, word for word;
   - steps, chips, focus, the tab stop and arrows;
-  - the years before the decades, and a child's and an old chart;
+  - the years before the decades, and a child's chart, an old one and a birth to come;
+  - births seconds from Jingzhe and from Lichun, with their notices;
   - links, an absorbed natal half, refused data, Finnish, the language switch and the commands.
 - The foundations audits (fonts, glyphs, contrast and element dots) visit a chart with luck pillars.
 - `luck.js`'s pinyin and direction tables match the engine's, and the English stage names match the canon's twelve.

@@ -256,8 +256,10 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
 - **Moving.** The steps walk the phases in order and stop at the ends. A chip opens its
   decade and closes it, and another topic replaces it. Escape and Close give focus back
   to the chip. The chips take one tab stop, and arrows move between them.
-- **Edges.** A child's chart is before its first decade today, and an old one is past
-  its last.
+- **Edges.** A child's chart is before its first decade today, an old one is past its
+  last, and a birth still to come has no today. A birth seconds from Jingzhe or Lichun,
+  within the luck pillars' allowance but not the natal one, has a notice and nominal
+  dates.
 - **Links, language and commands.** A link opens the decade and phase it names. Edit
   keeps the gender and New chart clears it. A link to a decade the chart lacks, or to an
   unknown gender, says why. Finnish works, and a change of language keeps the luck

@@ -121,18 +121,23 @@
       require(before.end.getTime() === decades[0].start.getTime());
       require(['years', 'months', 'days'].every((part) => Number.isInteger(pillars.start_age?.[part]))
         && pillars.start_age.years === decades[0].startAge);
+      require(typeof pillars.uncertainty?.boundary_ambiguous === 'boolean');
       return {
         decades,
         before,
         direction: pillars.direction,
         startAge: pillars.start_age,
+        // A birth within the allowance of a jie: the dates are nominal (the chart's notice).
+        nominal: pillars.uncertainty.boundary_ambiguous,
         natalElements: context.natal_counts.elements,
         chart,
       };
     };
 
-    // Where now falls: 'before', a decade's phase, or null past the last decade.
+    // Where a moment falls: 'before', a decade's phase, or null before the birth (a birth
+    // still to come) or after the last decade.
     const phaseAt = (when) => {
+      if (when < luck.before.start) return null;
       if (when < luck.before.end) return 'before';
       for (const decade of luck.decades) {
         if (when < decade.end) return { sequence: decade.sequence, phase: when < decade.phases[1].start ? 'stem' : 'branch' };
@@ -140,6 +145,7 @@
       return null;
     };
     const today = () => phaseAt(new Date());
+    const toCome = () => new Date() < luck.before.start;
     // Every choice in order, the period before the first decade first.
     const steps = () => ['before', ...luck.decades.flatMap((d) => PHASES.map((phase) => ({ sequence: d.sequence, phase })))];
     const same = (a, b) => (a === 'before' || b === 'before' ? a === b
@@ -178,7 +184,7 @@
     // today's, else the last decade's.
     const syncRibbon = () => {
       const now = today();
-      const stop = keyOf(selected ?? now ?? luck.decades[luck.decades.length - 1]);
+      const stop = keyOf(selected ?? now ?? (toCome() ? 'before' : luck.decades[luck.decades.length - 1]));
       ribbon.querySelectorAll('.luck-chip').forEach((chip) => {
         const key = chip.dataset.luck;
         const on = selected !== null && keyOf(selected) === key;
@@ -289,6 +295,8 @@
     const spoken = (choice) => (choice === 'before' ? t('luck_title_before')
       : `${names(decadeOf(choice).chars)}, ${t('luck_phase_' + choice.phase)}`);
 
+    const nominalMarkup = () => (luck.nominal ? `<p class="luck-nominal">${esc(t('luck_nominal'))}</p>` : '');
+
     const beforeMarkup = () => {
       const age = luck.startAge;
       return `
@@ -296,6 +304,7 @@
           <h3 id="luck-detail-title">${esc(t('luck_title_before'))}</h3>
         </div>
         <p class="luck-meta">${esc(t('luck_before_meta', { from: date(luck.before.start), to: date(luck.before.end), age: age.years }))}</p>
+        ${nominalMarkup()}
         <p class="relationship-note">${esc(t('luck_before_note', { years: age.years, months: age.months, days: age.days }))}</p>`;
     };
 
@@ -334,6 +343,7 @@
           from: date(decade.start), to: date(decade.end), start: decade.startAge, end: decade.endAge,
           direction: t('luck_direction_' + direction), season: t('context_' + season).toLowerCase(),
         }))}</p>
+        ${nominalMarkup()}
         <div class="luck-phases" role="group" aria-label="${esc(t('luck_phases'))}">${decade.phases.map(phaseRow).join('')}</div>
         <h4 class="panel-subheading luck-subheading">${esc(t('luck_brings'))}</h4>
         <div class="context-evidence-list">${[decade.visible, ...decade.hidden].map((e) => occurrenceMarkup(e, phase)).join('')}</div>
@@ -392,10 +402,12 @@
       if (selected !== null && selected !== 'before' && selected.sequence === sequence) { clear(); return; }
       show(opening(sequence));
     };
+    // A step goes from the choice open, else from today; before the birth, or past the last
+    // decade, from just beyond that end.
     const step = (by) => {
       const all = steps();
-      const from = selected ?? today() ?? all[all.length - 1];
-      const at = all.findIndex((choice) => same(choice, from));
+      const from = selected ?? today();
+      const at = from === null ? (toCome() ? -1 : all.length) : all.findIndex((choice) => same(choice, from));
       const next = all[Math.min(all.length - 1, Math.max(0, at + by))];
       if (selected === null || !same(next, selected)) show(next);
     };

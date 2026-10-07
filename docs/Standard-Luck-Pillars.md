@@ -33,7 +33,8 @@ Ming Tong Hui judges a luck cycle by this travel:
 | North · Winter | 亥 Hai, 子 Zi, 丑 Chou |
 
 Today's decade wears a dot, and its bar for today's phase is half dark. Today is the
-browser's own clock. Dates and years are read on the birth place's clock.
+browser's own clock. Dates and years are read on the birth place's clock. A birth still
+to come, or a life past its last decade, has no today on the ribbon.
 
 Where the decades do not fit, the ribbon scrolls sideways within itself, never the
 page, and keeps the open decade, or today's, in sight. On a phone, the ribbon's name
@@ -44,9 +45,10 @@ What the ribbon does:
   that decade, and at its stem phase otherwise. Pressed again, it closes the page.
 - **‹ and ›** step one phase back or forward. They go through the years before the
   decades, then each decade's stem phase and branch phase, and stop at either end. With
-  nothing open, they start from today's phase.
-- **Today** opens today's phase. It is spent while today's phase is open, and after the
-  last decade there is no today.
+  nothing open, they start from today's phase: before a birth still to come, from just
+  before the first; past the last decade, from just after the last.
+- **Today** opens today's phase. It is spent while today's phase is open, and while
+  today falls outside the ribbon.
 
 ## A decade's page
 
@@ -101,6 +103,16 @@ Print leaves the ribbon out; an open decade's page prints below the chart, as an
 topic does (see [Copying and printing](Standard-Copy-and-Print.md)). In a comparison,
 a chart whose link has a gender shows its own ribbon; the second birth starts without
 one (see [Comparing two charts](Standard-Compare.md)).
+
+## A nominal timeline
+
+The luck pillars count their start from the jie (the month's solar term) next to the
+birth, with an allowance of 3 seconds for the solar terms' own uncertainty. That is
+wider than the natal chart's 0.5 seconds. A birth within that allowance of a jie
+has a nominal timeline: on the jie's other side, the decades and the age they start at
+are other ones, and at Lichun so is their direction. The chart then says so in a notice
+under its name, and each decade's page and the years before say that their dates are
+nominal. See [Uncertainty](Luck-Pillars.md#uncertainty-and-reference-comparison).
 
 ## When the page refuses
 

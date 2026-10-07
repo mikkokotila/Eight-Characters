@@ -134,7 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!chartNotices || !ziSwitch) throw new Error('Chart header is incomplete.');
   const ZI_CONVENTIONS = ['split_midnight', 'whole_zi_23'];
   // Reads the flags, checking them against the pillars; inconsistent flags stop the chart.
-  const readFlags = (flags, fourPillars, request) => {
+  // Luck pillars count their start from a jie too, within an allowance of their own: a
+  // birth that close to one has a nominal luck timeline, and the chart says so.
+  const readFlags = (flags, fourPillars, request, luckPillars) => {
     const fail = () => { throw new Error(requiredTranslation('flags_error')); };
     if (!flags || typeof flags.zi_hour_window !== 'boolean' || typeof flags.solar_term_ambiguous !== 'boolean'
       || typeof flags.high_latitude_warning !== 'boolean' || typeof flags.model_uncertainty_seconds !== 'number'
@@ -164,6 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(flags.model_uncertainty_seconds);
       notices.push(requiredTranslation(
         nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }));
+    }
+    if (luckPillars) {
+      const uncertainty = luckPillars.uncertainty;
+      const allowance = uncertainty?.birth_time_seconds + uncertainty?.solar_term_allowance_seconds;
+      if (typeof uncertainty?.boundary_ambiguous !== 'boolean' || !(allowance > 0)) fail();
+      // Five hundredths either way: the engine and this check round differently.
+      if (uncertainty.boundary_ambiguous !== (nearest.seconds <= allowance)
+        && Math.abs(nearest.seconds - allowance) > 0.05) fail();
+      if (uncertainty.boundary_ambiguous) {
+        const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(allowance);
+        notices.push(requiredTranslation(
+          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }));
+      }
     }
     if (flags.high_latitude_warning) notices.push(requiredTranslation('notice_high_latitude'));
     return { zi, notices };
@@ -557,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chartSolarTime.textContent = solarTime.text;
     pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
     // Read after the pillar changes are checked: the month's changes decide the term notice.
-    renderFlags(readFlags(pillarsData.flags, pillarsData.four_pillars, request));
+    renderFlags(readFlags(pillarsData.flags, pillarsData.four_pillars, request, pillarsData.luck_pillars ?? null));
     populateTenGods(tenGodsData);
     if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
     populateHiddenStems(pillarsData.hidden_stems);

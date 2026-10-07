@@ -378,7 +378,7 @@ for (const profile of profiles) {
       assert.deepEqual((await ribbonState(page)).expanded, ['before']);
     });
 
-    check('a child\'s chart is before its first decade today, and an old one past its last', async (page) => {
+    check('a child\'s chart is before its first decade today, an old one past its last, and a birth to come before all', async (page) => {
       // Born 1 June 2025 in Chengdu, male: the decades run backward from age 8.
       await openSample(page, { date: '2025-06-01', time: '12:00', place: CHENGDU, gender: 'male' });
       assert.deepEqual(await ribbonState(page), {
@@ -392,8 +392,42 @@ for (const profile of profiles) {
       assert.deepEqual(await ribbonState(page), {
         expanded: [], selected: [], today: [], chosenPhase: [], todayPhase: [], stop: ['10'], todayDisabled: true,
       });
+      // With nothing open, a step back goes from just past the end: to the last phase.
       await click(page, '[data-luck-step="-1"]');
-      assert.equal(await linkPart(page, 'topic'), 'luck/10/stem');
+      assert.equal(await linkPart(page, 'topic'), 'luck/10/branch');
+      // Born 1 March 2040, female, seen in 2026: today is before the birth, and no period
+      // holds it.
+      await openSample(page, { date: '2040-03-01', time: '12:00', place: CHENGDU, gender: 'female' });
+      assert.deepEqual(await ribbonState(page), {
+        expanded: [], selected: [], today: [], chosenPhase: [], todayPhase: [], stop: ['before'], todayDisabled: true,
+      });
+      assert.equal(await page.locator('.luck-chip.is-before').getAttribute('aria-label'), 'Before the first luck pillar, age 0 to 8');
+      // With nothing open, a step goes from just before the start: to the years before.
+      await click(page, '[data-luck-step="1"]');
+      assert.equal(await linkPart(page, 'topic'), 'luck/before');
+    });
+
+    check('a birth within the luck pillars\' allowance of a solar term has a nominal timeline, and says so', async (page) => {
+      await openSample(page);
+      assert.equal(await page.locator('#chart-notices').isVisible(), false);
+      // Seconds from Jingzhe on 5 March 1988, and from Lichun on 4 February: further than
+      // the natal calculation's 0.5 s, within the luck pillars' 3 s.
+      const near = (date, time) => `/#chart?${new URLSearchParams({
+        date, time, place: CHENGDU.display, city: CHENGDU.city, latitude: String(CHENGDU.latitude),
+        longitude: String(CHENGDU.longitude), timezone: CHENGDU.timezone, lang: 'en', gender: 'female', topic: 'luck/1/stem',
+      })}`;
+      for (const [date, time, notice] of [
+        ['1988-03-05', '16:46:30', 'The birth lies within the luck pillars\' allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.'],
+        ['1988-02-04', '22:42:47', 'The birth lies within the luck pillars\' allowance (3 s) of Lichun, so their decades, the age they start at and their direction could be other ones.'],
+      ]) {
+        await page.goto('about:blank');
+        const payload = await openLink(page, near(date, time), { place: CHENGDU });
+        assert.deepEqual([payload.flags.solar_term_ambiguous, payload.luck_pillars.uncertainty.boundary_ambiguous], [false, true]);
+        assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [notice]);
+        assert.equal(await page.locator('#luck-detail .luck-nominal').textContent(), 'The dates are nominal: see the notice at the top of the chart.');
+        await click(page, '[data-luck="before"]');
+        assert.equal(await page.locator('#luck-detail .luck-nominal').count(), 1);
+      }
     });
 
     check('a link opens the decade and phase it names, and the form keeps the gender for Edit', async (page) => {
