@@ -204,6 +204,19 @@ class TestApiLuckPillars(unittest.TestCase):
         self.assertEqual(r.status_code, 500)
         self.assertEqual(r.json(), {'detail': 'Internal engine error.'})
 
+    def test_finite_uncertainty_that_overflows_age_scaling_is_rejected(self):
+        r = self.client.post(
+            '/api/four_pillars',
+            json={
+                **self.base,
+                'gender': 'male',
+                'include_luck_pillars': True,
+                'birth_time_uncertainty_seconds': 1e308,
+            },
+        )
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('uncertainty_seconds is too large', r.json()['detail'])
+
     def test_openapi_describes_gender_and_count(self):
         schema = self.client.get('/openapi.json').json()['components']['schemas'][
             'FourPillarsRequest'

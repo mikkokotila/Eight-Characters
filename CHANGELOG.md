@@ -15,7 +15,8 @@
 
 ### Changed
 - Reject negative or non-finite birth-time uncertainty instead of calculating
-  with invalid uncertainty. Existing natal-only response sections are unchanged.
+  with invalid uncertainty; reject finite values that overflow luck-age scaling.
+  Existing natal-only response sections are unchanged.
 
 ## 0.28.0
 

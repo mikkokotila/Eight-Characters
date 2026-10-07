@@ -2,6 +2,7 @@ import json
 import unittest
 from dataclasses import replace
 from datetime import UTC, datetime, timedelta
+from math import isfinite
 from typing import cast
 
 from lunar_python import Solar
@@ -147,7 +148,7 @@ class TestLuckArithmetic(unittest.TestCase):
             synthetic(born, 0)
 
     def test_invalid_inputs_fail_explicitly(self):
-        for value in (-1.0, float('nan'), float('inf')):
+        for value in (-1.0, float('nan'), float('inf'), 1e308):
             with self.assertRaises(ValueError):
                 start_age_from_interval(value)
         for count in (0, 13, True, 1.5):
@@ -258,6 +259,23 @@ class TestLuckEngine(unittest.TestCase):
             )['luck_pillars']
             self.assertEqual(len(p['pillars']), 12)
             self.assertGreater(p['pillars'][-1]['end_utc'], f'{year + 100}-01-01')
+
+    def test_uncertainty_scaling_rejects_overflow_and_retains_finite_values(self):
+        with self.assertRaisesRegex(ValueError, 'uncertainty_seconds is too large'):
+            compute_engine_json(
+                replace(birth(), birth_time_uncertainty_seconds=1e308),
+                include_luck_pillars=True,
+            )
+        serialized = compute_engine_json(
+            replace(birth(), birth_time_uncertainty_seconds=1e300),
+            include_luck_pillars=True,
+        )
+        scaled = json.loads(serialized)['luck_pillars']['uncertainty'][
+            'scaled_age_seconds'
+        ]
+        self.assertTrue(isfinite(scaled))
+        self.assertEqual(scaled, 1e300 * 120)
+        self.assertNotIn('Infinity', serialized)
 
     def test_json_is_deterministic(self):
         first = compute_engine_json(birth(), include_luck_pillars=True)

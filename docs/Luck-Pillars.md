@@ -110,8 +110,10 @@ This allowance exceeds the existing independent comparison's maximum 2.7-second
 Jie discrepancy and the documented HKO residual, but is not a proof of absolute
 accuracy. See [astronomical validation and known residual](validation.md).
 
-`scaled_age_seconds` is 120 times that combined interval allowance. If the
-birth's allowance overlaps any Jie, `boundary_ambiguous` is true. The returned
+`scaled_age_seconds` is 120 times that combined interval allowance. Scaling that
+would overflow rejects the input explicitly instead of emitting a non-finite
+JSON number. If the birth's allowance overlaps any Jie, `boundary_ambiguous` is
+true. The returned
 timeline is then nominal: the month anchor, reference term, onset, and at Lichun
 even direction can change. Do not treat it as a resolved timeline. The flag
 also considers the nearest Jie on the opposite side of the birth.

@@ -110,7 +110,10 @@ def start_age_from_interval(seconds: float) -> LuckAge:
     # Round once to an age second before splitting: the solver's 0.01 birth
     # second tolerance becomes 1.2 age seconds. Julian-date roundoff must not
     # turn an exact year/month/day into the preceding component plus 59.999 s.
-    remaining = round(seconds * AGE_SECONDS_PER_BIRTH_SECOND)
+    scaled_seconds = seconds * AGE_SECONDS_PER_BIRTH_SECOND
+    if not isfinite(scaled_seconds):
+        raise ValueError('Jie interval is too large for luck-pillar age scaling.')
+    remaining = round(scaled_seconds)
     years, remaining = divmod(remaining, _AGE_YEAR_SECONDS)
     months, remaining = divmod(remaining, _AGE_MONTH_SECONDS)
     days, remaining = divmod(remaining, 86400)
@@ -184,6 +187,12 @@ def build_luck_pillars(
         raise ValueError(
             'birth_time_uncertainty_seconds must be finite and nonnegative.'
         )
+    interval_allowance = birth_time_uncertainty_seconds + SOLAR_TERM_ALLOWANCE_SECONDS
+    scaled_age_seconds = interval_allowance * AGE_SECONDS_PER_BIRTH_SECOND
+    if not isfinite(scaled_age_seconds):
+        raise ValueError(
+            'birth_time_uncertainty_seconds is too large for luck-pillar age scaling.'
+        )
     for pillar in (year_pillar, month_pillar):
         if not 0 <= pillar.stem_idx < 10 or not 0 <= pillar.branch_idx < 12:
             raise ValueError('Invalid natal pillar index.')
@@ -222,7 +231,6 @@ def build_luck_pillars(
                 'end_utc': _iso_utc(boundaries[index]),
             }
         )
-    interval_allowance = birth_time_uncertainty_seconds + SOLAR_TERM_ALLOWANCE_SECONDS
     boundary_distance = min(abs(jd - birth_jd_tt) * 86400.0 for _, jd in terms)
     return {
         'rule_version': 'dayun_elapsed_time_v1',
@@ -244,7 +252,7 @@ def build_luck_pillars(
         'uncertainty': {
             'birth_time_seconds': birth_time_uncertainty_seconds,
             'solar_term_allowance_seconds': SOLAR_TERM_ALLOWANCE_SECONDS,
-            'scaled_age_seconds': interval_allowance * AGE_SECONDS_PER_BIRTH_SECOND,
+            'scaled_age_seconds': scaled_age_seconds,
             'boundary_ambiguous': boundary_distance <= interval_allowance,
         },
         'pre_luck_period': {
