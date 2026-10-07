@@ -1478,7 +1478,9 @@ document.addEventListener('DOMContentLoaded', () => {
       // here, before the frames ask for their charts.
       let signedInHere = false;
       try {
-        if (!(await account.stillSignedIn())) {
+        const holds = await account.stillSignedIn(() => arrival === arrivals);
+        if (arrival !== arrivals) return;
+        if (!holds) {
           await account.signIn();
           signedInHere = true;
         }

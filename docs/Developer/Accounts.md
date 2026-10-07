@@ -121,11 +121,13 @@ put on one.
 - **A session that ended** (signed out elsewhere, the account deleted, or unused for
   30 days) answers a chart with `401`: the dialog asks once more, and the chart is asked
   for again after signing in. Closing the dialog leaves the form, which says that
-  charts need an account, with the birth kept.
+  charts need an account, with the birth kept. A `401` that arrives for a chart no
+  longer wanted asks nothing, so a sign-in made since for a newer one stays.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
-  cannot ask themselves. **The explorer**, given a birth, links to the start page to
-  sign in.
+  cannot ask themselves. The answer to a check for a comparison no longer wanted
+  changes nothing. **The explorer**, given a birth, links to the start page to sign
+  in.
 - **Signed in, the dialog is the account:** its address and plan, its language,
   Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
   account, which needs the address typed again. Signing out starts the page again,

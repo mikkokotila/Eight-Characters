@@ -435,6 +435,62 @@ for (const profile of profiles) {
       }
     });
 
+    check("a comparison's session check refused after a newer one signed in leaves that sign-in alone", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'pairs' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The first comparison's check of the session is held on its way. Its answer
+      // comes last: the server's refusal for this session, which ends meanwhile.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const checking = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/account', async (route) => {
+        if (!holding || route.request().method() !== 'GET') return route.continue();
+        holding = false;
+        sent();
+        await held;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      const compareWith = async (date, time) => {
+        await page.locator('#compare-note').waitFor({ state: 'visible' });
+        await page.locator('#date').fill(date);
+        await page.locator('#time').fill(time);
+        await page.locator('#location').fill(CHENGDU.city);
+        await page.locator('.location-suggestion').click();
+        await page.locator('#create-chart-btn').click();
+      };
+      await page.locator('#compare-btn').click();
+      await compareWith('1990-05-09', '12:00');
+      await checking;
+      // Signed out on every device, from another one; then back to the second birth, and
+      // another one compared, which asks for a sign-in and shows its frames.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+      });
+      await page.goBack();
+      await compareWith('1991-01-01', '08:00');
+      await dialogOpens(page);
+      await signInThroughDialog(page, account.email);
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // The held check's refusal arrives.
+      const late = page.waitForResponse((response) =>
+        new URL(response.url()).pathname === '/api/account' && response.status() === 401);
+      release();
+      await late;
+      // Time for the page to act on it, as it would have, by opening the dialog.
+      await page.waitForTimeout(500);
+      assert.equal(await dialogIsOpen(page), false);
+      assert.equal(await text(page, '#account-btn'), 'Account');
+      assert.equal(await page.locator('#compare-view').isVisible(), true);
+      const address = new URLSearchParams(new URL(page.url()).hash.slice('#compare?'.length));
+      assert.equal(new URLSearchParams(address.get('b')).get('date'), '1991-01-01');
+    });
+
     check('a code asked for is said as asked, even if the dialog changes side meanwhile', async (page) => {
       let release;
       const held = new Promise((resolve) => { release = resolve; });

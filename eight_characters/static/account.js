@@ -492,10 +492,13 @@
       return waiting.promise;
     };
     // Whether the session still holds, as the server says: one that ended since the page
-    // was served (signed out elsewhere, or unused for 30 days) is forgotten.
-    const stillSignedIn = async () => {
+    // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
+    // no longer wanted (`wanted` says) changes nothing, so a sign-in made meanwhile
+    // stays; the caller, superseded, goes no further.
+    const stillSignedIn = async (wanted) => {
       if (!account) return false;
       const response = await call('GET', '/api/account');
+      if (!wanted()) return false;
       if (response.status === 401) {
         forget();
         return false;
