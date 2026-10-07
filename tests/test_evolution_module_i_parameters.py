@@ -8,6 +8,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any
 
+from eight_characters import main
 from eight_characters.evolution import (
     energy,
     families,
@@ -53,6 +54,7 @@ ENGINE_MODULES: tuple[ModuleType, ...] = (
     pipeline,
     postprocess,
     builder,
+    main,
 )
 CONSTANT_NAMES = {parameter_id(field.name) for field in fields(ModelParameters)}
 TABLE_LOOKUPS = {
