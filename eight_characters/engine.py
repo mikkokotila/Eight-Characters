@@ -17,6 +17,7 @@ from eight_characters.integrity import (
     model_uncertainty_seconds_for_year,
     validate_pillar_set,
 )
+from eight_characters.luck_pillars import DEFAULT_LUCK_PILLAR_COUNT, build_luck_pillars
 from eight_characters.output import dumps_deterministic
 from eight_characters.pillar_changes import (
     day_and_hour_changes,
@@ -148,7 +149,14 @@ def _pillar_dict(pillar_obj: Pillar) -> PillarPayload:
     }
 
 
-def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
+def compute_engine_payload(
+    value: BirthInput,
+    *,
+    include_luck_pillars: bool = False,
+    luck_pillar_count: int = DEFAULT_LUCK_PILLAR_COUNT,
+) -> dict[str, Any]:
+    if include_luck_pillars and value.gender is None:
+        raise ValueError('gender is required when include_luck_pillars is true.')
     normalized = normalize_birth_input(value)
     tt_result = convert_utc_to_tt(normalized.utc_datetime)
 
@@ -328,9 +336,33 @@ def compute_engine_payload(value: BirthInput) -> dict[str, Any]:
             'bazi_year': bazi_year,
         },
     }
+    if value.gender is not None:
+        payload['input']['gender'] = value.gender
+    if include_luck_pillars:
+        assert value.gender is not None
+        payload['luck_pillars'] = build_luck_pillars(
+            gender=value.gender,
+            birth_utc=normalized.utc_datetime,
+            birth_jd_tt=solar.jd_tt,
+            year_pillar=year_result,
+            month_pillar=month_result,
+            terms=month_terms,
+            labels=TERM_LABEL_BY_TARGET,
+            count=luck_pillar_count,
+            birth_time_uncertainty_seconds=user_uncertainty,
+        )
     return payload
 
 
-def compute_engine_json(value: BirthInput) -> str:
-    payload = compute_engine_payload(value)
+def compute_engine_json(
+    value: BirthInput,
+    *,
+    include_luck_pillars: bool = False,
+    luck_pillar_count: int = DEFAULT_LUCK_PILLAR_COUNT,
+) -> str:
+    payload = compute_engine_payload(
+        value,
+        include_luck_pillars=include_luck_pillars,
+        luck_pillar_count=luck_pillar_count,
+    )
     return dumps_deterministic(payload)
