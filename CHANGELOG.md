@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.28.1
+
+The installed package serves every file the app uses. Nothing changes where the app runs from its source tree, as on Render.
+
+### Fixed
+- **The explorer's files and the start page's fonts were missing from the package.** `package-data` had never listed anything under `eight_characters/explorer/`, so the wheel and the sdist carried only the explorer's Python module.
+  - Installed from its wheel and run from another directory, the app answered 404 for the explorer's stylesheet, d3, data and script, and for the two fonts the start page loads from `/explorer/vendor/fonts/`, Manrope and Cormorant Garamond.
+  - The Docker image served them only because uvicorn puts its working directory, `/app`, first on `sys.path`, so the copied source tree shadows the installed package.
+
+  `package-data` now lists the explorer's stylesheets, scripts, sample payloads, d3 and fonts.
+- **A test keeps it so** (`test_served_files_ship_in_the_package`): every file in a directory the app serves from (`/static`, `/explorer`) or renders templates from must match a `package-data` pattern, expanded the way setuptools expands it. On 0.28.0 it fails, naming the explorer's 16 files.
+
+### Changed
+- Version bumped to `0.28.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.28.0
 
 Readings: the canon's taxonomy, `canon/Taxonomy.md`, in the pages the chart already has.
