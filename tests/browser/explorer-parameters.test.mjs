@@ -305,6 +305,32 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#parameterRecompute').isDisabled(), true);
     });
 
+    check('a recompute that changes nothing but the seed can be dropped too', async (page) => {
+      await openExplorer(page);
+      await openPane(page);
+      let delivered;
+      const answer = new Promise((resolve) => { delivered = resolve; });
+      await page.route('**/api/evolution_explorer', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // The page aborted this request; its answer, had it come, was to be ignored.
+        await route.continue().catch((error) => {
+          if (!/aborted|closed|disposed|handled/i.test(error.message)) throw error;
+        });
+        delivered();
+      });
+      await page.locator('[data-seed-each-run]').check();
+      assert.equal(await page.locator('#parameterDiscard').isDisabled(), true);
+      assert.equal(await page.locator('#parameterReset').isDisabled(), true);
+      await page.locator('#parameterRecompute').click();
+      await page.waitForFunction(() => document.getElementById('parameterStatus').textContent === 'Recomputing…');
+      assert.equal(await page.locator('#parameterReset').isDisabled(), false);
+      await page.locator('#parameterDiscard').click();
+      await answer;
+      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 200)));
+      assert.equal(await statusOf(page), 'Computed with the defaults. Each recompute draws a new seed.');
+      assert.equal(await inputFor(page, 'run', 'seed').inputValue(), String(controlOf('seed').default));
+    });
+
     check('a refused recompute says why and leaves the chart and the edits', async (page) => {
       await openExplorer(page);
       await openPane(page);

@@ -146,8 +146,11 @@
     const label = inFlight ? 'Recomputing…' : 'Recompute';
     if (recomputeButton.textContent !== label) recomputeButton.textContent = label;
     pane.setAttribute('aria-busy', String(Boolean(inFlight)));
-    discardButton.disabled = !ready || (drafts.size === 0 && invalid.size === 0);
-    resetButton.disabled = !ready || (changedFromDefaults(currentValue) === 0 && invalid.size === 0);
+    // While a recompute runs, either one can drop it, even one that changes nothing
+    // but the seed.
+    discardButton.disabled = !ready || (!inFlight && drafts.size === 0 && invalid.size === 0);
+    resetButton.disabled = !ready ||
+      (!inFlight && changedFromDefaults(currentValue) === 0 && invalid.size === 0);
     controlsRoot.querySelectorAll('input, button').forEach((element) => {
       element.disabled = !ready || (element.dataset.seedInput === 'true' && newSeedEachRun);
     });

@@ -8,7 +8,7 @@ The Evolution explorer: a parameter pane, and runs that carry their own paramete
 - **A parameter pane in the explorer.** The Parameters button opens it beside the graph.
   - It holds the run (particles, temperature steps, sweeps, seed), the clustering, the conventions and every constant of the model, in groups, each with its default and range.
   - Recompute asks for the chart again with every value that differs from its default, so earlier changes stay applied. A change made while a recompute runs waits for the next.
-  - Discard Changes returns to what the chart was computed with; Reset to Defaults sets every value back to its default. Either one drops a recompute on its way.
+  - Discard Changes returns to what the chart was computed with; Reset to Defaults sets every value back to its default. Either one drops a recompute on its way, even one that changes nothing but the seed.
   - A refused recompute says why, and the chart stays as it was.
 
   On a phone the pane is a sheet over the foot of the page.
@@ -32,7 +32,7 @@ The Evolution explorer: a parameter pane, and runs that carry their own paramete
   - the API's catalogue, overrides, refusals and concurrency;
   - the pane in the browser, desktop and mobile.
 
-  Twenty-three planted faults, among them each of the reviews' findings on PR #7, fail them.
+  Twenty-four planted faults, among them each of the reviews' findings on PR #7, fail them.
 - Version bumped to `0.30.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.29.2
