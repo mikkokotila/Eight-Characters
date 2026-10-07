@@ -1,13 +1,18 @@
 import hashlib
 import re
+import tomllib
 import unittest
+from glob import glob
+from pathlib import Path
 
+from fastapi.staticfiles import StaticFiles
 from fastapi.testclient import TestClient
+from starlette.routing import Mount
 
 from eight_characters import __version__
 from eight_characters.data import BRANCHES, STEMS
 from eight_characters.engine import TERM_LABEL_BY_TARGET
-from eight_characters.main import app
+from eight_characters.main import BASE_DIR, app, templates
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 
 EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
@@ -239,6 +244,40 @@ class TestApiIndexRoute(unittest.TestCase):
         for asset in EXPLORER_ASSETS:
             response = self.client.get(f'/explorer/{asset}?v={__version__}')
             self.assertEqual(response.status_code, 200, asset)
+
+    def test_served_files_ship_in_the_package(self) -> None:
+        # The tests above serve the source tree, which has every file. Installed
+        # from its wheel, up to 0.28.0 the app answered 404 for the explorer's
+        # files and the start page's fonts: package-data did not list them.
+        pyproject = tomllib.loads(
+            (BASE_DIR.parent / 'pyproject.toml').read_text(encoding='utf-8')
+        )
+        patterns = pyproject['tool']['setuptools']['package-data']['eight_characters']
+        # setuptools expands each pattern this way, from the package directory.
+        packaged = {
+            Path(match)
+            for pattern in patterns
+            for match in glob(str(BASE_DIR / pattern), recursive=True)
+        }
+        directories = [
+            Path(route.app.directory)
+            for route in app.routes
+            if isinstance(route, Mount) and isinstance(route.app, StaticFiles)
+        ]
+        self.assertTrue(directories, 'found no StaticFiles mount')
+        directories.extend(Path(path) for path in templates.env.loader.searchpath)
+        unpackaged = [
+            str(path.relative_to(BASE_DIR))
+            for directory in directories
+            for path in sorted(directory.rglob('*'))
+            # Modules ship as code, bytecode is compiled on install, and the
+            # patterns' wildcards never match dot files such as .DS_Store.
+            if path.is_file()
+            and path.suffix not in ('.py', '.pyc')
+            and not path.name.startswith('.')
+            and path not in packaged
+        ]
+        self.assertEqual(unpackaged, [], f'not in package-data: {unpackaged}')
 
 
 if __name__ == '__main__':
