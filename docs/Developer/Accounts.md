@@ -196,8 +196,10 @@ names the commit it replaces.
 
 The squash is recorded before anything moves, and the remote moves before the
 checkout. Stopped part way, it stops the backup ("run squash-history again") until it
-is run again, which finishes it from wherever it stopped. A push that fails while the
-remote has not moved leaves the history as it was, and the backup goes on.
+is run again, which finishes it from wherever it stopped. While it moves anything it
+keeps the writing marker, so one killed part way leaves no Git lock behind for the
+next. A push that fails while the remote has not moved leaves the history as it was,
+and the backup goes on.
 
 ## Restore
 
