@@ -104,6 +104,10 @@ Intervals include their start and exclude their end. Adjacent intervals meet
 exactly; there are no gaps or overlapping endpoints. `pre_luck_period` can be empty.
 No current-time-dependent active-pillar selection is performed.
 
+With `include_chart`, `luck_chart.pillars` draws each luck pillar's cards as `chart`
+draws the natal pillars', in the request's `lang`: the stem's and the branch's
+element, labels and lines, under the pillar's `sequence`.
+
 ## Phases
 
 San Ming Tong Hui's same passage on major cycles: "凡行運，在干兼用地支之神，在支則棄天干之物"

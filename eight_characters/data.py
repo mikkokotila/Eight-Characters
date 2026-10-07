@@ -60,6 +60,16 @@ class ChartPayload(TypedDict):
     pillars: list[PillarRender]
 
 
+class LuckPillarRender(TypedDict):
+    sequence: int
+    stem: StemRender
+    branch: BranchRender
+
+
+class LuckChartPayload(TypedDict):
+    pillars: list[LuckPillarRender]
+
+
 TRIGRAM_LINES: dict[str, list[str]] = {
     'Zhen': ['B', 'B', 'L'],  # ☳ Thunder
     'Xun': ['L', 'L', 'B'],  # ☴ Wind
@@ -451,4 +461,24 @@ def build_chart(
                 'branch': build_branch_data(year_branch, lang=active_lang),
             },
         ],
+    }
+
+
+def build_luck_chart(
+    pillars: list[tuple[int, str, str]], lang: str = 'fi'
+) -> LuckChartPayload:
+    """The luck pillars' cards, drawn as the natal pillars' are, in the chart's language.
+
+    `pillars` holds each luck pillar's sequence, stem and branch.
+    """
+    active_lang = _resolve_lang(lang)
+    return {
+        'pillars': [
+            {
+                'sequence': sequence,
+                'stem': build_stem_data(stem, lang=active_lang),
+                'branch': build_branch_data(branch, lang=active_lang),
+            }
+            for sequence, stem, branch in pillars
+        ]
     }

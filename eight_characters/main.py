@@ -25,6 +25,7 @@ from eight_characters.data import (
     STEMS,
     ChartPayload,
     build_chart,
+    build_luck_chart,
 )
 from eight_characters.day_master_context import build_day_master_context
 from eight_characters.engine import compute_engine_payload
@@ -1043,6 +1044,19 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
                 lang=payload.lang,
                 four_pillars=four_pillars,
             )
+            # A chart with luck pillars draws them as it draws the natal pillars.
+            if payload.include_luck_pillars:
+                response['luck_chart'] = build_luck_chart(
+                    [
+                        (
+                            pillar['sequence'],
+                            pillar['stem']['chinese'],
+                            pillar['branch']['chinese'],
+                        )
+                        for pillar in result['luck_pillars']['pillars']
+                    ],
+                    lang=payload.lang,
+                )
         if payload.include_role_profile:
             response['role_profile'] = build_role_profile(
                 _chart_components_from_four_pillars(four_pillars),
