@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.31.0
+
+Accounts get a home: one database, and a backup of every account as its own encrypted file in a private Git repository, from which the database can be rebuilt with one command. Nothing on the page changes; signing in comes in a later release.
+
+### Added
+- **The account database** (`eight_characters/accounts/`), one SQLite file.
+  - A user has an id, an email address (trimmed and lowercased; one account per address), a language (`fi` or `en`), a plan (`free`, `basic`, `pro` or `max`) and when it was made and last changed.
+  - The file is owner-only, writes ahead to a log and syncs every commit, so a finished change survives a crash or a deploy.
+  - It opens only an existing account database, never creating an empty one, and refuses a schema newer than the app knows. Migrations are numbered and run in their own transactions.
+  - Every change to a backed-up record is logged in the same transaction as the change.
+- **The backup.** Each run copies the accounts changed since the last run that reached the remote into a Git checkout, one file per account, encrypted with age to a public key, so the server and GitHub hold nothing readable. It writes a manifest (the key and the count), commits, pushes, and only then counts the changes as backed up: a failed push leaves them for the next run.
+  - A checkout with changes of its own, a file the backup never writes, another key, or a file count that differs from the database stops the run with the reason.
+  - Git never waits for a password and each command has two minutes.
+  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it.
+- **The restore** rebuilds a database from a clone of the backup and the private key. It checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
+- **Commands:** `python -m eight_characters.accounts init`, `keygen`, `backup`, `restore` and `squash-history`. See [Accounts](docs/Developer/Accounts.md).
+
+### Changed
+- `requires-python` is `>=3.11`: the engine has needed 3.11 (`datetime.UTC`, `typing.NotRequired`) all along.
+- New dependency: `pyrage==1.4.0`, for age. It ships no type stubs, so `typings/` carries the ones the app uses.
+
+### Tests
+- A new `accounts-gate` runs 76 tests: records, the database (including eight sign-ups with one address at once), backup runs against a real Git remote (including that no address reaches any Git object), squashing, restores of tampered backups, identity files and the commands.
+- Version bumped to `0.31.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.30.0
 
 The Evolution explorer: a parameter pane, and runs that carry their own parameters. This rebuilds PR #7 from today's `main`.
