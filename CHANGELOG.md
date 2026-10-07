@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.33.0
+## 0.35.0
 
 Standard reads every relationship family the canon defines. Luck pillars will form these families with a chart most of all, so they come first.
 
@@ -44,7 +44,6 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
 
 ### Fixed
 - A sentence that ends inside quotes ends there, in the reading and on the page: 'hence "uncivilized."' closes the Zi-Mao punishment's character.
-- `requires-python` said 3.9, but the engine has needed 3.11 for a while: its pinned numpy 2.4.2 requires it, and five modules imported at startup take `datetime.UTC`. It now says 3.11, the version the production image runs, and so does the developer guide.
 
 ### Tests
 - New tests:
@@ -54,7 +53,78 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - the arcs' levels and strands on every combination;
   - real charts for each new family, an arc of three strands and six feet on one card.
 - Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.
+- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.33.1 and 0.34.0 are held by the open PRs #49 and #48.)
+
+## 0.33.0
+
+The backup gets ready to run on the server: it says when it is alive, its repository can watch it, and the image carries the tools it runs. Nothing on the page changes.
+
+### Added
+- **`backup --heartbeat SECONDS`.** With nothing new, a run commits an empty `backup: alive` once the last commit is that old. The server uses an hour, so a quiet backup can be told from a stopped one.
+- **The backup repository's freshness check** ([`docs/Developer/backup-freshness.yml`](docs/Developer/backup-freshness.yml)). It runs hourly in the repository and fails once the last commit is three hours old; GitHub then emails whoever last changed its schedule. The repository's owner commits it, so that is the owner.
+- **Git and OpenSSH in the image**, which the backup job runs.
+
+### Changed
+- **The backup leaves `.github/` to the repository's owner.** It never writes there, and takes commits that change nothing but `.github/` as the owner's, building on them, so the owner's check does not stop it. Any other commit it did not make still stops it.
+
+### Tests
+- The heartbeat (quiet runs, a recent commit, a run with something new), the owner's folder (seeded before the first run, changed later, refused as a link, kept through a restore) and `--heartbeat` refusing zero.
 - Version bumped to `0.33.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.32.0
+
+The account API: people can sign in with a code sent by email. The page starts using it in the next release; until then nothing on it changes, and charts need no account.
+
+### Added
+- **Signing in with a code**, without passwords or a separate sign-up.
+  - Asking for a code to create an account takes its language, Finnish or English, which then sets the language of its emails.
+  - The first code redeemed for a new address creates the account. Codes have six digits, work once, for ten minutes, with at most five wrong tries.
+  - Every request gets the same answer, `202`, so the answer never tells who has an account. The email says what happened instead: a code to create the account, a code to sign in, word that the account exists already, or word that there is none.
+  - Codes and session tokens are kept only as keyed hashes.
+- **Sessions** in an HttpOnly, SameSite=Lax cookie (`__Host-` over HTTPS) for 30 days, extended when used in their second half. Signing out ends this browser's session or every session of the account.
+- **The account API** (`/api/account`): ask for a code, sign in, read the account, change its language, sign out, download everything kept for the account as JSON (its record, sessions, a pending code, and the codes asked for with the client addresses they came from), and delete it after typing its address again. Every request that changes something must come from the site's own origin. See [Accounts](docs/Developer/Accounts.md).
+- **Emails** in Finnish and English, plain text, sent over SMTP with TLS from the first byte (Resend, from nektari.fi), or written to a folder when running on a laptop.
+- **Cloudflare Turnstile** checks for a person before any email is sent. Without an answer from Cloudflare, nothing is sent.
+- **Limits:** codes per address and per client per hour, both set by the environment. Refused requests do not count, so asking again never lengthens a wait.
+- **Settings** come from environment variables and are checked together: a missing or malformed one is named.
+
+### Changed
+- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes its sessions and sign-in code; the record of codes asked for stays until it is an hour old, so that deleting and creating an account again does not reset the hourly limits.
+- Migrations read the database's version under the write lock, so two processes opening an older database at once never run one twice.
+
+### Tests
+- The `accounts-gate` adds the sign-in logic, the emails and Turnstile, the settings and every account endpoint, among them the same answer for every address, the cookie's attributes, the Origin check and the hourly limits.
+- Version bumped to `0.32.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.31.0
+
+Accounts get a home: one database, and a backup of every account as its own encrypted file in a private Git repository, from which the database can be rebuilt with one command. Nothing on the page changes; signing in comes in a later release.
+
+### Added
+- **The account database** (`eight_characters/accounts/`), one SQLite file.
+  - A user has an id, an email address (trimmed and lowercased; one account per address), a language (`fi` or `en`), a plan (`free`, `basic`, `pro` or `max`) and when it was made and last changed.
+  - The file is owner-only, writes ahead to a log and syncs every commit, so a finished change survives a crash or a deploy.
+  - It opens only an existing account database, never creating an empty one, and refuses a schema newer than the app knows. Migrations are numbered and run in their own transactions.
+  - New and restored databases are built aside, in a file created exclusively, and moved into place when complete.
+  - Account databases carry SQLite's application id, so another application's file is never taken for one.
+  - Every change to a backed-up record is logged in the same transaction as the change.
+- **The backup.** Each run copies the accounts changed since the last run that reached the remote into a Git checkout, one file per account, encrypted with age to a public key, so the server and GitHub hold nothing readable. It writes a manifest (the key and the count), commits, pushes, and only then counts the changes as backed up: a failed push leaves them for the next run.
+  - A checkout with changes of its own, a file or a link the backup never writes, records without a manifest, another key, or a file count that differs from the database stops the run with the reason.
+  - The database remembers the backup's last commit. The server cannot read the files, but any commit it did not make, such as a file corrupted by hand, stops the run before anything is added to it, even one undone since: a push would publish it.
+  - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files. A run stopped outright while writing (killed, or the server restarting) leaves a marker, and the next run puts its changes back and writes them again.
+  - Git never waits for a password and each command has two minutes.
+  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It squashes only the backup the database last wrote, whole: its layout, a manifest that counts its records, and the commit the database recorded. It is recorded before anything moves: stopped part way, it stops the backup until run again, which finishes it; a refused push leaves the history as it was.
+  - A commit is recorded as pending before the branch moves to it, so a run stopped between the two is taken up by the next run.
+- **The restore** rebuilds a database from a clone of the backup and the private key. It holds the checkout's lock and checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
+- **Commands:** `python -m eight_characters.accounts init`, `keygen`, `backup`, `restore` and `squash-history`. See [Accounts](docs/Developer/Accounts.md).
+
+### Changed
+- `requires-python` is `>=3.11`: the engine has needed 3.11 (`datetime.UTC`, `typing.NotRequired`) all along.
+- New dependency: `pyrage==1.4.0`, for age. It ships no type stubs, so `typings/` carries the ones the app uses.
+
+### Tests
+- A new `accounts-gate` runs 76 tests: records, the database (including eight sign-ups with one address at once), backup runs against a real Git remote (including that no address reaches any Git object), squashing, restores of tampered backups, identity files and the commands.
+- Version bumped to `0.31.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.30.0
 
