@@ -622,11 +622,24 @@ class AccountStore:
         )
         return session, _user_from_row(row[4:])
 
-    def extend_session(self, token_hash: str, expires_at: str) -> None:
+    def extend_session(self, token_hash: str, expires_at: str, now: str) -> bool:
+        """Extends a session that is still live at `now`; False if it is gone or has
+        ended meanwhile."""
+        with self._write() as connection:
+            extended = connection.execute(
+                'UPDATE sessions SET expires_at = ? '
+                'WHERE token_hash = ? AND expires_at > ?',
+                (expires_at, token_hash, now),
+            ).rowcount
+        return extended == 1
+
+    def end_expired_session(self, token_hash: str, now: str) -> None:
+        """Deletes a session if it has ended by `now`: a request that renewed it
+        meanwhile keeps it."""
         with self._write() as connection:
             connection.execute(
-                'UPDATE sessions SET expires_at = ? WHERE token_hash = ?',
-                (expires_at, token_hash),
+                'DELETE FROM sessions WHERE token_hash = ? AND expires_at <= ?',
+                (token_hash, now),
             )
 
     def delete_session(self, token_hash: str) -> None:
