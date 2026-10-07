@@ -84,14 +84,20 @@ so the database alone cannot be used to test guesses or take over a session.
 | `POST /api/account/code` | sends a code, or word of no account | `202`; `400` malformed, `403` failed person check, `429` over the hourly limit (with `Retry-After`), `502` the email could not be sent, `503` Turnstile not answering |
 | `POST /api/account/session` | signs in with a code, creating the account if it was asked for | `200` and the account; `400` wrong or used code |
 | `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at}`; `401` |
-| `PATCH /api/account` | sets `language` | `200`; `401` |
+| `PATCH /api/account` | sets `language`; `email` names the account | `200`; `400`, `401`, `409` |
 | `DELETE /api/account/session` | signs this browser out | `204` |
-| `DELETE /api/account/sessions` | signs the account out everywhere | `204`; `401` |
-| `GET /api/account/export` | everything kept for the account, as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `401` |
+| `DELETE /api/account/sessions` | signs the account out everywhere; `{"email": …}` names it | `204`; `400`, `401`, `409` |
+| `POST /api/account/export` | everything kept for the account (`{"email": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …}` must repeat its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.
+
+An action on the account names the account the page shows (`email`). Tabs share the
+session cookie, so another tab may have signed in to another account since: the
+action is then refused with `409` (`This browser is signed in to another account
+now.`) and changes nothing. A malformed `email` is `400`. Deleting the account
+already names it, typed again.
 
 ## The page
 
@@ -124,6 +130,10 @@ put on one.
   for again after signing in. Closing the dialog leaves the form, which says that
   charts need an account, with the birth kept. A `401` that arrives for a chart no
   longer wanted asks nothing, so a sign-in made since for a newer one stays.
+- **A refusal is checked before the page signs out.** A request refused for want of a
+  session (`401`) may have been sent before another tab signed in: the page asks once
+  more (`GET /api/account`), takes a session the browser holds after all, and asks for
+  the chart again; only a second refusal signs the page out.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
   cannot ask themselves. Of the account, the check takes only who it is: another
@@ -138,11 +148,14 @@ put on one.
   account, which needs the address typed again. Signing out starts the page again,
   empty. Tabs share the session cookie, so as the menu opens it asks who the session
   belongs to (`GET /api/account`; opened again while an action or this question is
-  under way, once that one ends), and its actions wait for the answer, which it takes whole (a language
-  another tab set shows): an account signed in to in another tab is taken as a
-  sign-in here, and a session ended elsewhere asks for a sign-in. An action whose answer comes after the page has
-  learned of another session changes nothing, and says so; a sign-out or deletion that
-  went through still signs the page out, since its answer removed the cookie.
+  under way, once that one ends), and its actions wait for the answer, which it takes
+  whole (a language another tab set shows): an account signed in to in another tab is
+  taken as a sign-in here, and a session ended elsewhere asks for a sign-in. Its
+  actions name the account (see the API above): one refused with `409` changed
+  nothing, and the menu says so and asks again. An action whose answer comes after the
+  page has learned of another session changes nothing either, and says so; a sign-out
+  or deletion that went through still signs the page out, since its answer removed
+  the cookie.
 
 ## Settings
 

@@ -8,7 +8,7 @@ import {
   assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU,
 } from './chart-helpers.mjs';
 import {
-  newAddress, readMail, readCode, newAccount, asAccount, signInPage, stubTurnstile, turnstileAnswered,
+  newAddress, readMail, readCode, newAccount, newSession, asAccount, signInPage, stubTurnstile, turnstileAnswered,
 } from './account-helpers.mjs';
 
 const baseURL = process.env.EC_BASE_URL;
@@ -304,7 +304,7 @@ for (const profile of profiles) {
       await settled(page);
       // Signed out on every device, from another one.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
       });
       await page.locator('#chart-language button[data-chart-lang="fi"]').click();
       await dialogOpens(page);
@@ -354,7 +354,7 @@ for (const profile of profiles) {
       // Signed out on every device, from another one; then back past the form to the
       // first chart, which is refused, asks for a sign-in, and is drawn.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
       });
       await page.goBack();
       await page.goBack();
@@ -417,7 +417,7 @@ for (const profile of profiles) {
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       // Signed out on every device, from another one, while the second birth is typed.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
       });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -470,7 +470,7 @@ for (const profile of profiles) {
       // Signed out on every device, from another one; then back to the second birth, and
       // another one compared, which asks for a sign-in and shows its frames.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
       });
       await page.goBack();
       await compareWith('1991-01-01', '08:00');
@@ -722,7 +722,7 @@ for (const profile of profiles) {
       await dialogCloses(page);
       // Another tab sets the account's language to Finnish.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.patch('/api/account', { data: { language: 'fi' } })).status(), 200);
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
       });
       await page.locator('#account-btn').click();
       await dialogOpens(page);
@@ -770,6 +770,98 @@ for (const profile of profiles) {
       await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
     });
 
+    check('an action for an account another tab has left does nothing, and says so', async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'name-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'name-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      let downloads = 0;
+      page.on('download', () => { downloads += 1; });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${earlier.email}` }).waitFor();
+      // Another tab signs in to another account while this menu stays open.
+      await switchInAnotherTab(page, earlier, later);
+      await page.locator('#account-export').click();
+      await page.locator('#account-status').filter({ hasText: 'The account changed meanwhile: nothing was done.' }).waitFor();
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
+      assert.equal(downloads, 0);
+    });
+
+    check("the menu's late refusal leaves a session another tab signed in to", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'refused-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'refused-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      // The earlier session ends elsewhere. The menu's question of who the session is
+      // is refused at once, and the answer held on its way.
+      await asAccount(playwright, earlier, async (request) => {
+        assert.equal((await request.delete('/api/account/session')).status(), 204);
+      });
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const asked = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/account', async (route) => {
+        if (!holding || route.request().method() !== 'GET') return route.continue();
+        holding = false;
+        const response = await route.fetch();
+        sent();
+        await held;
+        return route.fulfill({ response });
+      });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await asked;
+      // Another tab signs in to another account; the menu is closed and opened again.
+      await page.context().addCookies(later.cookies);
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      release();
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
+      assert.equal(await page.locator('#account-notice').isVisible(), false);
+    });
+
+    check("a chart's late refusal leaves a new session of the same account", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'renewed-tab' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The chart asked for next is held on its way. Its answer comes last: the
+      // server's refusal for the session it was sent with, which ends meanwhile.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const asked = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/four_pillars', async (route) => {
+        if (!holding) return route.continue();
+        holding = false;
+        sent();
+        await held;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      await asked;
+      // Another tab signs out, and in again to the same account.
+      const renewed = await newSession(playwright, account);
+      await switchInAnotherTab(page, account, renewed);
+      release();
+      // The refusal is checked: the browser holds a session, and the chart is drawn
+      // in Finnish without asking for a sign-in.
+      await page.waitForFunction(() => document.documentElement.lang === 'fi'
+        && !document.getElementById('chart-view').hasAttribute('aria-busy'));
+      await settled(page);
+      assert.equal(await dialogIsOpen(page), false);
+      assert.equal(await text(page, '#account-btn'), 'Tili');
+      assert.equal(await page.locator('#chart-view').isVisible(), true);
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);
@@ -793,7 +885,7 @@ for (const profile of profiles) {
       await dialogOpens(page);
       await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
       });
       await page.goForward();
       await page.locator('#account-notice').filter({ hasText: 'Your session ended. Sign in again.' }).waitFor();

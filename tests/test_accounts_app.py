@@ -89,7 +89,10 @@ class TestWhatNeedsAnAccount(unittest.TestCase):
         client = site_client()
         sign_in(client, self.accounts, 'ended@example.com')
         token = client.cookies[SESSION_COOKIE]
-        self.assertEqual(client.delete('/api/account/sessions').status_code, 204)
+        everywhere = client.request(
+            'DELETE', '/api/account/sessions', json={'email': 'ended@example.com'}
+        )
+        self.assertEqual(everywhere.status_code, 204)
         stale = TestClient(app, base_url=TEST_ORIGIN, cookies={SESSION_COOKIE: token})
         response = stale.post('/api/hidden_stems', json={})
         self.assertEqual(response.status_code, 401)

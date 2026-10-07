@@ -73,6 +73,25 @@ async function newAccount(playwright, { language = 'en', label = 'reader' } = {}
   }
 }
 
+// Another session of an existing account, as another tab signing in to it again gets.
+async function newSession(playwright, account) {
+  const request = await apiContext(playwright);
+  try {
+    const asked = await request.post('/api/account/code', {
+      data: { email: account.email, purpose: 'sign_in', page_language: 'en', turnstile: TURNSTILE_TEST_TOKEN },
+    });
+    assert.equal(asked.status(), 202, `Asking for a code: ${await asked.text()}`);
+    const signed = await request.post('/api/account/session', {
+      data: { email: account.email, code: await readCode(account.email) },
+    });
+    assert.equal(signed.status(), 200, `Signing in: ${await signed.text()}`);
+    const { cookies } = await request.storageState();
+    return { email: account.email, cookies };
+  } finally {
+    await request.dispose();
+  }
+}
+
 // A request on the account's behalf, outside any page: `run` gets the API context.
 async function asAccount(playwright, account, run) {
   const request = await apiContext(playwright, account.cookies);
@@ -145,6 +164,6 @@ async function turnstileAnswered(page) {
 }
 
 export {
-  TURNSTILE_TEST_TOKEN, newAddress, readMail, readCode, newAccount, asAccount, deleteAccount, signInPage,
+  TURNSTILE_TEST_TOKEN, newAddress, readMail, readCode, newAccount, newSession, asAccount, deleteAccount, signInPage,
   stubTurnstile, turnstileAnswered,
 };

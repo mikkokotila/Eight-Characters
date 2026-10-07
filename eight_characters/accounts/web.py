@@ -57,6 +57,7 @@ from eight_characters.accounts.store import AccountStore, UnknownUser
 logger = logging.getLogger(__name__)
 
 SIGN_IN_REQUIRED: Final = 'Sign in to continue.'
+ACCOUNT_CHANGED: Final = 'This browser is signed in to another account now.'
 # How long the browser keeps the session cookie: the longest browsers keep one
 # (RFC 6265bis caps Max-Age at 400 days). Only signing in sets it. The session it
 # names ends on the server after 30 days without use, and is extended there while
@@ -372,6 +373,17 @@ class LanguageRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     language: Literal['fi', 'en']
+    # The account the page names (see AccountRequest).
+    email: str
+
+
+class AccountRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    # The account the page names. Tabs share the session cookie, so another tab may
+    # have signed in to another account since the page learned it; the action is
+    # then refused (409) and changes nothing.
+    email: str
 
 
 class DeleteRequest(BaseModel):
@@ -382,6 +394,19 @@ class DeleteRequest(BaseModel):
 
 
 router = APIRouter(prefix='/api/account')
+
+
+def _named(user: User, email: str) -> None:
+    """An action is for the account the page names: if the session belongs to
+    another one now, nothing is done."""
+    try:
+        named = normalize_email(email)
+    except RecordError as exc:
+        raise HTTPException(
+            status_code=400, detail='The account named is not an email address.'
+        ) from exc
+    if named != user.email:
+        raise HTTPException(status_code=409, detail=ACCOUNT_CHANGED)
 
 
 @router.post('/code', status_code=202)
@@ -472,6 +497,7 @@ def update_account(
     language of its emails."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.email)
     try:
         return account_view(accounts.store.set_language(user.id, payload.language))
     except UnknownUser as exc:
@@ -492,24 +518,34 @@ def sign_out(
 
 @router.delete('/sessions', status_code=204)
 def sign_out_everywhere(
+    payload: AccountRequest,
     request: Request,
     response: Response,
     current: SessionDependency,
     accounts: AccountsDependency,
 ) -> None:
     _same_origin(request, accounts)
-    accounts.sign_in.sign_out_everywhere(_signed_in(current).user.id)
+    user = _signed_in(current).user
+    _named(user, payload.email)
+    accounts.sign_in.sign_out_everywhere(user.id)
     _clear_session_cookie(response, accounts)
 
 
-@router.get('/export')
+@router.post('/export')
 def export_account(
-    response: Response, current: SessionDependency, accounts: AccountsDependency
+    payload: AccountRequest,
+    request: Request,
+    response: Response,
+    current: SessionDependency,
+    accounts: AccountsDependency,
 ) -> dict[str, Any]:
     """Everything kept for the account, as a JSON file. What has passed its time is
     dropped first, so the file holds what the account keeps, and no request older
-    than the hour."""
+    than the hour. The account is named in the body, not the address, which servers
+    log."""
+    _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.email)
     accounts.sign_in.sweep()
     try:
         data = accounts.store.account_data(user.id)

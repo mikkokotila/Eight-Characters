@@ -552,8 +552,9 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     let response = await post(asked);
     if (response.status === 401 && wanted()) {
-      account.forget();
-      await account.signIn();
+      // Refused, perhaps for a session another tab has replaced since: a sign-in is
+      // asked for only if the browser holds none now.
+      if (!(await account.recheck())) await account.signIn();
       asked = { ...asked, lang: currentLanguage };
       response = await post(asked);
     }

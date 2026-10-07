@@ -401,6 +401,24 @@
       account = told;
       refresh();
     };
+    // A request was refused for want of a session, perhaps one sent before another tab
+    // signed in. Before the page lets its session go, it asks whether the browser holds
+    // one now: if so, the page takes it (learn) and answers true; if not, `letGo` ends
+    // it here, and the answer is false.
+    const refusedNow = async (letGo) => {
+      const session = held;
+      const response = await call('GET', '/api/account');
+      if (session !== held) return account !== null;
+      if (response.status === 401) {
+        letGo();
+        return false;
+      }
+      if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
+      const value = await response.json();
+      if (session !== held) return account !== null;
+      learn(value);
+      return true;
+    };
 
     // ── The account ──
     // The account's session ended meanwhile (signed out elsewhere, or deleted): the
@@ -463,6 +481,17 @@
       if (dialog.open && step === 'menu') confirmSession();
     };
     const refused = (response) => new Error(t('account_server_error', { status: response.status }));
+    // The session belongs to another account than the menu names (another tab signed
+    // in to it): nothing was done. The menu says so, and asks who the session is.
+    const elsewhere = () => {
+      setStatus(status, t('account_changed'));
+      confirmSession();
+    };
+    // Refused for want of a session: if the browser holds one after all (another tab
+    // signed in), nothing was done, and the menu says so.
+    const refusedHere = async () => {
+      if (await refusedNow(ended)) setStatus(status, t('account_changed'));
+    };
     // The menu's actions, which wait while the page asks who the session belongs to.
     const actions = () => [
       ...languageSwitch.querySelectorAll('button[data-account-lang]'),
@@ -489,7 +518,7 @@
         }
         if (response.status === 401) {
           known = true;
-          ended();
+          await refusedNow(ended);
           return;
         }
         if (!response.ok) throw refused(response);
@@ -510,9 +539,12 @@
       const choice = event.target.closest('button[data-account-lang]');
       if (!choice || choice.getAttribute('aria-pressed') === 'true') return;
       act(choice, async (still) => {
-        const response = await call('PATCH', '/api/account', { language: choice.dataset.accountLang });
+        const response = await call('PATCH', '/api/account', {
+          language: choice.dataset.accountLang, email: account.email,
+        });
         if (!still()) return;
-        if (response.status === 401) return ended();
+        if (response.status === 409) return elsewhere();
+        if (response.status === 401) return refusedHere();
         if (!response.ok) throw refused(response);
         const value = await response.json();
         if (!still()) return;
@@ -524,9 +556,10 @@
     });
 
     exportButton.addEventListener('click', () => act(exportButton, async (still) => {
-      const response = await call('GET', '/api/account/export');
+      const response = await call('POST', '/api/account/export', { email: account.email });
       if (!still()) return;
-      if (response.status === 401) return ended();
+      if (response.status === 409) return elsewhere();
+      if (response.status === 401) return refusedHere();
       if (!response.ok) throw refused(response);
       const file = await response.blob();
       if (!still()) return;
@@ -553,8 +586,10 @@
     // A sign-out or a deletion that went through removed the browser's session cookie
     // with its answer, whichever account it held by then: the page is signed out.
     signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async (still) => {
-      const response = await call('DELETE', '/api/account/sessions');
-      if (response.status === 401) return still() ? ended() : undefined;
+      const response = await call('DELETE', '/api/account/sessions', { email: account.email });
+      if (!still()) return;
+      if (response.status === 409) return elsewhere();
+      if (response.status === 401) return refusedHere();
       if (!response.ok) throw refused(response);
       signedOut('account_signed_out_everywhere');
     }));
@@ -577,7 +612,11 @@
         }
         setStatus(deleteStatus, '');
         const response = await call('DELETE', '/api/account', { email: typed });
-        if (response.status === 401) return still() ? ended() : undefined;
+        if (!still()) return;
+        // The address typed is the one the menu names (checked above): refused, it is
+        // not the session's account, which another tab has signed in to since.
+        if (response.status === 400) return elsewhere();
+        if (response.status === 401) return refusedHere();
         if (!response.ok) throw refused(response);
         signedOut('account_deleted');
       });
@@ -613,10 +652,7 @@
       const session = held;
       const response = await call('GET', '/api/account');
       if (!wanted() || session !== held) return false;
-      if (response.status === 401) {
-        forget();
-        return false;
-      }
+      if (response.status === 401) return refusedNow(forget);
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
       if (!wanted() || session !== held) return false;
@@ -641,8 +677,9 @@
     return {
       signedIn: () => account !== null,
       stillSignedIn,
+      // A chart refused for want of a session: whether the browser holds one now.
+      recheck: () => refusedNow(forget),
       signIn,
-      forget,
       open,
       isOpen: () => dialog.open,
       refresh,
