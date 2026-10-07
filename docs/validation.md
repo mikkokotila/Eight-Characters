@@ -10,6 +10,7 @@ python -m unittest discover -s tests -p 'test_*.py'
 ```
 
 Current coverage includes:
+- gender-based ten-year luck pillars, onset/calendar conventions and API compatibility
 - policy and architecture contracts
 - time normalization and DST handling
 - astronomy kernel and solar position

@@ -1,19 +1,22 @@
 # Changelog
 
-## 0.28.1
+## 0.29.0
 
-The installed package serves every file the app uses. Nothing changes where the app runs from its source tree, as on Render.
-
-### Fixed
-- **The explorer's files and the start page's fonts were missing from the package.** `package-data` had never listed anything under `eight_characters/explorer/`, so the wheel and the sdist carried only the explorer's Python module.
-  - Installed from its wheel and run from another directory, the app answered 404 for the explorer's stylesheet, d3, data and script, and for the two fonts the start page loads from `/explorer/vendor/fonts/`, Manrope and Cormorant Garamond.
-  - The Docker image served them only because uvicorn puts its working directory, `/app`, first on `sys.path`, so the copied source tree shadows the installed package.
-
-  `package-data` now lists the explorer's stylesheets, scripts, sample payloads, d3 and fonts.
-- **A test keeps it so** (`test_served_files_ship_in_the_package`): every file in a directory the app serves from (`/static`, `/explorer`) or renders templates from must match a `package-data` pattern, expanded the way setuptools expands it. On 0.28.0 it fails, naming the explorer's 16 files.
+### Added
+- Backend ten-year luck pillars, opt-in through `include_luck_pillars` on
+  `POST /api/four_pillars`, with explicit `male`/`female` gender input and
+  1-12 actual cycles (default 10).
+- Direction from the Lichun-resolved year stem, progression from the natal
+  month pillar, and onset from the engine's own Jie instants in TT.
+- A documented continuous three-days-per-year convention, UTC calendar
+  boundaries, symbolic onset ages, pre-luck period and visible uncertainty.
+- Engine/API regression tests and independent package comparisons, included
+  in the core and API CI gates. No frontend integration.
 
 ### Changed
-- Version bumped to `0.28.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Reject negative or non-finite birth-time uncertainty instead of calculating
+  with invalid uncertainty; reject finite values that overflow luck-age scaling.
+  Existing natal-only response sections are unchanged.
 
 ## 0.28.0
 
