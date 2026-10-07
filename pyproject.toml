@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'eight-characters'
-version = '0.34.0'
+version = '0.33.1'
 description = 'BaZi Four Pillars chart generator'
 readme = 'README.md'
 requires-python = '>=3.11'
@@ -42,7 +42,7 @@ eight_characters = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py311"
 line-length = 88
 exclude = [
   ".git",
@@ -78,7 +78,7 @@ allowed-confusables = ["–", "×"]
 known-first-party = ["eight_characters"]
 
 [tool.pyright]
-pythonVersion = "3.12"
+pythonVersion = "3.11"
 typeCheckingMode = "strict"
 include = [
   "eight_characters",

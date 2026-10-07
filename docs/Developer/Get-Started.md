@@ -5,7 +5,9 @@ This guide is the practical entry point for running and working with
 
 ## Prerequisites
 
-- Python 3.12 preferred (project requires Python 3.11+)
+- Python 3.11: the version the production image runs and every CI gate tests
+  (`requires-python = '>=3.11'`). On a newer Python, code that 3.11 cannot run
+  passes locally and then fails in CI.
 - `pip`
 - Git (the account backup and its tests use it)
 - Optional: Docker
@@ -13,7 +15,7 @@ This guide is the practical entry point for running and working with
 ## Local Setup
 
 ```bash
-python3 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```

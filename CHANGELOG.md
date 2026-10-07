@@ -26,6 +26,23 @@ Charts need an account; the start page does not. Creating a chart while signed o
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.34.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
+## 0.33.1
+
+CI and the linters test the Python that production runs, 3.11. Nothing the app computes or serves changes.
+
+### Fixed
+- **CI tested other Pythons than the one production runs.** The production image is `python:3.11-slim`, but the seven test gates, the accounts gate among them, ran Python 3.13 and the style and type gates 3.12; ruff targeted 3.12 and pyright checked for 3.12. Code that needs 3.12 passed every gate, then failed on the server, which deploys a merge to `main` within about five minutes: an f-string that reuses its quotes, a `type` statement or a type parameter list is a syntax error on 3.11, so its module cannot be imported, and `itertools.batched`, `typing.override` or `Path.walk` raises where it runs.
+  - Every gate now runs 3.11; ruff targets `py311`, and pyright checks for 3.11.
+  - At 3.11, ruff refuses the three syntax forms and pyright all six; at 3.12, neither refused any.
+- **The test gates check the numbers production computes.** From Python 3.12, built-in `sum()` adds floats with compensation, and the explorer's model sums with it. On one machine, the same 30 explorer runs give 3,220 values that differ between 3.11 and 3.13, by at most 5.6e-14 of their size: a basin's mass is 0.9999999999999996 on 3.11 and 1.0 on 3.13. Nothing else differs: every jie from 1950 to 2100, 7,858 apparent solar longitudes and 400 charts with every section are identical byte for byte.
+
+### Changed
+- The developer guide names Python 3.11 and creates its venv with `python3.11`.
+
+### Tests
+- **`test_production_python`**, in the regression-safety gate, fails when `requires-python`'s floor, ruff's target, pyright's version or any workflow's `python-version` names another Python than the Dockerfile's. Each job must set up its own Python with `actions/setup-python`, one version per step: a job without it runs the runner's Python, whatever the other jobs set up. On 0.33.0 it fails 11 times: the nine workflows' jobs, ruff and pyright.
+- Version bumped to `0.33.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.33.0
 
 The backup gets ready to run on the server: it says when it is alive, its repository can watch it, and the image carries the tools it runs. Nothing on the page changes.
