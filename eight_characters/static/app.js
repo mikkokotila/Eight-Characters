@@ -580,13 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (withReading && !pillarsData.reading) throw new Error(t('chart_error'));
     canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
-    // A chart asked for with a gender has its luck pillars and their context; one
-    // without has neither.
-    if (Boolean(request.gender) !== Boolean(pillarsData.luck_pillars && pillarsData.luck_context)) {
-      throw new Error(t('luck_error'));
-    }
-    luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null,
+    // A chart asked for with a gender has its luck pillars, their context and their
+    // cards; one without has none of them.
+    const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
+    if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
+    luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
       { relationshipLabel: relationships.labelOf }, request.location.timezone);
+    luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
@@ -672,8 +672,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // the control that asked, found again in the redrawn chart.
   const reshow = async (changes, focusSelector) => {
     chartView.setAttribute('aria-busy', 'true');
+    // The luck pillar standing in the chart stands in it again: the language and the
+    // Zi-hour convention leave the decades as they are.
+    const standing = luck.standing();
     try {
       if (!(await showChart({ ...shown.request, ...changes }, shown.place))) return;
+      if (standing !== null && !luck.stand(standing)) throw new Error(t('luck_error'));
       addressChart('replaceState');
       chartView.querySelector(focusSelector).focus();
     } catch (err) {
@@ -798,27 +802,30 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
-    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); luck.clear(); },
+    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); luck.close(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
     root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
-    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); luck.clear(); setRelationshipsOpen(false); },
+    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); luck.close(); setRelationshipsOpen(false); },
   });
   const pillarChanges = window.EC_PILLAR_CHANGES.create({
     root: chartView, translate: requiredTranslation, escape: esc, canon: canonReadings,
     format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
-    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); luck.clear(); setRelationshipsOpen(false); },
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); luck.close(); setRelationshipsOpen(false); },
   });
-  // The luck pillars: the ribbon of decades, and the chosen decade's page (luck.js).
+  // The luck pillars: the ribbon of decades, the chosen period as the chart's fifth
+  // pillar, and its page (luck.js). Its cards, drawn anew as the choice moves, show what
+  // every card shows.
   const luck = window.EC_LUCK.create({
-    root: chartView, translate: requiredTranslation, escape: esc, spot, locale,
+    root: chartView, pillars: chartView.querySelector('#pillars'), translate: requiredTranslation, escape: esc, spot, locale,
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
+    onCards: (column, focused) => fitCards(column, focused),
   });
   const closePanel = () => {
     relationships.clear();
     dayMasterContext.clear();
     pillarChanges.clear();
-    luck.clear();
+    luck.close();
     setRelationshipsOpen(false);
   };
   relationshipsTopic.addEventListener('click', () => {
@@ -891,6 +898,27 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     syncDisplaySwitch();
   };
+  // Cards drawn anew (the luck pillar's, as its choice moves) show what every card
+  // shows, at once. The tab stop stays on a card that can take it, and focus that was
+  // on the redrawn part comes back to it, or else to that card.
+  const fitCards = (scope, focused = null) => {
+    scope.querySelectorAll('.card').forEach((card) => {
+      card.classList.toggle('is-flipped', displayMode === 'ten-gods');
+      labelCard(card);
+      card.setAttribute('tabindex', '-1');
+    });
+    scope.querySelectorAll('.card.branch').forEach((branchCard) => {
+      const panel = hiddenStemsOf(branchCard);
+      if (showsHiddenStems(panel)) expandPanel(panel, branchCard, false);
+    });
+    const keyed = cardAt(keyCard);
+    if (!keyed || keyed.closest('[inert]')) setKeyCard(cardAt({ pillar: 'year', component: keyCard.component }));
+    else setKeyCard(keyed);
+    syncDisplaySwitch();
+    if (focused === null) return;
+    const target = focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
+    (target && !target.closest('[inert]') ? target : cardAt(keyCard)).focus({ preventScroll: true });
+  };
   displaySwitch.addEventListener('click', (event) => {
     const button = event.target.closest('button[data-display]');
     if (!button || button.getAttribute('aria-pressed') === 'true') return;
@@ -899,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   const populateTenGods = (data) => {
-    document.querySelectorAll('#pillars .card').forEach((card) => {
+    document.querySelectorAll('#pillars .card:not([data-pillar="luck"])').forEach((card) => {
       const pillarName = card.dataset.pillar;
       const pillarData = data[pillarName];
       if (!pillarData) {
@@ -944,9 +972,14 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     panel.style.height = panel.scrollHeight + 'px';
-    panel.addEventListener('transitionend', (event) => {
-      if (event.propertyName === 'height' && panel.classList.contains('is-expanded')) panel.style.height = 'auto';
-    }, { once: true });
+    // Once open, the panel takes its content's height at any width. The opacity ends
+    // first, so only the panel's own height ending counts.
+    const opened = (event) => {
+      if (event.target !== panel || event.propertyName !== 'height') return;
+      panel.removeEventListener('transitionend', opened);
+      if (panel.classList.contains('is-expanded')) panel.style.height = 'auto';
+    };
+    panel.addEventListener('transitionend', opened);
   };
 
   const collapsePanel = (panel, branchCard) => {
@@ -1122,6 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // does; T turns the card with focus, as a long press does. A hint above the card
   // says so when it has keyboard focus.
   const PILLAR_ORDER = ['hour', 'day', 'month', 'year'];
+  const pillarOrder = () => (luck.cardsActive() ? [...PILLAR_ORDER, 'luck'] : PILLAR_ORDER);
   let keyCard = { pillar: 'hour', component: 'stem' };
   const cardAt = ({ pillar, component }) => pillarsContainer.querySelector(`.card.${component}[data-pillar="${pillar}"]`);
   const setKeyCard = (card) => {
@@ -1139,7 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     cardHint.classList.remove('hidden');
     // While a pillar's reading is open, the keys turn its pages: the card's pillar
     // opens, at the card's own line, and what is open stays open.
-    if (canonReadings.has() && currentTopic()?.startsWith('pillar/')) {
+    if (canonReadings.has() && currentTopic()?.startsWith('pillar/') && card.dataset.pillar !== 'luck') {
       const identity = chartView.querySelector(`.pillar-identity[data-pillar="${card.dataset.pillar}"]`);
       if (identity.getAttribute('aria-expanded') !== 'true') identity.click();
       canonReadings.arrive(chartPanel.querySelector('#pillar-detail'), card.classList.contains('stem') ? 'stem' : 'ground');
@@ -1153,10 +1187,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!card.matches('.card') || event.altKey || event.ctrlKey || event.metaKey) return;
     const pillar = card.dataset.pillar;
     const component = card.classList.contains('stem') ? 'stem' : 'branch';
-    const at = PILLAR_ORDER.indexOf(pillar);
+    const order = pillarOrder();
+    const at = order.indexOf(pillar);
     const moves = {
-      ArrowLeft: at > 0 ? { pillar: PILLAR_ORDER[at - 1], component } : null,
-      ArrowRight: at < PILLAR_ORDER.length - 1 ? { pillar: PILLAR_ORDER[at + 1], component } : null,
+      ArrowLeft: at > 0 ? { pillar: order[at - 1], component } : null,
+      ArrowRight: at < order.length - 1 ? { pillar: order[at + 1], component } : null,
       ArrowUp: component === 'branch' ? { pillar, component: 'stem' } : null,
       ArrowDown: component === 'stem' ? { pillar, component: 'branch' } : null,
     };
@@ -1177,7 +1212,13 @@ document.addEventListener('DOMContentLoaded', () => {
       syncDisplaySwitch();
       return;
     }
-    // R reads the card: its pillar's page, with the card's own line open.
+    // R reads the card: its pillar's page, with the card's own line open. On the luck
+    // pillar it opens the decade's page.
+    if ((event.key === 'r' || event.key === 'R') && !event.repeat && pillar === 'luck') {
+      event.preventDefault();
+      goToTopic(`luck/${luck.standing()}`);
+      return;
+    }
     if ((event.key === 'r' || event.key === 'R') && !event.repeat && canonReadings.has()) {
       event.preventDefault();
       goToReading(`pillar/${pillar}`, component === 'stem' ? 'stem' : 'ground');
@@ -1195,12 +1236,15 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── The address: the chart on screen and its open topic ──
   // A chart lives in the address's fragment, which browsers never send to the server:
   // #chart?date=…&time=…&place=…&city=…&latitude=…&longitude=…&timezone=…&lang=…, then
-  // zi, display and topic where they differ from a new chart's. A new chart, another
-  // topic, Edit and New chart add history entries; the language, the Zi-hour convention
-  // and the display replace the current one. The address never names a chart that is
-  // not on screen.
+  // gender, zi, display, luck and topic where they differ from a new chart's. A new
+  // chart, another topic, Edit and New chart add history entries; the language, the
+  // Zi-hour convention, the display and the luck pillar replace the current one. The
+  // address never names a chart that is not on screen.
   const CHART_ROUTE = '#chart?';
-  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'gender', 'zi', 'display', 'topic'];
+  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'gender', 'zi', 'display', 'luck', 'topic'];
+  // The period standing in the chart as its fifth pillar: before the luck pillars, or a
+  // decade's phase.
+  const LUCK_PATH = /^(before|\d{1,2}\/(stem|branch))$/;
   const DISPLAYS = ['characters', 'ten-gods', 'hidden-stems'];
   // The pages a topic can show. Whether this chart has the one named is known once it is drawn.
   const TOPIC_PATH = /^(day-master|season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year)|luck\/(before|\d{1,2}\/(stem|branch)))$/;
@@ -1241,6 +1285,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const { request, place } = shown;
     const params = linkParams(request, place);
     if (displayMode !== 'characters') params.set('display', displayMode);
+    const standing = luck.standing();
+    if (standing !== null) params.set('luck', standing);
     const topic = currentTopic();
     if (topic !== null) params.set('topic', topic);
     return `${formAddress()}${CHART_ROUTE}${params}`;
@@ -1250,7 +1296,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let addressed = null;
   const addressChart = (method) => {
     history[embedded ? 'replaceState' : method](null, '', chartAddress());
-    addressed = { topic: currentTopic(), display: displayMode };
+    addressed = { topic: currentTopic(), display: displayMode, luck: luck.standing() };
     if (embedded) window.parent.postMessage({ type: 'ec-chart', hash: location.hash, title: document.title }, location.origin);
   };
   const addressForm = (method) => {
@@ -1263,7 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addressed === null || chartView.getAttribute('aria-busy') === 'true') return;
     const topic = currentTopic();
     if (topic !== addressed.topic) addressChart('pushState');
-    else if (displayMode !== addressed.display) addressChart('replaceState');
+    else if (displayMode !== addressed.display || luck.standing() !== addressed.luck) addressChart('replaceState');
   };
   chartView.addEventListener('click', followView);
   document.addEventListener('keydown', followView);
@@ -1314,6 +1360,8 @@ document.addEventListener('DOMContentLoaded', () => {
       gender: optional('gender', (value) => GENDERS.includes(value)),
       zi: optional('zi', (value) => ZI_CONVENTIONS.includes(value)) ?? ZI_CONVENTIONS[0],
       display: optional('display', (value) => DISPLAYS.includes(value)) ?? 'characters',
+      // Only a chart with a gender has luck pillars to stand in it.
+      luck: optional('luck', (value) => LUCK_PATH.test(value) && params.has('gender')),
       topic: optional('topic', (value) => TOPIC_PATH.test(value)),
     };
   };
@@ -1503,7 +1551,11 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         if (!drawn) return;
       }
+      if (link.luck === null) luck.setShown(false);
+      else if (!luck.stand(link.luck)) throw linkError('luck');
       if (link.topic !== null) openTopic(link.topic);
+      // A decade's page shows the period standing in the chart.
+      if (link.luck !== null && link.topic?.startsWith('luck/') && link.topic !== `luck/${link.luck}`) throw linkError('topic');
       addressChart('replaceState');
     } catch (err) {
       console.error(err);
@@ -1580,6 +1632,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const keysDialog = document.getElementById('keys-dialog');
   const paletteDialog = document.getElementById('command-palette');
   if (!keysDialog || !paletteDialog) throw new Error('Chart dialogs are incomplete.');
+  // The luck pillar's keys, listed while the chart has luck pillars.
+  const luckKeys = [...keysDialog.querySelectorAll('.key-row-luck')];
   const palette = window.EC_PALETTE.create({ dialog: paletteDialog, escape: esc });
   // Escape in a dialog closes it and nothing else: an open topic stays open. A closing
   // dialog gives focus back to where it was, as the browser does it.
@@ -1645,6 +1699,11 @@ document.addEventListener('DOMContentLoaded', () => {
     displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
       add(requiredTranslation('display_label'), button.textContent, () => button.click());
     });
+    if (luck.has()) {
+      chartView.querySelectorAll('#luck-switch button[aria-pressed="false"]').forEach((button) => {
+        add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click());
+      });
+    }
     // Embedded, the comparison's page holds the language, the view and the chart's
     // other actions.
     if (!embedded) {
@@ -1672,11 +1731,23 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     const focus = document.activeElement;
-    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey
-      && chartView.contains(focus) && !focus.closest('input, textarea, select, [contenteditable="true"]')) {
+    const onChart = chartView.contains(focus) && !focus.closest('input, textarea, select, [contenteditable="true"]');
+    if (event.key === '?' && !event.ctrlKey && !event.metaKey && !event.altKey && onChart) {
       event.preventDefault();
       openKeys();
+      return;
     }
+    // The luck pillar's keys: L shows and hides it, N goes to now, [ and ] step a phase,
+    // { and } a decade. Brackets are typed with Alt or AltGr on many keyboards.
+    if (!luck.has() || !onChart || event.metaKey || (event.ctrlKey && !event.altKey)) return;
+    const plain = !event.ctrlKey && !event.altKey;
+    const steps = { '[': () => luck.step(-1), ']': () => luck.step(1), '{': () => luck.stepDecade(-1), '}': () => luck.stepDecade(1) };
+    if (plain && !event.repeat && event.key.toLowerCase() === 'l') luck.toggle();
+    else if (plain && !event.repeat && event.key.toLowerCase() === 'n') luck.toToday();
+    else if (Object.hasOwn(steps, event.key)) steps[event.key]();
+    else return;
+    event.preventDefault();
+    followView();
   });
 
   applyLanguage();

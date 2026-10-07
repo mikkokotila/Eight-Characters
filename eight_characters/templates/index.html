@@ -101,6 +101,12 @@
           <button type="button" data-display="ten-gods" aria-pressed="false" data-i18n="display_ten_gods">Kymmenen jumalaa</button>
           <button type="button" data-display="hidden-stems" aria-pressed="false" data-i18n="display_hidden_stems">Piilorungot</button>
         </div>
+        <!-- A chart with luck pillars: the natal chart, or the chart with its luck pillar (luck.js). -->
+        <div class="segmented hidden" id="luck-switch" role="group" aria-labelledby="luck-switch-label">
+          <span id="luck-switch-label" class="sr-only" data-i18n="luck_switch_label">Onnenpilari</span>
+          <button type="button" data-luck-show="off" aria-pressed="true" data-i18n="luck_switch_off">Syntymäkartta</button>
+          <button type="button" data-luck-show="on" aria-pressed="false" data-i18n="luck_switch_on">Onnen kanssa</button>
+        </div>
         <div class="segmented" id="view-switch" role="group" aria-labelledby="view-switch-label">
           <span id="view-switch-label" class="sr-only" data-i18n="view_label">Näkymä</span>
           <button type="button" data-view="standard" aria-pressed="true" data-i18n="mode_standard">Standardi</button>
@@ -188,6 +194,23 @@
       <div class="key-row">
         <dt><kbd>T</kbd></dt>
         <dd data-i18n="key_turn">Kortti kymmeneen jumalaan ja takaisin</dd>
+      </div>
+      <!-- A chart with luck pillars only. -->
+      <div class="key-row key-row-luck hidden">
+        <dt><kbd>L</kbd></dt>
+        <dd data-i18n="key_luck_toggle">Näyttää ja piilottaa onnenpilarin</dd>
+      </div>
+      <div class="key-row key-row-luck hidden">
+        <dt><kbd>[</kbd> <kbd>]</kbd></dt>
+        <dd data-i18n="key_luck_phase">Vaihe taakse tai eteen</dd>
+      </div>
+      <div class="key-row key-row-luck hidden">
+        <dt><kbd>{</kbd> <kbd>}</kbd></dt>
+        <dd data-i18n="key_luck_decade">Vuosikymmen taakse tai eteen</dd>
+      </div>
+      <div class="key-row key-row-luck hidden">
+        <dt><kbd>N</kbd></dt>
+        <dd data-i18n="key_luck_now">Onnenpilari nyt</dd>
       </div>
       <div class="key-row">
         <dt><kbd>Esc</kbd></dt>
