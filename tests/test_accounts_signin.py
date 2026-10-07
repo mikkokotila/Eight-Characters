@@ -17,7 +17,7 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import AccountStore, EmailTaken
 from tests.accounts_support import Clock
 
 SECRET = b'a test secret that is long enough!!'
@@ -160,6 +160,25 @@ class TestRedeemingCodes(SignInTestCase):
             self.assertRaises(CodeRefused),
         ):
             self.sign_in.redeem_code('reader@example.com', code)
+
+    def test_an_account_made_and_deleted_while_creating_it_gets_no_session(
+        self,
+    ) -> None:
+        # Another tab made the account with another code, and it was deleted before
+        # this one could sign in to it.
+        code = self.code_for('reader@example.com', 'create', 'fi')
+        create = self.store.create_user
+
+        def made_and_deleted_meanwhile(email: str, language: Language) -> User:
+            self.store.delete_user(create(email, language).id)
+            raise EmailTaken('An account with that email address exists already.')
+
+        with (
+            patch.object(self.store, 'create_user', made_and_deleted_meanwhile),
+            self.assertRaises(CodeRefused),
+        ):
+            self.sign_in.redeem_code('reader@example.com', code)
+        self.assertIsNone(self.store.user_by_email('reader@example.com'))
 
     def test_a_code_works_once(self) -> None:
         code = self.code_for()

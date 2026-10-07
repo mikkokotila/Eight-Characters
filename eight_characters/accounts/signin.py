@@ -191,11 +191,12 @@ class SignIn:
             try:
                 user = self._store.create_user(address, taken.new_language)
                 created = True
-            except EmailTaken:
+            except EmailTaken as exc:
                 # Made meanwhile, from another tab with another code.
                 user = self._store.user_by_email(address)
                 if user is None:
-                    raise
+                    # And deleted since: there is no account to sign in to.
+                    raise CodeRefused('That code is wrong or no longer works.') from exc
         token = secrets.token_urlsafe(32)
         expires_at = now + SESSION_LIFETIME
         session = Session(
