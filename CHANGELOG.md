@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.36.0
+## 0.38.0
 
 Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
 
@@ -32,7 +32,7 @@ Charts need an account; the start page does not. Creating a chart while signed o
 - `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), extending the session there without a cookie (also when another request renews it as the page's crosses its old end), leaving the cookie of a session that ended, and starting the app with missing settings, a missing database, and complete ones.
 - The API tests sign in as the page does.
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
-- Version bumped to `0.36.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Version bumped to `0.38.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.37.0
 
@@ -61,7 +61,7 @@ The engine says what each luck pillar brings to a chart, phase by phase. This is
 - The design's sample chart (14 August 1975, 07:45, Helsinki, female), decade by decade by hand, and through the API.
 - Phases, and their leap-day anniversaries.
 - `tests.test_api_luck_context` runs in the API integration gate.
-- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 is held by the open PR #48.)
+- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 was skipped: it was held for PR #48, released as 0.38.0.)
 
 ## 0.35.0
 
@@ -116,7 +116,7 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - the arcs' levels and strands on every combination;
   - real charts for each new family, an arc of three strands and six feet on one card.
 - Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.
-- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 was held for PR #48, which was released as 0.36.0 after this.)
+- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 was skipped: it was held for PR #48, released as 0.38.0.)
 
 ## 0.33.1
 
