@@ -245,13 +245,26 @@ def read_manifest(root: Path) -> Manifest | None:
     return manifest
 
 
+def _listing(directory: Path, where: str) -> list[Path]:
+    """A folder's entries in name order. A link could lead outside the checkout, so
+    one anywhere stops the backup."""
+    entries = sorted(directory.iterdir())
+    for entry in entries:
+        if entry.is_symlink():
+            raise BackupError(
+                f'The backup holds a link, which it never writes: {where}{entry.name}'
+            )
+    return entries
+
+
 def record_files(root: Path) -> list[tuple[str, str]]:
     """Every user record file in the checkout, as (path from the root, user id).
 
-    Anything the backup never writes stops it here, so that a restore never meets a
-    file it does not know. Empty folders, which Git does not keep, are passed over.
+    Anything the backup never writes stops it here, links included, so that a restore
+    never meets a file it does not know. Empty folders, which Git does not keep, are
+    passed over.
     """
-    for entry in root.iterdir():
+    for entry in _listing(root, ''):
         if entry.name not in TOP_LEVEL:
             raise BackupError(
                 f'The backup holds something it never writes: {entry.name}'
@@ -262,12 +275,12 @@ def record_files(root: Path) -> list[tuple[str, str]]:
     if not users.is_dir():
         raise BackupError('users in the backup is not a folder.')
     found: list[tuple[str, str]] = []
-    for shard in sorted(users.iterdir()):
+    for shard in _listing(users, 'users/'):
         if not shard.is_dir() or _SHARD.fullmatch(shard.name) is None:
             raise BackupError(
                 f'The backup holds something it never writes: users/{shard.name}'
             )
-        for folder in sorted(shard.iterdir()):
+        for folder in _listing(shard, f'users/{shard.name}/'):
             where = f'users/{shard.name}/{folder.name}'
             if (
                 not folder.is_dir()
@@ -277,15 +290,22 @@ def record_files(root: Path) -> list[tuple[str, str]]:
                 raise BackupError(
                     f'The backup holds something it never writes: {where}'
                 )
-            names = sorted(entry.name for entry in folder.iterdir())
+            names = [entry.name for entry in _listing(folder, f'{where}/')]
             if not names:
                 continue
-            if names != [USER_FILE]:
+            if names != [USER_FILE] or not (folder / USER_FILE).is_file():
                 raise BackupError(
-                    f'{where} should hold {USER_FILE} alone, not {names}.'
+                    f'{where} should hold the file {USER_FILE} alone, not {names}.'
                 )
             found.append((f'{where}/{USER_FILE}', folder.name))
     return found
+
+
+def head_tree(root: Path) -> str | None:
+    """The Git tree of the checkout's last commit, or None before the first."""
+    if _git_ref(root, 'HEAD') is None:
+        return None
+    return _git(root, 'rev-parse', 'HEAD^{tree}').strip()
 
 
 def _push_if_ahead(root: Path) -> bool:
@@ -381,15 +401,28 @@ def run_backup(
     root = work_tree(checkout)
     with checkout_lock(root):
         require_clean(root)
+        records = record_files(root)
         existing = read_manifest(root)
+        if existing is None and records:
+            raise BackupError(
+                'The backup holds records but no manifest naming the key they are '
+                'encrypted to.'
+            )
         if existing is not None and existing.recipient != str(recipient):
             raise BackupError(
                 'The backup was encrypted to another key. Files made for two keys '
                 'would leave a restore that can read only some of them.'
             )
-        record_files(root)
         scratch = Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
         snapshot = store.backup_snapshot()
+        # Without the private key the server cannot read a file, but it knows what it
+        # committed last: anything else in the checkout, such as a file corrupted or
+        # changed by hand, stops the run before it adds to it.
+        if head_tree(root) != snapshot.tree:
+            raise BackupError(
+                'The checkout is not the backup this database last wrote: it holds '
+                'commits the backup did not make, or another backup.'
+            )
         try:
             written, removed, commit = _write_and_commit(
                 root, snapshot, recipient, scratch
@@ -397,6 +430,10 @@ def run_backup(
         except BaseException:
             _discard_uncommitted(root)
             raise
+        if commit is not None:
+            # Recorded before the push, so a failed push leaves the commit for the
+            # next run to push.
+            store.record_backup_tree(_git(root, 'rev-parse', 'HEAD^{tree}').strip())
         pushed = _push_if_ahead(root)
         store.mark_backed_up(snapshot.through_seq)
     return BackupResult(

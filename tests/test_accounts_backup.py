@@ -1,5 +1,6 @@
 import fcntl
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from pathlib import Path
@@ -177,18 +178,69 @@ class TestRunBackup(BackupTestCase):
 
     def test_a_file_count_that_differs_from_the_database_stops_the_run(self) -> None:
         user = self.store.create_user('reader@example.com', 'fi')
-        self.backup()
-        self.file_of(user.id).unlink()
-        self.commit_by_hand('lose a record')
         self.store.create_user('later@example.com', 'fi')
+        self.backup()
+        # A row lost without its change logged, as only a bug could lose it.
+        connection = sqlite3.connect(self.store.path)
+        with connection:
+            connection.execute('DELETE FROM users WHERE id = ?', (user.id,))
+        connection.close()
+        self.store.create_user('third@example.com', 'en')
         for _ in range(2):
             with self.assertRaises(BackupError) as caught:
                 self.backup()
             # Each run names the same problem: the last run's files are not left
             # behind to be taken for changes the backup did not make.
             message = str(caught.exception)
-            self.assertIn('1 user files but the database 2 users', message)
+            self.assertIn('3 user files but the database 2 users', message)
             self.assertEqual(self.status(), '')
+
+    def test_a_link_in_the_checkout_stops_the_run(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        outside = self.directory / 'outside'
+        outside.mkdir()
+        (self.checkout / 'users' / 'ff').symlink_to(outside, target_is_directory=True)
+        self.commit_by_hand('a link')
+        self.store.create_user('later@example.com', 'fi')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('a link, which it never writes: users/ff', str(caught.exception))
+        self.assertEqual(list(outside.iterdir()), [])
+
+    def test_a_record_changed_by_hand_stops_the_run(self) -> None:
+        user = self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        path = self.file_of(user.id)
+        data = bytearray(path.read_bytes())
+        data[-1] ^= 1
+        path.write_bytes(bytes(data))
+        self.commit_by_hand('corrupt a record')
+        self.store.create_user('later@example.com', 'fi')
+        head = self.remote_head()
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('commits the backup did not make', str(caught.exception))
+        self.assertEqual(self.remote_head(), head)
+
+    def test_records_without_a_manifest_stop_the_run(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        (self.checkout / MANIFEST).unlink()
+        self.commit_by_hand('lose the manifest')
+        other = pyrage.x25519.Identity.generate().to_public()
+        with self.assertRaises(BackupError) as caught:
+            run_backup(self.store, self.checkout, other)
+        self.assertIn('records but no manifest', str(caught.exception))
+
+    def test_a_backup_from_elsewhere_stops_the_first_run(self) -> None:
+        (self.checkout / 'README.md').write_text('another backup\n')
+        self.commit_by_hand('another backup')
+        self.store.create_user('reader@example.com', 'fi')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        message = str(caught.exception)
+        self.assertIn('not the backup this database last wrote', message)
 
     def test_a_failed_commit_leaves_the_checkout_as_it_was(self) -> None:
         hooks = self.directory / 'hooks'
@@ -338,6 +390,14 @@ class TestRestore(BackupTestCase):
         with self.assertRaises(RestoreError):
             restore_backup(self.clone, self.identity, self.target)
 
+    def test_refuses_while_a_backup_run_holds_the_checkout(self) -> None:
+        lock_path = self.clone / '.git' / 'eight-characters-backup.lock'
+        with open(lock_path, 'w') as handle:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            with self.assertRaises(BackupBusy):
+                restore_backup(self.clone, self.identity, self.target)
+        self.assertFalse(self.target.exists())
+
     def test_refuses_another_key(self) -> None:
         with self.assertRaises(RestoreError):
             restore_backup(self.clone, pyrage.x25519.Identity.generate(), self.target)
@@ -362,6 +422,10 @@ class TestRestore(BackupTestCase):
             path.unlink()
         elif change == 'add a stray file':
             (self.clone / 'users' / user.id[:2] / user.id / 'notes.txt').write_text('x')
+        elif change == 'add a link':
+            (self.clone / 'users' / 'ff').symlink_to(
+                self.directory, target_is_directory=True
+            )
         git(self.clone, 'add', '--all')
         git(self.clone, 'commit', '--quiet', '--message', change)
 
@@ -371,6 +435,7 @@ class TestRestore(BackupTestCase):
             'swap two records',
             'drop a record',
             'add a stray file',
+            'add a link',
         ):
             with self.subTest(change):
                 self.clone = self.fresh_clone(change.replace(' ', '-'))

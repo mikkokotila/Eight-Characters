@@ -21,9 +21,10 @@ it yet; sign-in arrives in a later release.
 - `AccountStore.open(path)` refuses a missing file (and never creates one), a file that
   is no account database, and a schema newer than the app knows. It runs the numbered
   migrations an older database lacks, each in its own transaction.
-- `AccountStore.create(path)` and `AccountStore.restore(path, users)` build the
-  database beside its final path (`<name>.partial`) and move it into place only when
-  complete; neither builds over an existing file.
+- `AccountStore.create(path)` and `AccountStore.restore(path, users, tree=…)` build the
+  database beside its final path (`<name>.partial`, created exclusively, so a second
+  build at the same time fails at once) and move it into place only when complete;
+  neither builds over an existing file.
 - Each call opens its own connection; writes take the write lock first
   (`BEGIN IMMEDIATE`), so two sign-ups with one address make one account.
 
@@ -47,8 +48,12 @@ backup`, in this order:
 
 1. Takes the checkout's lock (`.git/eight-characters-backup.lock`); a second run at the
    same time is refused.
-2. Stops if the checkout has changes the backup did not make, holds a file it never
-   writes, or has a manifest made for another key.
+2. Stops if the checkout has changes the backup did not make, holds a file or a link
+   it never writes, holds records but no manifest, or has a manifest made for another
+   key; and if its last commit is not the one the backup made last. The server cannot
+   read a file without the private key, so the database remembers the Git tree of the
+   backup's last commit (or of the backup a restore read), and any other commit, such
+   as a file corrupted or changed by hand, stops the run before it adds to it.
 3. Reads, in one transaction, every record changed since the last run that reached the
    remote, and encrypts each to the recipient (an age public key, `age1…`). Deleted
    records lose their file and empty folders.
@@ -95,10 +100,12 @@ git clone git@github.com:<owner>/<backup repository>.git backup
 python -m eight_characters.accounts restore --checkout backup --identity KEY_FILE --database accounts.sqlite3
 ```
 
-The restore checks the manifest, that the key is the one the backup was encrypted to,
-the layout, every file's decryption and form, that each file sits in its own user's
-folder, that no address appears twice, and the count. Only then does the database
-appear. A restored database backs up into the same repository without rewriting it.
+The restore holds the checkout's lock, so no backup run changes files under it. It
+checks the manifest, that the key is the one the backup was encrypted to, the layout,
+every file's decryption and form, that each file sits in its own user's folder, that no
+address appears twice, and the count. Only then does the database appear, remembering
+the Git tree it was restored from, so it backs up into the same repository without
+rewriting it.
 
 ## Keys
 

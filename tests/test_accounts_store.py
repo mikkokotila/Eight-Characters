@@ -20,6 +20,8 @@ from eight_characters.accounts.store import (
 )
 from tests.accounts_support import Clock
 
+TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+
 
 def _sql(path: Path, query: str) -> list[tuple[object, ...]]:
     connection = sqlite3.connect(path)
@@ -51,10 +53,13 @@ class TestCreateAndOpen(StoreTestCase):
 
     def test_create_refuses_a_left_over_partial_build(self) -> None:
         other = self.directory / 'other.sqlite3'
-        other.with_name('other.sqlite3.partial').write_bytes(b'')
+        partial = other.with_name('other.sqlite3.partial')
+        partial.write_bytes(b'')
         with self.assertRaises(StoreError):
             AccountStore.create(other)
         self.assertFalse(other.exists())
+        # Another build's file, or one to look into: never removed by this build.
+        self.assertTrue(partial.exists())
 
     def test_open_refuses_a_missing_database_and_creates_none(self) -> None:
         missing = self.directory / 'missing.sqlite3'
@@ -257,6 +262,11 @@ class TestBackupLog(StoreTestCase):
             [change.user for change in self.store.backup_snapshot().changes], [late]
         )
 
+    def test_the_backup_tree_is_remembered(self) -> None:
+        self.assertIsNone(self.store.backup_snapshot().tree)
+        self.store.record_backup_tree(TREE)
+        self.assertEqual(self.store.backup_snapshot().tree, TREE)
+
     def test_progress_never_goes_back(self) -> None:
         self.store.create_user('reader@example.com', 'fi')
         self.store.mark_backed_up(1)
@@ -267,9 +277,11 @@ class TestBackupLog(StoreTestCase):
 class TestRestore(StoreTestCase):
     def test_restores_exactly_the_users_with_nothing_left_to_back_up(self) -> None:
         users = [self.store.create_user(f'u{n}@example.com', 'fi') for n in range(3)]
-        restored = AccountStore.restore(self.directory / 'restored.sqlite3', users)
+        target = self.directory / 'restored.sqlite3'
+        restored = AccountStore.restore(target, users, tree=TREE)
         self.assertEqual(restored.users(), sorted(users, key=lambda user: user.id))
         self.assertEqual(restored.backup_snapshot().changes, ())
+        self.assertEqual(restored.backup_snapshot().tree, TREE)
         self.assertEqual(
             stat.S_IMODE((self.directory / 'restored.sqlite3').stat().st_mode), 0o600
         )
@@ -286,13 +298,13 @@ class TestRestore(StoreTestCase):
         )
         target = self.directory / 'restored.sqlite3'
         with self.assertRaises(StoreError):
-            AccountStore.restore(target, [user, twin])
+            AccountStore.restore(target, [user, twin], tree=TREE)
         self.assertFalse(target.exists())
         self.assertFalse(target.with_name('restored.sqlite3.partial').exists())
 
     def test_refuses_an_existing_path(self) -> None:
         with self.assertRaises(StoreError):
-            AccountStore.restore(self.path, [])
+            AccountStore.restore(self.path, [], tree=TREE)
 
 
 if __name__ == '__main__':
