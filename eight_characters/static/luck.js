@@ -44,12 +44,12 @@
   // `onCards(column, focused, redrawn)` is told whenever the column changes, with the
   // part of it that had focus ('stem', 'branch', 'identity' or null) and whether its
   // cards were drawn anew.
-  const create = ({ root, pillars, translate: t, escape: esc, spot, locale, beforeSelect, onCards }) => {
+  const create = ({ root, pillars, translate: t, escape: esc, spot, locale, beforeSelect, onCards, onPeriod }) => {
     const ribbon = root.querySelector('#luck-ribbon');
     const detail = root.querySelector('#luck-detail');
     const status = root.querySelector('#luck-status');
     const switcher = root.querySelector('#luck-switch');
-    if (!ribbon || !detail || !status || !switcher || !pillars || !spot || !onCards) throw new Error('Luck pillar view is incomplete.');
+    if (!ribbon || !detail || !status || !switcher || !pillars || !spot || !onCards || !onPeriod) throw new Error('Luck pillar view is incomplete.');
     let luck = null;
     // The period chosen ('before' or a decade's phase), whether the luck pillar stands in
     // the chart, and whether the period's page is open. An open page shows the period
@@ -385,6 +385,29 @@
       });
       onCards(column, focused, redrawn);
       drawArcs();
+      onPeriod(periodInfo());
+    };
+    // The period chosen, for the topics, whether or not it stands in the chart now: the
+    // roots on its branch, what acts in its phase (occurrences and relationships), how
+    // many of its roles are new to the chart, and the luck pillar's cards. Null before
+    // the first decade.
+    const periodInfo = () => {
+      if (luck === null || cursor === 'before') return null;
+      const decade = decadeOf(cursor);
+      const acts = (record) => record.phases.includes(cursor.phase);
+      const occurrences = [decade.visible, ...decade.hidden].filter(acts);
+      return {
+        shown,
+        phase: cursor.phase,
+        sequence: decade.sequence,
+        cards: decade.cards,
+        visible: decade.visible,
+        hidden: decade.hidden,
+        roots: decade.roots,
+        occurrences,
+        newRoles: new Set(occurrences.filter((e) => e.new_to_chart).map((e) => e.ten_god)).size,
+        relationships: decade.interactions.filter(acts),
+      };
     };
     const removeColumn = () => {
       column?.remove();
@@ -761,6 +784,7 @@
         ribbon.classList.add('hidden');
         switcher.classList.add('hidden');
         removeColumn();
+        onPeriod(null);
         return;
       }
       require(typeof timezone === 'string' && timezone);

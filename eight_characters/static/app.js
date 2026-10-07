@@ -583,13 +583,16 @@ document.addEventListener('DOMContentLoaded', () => {
     canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
     // A chart asked for with a gender has its luck pillars, their context and their
-    // cards; one without has none of them.
+    // cards; one without has none of them. The topics take the luck pillar's period
+    // only once their own pages are this chart's.
+    natalRelationships = pillarsData.interactions.length;
+    dayMasterContext.clear();
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
       { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
-    relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
+    showRelationshipsTopic();
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
@@ -822,7 +825,25 @@ document.addEventListener('DOMContentLoaded', () => {
     root: chartView, pillars: chartView.querySelector('#pillars'), translate: requiredTranslation, escape: esc, spot, locale,
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
     onCards: (column, focused, redrawn) => fitCards(column, focused, redrawn),
+    // What the luck pillar's period adds to the topics: Roots, Roles and Relationships.
+    onPeriod: (period) => {
+      luckPeriod = period;
+      dayMasterContext.setLuck(period);
+      relationships.setLuck(period);
+      showRelationshipsTopic();
+    },
   });
+  // The relationships topic names their count, and the luck pillar's that act in its
+  // phase beside it, kept in place (unseen) while the luck pillar is hidden.
+  let natalRelationships = 0;
+  let luckPeriod = null;
+  const showRelationshipsTopic = () => {
+    const [before, after] = requiredTranslation('relationships_topic', { count: natalRelationships, luck: '\u0001' }).split('\u0001');
+    const count = luckPeriod === null ? 0 : luckPeriod.relationships.length;
+    const word = count > 0 ? requiredTranslation('topic_luck_relationships', { count }) : '';
+    relationshipsTopic.innerHTML = `${esc(before)}${luckPeriod === null ? ''
+      : `<span class="topic-delta${luckPeriod.shown ? '' : ' is-hidden'}">${esc(word)}</span>`}${esc(after)}`;
+  };
   const closePanel = () => {
     relationships.clear();
     dayMasterContext.clear();
@@ -1677,10 +1698,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const commands = [];
     const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
     const topics = requiredTranslation('palette_topics');
+    // A topic as it reads on screen: a word the luck pillar would add, kept unseen while
+    // it is hidden, is not part of it.
+    const shownText = (node) => {
+      const copy = node.cloneNode(true);
+      copy.querySelectorAll('.topic-delta.is-hidden').forEach((delta) => delta.remove());
+      return copy.textContent;
+    };
     chartView.querySelectorAll('#day-master-context button[data-context]').forEach((button) => {
-      add(topics, button.textContent, () => goToTopic(button.dataset.context));
+      add(topics, shownText(button), () => goToTopic(button.dataset.context));
     });
-    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
+    add(topics, shownText(relationshipsTopic), () => goToTopic('relationships'));
     // A relationship by its name, as the list names it: in English a chip also reads the
     // canon's first sentence for it.
     relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {

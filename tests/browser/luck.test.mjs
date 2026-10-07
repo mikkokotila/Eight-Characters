@@ -267,10 +267,11 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal((await column(page)).state, 'on');
       assert.deepEqual(await geometry(page), before);
-      // A relationship points at its cards: the natal one and the luck pillar's.
+      // A relationship points at its cards, the natal one and the luck pillar's, and its arc.
       await page.locator('.luck-relationship').first().click();
-      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
-        nodes.map((node) => `${node.classList.contains('stem') ? 'stem' : 'branch'}:${node.dataset.pillar}`)), ['stem:month', 'stem:luck']);
+      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) => nodes.map((node) => (node.matches('.card')
+        ? `${node.classList.contains('stem') ? 'stem' : 'branch'}:${node.dataset.pillar}` : `arc:${node.dataset.relationshipId}`))),
+      ['stem:month', 'stem:luck', 'arc:stem_combination:1:month-luck']);
       await screenshot(page, `${profile.name}-luck-decade`);
     });
 
@@ -513,7 +514,7 @@ for (const profile of profiles) {
       });
       // A frame points at both its natal branches and the luck pillar's.
       await page.locator('.luck-relationship').first().click();
-      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
+      assert.deepEqual(await page.locator('#pillars .card.is-spotlit').evaluateAll((nodes) =>
         nodes.map((node) => node.dataset.pillar).sort()), ['day', 'luck', 'month']);
       // Edit keeps the birth with its gender; a new chart starts without one.
       await page.locator('#back-btn').click();
@@ -937,6 +938,62 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#pillars .luck-arcs').count(), 0);
       assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), false);
       await screenshot(page, `${profile.name}-luck-arcs`);
+    });
+
+    check('the topics carry what the luck pillar adds, unseen but in place while it is hidden', async (page) => {
+      await openSample(page);
+      const topics = () => page.evaluate(() => [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
+        const copy = button.cloneNode(true);
+        copy.querySelectorAll('.topic-delta.is-hidden').forEach((delta) => delta.remove());
+        const box = button.getBoundingClientRect();
+        return { text: copy.textContent.replace(/\s+/g, ' ').trim(), box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}` };
+      }));
+      const hidden = await topics();
+      assert.deepEqual(hidden.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      const shown = await topics();
+      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem combinations.
+      assert.deepEqual(shown.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3 + 2)']);
+      assert.deepEqual(shown.map((topic) => topic.box), hidden.map((topic) => topic.box));
+      assert.equal(await page.locator('button[data-context="roots"]').getAttribute('aria-label'), 'Roots · Roots in 3 branches + luck');
+      // The Roots page adds the luck branch's root, and points at it.
+      await click(page, 'button[data-context="roots"]');
+      const luckRoot = page.locator('#context-detail .relationship-member').last();
+      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'Luck Chou 丑 Yin Earth Gui 癸 · Yin Water Mid Rob Wealth · Same element, opposite polarity');
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-context-source')), true);
+      // The Roles page adds what the luck pillar brings in the phase.
+      await click(page, 'button[data-context="roles"]');
+      assert.equal(await page.locator('#context-detail h4').last().textContent(), 'Brought by the luck pillar');
+      assert.deepEqual(await page.locator('#context-detail .context-evidence-list').last().locator('.context-evidence-role').allTextContents(),
+        ['Direct Officer · new to this chart', 'Direct Officer · new to this chart', 'Rob Wealth', 'Direct Resource · new to this chart']);
+      // The relationships list adds the luck pillar's, which open as the natal ones do.
+      await click(page, '#relationships-topic');
+      assert.equal(await page.locator('.relationship-luck-heading').textContent(), 'With the luck pillar');
+      const luckChips = page.locator('.relationship-luck-heading ~ .relationship-chip');
+      assert.deepEqual((await luckChips.allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
+        ['Month–Luck · Stem combination', 'Hour–Luck · Stem combination']);
+      await luckChips.first().click();
+      await settled(page);
+      assert.equal(await linkPart(page, 'topic'), 'relationships/stem_combination:1:month-luck');
+      assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Month–Luck · Stem combination');
+      assert.deepEqual(await page.locator('#relationship-detail .relationship-identity').allTextContents(), ['Jia 甲', 'Ji 己']);
+      assert.equal(await page.locator('.card.stem[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-related')), true);
+      assert.equal(await page.locator('.luck-arcs .relationship-arc.is-active').getAttribute('data-relationship-id'), 'stem_combination:1:month-luck');
+      // In the branch phase the stem combinations rest: the chosen one closes, and the topics follow.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press(']');
+      await settled(page);
+      assert.equal(await page.locator('#relationship-detail').isVisible(), false);
+      assert.equal(await page.locator('.relationship-luck-heading').count(), 0);
+      assert.deepEqual((await topics()).map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3)']);
+      // A link opens a luck relationship with the luck pillar it names.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, sampleLink({ luck: '4/branch', topic: 'relationships/punishment:34:year-luck' }), { place: HELSINKI });
+      assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Year–Luck · Punishment');
+      await screenshot(page, `${profile.name}-luck-topics`);
     });
 
     check('on paper a luck pillar shown stands fifth, and a hidden one leaves the chart its four columns', async (page) => {
