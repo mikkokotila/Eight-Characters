@@ -5,7 +5,7 @@ This guide is the practical entry point for running and working with
 
 ## Prerequisites
 
-- Python 3.12 preferred (project requires Python 3.9+)
+- Python 3.12 preferred (project requires Python 3.11+, which the production image runs)
 - `pip`
 - Optional: Docker
 

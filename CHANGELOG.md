@@ -34,6 +34,9 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
 - An empty list says "No relationships between these pillars."
 - The canon's "About" lines under the list go by family, so a frame and a half-frame share one.
 
+### Fixed
+- `requires-python` said 3.9, but the engine has needed 3.11 for a while: its pinned numpy 2.4.2 requires it, and five modules imported at startup take `datetime.UTC`. It now says 3.11, the version the production image runs, and so does the developer guide.
+
 ### Tests
 - New tests:
   - a brute-force reading of the canon's own tables, compared with the detector on every combination of four branches;
