@@ -170,6 +170,13 @@ instead (resolved by name), shows an error in its status bar for a link with
 only part of the birth or with both kinds of place, and shows the bundled
 sample chart (`explorer/data.js`) only when the URL has no birth at all.
 
+The explorer's parameter pane (`explorer/parameters.js`) asks
+`GET /api/evolution_controls` when it first opens. Its Recompute asks
+`POST /api/evolution_explorer` again for the same birth and basin, with `run`,
+`conventions` and `model` holding every value that differs from its default.
+The answer's `graph_data.parameters` tells the pane what the graph was computed
+with, and `app.js` draws the new graph through `window.EC_EXPLORER.redraw`.
+
 Chart card interactions:
 
 - The display switch shows characters, Ten Gods or hidden stems on every card.
