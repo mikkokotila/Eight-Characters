@@ -62,6 +62,17 @@
       </div>
     </div>
 
+    <!-- Optional: only the luck pillars need it, for their direction. -->
+    <fieldset class="gender-group" aria-describedby="gender-hint">
+      <legend data-i18n="label_gender">Sukupuoli (valinnainen)</legend>
+      <div class="gender-options">
+        <label class="gender-option"><input type="radio" name="gender" value="" checked><span data-i18n="gender_none">Ei annettu</span></label>
+        <label class="gender-option"><input type="radio" name="gender" value="female"><span data-i18n="gender_female">Nainen</span></label>
+        <label class="gender-option"><input type="radio" name="gender" value="male"><span data-i18n="gender_male">Mies</span></label>
+      </div>
+      <p id="gender-hint" class="field-hint" data-i18n="gender_hint">Onnenpilareita varten: niiden suunta riippuu siitä.</p>
+    </fieldset>
+
     <p id="form-error" class="form-error hidden" role="alert"></p>
 
     <div class="submit-row">
@@ -121,6 +132,9 @@
       <button type="button" id="relationships-topic" class="topic-button" aria-expanded="false" aria-controls="chart-panel"></button>
     </nav>
 
+    <!-- The luck pillars of a chart with a gender, by decade (luck.js). -->
+    <div id="luck-ribbon" class="luck-ribbon hidden" role="group" aria-labelledby="luck-ribbon-label"></div>
+
     <p id="pillar-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
     <span id="pillars-label" class="sr-only" data-i18n="pillars_label">Pilarit</span>
     <p id="pillars-keys" class="sr-only" data-i18n="pillars_keys"></p>
@@ -142,10 +156,12 @@
     <section id="pillar-detail" class="relationship-detail pillar-detail hidden" aria-labelledby="pillar-detail-title"></section>
     <section id="relationship-detail" class="relationship-detail hidden" aria-labelledby="relationship-detail-title"></section>
     <section id="context-detail" class="relationship-detail context-detail hidden" aria-labelledby="context-detail-title"></section>
+    <section id="luck-detail" class="relationship-detail luck-detail hidden" aria-labelledby="luck-detail-title"></section>
   </aside>
 
   <p id="context-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
   <p id="relationship-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+  <p id="luck-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
 
   <!-- The keys (? while the chart has focus), and the commands (⌘K or Ctrl+K). -->
   <dialog id="keys-dialog" class="chart-dialog" aria-labelledby="keys-dialog-title">
@@ -315,6 +331,7 @@
 <script src="/static/roles.js?v={{ app_version }}"></script>
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>
 <script src="/static/pillar-changes.js?v={{ app_version }}"></script>
+<script src="/static/luck.js?v={{ app_version }}"></script>
 <script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/compare.js?v={{ app_version }}"></script>
 <script src="/static/account.js?v={{ app_version }}"></script>

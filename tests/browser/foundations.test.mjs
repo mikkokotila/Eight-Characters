@@ -133,6 +133,24 @@ async function visitReadings(page, inspect) {
   }
 }
 
+// A chart with luck pillars (luck.test.mjs): its ribbon, a decade's page in each phase,
+// and the years before the first decade. `inspect` runs in each.
+async function visitLuck(page, lang, inspect) {
+  await openChart(page, { lang, place: HELSINKI, date: '1975-08-14', time: '07:45', gender: 'female' });
+  await inspect(`${lang} luck pillars`);
+  await page.locator('.luck-chip[data-luck="5"]').click();
+  await page.locator('[data-luck-phase="stem"]').click();
+  await settled(page);
+  await inspect(`${lang} a decade's stem phase`);
+  await page.locator('[data-luck-phase="branch"]').click();
+  await settled(page);
+  await inspect(`${lang} a decade's branch phase`);
+  await page.locator('.luck-chip[data-luck="before"]').click();
+  await settled(page);
+  await inspect(`${lang} the years before the decades`);
+  await page.keyboard.press('Escape');
+}
+
 // Every chart state and detail page, in both languages; `inspect` runs in each.
 async function visitStates(page, inspect) {
   for (const lang of ['en', 'fi']) {
@@ -188,6 +206,7 @@ async function visitStates(page, inspect) {
     await inspect(`${lang} Zi-hour chart`);
     await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
     await inspect(`${lang} high-latitude chart`);
+    await visitLuck(page, lang, inspect);
   }
 }
 
@@ -259,6 +278,9 @@ for (const profile of profiles) {
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} Zi-hour chart`);
         await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} high-latitude chart`);
+        await visitLuck(page, lang, async (state) => {
+          assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], state);
+        });
       }
     });
 
@@ -314,6 +336,9 @@ for (const profile of profiles) {
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} Zi-hour chart`));
         await openChart(page, { lang, place: TROMSO, date: '1988-06-15', time: '12:00' });
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} high-latitude chart`));
+        await visitLuck(page, lang, async (state) => {
+          failures.push(...await systemGlyphFailures(page, cdp, state));
+        });
       }
       assert.deepEqual(failures, []);
     }));

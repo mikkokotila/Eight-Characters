@@ -63,12 +63,14 @@ async function settled(page) {
   await count(page, '.is-turning', 0);
 }
 
-async function fillChart(page, { date = '1988-02-04', time = '16:30', lang = 'en', success = true, place = CHENGDU } = {}) {
+async function fillChart(page, { date = '1988-02-04', time = '16:30', lang = 'en', success = true, place = CHENGDU, gender = null } = {}) {
   await page.locator(`[data-lang="${lang}"]`).click();
   await page.locator('#date').fill(date);
   await page.locator('#time').fill(time);
   await page.locator('#location').fill(place.city);
   await page.locator('.location-suggestion').click();
+  // The gender is optional: only a chart's luck pillars need it.
+  if (gender !== null) await page.locator(`input[name="gender"][value="${gender}"]`).check();
   await page.locator('#create-chart-btn').click();
   await page.locator(success ? '#chart-view' : '#form-error').waitFor({ state: 'visible' });
   if (success) await settled(page);
