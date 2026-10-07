@@ -23,7 +23,8 @@ from eight_characters.accounts.store import (
 )
 from tests.accounts_support import Clock
 
-TREE = '4b825dc642cb6eb9a060e54bf8d69288fbee4904'
+COMMIT = '8f3c1e0b5d2a4c6e9f1b3d5a7c9e1f3b5d7a9c1e'
+SQUASH = '1d2c3b4a5f6e7d8c9b0a1f2e3d4c5b6a7f8e9d0c'
 
 
 def _sql(path: Path, query: str) -> list[tuple[object, ...]]:
@@ -305,14 +306,28 @@ class TestBackupLog(StoreTestCase):
             [change.user for change in self.store.backup_snapshot().changes], [late]
         )
 
-    def test_the_backup_tree_is_remembered(self) -> None:
-        self.assertIsNone(self.store.backup_snapshot().tree)
-        self.store.record_pending_tree(TREE)
-        snapshot = self.store.backup_snapshot()
-        self.assertEqual((snapshot.tree, snapshot.pending_tree), (None, TREE))
-        self.store.record_backup_tree(TREE)
-        snapshot = self.store.backup_snapshot()
-        self.assertEqual((snapshot.tree, snapshot.pending_tree), (TREE, None))
+    def test_the_backup_commit_is_remembered(self) -> None:
+        def progress() -> tuple[str | None, str | None, str | None]:
+            snapshot = self.store.backup_snapshot()
+            return snapshot.head, snapshot.pending_head, snapshot.squash_of
+
+        self.assertEqual(progress(), (None, None, None))
+        self.store.record_pending_head(COMMIT)
+        self.assertEqual(progress(), (None, COMMIT, None))
+        self.store.record_backup_head(COMMIT)
+        self.assertEqual(progress(), (COMMIT, None, None))
+        self.store.record_pending_squash(SQUASH, COMMIT)
+        self.assertEqual(progress(), (COMMIT, SQUASH, COMMIT))
+        self.store.record_backup_head(SQUASH)
+        self.assertEqual(progress(), (SQUASH, None, None))
+
+    def test_a_squash_is_never_recorded_without_its_commit(self) -> None:
+        connection = sqlite3.connect(self.store.path)
+        with self.assertRaises(sqlite3.IntegrityError), connection:
+            connection.execute(
+                'UPDATE backup_progress SET squash_of = ? WHERE id = 1', (COMMIT,)
+            )
+        connection.close()
 
     def test_progress_never_goes_back(self) -> None:
         self.store.create_user('reader@example.com', 'fi')
@@ -429,23 +444,30 @@ class TestSessionsAndCodes(StoreTestCase):
         self.assertFalse(self.store.create_session(self.session('b', '0' * 32)))
         self.assertIsNone(self.store.session('b'))
 
-    def test_deleting_the_account_takes_its_sessions_codes_and_requests(self) -> None:
+    def test_deleting_the_account_takes_its_sessions_and_code(self) -> None:
         self.store.create_session(self.session('a'))
         self.store.put_code(self.code())
-        self.assertTrue(
-            self.store.allow_code_request(
-                self.user.email,
-                'client',
-                '2026-10-07T12:00:00Z',
-                '2026-10-07T11:00:00Z',
-                5,
-                20,
-            )
-        )
         self.store.delete_user(self.user.id)
         self.assertIsNone(self.store.session('a'))
         self.assertIsNone(self.store.code(self.user.email))
-        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
+
+    def test_deleting_the_account_keeps_the_hourly_limits(self) -> None:
+        # Otherwise deleting and creating the account again would reset them.
+        def ask(client: str) -> bool:
+            return self.store.allow_code_request(
+                self.user.email,
+                client,
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                2,
+                1,
+            )
+
+        self.assertTrue(ask('first'))
+        self.assertTrue(ask('second'))
+        self.store.delete_user(self.user.id)
+        self.assertFalse(ask('third'))
+        self.assertFalse(ask('first'))
 
     def test_a_new_code_replaces_the_last(self) -> None:
         self.store.put_code(self.code(code_hash='first'))
@@ -547,10 +569,10 @@ class TestRestore(StoreTestCase):
     def test_restores_exactly_the_users_with_nothing_left_to_back_up(self) -> None:
         users = [self.store.create_user(f'u{n}@example.com', 'fi') for n in range(3)]
         target = self.directory / 'restored.sqlite3'
-        restored = AccountStore.restore(target, users, tree=TREE)
+        restored = AccountStore.restore(target, users, head=COMMIT)
         self.assertEqual(restored.users(), sorted(users, key=lambda user: user.id))
         self.assertEqual(restored.backup_snapshot().changes, ())
-        self.assertEqual(restored.backup_snapshot().tree, TREE)
+        self.assertEqual(restored.backup_snapshot().head, COMMIT)
         self.assertEqual(
             stat.S_IMODE((self.directory / 'restored.sqlite3').stat().st_mode), 0o600
         )
@@ -567,13 +589,13 @@ class TestRestore(StoreTestCase):
         )
         target = self.directory / 'restored.sqlite3'
         with self.assertRaises(StoreError):
-            AccountStore.restore(target, [user, twin], tree=TREE)
+            AccountStore.restore(target, [user, twin], head=COMMIT)
         self.assertFalse(target.exists())
         self.assertFalse(target.with_name('restored.sqlite3.partial').exists())
 
     def test_refuses_an_existing_path(self) -> None:
         with self.assertRaises(StoreError):
-            AccountStore.restore(self.path, [], tree=TREE)
+            AccountStore.restore(self.path, [], head=COMMIT)
 
 
 if __name__ == '__main__':
