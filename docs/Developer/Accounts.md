@@ -22,7 +22,7 @@ it yet; sign-in arrives in a later release.
   is no account database (account databases carry SQLite's `application_id`), and a
   schema newer than the app knows. It runs the numbered
   migrations an older database lacks, each in its own transaction.
-- `AccountStore.create(path)` and `AccountStore.restore(path, users, tree=…)` build the
+- `AccountStore.create(path)` and `AccountStore.restore(path, users, head=…)` build the
   database beside its final path (`<name>.partial`, created exclusively, so a second
   build at the same time fails at once) and move it into place only when complete;
   neither builds over an existing file.
@@ -48,23 +48,28 @@ transaction. Sign-in codes and sessions, when they arrive, stay out of the backu
 backup`, in this order:
 
 1. Takes the checkout's lock (`.git/eight-characters-backup.lock`); a second run at the
-   same time is refused.
+   same time is refused. A run that was stopped while writing (killed, or the server
+   restarting) left its marker, `.git/eight-characters-backup.writing`: its changes,
+   and the locks its Git commands left, are put back, and the database still holds
+   what it was writing.
 2. Stops if the checkout has changes the backup did not make, holds a file or a link
-   it never writes, holds records but no manifest, or has a manifest made for another
-   key; and if its last commit is not the one the backup made last. The server cannot
-   read a file without the private key, so the database remembers the Git tree of the
-   backup's last commit (or of the backup a restore read), and any other commit, such
-   as a file corrupted or changed by hand, stops the run before it adds to it.
+   it never writes (or a folder where it writes a file), holds records but no manifest,
+   or has a manifest made for another key; and if its last commit is not the one the
+   backup made last. The server cannot read a file without the private key, so the
+   database remembers the backup's last commit (or the one a restore read), and any
+   other commit stops the run before it adds to it: a file corrupted or changed by
+   hand, and commits made by hand even when undone since, which a push would
+   publish.
 3. Reads, in one transaction, every record changed since the last run that reached the
    remote, and encrypts each to the recipient (an age public key, `age1…`). Deleted
    records lose their file and empty folders.
 4. Writes `manifest.json` (the recipient and the record count) and checks that the
    files match the database's count.
 5. Commits and pushes; only then marks the changes backed up. A failed push leaves
-   them for the next run, which pushes everything still on its way. The tree about to
-   be committed is recorded first as pending, and as the backup's own once committed,
-   so a run stopped between its commit and its record is taken up by the next run
-   instead of being taken for a commit the backup did not make.
+   them for the next run, which pushes everything still on its way. The commit is made
+   first and recorded as pending, then the branch moves to it and it is recorded as
+   the backup's own, so a run stopped in between is taken up by the next run instead
+   of being taken for a commit the backup did not make.
 
 A run that fails before its commit (a count that differs, Git refusing to commit or
 taking too long) puts the work tree and the index back to the last commit before it
@@ -95,10 +100,15 @@ object hashes cover each commit, so the manifest needs no per-file hashes.
 
 `squash-history` replaces the remote's history with one commit of the current files,
 so deleted accounts leave the history. It squashes only the backup the database last
-wrote, whole (its layout, a manifest whose count matches the records, and the tree the
+wrote, whole (its layout, a manifest whose count matches the records, and the commit the
 database recorded), since the history may be all that holds a record lost since. It
 runs only when everything is pushed and the remote has not moved, and its force push
 names the commit it replaces.
+
+The squash is recorded before anything moves, and the remote moves before the
+checkout. Stopped part way, it stops the backup ("run squash-history again") until it
+is run again, which finishes it from wherever it stopped. A push that fails while the
+remote has not moved leaves the history as it was, and the backup goes on.
 
 ## Restore
 
@@ -111,7 +121,7 @@ The restore holds the checkout's lock, so no backup run changes files under it. 
 checks the manifest, that the key is the one the backup was encrypted to, the layout,
 every file's decryption and form, that each file sits in its own user's folder, that no
 address appears twice, and the count. Only then does the database appear, remembering
-the Git tree it was restored from, so it backs up into the same repository without
+the commit it was restored from, so it backs up into the same repository without
 rewriting it.
 
 ## Keys

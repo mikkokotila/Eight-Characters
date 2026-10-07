@@ -13,7 +13,7 @@ import pyrage
 from eight_characters.accounts.backup import (
     BackupError,
     checkout_lock,
-    head_tree,
+    head_commit,
     read_manifest,
     record_files,
     require_clean,
@@ -62,8 +62,8 @@ def restore_backup(
         manifest = read_manifest(root)
         if manifest is None:
             raise RestoreError('The checkout has no manifest.json; it is no backup.')
-        tree = head_tree(root)
-        if tree is None:
+        head = head_commit(root)
+        if head is None:
             raise RestoreError('The checkout has no commits; it is no backup.')
         if manifest.recipient != str(identity.to_public()):
             raise RestoreError('This key is not the one the backup was encrypted to.')
@@ -90,7 +90,7 @@ def restore_backup(
                 f'{manifest.user_count}.'
             )
         try:
-            AccountStore.restore(database, users, tree=tree)
+            AccountStore.restore(database, users, head=head)
         except StoreError as exc:
             raise RestoreError(str(exc)) from exc
     return RestoreResult(users=len(users))
