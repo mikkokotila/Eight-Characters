@@ -1038,6 +1038,12 @@ for (const profile of profiles) {
       const shown = await placed();
       assert.deepEqual(Object.keys(shown), ['hour', 'day', 'month', 'year', 'luck']);
       assert.ok(shown.luck > shown.year, JSON.stringify(shown));
+      // Its arcs come along: 己丑 Ji Chou's two stem combinations, over the stems.
+      const stemTop = await page.locator('#pillars .card.stem[data-pillar="luck"]').evaluate((card) => card.getBoundingClientRect().top);
+      assert.deepEqual(await page.locator('#pillars .luck-arcs .relationship-arc-line').evaluateAll((lines, top) => lines.map((line) => {
+        const box = line.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && box.bottom <= top + 1;
+      }), stemTop), [true, true]);
       const tops = await page.locator('#pillars .card.stem').evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))).size);
       assert.equal(tops, 1);
       await page.emulateMedia({ media: 'screen' });
