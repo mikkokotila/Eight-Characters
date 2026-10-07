@@ -517,12 +517,19 @@
     // ── Moving the choice ──
     // Everything follows the choice: the ribbon, the fifth pillar, and the page when open.
     const sync = () => {
+      const pageFocus = open && detail.contains(document.activeElement);
       syncRibbon();
       drawColumn();
       if (open) {
         detail.innerHTML = cursor === 'before' ? beforeMarkup() : decadeMarkup(cursor);
         detail.dataset.topic = topicOf(cursor);
         detail.classList.remove('hidden');
+        // Focus in the page stays in it, on the phase now chosen; the years before have
+        // none, and it goes to their chip.
+        if (pageFocus) {
+          (detail.querySelector('[data-luck-phase][aria-pressed="true"]') ?? ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`))
+            .focus({ preventScroll: true });
+        }
       }
     };
     // Choosing a period shows it in the chart; `page` opens its page too.

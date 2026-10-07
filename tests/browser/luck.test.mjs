@@ -293,6 +293,23 @@ for (const profile of profiles) {
       assert.deepEqual(await ribbonState(page), {
         expanded: ['5'], selected: ['5'], today: ['5'], chosenPhase: ['5/branch'], todayPhase: ['5/stem'], stop: ['5'], todayDisabled: false,
       });
+      // The keys step from the page too, and focus stays on its chosen phase.
+      await page.keyboard.press(']');
+      await settled(page);
+      assert.deepEqual([await linkPart(page, 'topic'), await focused(page)], ['luck/6/stem', 'phase stem']);
+      await page.keyboard.press('[');
+      await page.keyboard.press('[');
+      await page.keyboard.press('[');
+      await settled(page);
+      assert.deepEqual([await linkPart(page, 'topic'), await focused(page)], ['luck/4/branch', 'phase branch']);
+      await click(page, '[data-luck="before"]');
+      await page.locator('[data-luck="1"]').focus();
+      await page.keyboard.press('Enter');
+      await settled(page);
+      await page.locator('[data-luck-phase="stem"]').focus();
+      await page.keyboard.press('{');
+      await settled(page);
+      assert.deepEqual([await linkPart(page, 'topic'), await focused(page)], ['luck/before', 'chip before']);
       // Back to today.
       await click(page, '[data-luck-today]');
       assert.equal(await linkPart(page, 'topic'), 'luck/5/stem');
