@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.33.0
+
+The backup gets ready to run on the server: it says when it is alive, its repository can watch it, and the image carries the tools it runs. Nothing on the page changes.
+
+### Added
+- **`backup --heartbeat SECONDS`.** With nothing new, a run commits an empty `backup: alive` once the last commit is that old. The server uses an hour, so a quiet backup can be told from a stopped one.
+- **The backup repository's freshness check** ([`docs/Developer/backup-freshness.yml`](docs/Developer/backup-freshness.yml)). It runs hourly in the repository and fails once the last commit is three hours old; GitHub then emails whoever last changed its schedule. The repository's owner commits it, so that is the owner.
+- **Git and OpenSSH in the image**, which the backup job runs.
+
+### Changed
+- **The backup leaves `.github/` to the repository's owner.** It never writes there, and its check that the checkout holds only its own commits now fingerprints its own files (everything but `.github/`) instead of the whole tree, so the owner's check does not stop it.
+
+### Tests
+- The heartbeat (quiet runs, a recent commit, a run with something new), the owner's folder (seeded before the first run, changed later, refused as a link, kept through a restore) and `--heartbeat` refusing zero.
+- Version bumped to `0.33.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.32.0
 
 The account API: people can sign in with a code sent by email. The page starts using it in the next release; until then nothing on it changes, and charts need no account.
