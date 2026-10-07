@@ -4,6 +4,10 @@ from eight_characters.evolution.inference import (
     InferenceConfig,
     run_tempered_smc,
 )
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.postprocess import (
     MotifInventory,
     PostprocessConfig,
@@ -84,16 +88,20 @@ def run_natal_mvp(
     evolution_input: EvolutionInput,
     inference_config: InferenceConfig | None = None,
     postprocess_config: PostprocessConfig | None = None,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> EvolutionOutput:
     observed_state = evolution_input.to_observed_state()
     inference_result = run_tempered_smc(
         observed_state=observed_state,
         config=inference_config,
+        parameters=parameters,
     )
     postprocess_result = postprocess_inference(
         observed_state=observed_state,
         inference_result=inference_result,
         config=postprocess_config,
+        parameters=parameters,
     )
 
     basin_outputs: list[BasinOutput] = []

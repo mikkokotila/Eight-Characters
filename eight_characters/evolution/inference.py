@@ -11,10 +11,11 @@ from eight_characters.evolution.families import (
     family_spec,
 )
 from eight_characters.evolution.mechanics import compute_dynamic_vitality_amplitudes
-from eight_characters.evolution.primitives import (
-    OMEGA_MIN_R,
-    season_element_from_month_branch,
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
 )
+from eight_characters.evolution.primitives import season_element_from_month_branch
 from eight_characters.evolution.state import (
     RULE_COUNT,
     RULE_STATE_DOMAINS,
@@ -83,11 +84,13 @@ def temperature_ladder(config: InferenceConfig) -> tuple[float, ...]:
 
 def _omega_bounds(
     evaluations: Sequence[FamilyEvaluation],
+    *,
+    parameters: ModelParameters,
 ) -> tuple[tuple[float, float], ...]:
     bounds: list[tuple[float, float]] = []
     for evaluation in evaluations:
         omega_max = 1.0 + evaluation.proximity_weight
-        bounds.append((OMEGA_MIN_R, omega_max))
+        bounds.append((parameters.omega_min_r, omega_max))
     return tuple(bounds)
 
 
@@ -144,6 +147,8 @@ def _build_particle(
     latent_state: LatentState,
     evaluations: Sequence[FamilyEvaluation],
     season_element_index: int,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     full_captures = _full_captures_from_latent(latent_state, evaluations)
     try:
@@ -170,6 +175,7 @@ def _build_particle(
         latent_state=latent_state,
         clash_participation=clash_map,
         punishment_participation=punishment_map,
+        parameters=parameters,
     )
 
     energy_breakdown = compute_energy_breakdown(
@@ -181,6 +187,7 @@ def _build_particle(
         family_evaluations=evaluations,
         season_element_index=season_element_index,
         full_captures=full_captures,
+        parameters=parameters,
     )
 
     return ParticleSnapshot(
@@ -197,12 +204,15 @@ def build_particle(
     latent_state: LatentState,
     evaluations: Sequence[FamilyEvaluation],
     season_element_index: int,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> ParticleSnapshot:
     return _build_particle(
         observed_state=observed_state,
         latent_state=latent_state,
         evaluations=evaluations,
         season_element_index=season_element_index,
+        parameters=parameters,
     )
 
 
@@ -237,6 +247,8 @@ def _propose_discrete(
     season_element_index: int,
     rng: np.random.Generator,
     temperature: float,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     pick = int(rng.integers(0, RULE_COUNT + 1))  # 0 => mode, 1..RULE_COUNT => switches
     current_latent = particle.latent_state
@@ -273,6 +285,7 @@ def _propose_discrete(
             latent_state=proposal,
             evaluations=evaluations,
             season_element_index=season_element_index,
+            parameters=parameters,
         )
     except ValueError:
         return particle
@@ -296,6 +309,8 @@ def _propose_continuous(
     sigma: float,
     rng: np.random.Generator,
     temperature: float,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     rule_index = int(rng.integers(1, RULE_COUNT + 1))
     lower, upper = omega_bounds[rule_index - 1]
@@ -318,6 +333,7 @@ def _propose_continuous(
             latent_state=proposal,
             evaluations=evaluations,
             season_element_index=season_element_index,
+            parameters=parameters,
         )
     except ValueError:
         return particle
@@ -337,12 +353,14 @@ def _initial_particle(
     evaluations: Sequence[FamilyEvaluation],
     season_element_index: int,
     rng: np.random.Generator,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     # Start from structurally valid dormant topology, with randomized global mode.
     mode = VALID_MODES[int(rng.integers(0, len(VALID_MODES)))]
     latent_state = LatentState(
         switches=tuple(0 for _ in range(RULE_COUNT)),
-        omegas=tuple(OMEGA_MIN_R for _ in range(RULE_COUNT)),
+        omegas=tuple(parameters.omega_min_r for _ in range(RULE_COUNT)),
         mode=mode,
     )
     return _build_particle(
@@ -350,26 +368,31 @@ def _initial_particle(
         latent_state=latent_state,
         evaluations=evaluations,
         season_element_index=season_element_index,
+        parameters=parameters,
     )
 
 
 def run_tempered_smc(
     observed_state: ObservedState,
     config: InferenceConfig | None = None,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> InferenceResult:
     observed_state.validate()
     cfg = config or InferenceConfig()
     cfg.validate()
 
-    evaluations = evaluate_all_families(observed_state)
+    evaluations = evaluate_all_families(observed_state, parameters=parameters)
     season_element = season_element_from_month_branch(observed_state.branch_ids[1])
-    omega_bounds = _omega_bounds(evaluations)
+    omega_bounds = _omega_bounds(evaluations, parameters=parameters)
 
     rng = np.random.Generator(np.random.PCG64(cfg.seed))
     ladder = temperature_ladder(cfg)
 
     particles = [
-        _initial_particle(observed_state, evaluations, season_element, rng)
+        _initial_particle(
+            observed_state, evaluations, season_element, rng, parameters=parameters
+        )
         for _ in range(cfg.particles)
     ]
     weights = np.full(cfg.particles, 1.0 / cfg.particles, dtype=np.float64)
@@ -418,6 +441,7 @@ def run_tempered_smc(
                     season_element_index=season_element,
                     rng=rng,
                     temperature=current_temp,
+                    parameters=parameters,
                 )
                 particle = _propose_continuous(
                     particle=particle,
@@ -428,6 +452,7 @@ def run_tempered_smc(
                     sigma=cfg.continuous_sigma,
                     rng=rng,
                     temperature=current_temp,
+                    parameters=parameters,
                 )
                 # Enforce deterministic recomputation step after proposals.
                 particle = _build_particle(
@@ -435,6 +460,7 @@ def run_tempered_smc(
                     latent_state=particle.latent_state,
                     evaluations=evaluations,
                     season_element_index=season_element,
+                    parameters=parameters,
                 )
                 particles[idx] = particle
 

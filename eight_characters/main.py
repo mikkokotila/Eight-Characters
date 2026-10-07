@@ -1,6 +1,6 @@
 import csv
 import json
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
@@ -27,9 +27,8 @@ from eight_characters.data import (
 )
 from eight_characters.day_master_context import build_day_master_context
 from eight_characters.engine import compute_engine_payload
-from eight_characters.evolution.inference import InferenceConfig
+from eight_characters.evolution.parameters import ModelParameters
 from eight_characters.evolution.pipeline import EvolutionInput, run_natal_mvp
-from eight_characters.evolution.postprocess import PostprocessConfig
 from eight_characters.evolution.primitives import (
     ELEMENT_EARTH,
     ELEMENT_FIRE,
@@ -38,9 +37,15 @@ from eight_characters.evolution.primitives import (
     ELEMENT_WOOD,
     life_stage_anchor,
 )
-from eight_characters.evolution.state import RULE_COUNT
 from eight_characters.explorer.build_data_js_from_evolution import (
     build_multi_basin_graph_data,
+)
+from eight_characters.explorer_controls import (
+    DEFAULT_EXPLORER_RUN,
+    ExplorerRun,
+    catalogue,
+    describe_model,
+    resolve_model_parameters,
 )
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_pillars import (
@@ -177,7 +182,22 @@ class FourPillarsRequest(BaseModel):
         return self
 
 
+class EvolutionRunSettings(BaseModel):
+    # Each range is ExplorerRun's (explorer_controls.py); strict, so true is no number.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    particles: int | None = None
+    temperature_steps: int | None = None
+    sweeps_per_step: int | None = None
+    seed: int | None = None
+    dbscan_eps: float | None = Field(default=None, allow_inf_nan=False)
+    dbscan_min_samples: int | None = None
+
+
 class EvolutionExplorerRequest(BaseModel):
+    # A misspelt override would otherwise be dropped without a word.
+    model_config = ConfigDict(extra='forbid')
+
     date: str
     time: str
     location: LocationInput | None = None
@@ -187,6 +207,10 @@ class EvolutionExplorerRequest(BaseModel):
     birth_time_uncertainty_seconds: float | None = None
     basin_index: int = 0
     flux_threshold: float = 0.0
+    run: EvolutionRunSettings | None = None
+    # Overrides of the model's parameters, by name (LAMBDA_MODE); resolved and
+    # range-checked by explorer_controls.resolve_model_parameters.
+    model: dict[str, Any] | None = None
 
 
 class LocationSearchRequest(BaseModel):
@@ -838,96 +862,42 @@ def _build_evolution_input_from_four_pillars(
     )
 
 
-def _ensure_evolution_basins(payload: dict[str, Any]) -> dict[str, Any]:
-    basins_raw = payload.get('basins')
-    if isinstance(basins_raw, list) and basins_raw:
-        return payload
-
-    input_shape_raw = payload.get('input_shape')
-    if not isinstance(input_shape_raw, dict):
-        return payload
-    input_shape = cast(dict[str, Any], input_shape_raw)
-    base_elements_raw = input_shape.get('base_elements')
-    if isinstance(base_elements_raw, list):
-        base_elements: list[list[int]] = []
-        for row_raw in cast(list[object], base_elements_raw):
-            if not isinstance(row_raw, list):
-                continue
-            row_values = cast(list[object], row_raw)
-            normalized_row: list[int] = []
-            for value_raw in row_values[:5]:
-                if isinstance(value_raw, bool):
-                    normalized_row.append(int(value_raw))
-                elif isinstance(value_raw, int):
-                    normalized_row.append(value_raw)
-                elif isinstance(value_raw, float):
-                    normalized_row.append(int(value_raw))
-                else:
-                    normalized_row.append(0)
-            while len(normalized_row) < 5:
-                normalized_row.append(0)
-            base_elements.append(normalized_row)
-    else:
-        base_elements = []
-    entity_count = len(base_elements)
-
-    payload['basins'] = [
-        {
-            'basin_id': 0,
-            'mass': 1.0,
-            'mode': 'Standard',
-            'chart_temperature': 0.0,
-            'chart_saturation': 0.0,
-            'motifs': {
-                'chains': [],
-                'loops': [],
-                'pulses': [],
-                'cascades': [],
-                'absences': [],
-                'bottlenecks': [],
-            },
-            'map_total_energy': 0.0,
-            'map_switches': [0 for _ in range(RULE_COUNT)],
-            'map_omegas': [0.5 for _ in range(RULE_COUNT)],
-            'map_effective_elements': base_elements,
-            'map_effective_ten_gods': [
-                [1, 0, 0, 0, 0, 0, 0, 0, 0, 0] for _ in range(entity_count)
-            ],
-        }
-    ]
-    payload['noise_probability'] = 0.0
-    return payload
-
-
 def _build_evolution_explorer_graph_data(
     evolution_input: EvolutionInput,
     basin_index: int,
     flux_threshold: float,
+    run: ExplorerRun,
+    parameters: ModelParameters,
 ) -> dict[str, Any]:
-    # Keep API latency reasonable for interactive explorer navigation.
     evolution_output = run_natal_mvp(
         evolution_input=evolution_input,
-        inference_config=InferenceConfig(
-            particles=24,
-            temperature_steps=2,
-            sweeps_per_step=1,
-            seed=42,
-        ),
-        postprocess_config=PostprocessConfig(
-            discrete_relax_max_passes=1,
-            continuous_passes=1,
-            dbscan_eps=0.08,
-            dbscan_min_samples=1,
-        ),
+        inference_config=run.inference_config(),
+        postprocess_config=run.postprocess_config(),
+        parameters=parameters,
     )
-    evolution_payload = _ensure_evolution_basins(
-        cast(dict[str, Any], json.loads(json.dumps(asdict(evolution_output))))
+    evolution_payload = cast(
+        dict[str, Any], json.loads(json.dumps(asdict(evolution_output)))
     )
+    # With one particle to a core, every particle makes a basin of its own at the
+    # least; a larger core can leave every particle outside any basin.
+    if not evolution_payload.get('basins'):
+        raise ValueError(
+            'No basin formed: no particle had run.dbscan_min_samples '
+            f'({run.dbscan_min_samples}) particles within run.dbscan_eps '
+            f'({run.dbscan_eps}). Widen the radius or lower the minimum.'
+        )
     return build_multi_basin_graph_data(
         evolution_payload,
         basin_index=max(0, basin_index),
         flux_threshold=max(0.0, flux_threshold),
+        parameters=parameters,
     )
+
+
+def _explorer_run(settings: EvolutionRunSettings | None) -> ExplorerRun:
+    if settings is None:
+        return DEFAULT_EXPLORER_RUN
+    return replace(DEFAULT_EXPLORER_RUN, **settings.model_dump(exclude_none=True))
 
 
 # ── Routes ──
@@ -1110,9 +1080,20 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     return response
 
 
+@app.get('/api/evolution_controls')
+async def evolution_controls() -> dict[str, Any]:
+    """The explorer's run settings, conventions and model parameters, with ranges."""
+    return catalogue()
+
+
 @app.post('/api/evolution_explorer')
 async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any]:
     """Build explorer graph data from date/time and city/location input."""
+    try:
+        run = _explorer_run(payload.run)
+        parameters = resolve_model_parameters(payload.model or {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
     resolved_city: ResolvedCity | None = None
     try:
         location_payload = FourPillarsRequest(
@@ -1153,6 +1134,8 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
             evolution_input,
             payload.basin_index,
             payload.flux_threshold,
+            run,
+            parameters,
         )
     except CityLookupServiceError as exc:
         raise HTTPException(
@@ -1164,7 +1147,16 @@ async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any
     except Exception as exc:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
-    response: dict[str, Any] = {'graph_data': graph_data}
+    response: dict[str, Any] = {
+        'graph_data': {
+            **graph_data,
+            'parameters': {
+                'run': run.describe(),
+                'conventions': payload.conventions.model_dump(),
+                'model': describe_model(parameters),
+            },
+        }
+    }
     if resolved_city is not None:
         response['resolved_location'] = _resolved_place(location, resolved_city)
     return response

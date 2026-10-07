@@ -15,7 +15,13 @@ from eight_characters.engine import TERM_LABEL_BY_TARGET
 from eight_characters.main import BASE_DIR, app, templates
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 
-EXPLORER_ASSETS = ('styles.css', 'vendor/d3.v7.min.js', 'data.js', 'app.js')
+EXPLORER_ASSETS = (
+    'styles.css',
+    'vendor/d3.v7.min.js',
+    'data.js',
+    'app.js',
+    'parameters.js',
+)
 
 
 SPACING_PROPERTIES = re.compile(

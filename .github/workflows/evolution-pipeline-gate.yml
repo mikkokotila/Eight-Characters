@@ -33,4 +33,5 @@ jobs:
             tests.test_evolution_module_e_energy \
             tests.test_evolution_module_f_inference \
             tests.test_evolution_module_g_postprocess \
-            tests.test_evolution_module_h_pipeline
+            tests.test_evolution_module_h_pipeline \
+            tests.test_evolution_module_i_parameters

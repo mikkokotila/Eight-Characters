@@ -1201,6 +1201,242 @@ input[type='range']::-moz-range-thumb {
 }
 
 
+/* ─── Parameter pane ─── */
+
+.layout.parameters-open {
+  grid-template-columns: 270px 1fr 300px 320px;
+}
+
+.parameter-pane {
+  border-right: 0;
+  border-left: 1px solid var(--border);
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.parameter-pane[hidden] {
+  display: none;
+}
+
+.parameter-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.parameter-head h2 {
+  margin: 0;
+}
+
+.parameter-close {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  padding: 2px 6px;
+  cursor: pointer;
+}
+
+.parameter-close:hover {
+  color: var(--text);
+}
+
+.parameter-status {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.parameter-status.is-error {
+  color: #9C3F35;
+}
+
+.parameter-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.parameter-actions .btn {
+  padding: 7px 12px;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+}
+
+.parameter-recompute:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-active);
+}
+
+.parameter-pane :focus-visible {
+  outline: 2px solid var(--text-muted);
+  outline-offset: 2px;
+}
+
+.parameter-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.parameter-group {
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+
+.parameter-group > summary {
+  font-family: 'Cormorant Garamond', serif;
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.param {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.param-label {
+  padding: 0;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* A value changed from its default carries a dot; one not applied yet, a ring. */
+.param.is-changed > .param-label::after,
+.param.is-draft > .param-label::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--text-muted);
+}
+
+.param.is-draft > .param-label::after {
+  background: none;
+  box-shadow: inset 0 0 0 1.5px var(--text-muted);
+}
+
+.param-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 76px;
+  gap: 10px;
+  align-items: center;
+}
+
+.param-inputs.is-seed {
+  grid-template-columns: 128px;
+}
+
+.parameter-pane input[type='number'] {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.45);
+  color: var(--text);
+  padding: 4px 6px;
+  font-family: 'Manrope', sans-serif;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.parameter-pane input[aria-invalid='true'] {
+  border-color: #9C3F35;
+}
+
+.param-help {
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.param-check,
+.param-option {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text);
+}
+
+.param-vector {
+  display: grid;
+  gap: 4px;
+}
+
+.param-vector-row {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr) 60px;
+  gap: 8px;
+  align-items: center;
+}
+
+.param-vector-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.param-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(42, 37, 32, 0.06);
+  overflow: hidden;
+}
+
+.param-bar-fill {
+  display: block;
+  height: 100%;
+  background: var(--text-light);
+}
+
+.param-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10.5px;
+}
+
+.param-matrix th {
+  padding: 2px;
+  font-weight: 500;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.param-matrix th[scope='row'] {
+  text-align: left;
+}
+
+.param-matrix td {
+  padding: 2px;
+}
+
+.parameter-pane .param-matrix input[type='number'] {
+  padding: 3px 2px;
+  font-size: 11px;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.param-matrix input[type='number']::-webkit-inner-spin-button,
+.param-matrix input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+
 /* ─── Responsive ─── */
 
 @media (max-width: 960px) {
@@ -1255,5 +1491,43 @@ input[type='range']::-moz-range-thumb {
 
   .pillar-strip {
     grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+/* The parameter pane takes the basin column while open where the screen has no room
+   for both; on a phone it is a sheet over the foot of the page. */
+@media (min-width: 721px) and (max-width: 1279px) {
+  .layout.parameters-open {
+    grid-template-columns: 270px 1fr 320px;
+  }
+
+  .layout.parameters-open .right-panel {
+    display: none;
+  }
+}
+
+@media (min-width: 721px) and (max-width: 960px) {
+  .layout.parameters-open {
+    grid-template-columns: 220px 1fr 280px;
+  }
+}
+
+@media (max-width: 720px) {
+  .layout.parameters-open {
+    grid-template-columns: 1fr;
+  }
+
+  .parameter-pane {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    max-height: 60vh;
+    border-left: 0;
+    border-top: 1px solid var(--border-active);
+    background: var(--bg);
+    box-shadow: 0 -8px 24px rgba(42, 37, 32, 0.12);
   }
 }

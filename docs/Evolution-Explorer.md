@@ -64,6 +64,7 @@ Toggleable highlights that reveal emergent topological patterns in the MAP exemp
 | Min |F(i→j)| slider | Sets the minimum absolute flux threshold for visible edges. Raising it strips weak connections and reveals dominant flow architecture. |
 | Fit | Recenters and rescales the graph to fit the viewport. |
 | Reset Filters | Returns all toggles and slider to default state. |
+| Parameters | Opens the parameter pane, to compute the chart again with other settings: see [Parameters](#parameters). |
 | Edge Relations checkboxes | Toggle visibility of Production, Control, and Drain edges independently. Useful for isolating one type of relationship — e.g., showing only production edges reveals the feeding chains, showing only control edges reveals the pressure architecture. |
 | Motif Overlays checkboxes | Toggle each motif highlight independently. Layer them to see how patterns overlap — a chain that is also a cascade, a bottleneck that sits inside a loop. |
 
@@ -127,6 +128,34 @@ A compact summary panel showing basin-level signals and comparison tools.
 | Directed edges visible | Count of flux edges passing the current filter threshold. |
 | Motif segments | Count of highlighted motif path segments in the current view. |
 | Topology modifiers | Count of active non-zero topology switches. |
+
+---
+
+## Parameters
+
+The Parameters button opens a pane that changes what the simulation computes with. Recompute asks for the chart again with the changes. It works for a chart opened from the start page; the bundled sample chart has nothing to recompute.
+
+The pane lists, in groups:
+
+| Group | What it holds |
+|---|---|
+| Run | Particles (8 to 64), temperature steps (1 to 4), sweeps per step (1 to 2), and the seed. The same seed and settings give the same result. "New seed each run" draws a fresh seed for every recompute and shows it. |
+| Clustering | The basin clustering radius and minimum, and the three shares of the distance between particles: rule switches and mode, effective elements, qi activations. Changing one share moves the other two, so they always add up to 1, even for a share typed finer than its step. |
+| Conventions | The Zi hour, and whether the hour pillar and the day boundary follow true solar time or clock time. |
+| Polarity, Rule Activation, Structure Mode, Damage, Energy Weights, Motifs | The model's constants, one each, such as the Structure-Mode Fidelity Weight. Each shows its default and range. |
+| Tables | The element interaction and pillar domain resonance matrices, and the life-stage vitality, partial-state weight and pillar distance curves. |
+
+- **What is marked:** a value changed from its default carries a dot by its name; one not yet applied, a ring. The status line says what the chart was computed with and how many changes wait.
+- **What a recompute sends:** every value that differs from its default, so earlier changes stay applied. A change made while a recompute runs waits for the next one, even a change back to the value the chart had.
+- **Going back:** Discard Changes returns to what the chart was computed with. Reset to Defaults sets every value back to its default, ready to recompute. Either one, pressed while a recompute runs, drops its answer, even for a recompute that changes nothing but the seed.
+- **Errors:** an entry that isn't a number within its range is marked, and Recompute waits until it's fixed. If the server refuses a recompute, its reason shows in the status line and the chart stays as it was.
+- **Cost:** the largest run takes about four and a half times as long as the default one.
+- **Layout:**
+  - on a wide screen the pane is a column of its own;
+  - where there isn't room for both, it takes the Basin Metadata column while open;
+  - on a phone it's a sheet over the foot of the page.
+
+  The graph is measured again whenever its space changes.
 
 ---
 

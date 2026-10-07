@@ -40,16 +40,29 @@
 - **Purpose**: graph data for the evolution explorer page.
 - **Primary callers**: `eight_characters/explorer/app.js`.
 - **Input modes**: the same as `POST /api/four_pillars` (`location`, or
-  `city` + `country`), plus `basin_index` and `flux_threshold`.
+  `city` + `country`), plus `basin_index` and `flux_threshold`, and the
+  optional `run` settings and `model` overrides. Unknown fields are rejected.
 - **Internal calls**:
+  - `_explorer_run` and `explorer_controls.resolve_model_parameters`, before any
+    other work: the run's `ExplorerRun` and `ModelParameters`, range-checked
   - `_resolve_four_pillars_location`
   - `_build_four_pillars_result`
   - `_build_hidden_stems_result`
   - `_build_evolution_input_from_four_pillars`
-  - `_build_evolution_explorer_graph_data` (in a worker thread)
+  - `_build_evolution_explorer_graph_data` (in a worker thread), which runs the
+    engine and draws the graph with the same `ModelParameters`
 - **Error behavior**:
-  - `400` for user/input/time-validation errors
+  - `400` for user/input/time-validation errors, for an override out of range,
+    unknown or of the wrong shape, and for a run that forms no basin
   - `500` when the geocoder is unavailable or for unexpected internal errors
+
+### `GET /api/evolution_controls`
+
+- **Purpose**: the explorer's run settings, conventions and model parameters,
+  with their defaults, ranges and labels.
+- **Primary callers**: `eight_characters/explorer/parameters.js`, when the
+  parameter pane first opens.
+- **Internal calls**: `explorer_controls.catalogue`.
 
 ### `POST /api/chart`
 
@@ -160,6 +173,13 @@ in the URL: `date`, `time`, and the picked place's `latitude`, `longitude` and
 instead (resolved by name), shows an error in its status bar for a link with
 only part of the birth or with both kinds of place, and shows the bundled
 sample chart (`explorer/data.js`) only when the URL has no birth at all.
+
+The explorer's parameter pane (`explorer/parameters.js`) asks
+`GET /api/evolution_controls` when it first opens. Its Recompute asks
+`POST /api/evolution_explorer` again for the same birth and basin, with `run`,
+`conventions` and `model` holding every value that differs from its default.
+The answer's `graph_data.parameters` tells the pane what the graph was computed
+with, and `app.js` draws the new graph through `window.EC_EXPLORER.redraw`.
 
 Chart card interactions:
 

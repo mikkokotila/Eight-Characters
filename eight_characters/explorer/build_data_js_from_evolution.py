@@ -10,6 +10,10 @@ from eight_characters.evolution.mechanics import (
     compute_dynamic_vitality_amplitudes,
     realized_flux,
 )
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.primitives import (
     ELEMENT_LABELS,
     TEN_GOD_GROUP_LABELS,
@@ -17,12 +21,10 @@ from eight_characters.evolution.primitives import (
     authority_element,
     moisture_contribution,
     output_element,
-    polarity_multiplier,
     resource_element,
     temperature_contribution,
     ten_god_group,
     wealth_element,
-    wuxing_interaction,
 )
 from eight_characters.evolution.state import (
     RULE_COUNT,
@@ -269,7 +271,11 @@ def _modifier_kind(rule_index: int) -> str:
 
 
 def build_graph_data(
-    payload: dict[str, Any], basin_index: int = 0, flux_threshold: float = 0.0
+    payload: dict[str, Any],
+    basin_index: int = 0,
+    flux_threshold: float = 0.0,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> dict[str, Any]:
     input_shape = _as_dict(payload.get('input_shape'), field='payload.input_shape')
     basins = _as_list(payload.get('basins'))
@@ -282,13 +288,14 @@ def build_graph_data(
     observed_state = _build_observed_state(input_shape)
     latent_state = _build_latent_state(basin)
 
-    evaluations = evaluate_all_families(observed_state)
+    evaluations = evaluate_all_families(observed_state, parameters=parameters)
     clash_map, punishment_map = _damage_participation_maps(latent_state, evaluations)
     dynamic_amplitudes = compute_dynamic_vitality_amplitudes(
         observed_state=observed_state,
         latent_state=latent_state,
         clash_participation=clash_map,
         punishment_participation=punishment_map,
+        parameters=parameters,
     )
 
     effective_elements = _build_effective_elements(observed_state, basin)
@@ -297,6 +304,7 @@ def build_graph_data(
         observed_state=observed_state,
         effective_elements=effective_elements,
         dynamic_amplitudes=dynamic_amplitudes,
+        parameters=parameters,
     )
 
     active_indices = [
@@ -364,7 +372,9 @@ def build_graph_data(
             target_vitality = float(dynamic_amplitudes[target_index])
 
             relationship = _relation_class(source_element, target_element)
-            polarity_mod = float(polarity_multiplier(source_polarity, target_polarity))
+            polarity_mod = float(
+                parameters.polarity_multiplier(source_polarity, target_polarity)
+            )
             proximity_weight = float(
                 1.0 / (1.0 + abs(source_position - target_position))
             )
@@ -372,7 +382,7 @@ def build_graph_data(
             vitality_product = float(source_vitality * target_vitality)
             hierarchy_coupling = float(source_hierarchy * target_hierarchy)
             elemental_interaction = float(
-                wuxing_interaction(source_element, target_element)
+                parameters.wuxing_interaction(source_element, target_element)
             )
             transport_capacity_component = float(
                 vitality_product * hierarchy_coupling * proximity_weight
@@ -602,7 +612,11 @@ def build_graph_data(
 
 
 def build_multi_basin_graph_data(
-    payload: dict[str, Any], basin_index: int = 0, flux_threshold: float = 0.0
+    payload: dict[str, Any],
+    basin_index: int = 0,
+    flux_threshold: float = 0.0,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> dict[str, Any]:
     basins = _as_list(payload.get('basins'))
     if not basins:
@@ -610,7 +624,12 @@ def build_multi_basin_graph_data(
 
     clamped_index = max(0, min(int(basin_index), len(basins) - 1))
     basin_views = [
-        build_graph_data(payload, basin_index=index, flux_threshold=flux_threshold)
+        build_graph_data(
+            payload,
+            basin_index=index,
+            flux_threshold=flux_threshold,
+            parameters=parameters,
+        )
         for index in range(len(basins))
     ]
     active_view = basin_views[clamped_index]
@@ -677,17 +696,20 @@ def main() -> None:
 
     payload_data = json.loads(args.payload.read_text(encoding='utf-8'))
     flux_threshold = max(0.0, float(args.flux_threshold))
+    # A payload file carries no parameters: it was computed with the model's own.
     if args.single_basin:
         graph_data = build_graph_data(
             payload_data,
             basin_index=args.basin_index,
             flux_threshold=flux_threshold,
+            parameters=DEFAULT_MODEL_PARAMETERS,
         )
     else:
         graph_data = build_multi_basin_graph_data(
             payload_data,
             basin_index=args.basin_index,
             flux_threshold=flux_threshold,
+            parameters=DEFAULT_MODEL_PARAMETERS,
         )
     write_data_js(graph_data, args.output)
 

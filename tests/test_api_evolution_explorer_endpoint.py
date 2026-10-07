@@ -4,7 +4,13 @@ from unittest.mock import AsyncMock, patch
 
 from fastapi.testclient import TestClient
 
+from eight_characters.evolution import (
+    DEFAULT_MODEL_PARAMETERS,
+    InferenceConfig,
+    PostprocessConfig,
+)
 from eight_characters.evolution.pipeline import EvolutionInput
+from eight_characters.explorer_controls import describe_model
 from eight_characters.main import (
     CityLookupServiceError,
     LocationInput,
@@ -100,7 +106,7 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
             ) as evolution_mock,
             patch(
                 'eight_characters.main.asdict',
-                return_value={},
+                return_value={'basins': [{'basin_id': 0}]},
             ),
             patch(
                 'eight_characters.main.build_multi_basin_graph_data',
@@ -119,7 +125,28 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         body = response.json()
-        self.assertEqual(body['graph_data'], fake_graph_data)
+        self.assertEqual(
+            body['graph_data'],
+            {
+                **fake_graph_data,
+                'parameters': {
+                    'run': {
+                        'particles': 24,
+                        'temperature_steps': 2,
+                        'sweeps_per_step': 1,
+                        'seed': 42,
+                        'dbscan_eps': 0.08,
+                        'dbscan_min_samples': 1,
+                    },
+                    'conventions': {
+                        'zi_convention': 'split_midnight',
+                        'hour_basis': 'true_solar',
+                        'day_boundary_basis': 'true_solar',
+                    },
+                    'model': describe_model(DEFAULT_MODEL_PARAMETERS),
+                },
+            },
+        )
         self.assertEqual(
             body['resolved_location'],
             {
@@ -132,8 +159,24 @@ class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
             },
         )
         resolve_mock.assert_awaited_once()
-        evolution_mock.assert_called_once()
+        # Asked for no change, the explorer runs as it always has.
+        evolution_mock.assert_called_once_with(
+            evolution_input=fake_evolution_input,
+            inference_config=InferenceConfig(
+                particles=24, temperature_steps=2, sweeps_per_step=1, seed=42
+            ),
+            postprocess_config=PostprocessConfig(
+                discrete_relax_max_passes=1,
+                continuous_passes=1,
+                dbscan_eps=0.08,
+                dbscan_min_samples=1,
+            ),
+            parameters=DEFAULT_MODEL_PARAMETERS,
+        )
         graph_mock.assert_called_once()
+        self.assertEqual(
+            graph_mock.call_args.kwargs['parameters'], DEFAULT_MODEL_PARAMETERS
+        )
 
     def test_evolution_explorer_computes_for_the_given_location(self) -> None:
         # Chengdu, Jiangxi: 15:40 there is in the 申 hour; the Sichuan Chengdu is in 未.
