@@ -363,12 +363,30 @@ class TestSessionsAndCodes(StoreTestCase):
     def test_sessions_are_kept_extended_and_ended(self) -> None:
         self.store.create_session(self.session('a'))
         self.assertEqual(self.store.session('a'), self.session('a'))
-        self.store.extend_session('a', '2026-12-01T00:00:00Z')
+        extended = self.store.extend_session(
+            'a', '2026-12-01T00:00:00Z', '2026-10-20T00:00:00Z'
+        )
+        self.assertTrue(extended)
         self.assertEqual(
             self.store.session('a'),
             replace(self.session('a'), expires_at='2026-12-01T00:00:00Z'),
         )
         self.store.delete_session('a')
+        self.assertIsNone(self.store.session('a'))
+
+    def test_only_a_live_session_is_extended_and_only_an_ended_one_is_ended(
+        self,
+    ) -> None:
+        self.store.create_session(self.session('a'))
+        ended_at = self.session('a').expires_at
+        late = self.store.extend_session('a', '2027-01-01T00:00:00Z', ended_at)
+        self.assertFalse(late)
+        self.assertFalse(
+            self.store.extend_session('gone', '2027-01-01T00:00:00Z', ended_at)
+        )
+        self.store.end_expired_session('a', '2026-11-06T11:59:59Z')
+        self.assertEqual(self.store.session('a'), self.session('a'))
+        self.store.end_expired_session('a', ended_at)
         self.assertIsNone(self.store.session('a'))
 
     def test_signing_out_everywhere_ends_only_that_account(self) -> None:

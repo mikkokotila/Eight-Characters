@@ -191,11 +191,12 @@ class SignIn:
             try:
                 user = self._store.create_user(address, taken.new_language)
                 created = True
-            except EmailTaken:
+            except EmailTaken as exc:
                 # Made meanwhile, from another tab with another code.
                 user = self._store.user_by_email(address)
                 if user is None:
-                    raise
+                    # And deleted since: there is no account to sign in to.
+                    raise CodeRefused('That code is wrong or no longer works.') from exc
         token = secrets.token_urlsafe(32)
         expires_at = now + SESSION_LIFETIME
         session = Session(
@@ -222,12 +223,17 @@ class SignIn:
         now = self._clock()
         expires_at = parse_timestamp(session.expires_at)
         if expires_at <= now:
-            self._store.delete_session(token_hash)
+            # Only while it is still ended: another request may have renewed it.
+            self._store.end_expired_session(token_hash, timestamp(now))
             return None
         renewed = expires_at - now < SESSION_RENEWAL
         if renewed:
             expires_at = now + SESSION_LIFETIME
-            self._store.extend_session(token_hash, timestamp(expires_at))
+            if not self._store.extend_session(
+                token_hash, timestamp(expires_at), timestamp(now)
+            ):
+                # Signed out, or ended, meanwhile.
+                return None
         return CurrentSession(
             user=user, token_hash=token_hash, expires_at=expires_at, renewed=renewed
         )
