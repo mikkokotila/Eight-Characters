@@ -18,6 +18,9 @@
     country; the response's `resolved_location` names the place used,
     including its `region`, `latitude` and `longitude`)
 - **Optional enrichments**:
+  - `include_luck_pillars=true` adds ten-year pillars; `gender` (`male`/`female`)
+    is then required, and `luck_pillar_count` is a strict integer 1-12 (default 10).
+    See [Luck pillars](../Luck-Pillars.md) for calculation and uncertainty contracts.
   - `include_chart=true` adds chart payload from `build_chart`
   - `include_hidden_stems=true` adds hidden stems payload from `_build_hidden_stems_result`
   - `include_ten_gods=true` adds ten gods payload from `_build_ten_gods_result`

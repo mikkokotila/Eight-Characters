@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.29.0
+
+### Added
+- Backend ten-year luck pillars, opt-in through `include_luck_pillars` on
+  `POST /api/four_pillars`, with explicit `male`/`female` gender input and
+  1-12 actual cycles (default 10).
+- Direction from the Lichun-resolved year stem, progression from the natal
+  month pillar, and onset from the engine's own Jie instants in TT.
+- A documented continuous three-days-per-year convention, UTC calendar
+  boundaries, symbolic onset ages, pre-luck period and visible uncertainty.
+- Engine/API regression tests and independent package comparisons, included
+  in the core and API CI gates. No frontend integration.
+
+### Changed
+- Reject negative or non-finite birth-time uncertainty instead of calculating
+  with invalid uncertainty. Existing natal-only response sections are unchanged.
+
 ## 0.28.0
 
 Readings: the canon's taxonomy, `canon/Taxonomy.md`, in the pages the chart already has.
