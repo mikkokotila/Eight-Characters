@@ -35,7 +35,7 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - a punishment, half-punishment or self-punishment: 2px dashed;
   - a harm: 2px dotted;
   - a half-frame: double, like its frame.
-- **Names.** English: Half-frame, Directional combination, Punishment, Half-punishment, Self-punishment, Branch harm. The Finnish names are provisional, for the maintainer to confirm: Puolikas kolmen haaran harmonia, Suuntayhdistelmä, Rangaistus, Puolikas rangaistus, Itserangaistus, Haarojen vahinko.
+- **Names.** English: Half-frame, Directional combination, Punishment, Half-punishment, Self-punishment, Branch harm. Finnish: Puolikas kolmen haaran harmonia, Suuntayhdistelmä, Rangaistus, Puolikas rangaistus, Itserangaistus, Haarojen vahinko.
 
 ### Changed
 - `include_interactions`: `kind` takes six more values, and `completeness` takes `half` (two of a triple's three). Rules 1–21, their ids and their order are unchanged.
