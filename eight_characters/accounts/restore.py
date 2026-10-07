@@ -13,7 +13,7 @@ import pyrage
 from eight_characters.accounts.backup import (
     BackupError,
     checkout_lock,
-    head_tree,
+    own_tree,
     read_manifest,
     record_files,
     require_clean,
@@ -62,7 +62,7 @@ def restore_backup(
         manifest = read_manifest(root)
         if manifest is None:
             raise RestoreError('The checkout has no manifest.json; it is no backup.')
-        tree = head_tree(root)
+        tree = own_tree(root)
         if tree is None:
             raise RestoreError('The checkout has no commits; it is no backup.')
         if manifest.recipient != str(identity.to_public()):

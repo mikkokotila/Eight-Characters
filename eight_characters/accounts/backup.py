@@ -11,14 +11,17 @@ the reason, rather than being worked around.
 """
 
 import fcntl
+import hashlib
 import json
 import os
 import re
 import subprocess
 import tempfile
+import time
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Final, cast
 
@@ -31,8 +34,13 @@ ENCRYPTED_SUFFIX: Final = '.age'
 MANIFEST: Final = 'manifest.json'
 MANIFEST_SCHEMA: Final = 1
 USER_FILE: Final = 'user.json.age'
+# The repository owner's folder, for its freshness check: the backup never writes it,
+# and commits to it are not the backup's to judge.
+OWNER_FOLDER: Final = '.github'
 # Everything a backup checkout may hold at its root.
-TOP_LEVEL: Final = frozenset({'.git', '.gitattributes', 'README.md', MANIFEST, 'users'})
+TOP_LEVEL: Final = frozenset(
+    {'.git', OWNER_FOLDER, '.gitattributes', 'README.md', MANIFEST, 'users'}
+)
 _MANIFEST_FIELDS: Final = frozenset({'counts', 'encryption', 'recipient', 'schema'})
 _SHARD = re.compile(r'[0-9a-f]{2}')
 # A hung command fails the run instead of holding it forever.
@@ -51,7 +59,10 @@ Read one record:
 
     age --decrypt --identity KEY_FILE users/3f/3f.../user.json.age
 
-The backup job writes everything here. Commits made by hand stop it.
+The backup job writes everything here but `.github/`, which holds the repository
+owner's freshness check. Commits made by hand anywhere else stop it. When there is
+nothing new, the job commits an empty "backup: alive" now and then, so the check can
+tell a quiet backup from a stopped one.
 """
 STATIC_FILES: Final[dict[str, bytes]] = {
     'README.md': README,
@@ -82,6 +93,8 @@ class BackupResult:
     commit: str | None
     pushed: bool
     backed_up_seq: int
+    # The commit is an empty "backup: alive", made because nothing else was new.
+    heartbeat: bool
 
 
 @dataclass(frozen=True)
@@ -301,11 +314,26 @@ def record_files(root: Path) -> list[tuple[str, str]]:
     return found
 
 
-def head_tree(root: Path) -> str | None:
-    """The Git tree of the checkout's last commit, or None before the first."""
+def own_tree(root: Path) -> str | None:
+    """A fingerprint of the backup's own files in the last commit: everything but the
+    owner's folder. None while there are none."""
     if _git_ref(root, 'HEAD') is None:
         return None
-    return _git(root, 'rev-parse', 'HEAD^{tree}').strip()
+    entries = [
+        entry
+        for entry in _git(root, 'ls-tree', '-z', 'HEAD').split('\0')
+        if entry and entry.split('\t', 1)[1] != OWNER_FOLDER
+    ]
+    if not entries:
+        return None
+    return hashlib.sha256('\0'.join(entries).encode()).hexdigest()
+
+
+def _last_commit_age(root: Path) -> float | None:
+    if _git_ref(root, 'HEAD') is None:
+        return None
+    committed = int(_git(root, 'log', '-1', '--format=%ct').strip())
+    return time.time() - committed
 
 
 def _push_if_ahead(root: Path) -> bool:
@@ -390,13 +418,17 @@ def _write_and_commit(
 
 
 def run_backup(
-    store: AccountStore, checkout: Path, recipient: pyrage.x25519.Recipient
+    store: AccountStore,
+    checkout: Path,
+    recipient: pyrage.x25519.Recipient,
+    heartbeat: timedelta | None = None,
 ) -> BackupResult:
     """Copies every record changed since the last backup into the checkout, then
     commits, pushes and marks the changes backed up, in that order.
 
     A run that fails before its commit puts the checkout back as it found it, so the
-    next run meets the same problem and names it.
+    next run meets the same problem and names it. With `heartbeat`, a run with nothing
+    new commits an empty "backup: alive" once the last commit is that old.
     """
     root = work_tree(checkout)
     with checkout_lock(root):
@@ -418,7 +450,7 @@ def run_backup(
         # Without the private key the server cannot read a file, but it knows what it
         # committed last: anything else in the checkout, such as a file corrupted or
         # changed by hand, stops the run before it adds to it.
-        if head_tree(root) != snapshot.tree:
+        if own_tree(root) != snapshot.tree:
             raise BackupError(
                 'The checkout is not the backup this database last wrote: it holds '
                 'commits the backup did not make, or another backup.'
@@ -430,10 +462,28 @@ def run_backup(
         except BaseException:
             _discard_uncommitted(root)
             raise
+        beat = False
         if commit is not None:
+            tree = own_tree(root)
+            if tree is None:
+                raise BackupError('The backup committed none of its own files.')
             # Recorded before the push, so a failed push leaves the commit for the
             # next run to push.
-            store.record_backup_tree(_git(root, 'rev-parse', 'HEAD^{tree}').strip())
+            store.record_backup_tree(tree)
+        elif heartbeat is not None:
+            age = _last_commit_age(root)
+            if age is not None and age >= heartbeat.total_seconds():
+                _git(
+                    root,
+                    *_COMMITTER,
+                    'commit',
+                    '--quiet',
+                    '--allow-empty',
+                    '--message',
+                    'backup: alive',
+                )
+                commit = _git(root, 'rev-parse', 'HEAD').strip()
+                beat = True
         pushed = _push_if_ahead(root)
         store.mark_backed_up(snapshot.through_seq)
     return BackupResult(
@@ -442,6 +492,7 @@ def run_backup(
         commit=commit,
         pushed=pushed,
         backed_up_seq=snapshot.through_seq,
+        heartbeat=beat,
     )
 
 

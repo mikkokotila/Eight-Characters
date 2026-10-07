@@ -3,6 +3,7 @@ import shutil
 import sqlite3
 import tempfile
 import unittest
+from datetime import timedelta
 from pathlib import Path
 
 import pyrage
@@ -309,6 +310,60 @@ class TestRunBackup(BackupTestCase):
             run_backup(self.store, plain, self.recipient)
         with self.assertRaises(BackupError):
             run_backup(self.store, self.directory / 'missing', self.recipient)
+
+
+class TestHeartbeat(BackupTestCase):
+    def test_a_quiet_run_says_it_is_alive_once_the_last_commit_is_old(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        tree = git(self.remote, 'rev-parse', 'HEAD^{tree}').strip()
+        hour = timedelta(hours=1)
+        recent = run_backup(self.store, self.checkout, self.recipient, hour)
+        self.assertEqual((recent.commit, recent.heartbeat), (None, False))
+        beat = run_backup(self.store, self.checkout, self.recipient, timedelta(0))
+        self.assertEqual((beat.heartbeat, beat.pushed), (True, True))
+        self.assertEqual(self.remote_head(), beat.commit)
+        subject = git(self.remote, 'log', '-1', '--format=%s').strip()
+        self.assertEqual(subject, 'backup: alive')
+        self.assertEqual(git(self.remote, 'rev-parse', 'HEAD^{tree}').strip(), tree)
+        # The backup still knows the checkout as its own.
+        self.store.create_user('later@example.com', 'fi')
+        later = run_backup(self.store, self.checkout, self.recipient, timedelta(0))
+        self.assertEqual((later.written, later.heartbeat), (1, False))
+
+    def test_a_run_with_something_new_needs_no_heartbeat(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        result = run_backup(self.store, self.checkout, self.recipient, timedelta(0))
+        self.assertEqual((result.written, result.heartbeat), (1, False))
+
+
+class TestOwnerFolder(BackupTestCase):
+    def owner_commit(self, text: str) -> None:
+        workflows = self.checkout / '.github' / 'workflows'
+        workflows.mkdir(parents=True, exist_ok=True)
+        (workflows / 'backup-freshness.yml').write_text(text)
+        self.commit_by_hand("the owner's freshness check")
+
+    def test_the_owner_folder_is_not_the_backups_to_judge(self) -> None:
+        # Seeded by the repository's owner before the first run.
+        self.owner_commit('on: schedule\n')
+        self.store.create_user('reader@example.com', 'fi')
+        self.assertEqual(self.store.backup_snapshot().tree, None)
+        self.backup()
+        self.owner_commit('on: workflow_dispatch\n')
+        self.store.create_user('later@example.com', 'en')
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual((result.written, result.pushed), (1, True))
+        restored = self.directory / 'restored.sqlite3'
+        restore_backup(self.fresh_clone(), self.identity, restored)
+        self.assertEqual(AccountStore.open(restored).users(), self.store.users())
+
+    def test_the_owner_folder_cannot_be_a_link(self) -> None:
+        (self.checkout / '.github').symlink_to(self.directory, target_is_directory=True)
+        self.commit_by_hand('a link')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('a link, which it never writes: .github', str(caught.exception))
 
 
 class TestManifest(BackupTestCase):

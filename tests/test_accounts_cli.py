@@ -101,6 +101,25 @@ class TestCommands(unittest.TestCase):
         self.assertIn('Restored 1 users', out)
         self.assertEqual(AccountStore.open(restored).users(), store.users())
 
+    def test_the_heartbeat_must_be_positive(self) -> None:
+        database = self.directory / 'accounts.sqlite3'
+        AccountStore.create(database)
+        _, checkout = make_remote_and_checkout(self.directory)
+        recipient = run('keygen', '--identity', str(self.directory / 'key.txt'))[1]
+        code, _, err = run(
+            'backup',
+            '--database',
+            str(database),
+            '--checkout',
+            str(checkout),
+            '--recipient',
+            recipient.strip(),
+            '--heartbeat',
+            '0',
+        )
+        self.assertEqual(code, 1)
+        self.assertIn('--heartbeat must be at least one second', err)
+
     def test_a_failure_is_one_line_on_stderr(self) -> None:
         code, out, err = run(
             'backup',

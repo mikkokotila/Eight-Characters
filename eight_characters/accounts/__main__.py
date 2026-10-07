@@ -4,7 +4,7 @@ import argparse
 import os
 import sys
 from collections.abc import Sequence
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
@@ -66,6 +66,13 @@ def _parser() -> argparse.ArgumentParser:
     backup.add_argument(
         '--recipient', required=True, help='The age public key (age1…).'
     )
+    backup.add_argument(
+        '--heartbeat',
+        type=int,
+        metavar='SECONDS',
+        help='With nothing new, commit an empty "backup: alive" once the last commit '
+        'is this old, so a quiet backup is told from a stopped one.',
+    )
 
     restore = commands.add_parser(
         'restore', help='Build a new account database from a backup checkout.'
@@ -96,14 +103,19 @@ def main(argv: Sequence[str] | None = None) -> int:
             recipient = write_identity(cast(Path, args.identity))
             print(recipient)
         elif command == 'backup':
+            seconds = cast(int | None, args.heartbeat)
+            if seconds is not None and seconds < 1:
+                raise BackupError('--heartbeat must be at least one second.')
             store = AccountStore.open(cast(Path, args.database))
             result = run_backup(
                 store,
                 cast(Path, args.checkout),
                 parse_recipient(cast(str, args.recipient)),
+                None if seconds is None else timedelta(seconds=seconds),
             )
             print(
-                f'{result.written} written, {result.removed} removed, '
+                f'{result.written} written, {result.removed} removed'
+                f'{", alive" if result.heartbeat else ""}, '
                 f'{"pushed" if result.pushed else "nothing to push"}; '
                 f'backed up through change {result.backed_up_seq}.'
             )
