@@ -11,6 +11,7 @@ from unittest.mock import patch
 from eight_characters.accounts import store as store_module
 from eight_characters.accounts.records import RecordError, User, user_path
 from eight_characters.accounts.store import (
+    APPLICATION_ID,
     SCHEMA_VERSION,
     AccountStore,
     EmailTaken,
@@ -45,6 +46,7 @@ class TestCreateAndOpen(StoreTestCase):
         self.assertEqual(stat.S_IMODE(self.path.stat().st_mode), 0o600)
         self.assertEqual(_sql(self.path, 'PRAGMA journal_mode'), [('wal',)])
         self.assertEqual(_sql(self.path, 'PRAGMA user_version'), [(SCHEMA_VERSION,)])
+        self.assertEqual(_sql(self.path, 'PRAGMA application_id'), [(APPLICATION_ID,)])
         self.assertFalse(self.path.with_name('accounts.sqlite3.partial').exists())
 
     def test_create_refuses_an_existing_path(self) -> None:
@@ -76,6 +78,10 @@ class TestCreateAndOpen(StoreTestCase):
     def test_open_refuses_a_file_that_is_no_account_database(self) -> None:
         other = self.directory / 'other.sqlite3'
         _sql(other, 'CREATE TABLE notes (text TEXT)')
+        with self.assertRaises(StoreError):
+            AccountStore.open(other)
+        # Another application's database, at a version this one also has.
+        _sql(other, 'PRAGMA user_version = 1')
         with self.assertRaises(StoreError):
             AccountStore.open(other)
 

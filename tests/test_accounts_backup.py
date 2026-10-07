@@ -345,6 +345,20 @@ class TestSquashHistory(BackupTestCase):
         self.assertEqual(self.remote_head(), result.commit)
         self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '2')
 
+    def test_squash_leaves_any_other_repository_alone(self) -> None:
+        for case, name in enumerate(('README.md', 'main.py')):
+            with self.subTest(name):
+                base = self.directory / f'other-{case}'
+                remote, checkout = make_remote_and_checkout(base)
+                (checkout / name).write_text('its own file\n')
+                git(checkout, 'add', '--all')
+                git(checkout, 'commit', '--quiet', '--message', 'its own history')
+                git(checkout, 'push', '--quiet', 'origin', 'HEAD')
+                head = git(remote, 'rev-parse', 'HEAD').strip()
+                with self.assertRaises(BackupError):
+                    squash_history(checkout)
+                self.assertEqual(git(remote, 'rev-parse', 'HEAD').strip(), head)
+
     def test_squash_refuses_unpushed_or_moved_history(self) -> None:
         with self.assertRaises(BackupError):
             squash_history(self.checkout)

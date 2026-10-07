@@ -10,13 +10,14 @@ Accounts get a home: one database, and a backup of every account as its own encr
   - The file is owner-only, writes ahead to a log and syncs every commit, so a finished change survives a crash or a deploy.
   - It opens only an existing account database, never creating an empty one, and refuses a schema newer than the app knows. Migrations are numbered and run in their own transactions.
   - New and restored databases are built aside, in a file created exclusively, and moved into place when complete.
+  - Account databases carry SQLite's application id, so another application's file is never taken for one.
   - Every change to a backed-up record is logged in the same transaction as the change.
 - **The backup.** Each run copies the accounts changed since the last run that reached the remote into a Git checkout, one file per account, encrypted with age to a public key, so the server and GitHub hold nothing readable. It writes a manifest (the key and the count), commits, pushes, and only then counts the changes as backed up: a failed push leaves them for the next run.
   - A checkout with changes of its own, a file or a link the backup never writes, records without a manifest, another key, or a file count that differs from the database stops the run with the reason.
   - The database remembers the Git tree of the backup's last commit. The server cannot read the files, but any commit it did not make, such as a file corrupted by hand, stops the run before anything is added to it.
   - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files.
   - Git never waits for a password and each command has two minutes.
-  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it.
+  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It works only on a checkout with the backup's own layout and manifest.
 - **The restore** rebuilds a database from a clone of the backup and the private key. It holds the checkout's lock and checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
 - **Commands:** `python -m eight_characters.accounts init`, `keygen`, `backup`, `restore` and `squash-history`. See [Accounts](docs/Developer/Accounts.md).
 

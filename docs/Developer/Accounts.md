@@ -19,7 +19,8 @@ it yet; sign-in arrives in a later release.
 - One SQLite file, created owner-only (`0600`), in write-ahead-log mode with
   `synchronous = FULL`: a committed change survives a crash, a power cut or a deploy.
 - `AccountStore.open(path)` refuses a missing file (and never creates one), a file that
-  is no account database, and a schema newer than the app knows. It runs the numbered
+  is no account database (account databases carry SQLite's `application_id`), and a
+  schema newer than the app knows. It runs the numbered
   migrations an older database lacks, each in its own transaction.
 - `AccountStore.create(path)` and `AccountStore.restore(path, users, tree=…)` build the
   database beside its final path (`<name>.partial`, created exclusively, so a second
@@ -90,8 +91,9 @@ object hashes cover each commit, so the manifest needs no per-file hashes.
 ### History
 
 `squash-history` replaces the remote's history with one commit of the current files,
-so deleted accounts leave the history. It refuses to run unless everything is pushed
-and the remote has not moved, and its force push names the commit it replaces.
+so deleted accounts leave the history. It refuses any checkout without the backup's own
+layout and a valid manifest, and runs only when everything is pushed and the remote has
+not moved; its force push names the commit it replaces.
 
 ## Restore
 

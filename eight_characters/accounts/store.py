@@ -64,6 +64,8 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
     ),
 )
 SCHEMA_VERSION: Final = len(MIGRATIONS)
+# SQLite's own field for telling an application's files from others ('E8CH').
+APPLICATION_ID: Final = 0x45384348
 BUSY_TIMEOUT_SECONDS: Final = 5.0
 _USER_COLUMNS: Final = 'id, email, language, plan, created_at, updated_at'
 
@@ -136,6 +138,14 @@ def _user_version(connection: sqlite3.Connection) -> int:
     if not isinstance(version, int):
         raise StoreError('The database reports no schema version.')
     return version
+
+
+def _application_id(connection: sqlite3.Connection) -> int:
+    row = connection.execute('PRAGMA application_id').fetchone()
+    value = row[0]
+    if not isinstance(value, int):
+        raise StoreError('The database reports no application id.')
+    return value
 
 
 def _migrate(connection: sqlite3.Connection, from_version: int) -> None:
@@ -241,7 +251,7 @@ class AccountStore:
             raise StoreError(f'No account database at {path}.')
         with _connection(path) as connection:
             version = _user_version(connection)
-            if version == 0:
+            if version == 0 or _application_id(connection) != APPLICATION_ID:
                 raise StoreError(f'{path} is not an account database.')
             if version > SCHEMA_VERSION:
                 raise StoreError(
@@ -297,6 +307,7 @@ class AccountStore:
         os.close(descriptor)
         try:
             with _connection(partial) as connection:
+                connection.execute(f'PRAGMA application_id = {APPLICATION_ID}')
                 _migrate(connection, 0)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
