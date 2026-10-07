@@ -491,6 +491,57 @@ for (const profile of profiles) {
       assert.equal(new URLSearchParams(address.get('b')).get('date'), '1991-01-01');
     });
 
+    check("a comparison's late answer leaves the account signed in since", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'earlier' });
+      const later = await newAccount(playwright, { language: 'en', label: 'later' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The comparison's check of the session is answered, but its body is held on
+      // its way.
+      await page.evaluate(() => {
+        const fetched = window.fetch.bind(window);
+        let holding = true;
+        window.__bodyAsked = new Promise((resolve) => { window.__bodyAskedNow = resolve; });
+        window.fetch = async (url, init) => {
+          const response = await fetched(url, init);
+          const method = (init && init.method) || 'GET';
+          if (!holding || String(url) !== '/api/account' || method !== 'GET') return response;
+          holding = false;
+          const released = new Promise((resolve) => { window.__releaseBody = resolve; });
+          const json = response.json.bind(response);
+          response.json = async () => { await released; return json(); };
+          window.__bodyAskedNow();
+          return response;
+        };
+      });
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.evaluate(() => window.__bodyAsked);
+      // Signed out, and in as another account, while that body is on its way.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-sign-out').click();
+      await page.locator('#account-notice').filter({ hasText: 'You are signed out.' }).waitFor();
+      await signInThroughDialog(page, later.email);
+      await page.evaluate(() => window.__releaseBody());
+      // Time for the page to act on it, as it would have: the comparison abandoned by
+      // signing out came back, and the menu named the earlier account.
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('#compare-view').isVisible(), false);
+      assert.equal(new URL(page.url()).hash.startsWith('#compare'), false);
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      assert.equal(await text(page, '#account-who'), `Signed in as ${later.email}`);
+    });
+
     check('a code asked for is said as asked, even if the dialog changes side meanwhile', async (page) => {
       let release;
       const held = new Promise((resolve) => { release = resolve; });

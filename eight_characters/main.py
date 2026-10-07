@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -929,7 +929,6 @@ def _explorer_run(settings: EvolutionRunSettings | None) -> ExplorerRun:
 @app.get('/', response_class=HTMLResponse)
 async def index(
     request: Request,
-    response: Response,
     accounts: AccountsDependency,
     current: SessionDependency,
 ):
@@ -970,10 +969,6 @@ async def index(
     # The page names who is signed in: no shared cache may keep it, and the browser
     # asks again before showing it anew.
     page.headers['Cache-Control'] = 'private, no-cache'
-    # A renewed session's cookie, or the end of one that no longer works: the session
-    # dependency set them on `response`, which a returned page does not carry.
-    for cookie in response.headers.getlist('set-cookie'):
-        page.headers.append('set-cookie', cookie)
     return page
 
 

@@ -70,6 +70,10 @@
     };
 
     let account = state === null ? null : accountOf(state);
+    // Which session the page holds: it moves on with every sign-in, sign-out and
+    // session found ended, so an answer about an earlier one is told apart and
+    // changes nothing.
+    let held = 0;
     // 'create' or 'sign_in'; 'start', 'code' or 'menu'.
     let mode = 'create';
     let step = 'start';
@@ -248,6 +252,7 @@
     // ── Signing in ──
     const signedIn = (value) => {
       account = accountOf(value);
+      held += 1;
       asked = null;
       noticeKey = null;
       step = 'start';
@@ -367,6 +372,7 @@
     // dialog asks for a sign-in instead.
     const ended = () => {
       account = null;
+      held += 1;
       mode = 'sign_in';
       step = 'start';
       noticeKey = 'account_session_ended';
@@ -377,6 +383,7 @@
     // Signed out on purpose: nothing of the account stays on screen.
     const signedOut = (key) => {
       account = null;
+      held += 1;
       mode = 'sign_in';
       step = 'start';
       noticeKey = key;
@@ -408,10 +415,14 @@
       const choice = event.target.closest('button[data-account-lang]');
       if (!choice || choice.getAttribute('aria-pressed') === 'true') return;
       act(choice, async () => {
+        const session = held;
         const response = await call('PATCH', '/api/account', { language: choice.dataset.accountLang });
+        if (session !== held) return;
         if (response.status === 401) return ended();
         if (!response.ok) throw refused(response);
-        account = accountOf(await response.json());
+        const value = await response.json();
+        if (session !== held) return;
+        account = accountOf(value);
         onLanguage(account.language);
         refresh();
         setStatus(status, t('account_saved'), false);
@@ -493,24 +504,28 @@
     };
     // Whether the session still holds, as the server says: one that ended since the page
     // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
-    // no longer wanted (`wanted` says) changes nothing, so a sign-in made meanwhile
-    // stays; the caller, superseded, goes no further.
+    // no longer wanted (`wanted` says), or about a session the page no longer holds,
+    // changes nothing, so a sign-in made meanwhile stays; the caller goes no further.
     const stillSignedIn = async (wanted) => {
       if (!account) return false;
+      const session = held;
       const response = await call('GET', '/api/account');
-      if (!wanted()) return false;
+      if (!wanted() || session !== held) return false;
       if (response.status === 401) {
         forget();
         return false;
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
-      account = accountOf(await response.json());
+      const value = await response.json();
+      if (!wanted() || session !== held) return false;
+      account = accountOf(value);
       refresh();
       return true;
     };
     // The server answered that no one is signed in: the session ended meanwhile.
     const forget = () => {
       account = null;
+      held += 1;
       mode = 'sign_in';
       if (step === 'menu') step = 'start';
       noticeKey = 'account_session_ended';

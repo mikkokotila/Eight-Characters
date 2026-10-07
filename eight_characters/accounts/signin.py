@@ -93,9 +93,6 @@ class CurrentSession:
     user: User
     token_hash: str
     expires_at: datetime
-    # Extended, by this request or by another one since the browser's cookie was
-    # set, so the cookie must be set again.
-    renewed: bool
 
 
 class SignIn:
@@ -227,8 +224,7 @@ class SignIn:
             # Only while it is still ended: another request may have renewed it.
             if self._store.end_expired_session(token_hash, timestamp(now)):
                 return None
-            # Renewed meanwhile, or signed out: as it is now. The cookie this request
-            # carried names the old end, so a renewed session sets it again.
+            # Renewed meanwhile, or signed out: as it is now.
             found = self._store.session_and_user(token_hash)
             if found is None:
                 return None
@@ -239,19 +235,16 @@ class SignIn:
                     'A session kept as renewed has ended: only renewal moves its end.'
                 )
             return CurrentSession(
-                user=user, token_hash=token_hash, expires_at=expires_at, renewed=True
+                user=user, token_hash=token_hash, expires_at=expires_at
             )
-        renewed = expires_at - now < SESSION_RENEWAL
-        if renewed:
+        if expires_at - now < SESSION_RENEWAL:
             expires_at = now + SESSION_LIFETIME
             if not self._store.extend_session(
                 token_hash, timestamp(expires_at), timestamp(now)
             ):
                 # Signed out, or ended, meanwhile.
                 return None
-        return CurrentSession(
-            user=user, token_hash=token_hash, expires_at=expires_at, renewed=renewed
-        )
+        return CurrentSession(user=user, token_hash=token_hash, expires_at=expires_at)
 
     def sweep(self) -> None:
         """Drops what has passed its time: ended sessions and codes, and the record of

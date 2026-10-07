@@ -45,5 +45,6 @@ hourly limits on codes; a request is dropped once it is an hour old, when the ne
 code is asked for. Deleting the account leaves its requests until then, so that the
 limits hold. Charts are calculated, not stored.
 
-A session lasts 30 days from its last use. After it ends, or after signing out on
-another device, the next chart asks you to sign in again, and then opens.
+A session lasts 30 days from its last use, and at most 400 days from signing in. After
+it ends, or after signing out on another device, the next chart asks you to sign in
+again, and then opens.

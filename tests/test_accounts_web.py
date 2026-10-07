@@ -251,8 +251,9 @@ class TestSigningIn(AccountApiTestCase):
         self.assertEqual(reply.json(), expected)
         cookie = SimpleCookie(reply.headers['set-cookie'])['__Host-ec_session']
         self.assertEqual(cookie['path'], '/')
-        month = str(int(timedelta(days=30).total_seconds()))
-        self.assertEqual(cookie['max-age'], month)
+        # The longest browsers keep a cookie: the session ends on the server.
+        lifetime = str(int(timedelta(days=400).total_seconds()))
+        self.assertEqual(cookie['max-age'], lifetime)
         self.assertTrue(cookie['secure'])
         self.assertTrue(cookie['httponly'])
         self.assertEqual(cookie['samesite'].lower(), 'lax')
@@ -276,14 +277,18 @@ class TestSigningIn(AccountApiTestCase):
         self.client.cookies.set('__Host-ec_session', 'forged', domain='testserver')
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
-    def test_a_session_in_its_second_half_gets_a_fresh_cookie(self) -> None:
+    def test_a_session_in_use_is_extended_without_a_cookie(self) -> None:
         self.sign_in()
-        self.clock.advance(timedelta(days=10).total_seconds())
-        self.assertNotIn('set-cookie', self.client.get('/api/account').headers)
-        self.clock.advance(timedelta(days=6).total_seconds())
+        self.clock.advance(timedelta(days=16).total_seconds())
         reply = self.client.get('/api/account')
         self.assertEqual(reply.status_code, 200)
-        self.assertIn('__Host-ec_session=', reply.headers['set-cookie'])
+        self.assertNotIn('set-cookie', reply.headers)
+        # Extended on the server: it holds past the first 30 days, until 30 days
+        # without use.
+        self.clock.advance(timedelta(days=20).total_seconds())
+        self.assertEqual(self.client.get('/api/account').status_code, 200)
+        self.clock.advance(timedelta(days=30).total_seconds())
+        self.assertEqual(self.client.get('/api/account').status_code, 401)
 
     def test_plain_http_on_a_laptop(self) -> None:
         laptop = 'http://localhost:8000'
@@ -360,11 +365,11 @@ class TestTheAccount(AccountApiTestCase):
             connection.close()
         self.assertEqual(count, (0,))
 
-    def test_an_export_in_a_sessions_second_half_renews_its_cookie(self) -> None:
+    def test_an_export_in_a_sessions_second_half_sets_no_cookie(self) -> None:
         self.clock.advance(timedelta(days=16).total_seconds())
         reply = self.client.get('/api/account/export')
         self.assertEqual(reply.status_code, 200)
-        self.assertIn('__Host-ec_session=', reply.headers['set-cookie'])
+        self.assertNotIn('set-cookie', reply.headers)
         disposition = reply.headers['content-disposition']
         self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
 

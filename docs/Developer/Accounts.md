@@ -68,8 +68,11 @@ it; the first code redeemed for a new address creates its account.
    works once, for 10 minutes, and at most 5 wrong tries; a new code replaces the last.
    Spaces and hyphens in what is typed are ignored.
 4. The server sets the session cookie: `__Host-ec_session` over HTTPS (`ec_session` on a
-   laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 30 days. A session
-   used in its second half is extended to 30 days again.
+   laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 400 days, the longest
+   browsers keep one. The session it names ends on the server after 30 days without
+   use; one used in its second half is extended to 30 days again, there. Only signing
+   in sets the cookie, and only signing out or deleting the account removes it: an
+   answer that arrives late cannot undo a sign-in or a sign-out made meanwhile.
 
 Codes and session tokens are stored only as HMAC-SHA256 hashes under `EC_SECRET_KEY`,
 so the database alone cannot be used to test guesses or take over a session.
@@ -105,10 +108,8 @@ put on one.
 
 - **Who is signed in.** `GET /` writes the account (`{email, language, plan,
   created_at}`, or `null`) into `<script id="account-state">`, sent with
-  `Cache-Control: private, no-cache` so that no shared cache keeps it. The page renews
-  a session in its second half too. No answer removes the cookie of a session that
-  ended, since the browser may have signed in meanwhile and a cookie is removed by its
-  name; it expires, and only signing out or deleting the account removes it.
+  `Cache-Control: private, no-cache` so that no shared cache keeps it. The page extends
+  a session in its second half too, on the server, and sends no cookie (see step 4).
 - **Signing in** (`static/account.js`). Creating a chart while signed out opens the
   account dialog: the address, and for a new account its language, chosen and never
   preset; Cloudflare Turnstile's widget, whose script loads only when the dialog first
@@ -125,8 +126,9 @@ put on one.
   longer wanted asks nothing, so a sign-in made since for a newer one stays.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
-  cannot ask themselves. The answer to a check for a comparison no longer wanted
-  changes nothing. **The explorer**, given a birth, links to the start page to sign
+  cannot ask themselves. The answer to a check for a comparison no longer wanted, or
+  about a session the page no longer holds, changes nothing, and signing out abandons
+  a comparison on its way. **The explorer**, given a birth, links to the start page to sign
   in.
 - **Signed in, the dialog is the account:** its address and plan, its language,
   Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete

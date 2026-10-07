@@ -160,16 +160,21 @@ class TestTheStartPage(unittest.TestCase):
         self.assertNotIn('<script>alert(1)', page)
         self.assertEqual(self.account_state(page)['email'], email)
 
-    def test_the_page_renews_a_session_in_its_second_half(self) -> None:
+    def test_the_page_extends_a_session_in_its_second_half_without_a_cookie(
+        self,
+    ) -> None:
+        # Only signing in sets the cookie: a renewal's answer arriving late could
+        # otherwise put back a session signed out since.
         client = site_client()
         sign_in(client, self.accounts, 'renewed@example.com')
         clock = cast(Clock, self.accounts.clock)
         clock.advance(timedelta(days=16).total_seconds())
         response = client.get('/')
         self.assertIsNotNone(self.account_state(response.text))
-        cookie = response.headers['set-cookie']
-        self.assertTrue(cookie.startswith(f'{SESSION_COOKIE}='), cookie)
-        self.assertIn(f'Max-Age={int(timedelta(days=30).total_seconds())}', cookie)
+        self.assertNotIn('set-cookie', response.headers)
+        # Extended on the server: still signed in past the first 30 days.
+        clock.advance(timedelta(days=20).total_seconds())
+        self.assertIsNotNone(self.account_state(client.get('/').text))
 
     def test_a_page_crossing_the_end_of_a_session_renewed_meanwhile_keeps_it(
         self,
@@ -198,12 +203,8 @@ class TestTheStartPage(unittest.TestCase):
 
         with patch.object(store, 'session_and_user', renewed_meanwhile):
             response = client.get('/')
-        state = self.account_state(response.text)
-        self.assertIsNotNone(state)
-        cookie = response.headers['set-cookie']
-        self.assertTrue(cookie.startswith(f'{SESSION_COOKIE}='), cookie)
-        renewed_for = int(SESSION_LIFETIME.total_seconds()) - 2
-        self.assertIn(f'Max-Age={renewed_for}', cookie)
+        self.assertIsNotNone(self.account_state(response.text))
+        self.assertNotIn('set-cookie', response.headers)
 
     def test_a_page_with_an_ended_session_leaves_its_cookie(self) -> None:
         # The browser may have been given a newer session meanwhile: removing the

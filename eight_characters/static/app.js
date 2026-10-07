@@ -800,6 +800,10 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     // Signed out, the page starts again, empty, as New chart leaves it.
     onSignedOut: () => {
+      // Whatever was on its way is abandoned: the page starts again, empty.
+      arrivals += 1;
+      chartView.removeAttribute('aria-busy');
+      setPending(false);
       compare.hide();
       askForChart();
       leaveChart();

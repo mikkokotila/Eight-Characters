@@ -11,7 +11,7 @@ import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
@@ -57,6 +57,11 @@ from eight_characters.accounts.store import AccountStore, UnknownUser
 logger = logging.getLogger(__name__)
 
 SIGN_IN_REQUIRED: Final = 'Sign in to continue.'
+# How long the browser keeps the session cookie: the longest browsers keep one
+# (RFC 6265bis caps Max-Age at 400 days). Only signing in sets it. The session it
+# names ends on the server after 30 days without use, and is extended there while
+# in use.
+SESSION_COOKIE_LIFETIME: Final = timedelta(days=400)
 _HEADER_NAME = re.compile(r'[A-Za-z0-9-]+')
 _LOCAL_HOSTS: Final = frozenset({'localhost', '127.0.0.1', '::1'})
 
@@ -254,13 +259,11 @@ def get_accounts() -> Accounts:
 AccountsDependency = Annotated[Accounts, Depends(get_accounts)]
 
 
-def _set_session_cookie(
-    response: Response, accounts: Accounts, token: str, expires_at: datetime
-) -> None:
+def _set_session_cookie(response: Response, accounts: Accounts, token: str) -> None:
     response.set_cookie(
         accounts.config.cookie_name,
         token,
-        max_age=max(0, int((expires_at - accounts.clock()).total_seconds())),
+        max_age=int(SESSION_COOKIE_LIFETIME.total_seconds()),
         path='/',
         secure=accounts.config.secure,
         httponly=True,
@@ -279,19 +282,16 @@ def _clear_session_cookie(response: Response, accounts: Accounts) -> None:
 
 
 def current_session(
-    request: Request, response: Response, accounts: AccountsDependency
+    request: Request, accounts: AccountsDependency
 ) -> CurrentSession | None:
-    """The signed-in account, if any; a session in its second half is renewed. The
-    cookie of a session that ended is left to expire: an answer cannot know whether
-    the browser was given a newer session meanwhile, and removing the cookie by its
-    name would remove that one."""
+    """The signed-in account, if any; a session in its second half is extended, on
+    the server. No answer here sets or removes the cookie: one arriving late could
+    not tell whether the browser had signed out, or in again, meanwhile, and a cookie
+    is set and removed by its name."""
     token = request.cookies.get(accounts.config.cookie_name)
     if token is None:
         return None
-    current = accounts.sign_in.current(token)
-    if current is not None and current.renewed:
-        _set_session_cookie(response, accounts, token, current.expires_at)
-    return current
+    return accounts.sign_in.current(token)
 
 
 SessionDependency = Annotated[CurrentSession | None, Depends(current_session)]
@@ -452,7 +452,7 @@ def sign_in(
         raise HTTPException(
             status_code=400, detail='That code is wrong or no longer works.'
         ) from exc
-    _set_session_cookie(response, accounts, signed.token, signed.expires_at)
+    _set_session_cookie(response, accounts, signed.token)
     return account_view(signed.user)
 
 
@@ -506,9 +506,9 @@ def sign_out_everywhere(
 def export_account(
     response: Response, current: SessionDependency, accounts: AccountsDependency
 ) -> dict[str, Any]:
-    """Everything kept for the account, as a JSON file. Returned as data, so a renewed
-    session cookie goes out with it. What has passed its time is dropped first, so the
-    file holds what the account keeps, and no request older than the hour."""
+    """Everything kept for the account, as a JSON file. What has passed its time is
+    dropped first, so the file holds what the account keeps, and no request older
+    than the hour."""
     user = _signed_in(current).user
     accounts.sign_in.sweep()
     try:

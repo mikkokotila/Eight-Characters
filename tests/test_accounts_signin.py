@@ -262,17 +262,19 @@ class TestSessions(SignInTestCase):
         self.clock.advance(timedelta(days=10).total_seconds())
         current = self.sign_in.current(self.signed.token)
         assert current is not None
-        self.assertFalse(current.renewed)
+        self.assertEqual(current.expires_at, self.signed.expires_at)
         self.clock.advance(timedelta(days=6).total_seconds())
         current = self.sign_in.current(self.signed.token)
         assert current is not None
-        self.assertTrue(current.renewed)
         self.assertEqual(current.expires_at, self.clock.now + SESSION_LIFETIME)
+        stored = self.store.session(current.token_hash)
+        assert stored is not None
+        self.assertEqual(stored.expires_at, timestamp(current.expires_at))
 
-    def test_a_session_renewed_meanwhile_is_kept_as_renewed(self) -> None:
+    def test_a_session_renewed_meanwhile_is_kept(self) -> None:
         # This request reads the session just before it ends; another renews it; this
-        # one's clock then passes the old end. It finds the session as renewed, and
-        # has the browser's cookie set again, rather than turning it away.
+        # one's clock then passes the old end. It finds the session as renewed, rather
+        # than turning it away.
         self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)
         read = self.store.session_and_user
         renewals: list[str] = []
@@ -293,11 +295,10 @@ class TestSessions(SignInTestCase):
             current = self.sign_in.current(self.signed.token)
         assert current is not None
         self.assertEqual(current.user.id, self.signed.user.id)
-        self.assertTrue(current.renewed)
         self.assertEqual(timestamp(current.expires_at), renewals[0])
         later = self.sign_in.current(self.signed.token)
         assert later is not None
-        self.assertFalse(later.renewed)
+        self.assertEqual(timestamp(later.expires_at), renewals[0])
 
     def test_a_session_read_as_ended_and_signed_out_meanwhile_is_gone(self) -> None:
         self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)

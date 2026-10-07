@@ -12,23 +12,24 @@ Charts need an account; the start page does not. Creating a chart while signed o
   - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
 - **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty.
 - **A session that ended** (signed out elsewhere, deleted, or unused for 30 days) asks for a sign-in once more, and the chart is asked for again. A refusal that arrives for a chart no longer wanted asks nothing, so a sign-in made since for a newer chart stays.
-- **A comparison** opened signed out, or after the session ended elsewhere, asks on its own page (which checks the session with the server first), before its frames ask for their charts. The answer to a check for a comparison no longer wanted changes nothing. **The explorer**, given a birth, links a visitor to the start page to sign in.
+- **A comparison** opened signed out, or after the session ended elsewhere, asks on its own page (which checks the session with the server first), before its frames ask for their charts. The answer to a check for a comparison no longer wanted, or about a session the page no longer holds, changes nothing, and signing out abandons a comparison on its way. **The explorer**, given a birth, links a visitor to the start page to sign in.
 - **[Your account](docs/Account.md)**, a guide for readers.
 
 ### Changed
 - **Charts need an account.** `POST /api/four_pillars`, `/api/chart`, `/api/hidden_stems` and `/api/evolution_explorer` answer `401` without one, before reading the request. The place search and `GET /api/evolution_controls` stay open. A test holds both lists, so a new request must join one.
-- **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It renews a session in its second half.
+- **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It extends a session in its second half, on the server.
 - **The app reads its account settings, and opens its database, as it starts**: a missing or malformed setting stops it with the reason. Running it on a laptop needs the settings in [Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop).
 
 ### Fixed
 - **Signing in when another tab made the account and it was deleted meanwhile** refused nothing and answered 500; it now refuses the code, as when an account goes before its session is made.
+- **A late answer that renewed a session set its cookie again**: after a sign-out and a new sign-in, it put back the session signed out, and the browser lost the new one. Only signing in now sets the cookie, for 400 days, the longest browsers keep one; the server alone extends a session in use, and ends one unused for 30 days.
 - **An answer for a session that ended removed the session cookie**, though by then it could be a newer session's: the browser may have signed in meanwhile, and a cookie is removed by its name. The cookie of a session that ended is now left to expire; signing out and deleting the account still remove it.
 - **A session renewed by one request while another found it ended** was deleted by the second, or turned away by it, and its answer removed the browser's fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live; a request that found it ended after another renewed it takes it as renewed, and sets its cookie again.
 - **The account export listed requests for codes older than the hour**, kept until the next code was asked for. Exporting now drops what has passed its time first: ended sessions and codes, and requests older than the hourly window.
 - **A full or unwritable mail folder** (on a laptop) answered 500; it is now a mail error, answered 502 like any message that could not be sent.
 
 ### Tests
-- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), renewing the cookie there (also when another request renews the session as the page's crosses its old end), leaving the cookie of a session that ended, and starting the app with missing settings, a missing database, and complete ones.
+- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), extending the session there without a cookie (also when another request renews it as the page's crosses its old end), leaving the cookie of a session that ended, and starting the app with missing settings, a missing database, and complete ones.
 - The API tests sign in as the page does.
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.36.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
