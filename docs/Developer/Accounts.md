@@ -123,10 +123,11 @@ backup`, in this order:
    same time is refused.
 2. Stops if the checkout has changes the backup did not make, holds a file or a link
    it never writes, holds records but no manifest, or has a manifest made for another
-   key; and if its last commit is not the one the backup made last. The server cannot
-   read a file without the private key, so the database remembers the Git tree of the
-   backup's last commit (or of the backup a restore read), and any other commit, such
-   as a file corrupted or changed by hand, stops the run before it adds to it.
+   key; and if its own files are not as it committed them last. The server cannot read
+   a file without the private key, so the database remembers a fingerprint of the
+   backup's own files (everything but `.github/`) in its last commit, or in the backup a
+   restore read, and any other change, such as a file corrupted or changed by hand,
+   stops the run before it adds to it.
 3. Reads, in one transaction, every record changed since the last run that reached the
    remote, and encrypts each to the recipient (an age public key, `age1…`). Deleted
    records lose their file and empty folders.
@@ -154,11 +155,27 @@ manifest.json            the recipient and the record count
 README.md                how to restore
 .gitattributes           *.age binary
 users/<id[:2]>/<id>/user.json.age
+.github/                 the owner's freshness check; the backup never writes it
 ```
 
 Folders named by the first two characters of an id keep each folder far below
 GitHub's recommended 3,000 entries. age authenticates every file, and Git's own
 object hashes cover each commit, so the manifest needs no per-file hashes.
+
+### Watching it
+
+The backup is quiet when nothing changes, so the server runs it with `--heartbeat
+3600`: a run with nothing new commits an empty `backup: alive` once the last commit is
+an hour old. The repository's own scheduled check,
+[`backup-freshness.yml`](backup-freshness.yml) in `.github/workflows/`, runs every hour
+and fails once the last commit is three hours old; GitHub then emails the person who
+last changed its schedule.
+
+That person must be the repository's owner, so the owner commits the check, never the
+backup job: the backup leaves `.github/` alone, and its check that the checkout holds
+only its own commits fingerprints everything but `.github/`. A change to the check is
+committed in the server's checkout, or before the server clones, since the backup never
+pulls.
 
 ### History
 
