@@ -137,7 +137,8 @@ put on one.
   Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
   account, which needs the address typed again. Signing out starts the page again,
   empty. Tabs share the session cookie, so as the menu opens it asks who the session
-  belongs to (`GET /api/account`), and its actions wait for the answer: an account
+  belongs to (`GET /api/account`; opened while an action is under way, once that
+  action ends), and its actions wait for the answer: an account
   signed in to in another tab is taken as a sign-in here, and a session ended
   elsewhere asks for a sign-in. An action whose answer comes after the page has
   learned of another session changes nothing, and says so; a sign-out or deletion that

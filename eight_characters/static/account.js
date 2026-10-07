@@ -84,6 +84,9 @@
     // A chart waiting for a sign-in: { promise, resolve, reject }.
     let waiting = null;
     let busy = false;
+    // The menu opened while an action was under way: who the session is is asked when
+    // the action ends.
+    let confirmLater = false;
     // Turnstile's script, and its widget with the language it speaks.
     let turnstileLoad = null;
     let widget = null;
@@ -437,6 +440,11 @@
       } finally {
         busy = false;
         control.disabled = false;
+        // The menu opened again meanwhile: who the session is is asked now.
+        if (confirmLater) {
+          confirmLater = false;
+          if (dialog.open && step === 'menu') confirmSession();
+        }
       }
     };
     const refused = (response) => new Error(t('account_server_error', { status: response.status }));
@@ -447,9 +455,13 @@
     ];
     // Who the session belongs to now, asked as the menu opens: another tab may have
     // signed out, or in to another account. Until the answer, the menu does nothing;
-    // without one, it says why, and asks again at the next opening.
+    // without one, it says why, and asks again at the next opening. Opened while an
+    // action is under way, it asks once that action ends.
     const confirmSession = async () => {
-      if (busy) return;
+      if (busy) {
+        confirmLater = true;
+        return;
+      }
       busy = true;
       const session = held;
       actions().forEach((control) => { control.disabled = true; });
