@@ -13,6 +13,8 @@ from eight_characters.reading import build_reading, check_reading_canon
 from tests.test_canon import parsed_texts
 
 PILLARS = ('year', 'month', 'day', 'hour')
+# A sentence ends at its stop, or just after a closing quote that follows it.
+SENTENCE_END = re.compile(r'(?<=[.!?])\s+|(?<=[.!?]["”])\s+')
 GODS = dict(
     zip(
         (
@@ -322,8 +324,88 @@ class TestReadingSelection(unittest.TestCase):
                         self.assertEqual(
                             got['mechanics'], self.canon['combination_mechanics']
                         )
+                    # The list's line is one whole sentence of what the reading says:
+                    # its pairing where it has one, else its own paragraphs.
+                    said = [
+                        sentence
+                        for p in (
+                            [got['pairing']]
+                            if got['pairing']
+                            else got['entry']['paragraphs']
+                        )
+                        for sentence in SENTENCE_END.split(p['text'])
+                    ]
+                    self.assertIn(got['line'], said)
                     seen.add(interaction['kind'])
         self.assertEqual(seen, set(families))
+
+    def test_the_list_reads_the_canons_sentence_about_each_form(self):
+        def line(branches, kind):
+            pillars = dict(
+                zip(PILLARS, zip('甲甲甲甲', branches, strict=True), strict=True)
+            )
+            (found,) = [
+                r['line']
+                for r in reading(pillars)['relationships'].values()
+                if r['kind'] == kind
+            ]
+            return found
+
+        # A half-frame: the sentence on its own pair, which names the branch it lacks.
+        self.assertEqual(
+            line('申子戌戌', 'half_frame'),
+            'The half-frames: Shen-Zi without Chen creates a powerful current with no'
+            " reservoir — intelligence that flows but isn't stored.",
+        )
+        self.assertEqual(
+            line('子辰戌戌', 'half_frame'),
+            'Zi-Chen without Shen creates a deep reservoir with no source — depth'
+            ' without the generating mechanism to refill it.',
+        )
+        # Two of a punishment triangle: that pair's sentence.
+        self.assertEqual(
+            line('寅申卯卯', 'half_punishment'),
+            'Yin-Shen creates a friction between growth and cutting — the person builds'
+            ' and destroys in alternating cycles.',
+        )
+        self.assertEqual(
+            line('丑戌卯卯', 'half_punishment'),
+            'Chou-Xu is the cold vault versus the hot vault — both guarding, neither'
+            ' trusting the other.',
+        )
+        # A whole punishment: its character. The Zi-Mao sentence ends inside quotes.
+        self.assertEqual(
+            line('寅巳申卯', 'punishment'),
+            'The character of this punishment is ingratitude — the classical name means'
+            ' the punishment without kindness.',
+        )
+        self.assertEqual(
+            line('丑未戌卯', 'punishment'),
+            'The character of this punishment is bullying by strength — the classical'
+            ' name means the punishment of relying on power.',
+        )
+        self.assertEqual(
+            line('子卯戌戌', 'punishment'),
+            'The character of this punishment is specifically about the violation of'
+            ' proper relationships — hence "uncivilized."',
+        )
+        # A self-punishment: its own branch.
+        self.assertEqual(line('辰辰戌戌', 'self_punishment'), 'Too much stored Water.')
+        # A harm: what it does in practice, which runs both ways.
+        self.assertEqual(
+            line('寅巳卯卯', 'harm'),
+            'In practice: the ambitious growth domain and the transformative intensity'
+            ' domain interfere with each other through their opposing relationships to'
+            ' the deep creative source.',
+        )
+        # A directional combination: its entry's first sentence.
+        self.assertEqual(
+            line('亥子丑戌', 'directional_combination'), 'The full winter.'
+        )
+        # A family with pairings: the pairing's first sentence, as before.
+        self.assertEqual(
+            line('子午戌戌', 'branch_clash'), 'The ancestry collides with the career.'
+        )
 
     def test_each_form_of_a_relationship_reads_its_own_paragraphs(self):
         def read(branches, kind):
@@ -478,6 +560,30 @@ class TestReadingCanonChecks(unittest.TestCase):
         canon['cycle']['table']['甲']['亥'] = 2
         with self.assertRaises(CanonError):
             check_reading_canon(canon)
+
+    def test_a_form_without_its_sentence_is_refused(self):
+        def without(family, key, words, instead):
+            canon = copy.deepcopy(load_canon())
+            paragraphs = canon[family]['entries'][key]['paragraphs']
+            (index,) = [i for i, p in enumerate(paragraphs) if words in p['text']]
+            paragraphs[index] = {
+                **paragraphs[index],
+                'text': paragraphs[index]['text'].replace(words, instead),
+            }
+            return canon
+
+        for canon in (
+            without('harms', '寅巳', 'In practice:', 'In effect:'),
+            without(
+                'punishments', '丑未戌', 'The character of this', 'The nature of this'
+            ),
+            without(
+                'three_harmonies', '巳酉丑', 'You-Chou without Si', 'You-Chou alone'
+            ),
+            without('punishments', '寅巳申', 'Si-Shen creates', 'Si and Shen create'),
+        ):
+            with self.assertRaises(CanonError):
+                check_reading_canon(canon)
 
 
 if __name__ == '__main__':

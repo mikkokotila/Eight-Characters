@@ -9,7 +9,8 @@ The canon speaks in English; the reading is English only.
 """
 
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
+from itertools import combinations
 from typing import Literal
 
 from typing_extensions import TypedDict
@@ -27,6 +28,10 @@ from eight_characters.canon import (
 from eight_characters.data import BRANCHES
 from eight_characters.day_master_context import SEASON_GROUPS, SeasonName
 from eight_characters.interactions import (
+    CANON_HALF_FRAMES,
+    CANON_HARMS,
+    CANON_PUNISHMENT_PAIR,
+    CANON_PUNISHMENT_TRIANGLES,
     CANON_SELF_PUNISHMENTS,
     Interaction,
     InteractionKind,
@@ -112,6 +117,11 @@ ACROSS_PILLARS_ENTRIES = ('寅巳申', '子卯')
 SELF_PUNISHMENT_ENTRY = '自刑'
 # A frame's paragraph on its half-frames opens with these words.
 HALF_FRAMES_OPENING = 'The half-frames:'
+# A relationship's line in the list is the canon's sentence about its own form. These
+# words open a whole punishment's character and what a harm does in practice; checked
+# against the canon when it loads.
+PUNISHMENT_CHARACTER = 'The character of this punishment is'
+HARM_IN_PRACTICE = 'In practice:'
 _POINTS = ('Birth point', 'Peak point', 'Storage point')
 
 
@@ -188,6 +198,8 @@ class Condition(TypedDict):
 
 class RelationshipReading(TypedDict):
     kind: RelationshipKind
+    # The one sentence the list shows: the canon's sentence about this form of it.
+    line: str
     # What a relationship of this kind is.
     introduction: list[Paragraph]
     # What this pillar pairing means; the label keeps the canon's words about distance.
@@ -246,7 +258,9 @@ def _plain(texts: Sequence[str]) -> list[Paragraph]:
 
 
 def _sentences(text: str) -> list[str]:
-    return re.split(r'(?<=[.!?])\s+', text)
+    # A sentence ends at its stop, or just after the closing quote that follows it:
+    # 'hence "uncivilized." Zi (Water) feeds Mao' holds two.
+    return re.split(r'(?<=[.!?])\s+|(?<=[.!?]["”])\s+', text)
 
 
 def check_reading_canon(canon: Canon) -> None:
@@ -294,6 +308,7 @@ def check_reading_canon(canon: Canon) -> None:
             raise CanonError(f'{entry["title"]}: its half-frames are not where read')
         if set(_point_labels(entry)) != {BRANCHES[b]['pinyin'] for b in members}:
             raise CanonError(f'{entry["title"]}: its points do not name its branches')
+    _check_lines(canon)
     table = canon['cycle']['table']
     for stem in STEM_CHARS:
         for branch, stage in table[stem].items():
@@ -386,6 +401,107 @@ def _lead(
     return list(paragraphs)
 
 
+def _pair_name(key: str, chars: Sequence[str]) -> str:
+    """Two of a triple's branches by pinyin, in the canon's order: Shen-Zi, Zi-Chen."""
+    return '-'.join(BRANCHES[char]['pinyin'] for char in key if char in chars)
+
+
+def _one(sentences: Sequence[str], matches: Callable[[str], bool], what: str) -> str:
+    found = [sentence for sentence in sentences if matches(sentence)]
+    if len(found) != 1:
+        raise CanonError(f'expected one sentence {what}, found {len(found)}')
+    return found[0]
+
+
+def _line(
+    entry: Entry,
+    kind: RelationshipKind,
+    key: str,
+    chars: Sequence[str],
+    lead: Sequence[Paragraph],
+    pairing: Paragraph | None,
+) -> str:
+    """The relationship's line in the list: the canon's sentence about this form of it.
+
+    A pairing's first sentence where the family has pairings. Otherwise: for a half, the
+    sentence on its own two branches (a half-frame's names the third, absent one); for a
+    whole punishment, its character; for a harm, what it does in practice, which runs
+    both ways; for a self-punishment, its own branch's first sentence; for anything
+    else, the entry's first sentence.
+    """
+    if pairing is not None:
+        return _sentences(pairing['text'])[0]
+    said = [sentence for p in lead for sentence in _sentences(p['text'])]
+    title = entry['title']
+    if kind == 'half_frame':
+        absent = next(BRANCHES[char]['pinyin'] for char in key if char not in chars)
+        phrase = f'{_pair_name(key, chars)} without {absent}'
+        return _one(
+            said, lambda sentence: phrase in sentence, f'on {phrase} in {title}'
+        )
+    if kind == 'half_punishment':
+        pair = _pair_name(key, chars)
+        own = _labelled(entry, HALF_PUNISHMENT_LABELS[key])
+        return _one(
+            _sentences(own['text']),
+            lambda sentence: sentence.startswith(pair + ' '),
+            f'on {pair} in {title}',
+        )
+    if kind == 'punishment':
+        return _one(
+            said,
+            lambda sentence: sentence.startswith(PUNISHMENT_CHARACTER),
+            f'on the character of {title}',
+        )
+    if kind == 'harm':
+        return _one(
+            said,
+            lambda sentence: sentence.startswith(HARM_IN_PRACTICE),
+            f'on {title} in practice',
+        )
+    if kind == 'self_punishment':
+        own = _labelled(entry, _self_punishment_label(entry, chars[0]))
+        return _sentences(own['text'])[0]
+    return said[0]
+
+
+def _check_lines(canon: Canon) -> None:
+    """Every form of the canon's added families has its line, exactly once."""
+    frames = canon['three_harmonies']['entries']
+    for key, peak in CANON_HALF_FRAMES:
+        for other in key:
+            if other != peak:
+                chars = [char for char in key if char in (peak, other)]
+                lead = _lead(frames[key], 'half_frame', key, chars)
+                _line(frames[key], 'half_frame', key, chars, lead, None)
+    punishments = canon['punishments']['entries']
+    for key in (*CANON_PUNISHMENT_TRIANGLES, CANON_PUNISHMENT_PAIR):
+        chars = list(key)
+        _line(
+            punishments[key],
+            'punishment',
+            key,
+            chars,
+            _lead(punishments[key], 'punishment', key, chars),
+            None,
+        )
+    for key in CANON_PUNISHMENT_TRIANGLES:
+        for pair in combinations(key, 2):
+            lead = _lead(punishments[key], 'half_punishment', key, pair)
+            _line(punishments[key], 'half_punishment', key, pair, lead, None)
+    entry = punishments[SELF_PUNISHMENT_ENTRY]
+    for branch in CANON_SELF_PUNISHMENTS:
+        chars = [branch, branch]
+        lead = _lead(entry, 'self_punishment', SELF_PUNISHMENT_ENTRY, chars)
+        _line(entry, 'self_punishment', SELF_PUNISHMENT_ENTRY, chars, lead, None)
+    harms = canon['harms']['entries']
+    for key in CANON_HARMS:
+        chars = list(key)
+        _line(
+            harms[key], 'harm', key, chars, _lead(harms[key], 'harm', key, chars), None
+        )
+
+
 def _relationship(
     canon: Canon,
     interaction: Interaction,
@@ -422,13 +538,15 @@ def _relationship(
     condition: Condition | None = (
         {'season': season, 'sentence': by_season[season]} if by_season else None
     )
+    lead = _lead(entry, kind, key, chars)
     return {
         'kind': kind,
+        'line': _line(entry, kind, key, chars, lead, pairing),
         'introduction': family['introduction'],
         'pairing': pairing,
         'entry': {
             'title': entry['title'],
-            'paragraphs': _lead(entry, kind, key, chars),
+            'paragraphs': lead,
         },
         'with_day_master': with_dm,
         'neither_day_master': neither,

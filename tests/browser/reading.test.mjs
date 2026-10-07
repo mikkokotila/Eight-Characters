@@ -26,7 +26,7 @@ const plain = (text) => text.replace(/\*\*([^*]+)\*\*/g, '$1').replace(/\*([^*]+
 // A passage's words: a paragraph after the first says its own label (the first gives its
 // label to the line's key).
 const words = (paragraphs) => plain(paragraphs.map((p, i) => (i > 0 && p.label !== null ? `${p.label}: ${p.text}` : p.text)).join(' '));
-const firstSentence = (text) => text.split(/(?<=[.!?])\s+/)[0];
+const firstSentence = (text) => text.split(/(?<=[.!?]["”]?)\s+/)[0];
 const topicOf = (page) => page.evaluate(() => new URLSearchParams(location.hash.slice('#chart?'.length)).get('topic'));
 
 // The lines of the page open in the panel: their kind, key and first sentence, and whether
@@ -282,12 +282,20 @@ for (const profile of profiles) {
       });
     }
 
-    check('relationships read their first sentence in the list, and their pairing, entry and condition', async (page) => {
+    check('relationships read their own line in the list, and their pairing, entry and condition', async (page) => {
       const { reading } = await openChart(page, EXAMPLE);
       await openRelationships(page);
       const id = 'branch_clash:12:month-day';
       const chip = page.locator(`.relationship-chip[data-relationship="${id}"]`);
       assert.equal(await chip.locator('.canon-chip-line').textContent(), 'The career collides with the self.');
+      // The other families' lines: the canon's sentence about each one's own form.
+      const lineOf = (other) => page.locator(`.relationship-chip[data-relationship="${other}"] .canon-chip-line`).textContent();
+      assert.equal(await lineOf('half_frame:22:year-day'),
+        'Zi-Chen without Shen creates a deep reservoir with no source — depth without the generating mechanism to refill it.');
+      assert.equal(await lineOf('punishment:34:day-hour'),
+        'The character of this punishment is specifically about the violation of proper relationships — hence "uncivilized."');
+      assert.equal(await lineOf('harm:42:year-hour'),
+        'In practice: the gentle creative domain and the complex hidden-depth domain interfere with each other through their opposing relationships to the protective structure.');
       // Beside the clash: a half-frame, the Zi-Mao punishment and a harm, each family once.
       assert.deepEqual((await lines(page, '#relationship-about')).map((line) => [line.part, line.key]), [
         ['about-branch_clash', 'About clashes'], ['about-harmony_frame', 'About the three harmonies'],

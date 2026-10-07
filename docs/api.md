@@ -313,6 +313,8 @@ The `language` is `en` whatever `lang` is, because the canon is English.
 - **`branches_introduction`.**
 - **`relationships`,** keyed by the same ids as `interactions`:
   - `kind`;
+  - `line`: the one sentence the list shows, the canon's sentence about this form
+    of the relationship (see [Readings](Standard-Readings.md));
   - the kind's `introduction`;
   - the pillar `pairing`, which is `null` for a frame;
   - the `entry`: `title` and `paragraphs`;

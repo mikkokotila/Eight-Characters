@@ -53,7 +53,8 @@
     const marks = (text) => arrows(esc(text)
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\*([^*]+)\*/g, '<em>$1</em>'));
-    const sentences = (text) => text.split(/(?<=[.!?])\s+/);
+    // A sentence ends at its stop, or just after the closing quote that follows it.
+    const sentences = (text) => text.split(/(?<=[.!?]["”]?)\s+/);
     const paragraphMarkup = (p) => `<p class="canon-text">${p.label === null ? '' : `<strong>${arrows(esc(p.label))}:</strong>${p.text ? ' ' : ''}`}${marks(p.text)}</p>`;
     // A link names its page in the app's words; `quote`, the canon's words there, follows.
     const link = (label, target, tokens = [], quote = null) => `<button type="button" class="canon-link" data-canon-go="${esc(target)}"${spot.attr(tokens)}>${esc(label)}${quote === null ? '' : `<span class="canon-link-quote">${marks(quote)}</span>`}</button>`;
@@ -120,7 +121,7 @@
           links: [link('The whole cycle', 'day-master#dm-cycle')] }),
         touching.length
           ? `<div class="canon-here"><p class="canon-line-key">Relationships here</p><p class="canon-links">${touching.map(([id, rel]) => link(
-            relationshipLabel(id), `relationships/${id}`, [`arc:${id}`], sentences((rel.pairing || rel.entry.paragraphs[0]).text)[0])).join('')}</p></div>`
+            relationshipLabel(id), `relationships/${id}`, [`arc:${id}`], rel.line)).join('')}</p></div>`
           : '',
         line({ part: 'about-pillar', key: 'About these readings', paragraphs: [...reading.branches_introduction, ...reading.day_master.grounds_introduction] }),
       ].join(''));
@@ -146,12 +147,14 @@
         r.mechanics.length ? line({ part: 'mechanics', key: 'When a combination transforms', paragraphs: r.mechanics, tokens: [`arc:${id}`] }) : '',
       ].join(''));
     };
-    // The meaning under a relationship's name in the list.
+    // The meaning under a relationship's name in the list: the canon's sentence about its
+    // own form, which the reading chooses (a pairing's first sentence, a half's own pair).
     const chipLine = (id) => {
       if (!reading) return '';
       const r = reading.relationships[id];
       if (!r) fail(`relationship ${id}`);
-      return `<span class="canon-chip-line">${marks(sentences((r.pairing || r.entry.paragraphs[0]).text)[0])}</span>`;
+      if (typeof r.line !== 'string' || !r.line) fail(`the line of ${id}`);
+      return `<span class="canon-chip-line">${marks(r.line)}</span>`;
     };
     // What each family of relationship in the list is.
     const relationshipsAbout = () => {

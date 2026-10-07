@@ -19,6 +19,14 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - a self-punishment: its own branch.
 
   Every paragraph of the canon now reaches some chart's reading. The labels the reading relies on are checked when the app starts.
+- **A line of its own for each form.** Under its name in the list, and on a pillar's page, a relationship reads the canon's sentence about its own form:
+  - a half-frame or a half-punishment: the sentence on its own two branches; a half-frame's names the branch it lacks;
+  - a whole punishment: its character;
+  - a harm: what it does in practice, which runs both ways;
+  - a self-punishment: its own branch's first sentence;
+  - with a pillar pairing, the pairing's first sentence, and anything else its entry's first sentence, as before.
+
+  The reading gives the line as `line`, and the sentences it chooses are checked when the app starts.
 - **On the chart.** A combination, clash or frame keeps an arc of its own, as before. A half-frame, directional combination, punishment or harm joins an arc that already spans the same columns, as a strand 3px inside the one before. Where none does, it gets an arc of its own.
   - Without the strands, 730 of the 20,736 combinations of four branches would need more than the four levels the arcs' rows hold. With them, every one fits in four levels and at most three strands.
   - Charts with only the earlier families are laid out exactly as before.
@@ -35,13 +43,14 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
 - The canon's "About" lines under the list go by family, so a frame and a half-frame share one.
 
 ### Fixed
+- A sentence that ends inside quotes ends there, in the reading and on the page: 'hence "uncivilized."' closes the Zi-Mao punishment's character.
 - `requires-python` said 3.9, but the engine has needed 3.11 for a while: its pinned numpy 2.4.2 requires it, and five modules imported at startup take `datetime.UTC`. It now says 3.11, the version the production image runs, and so does the developer guide.
 
 ### Tests
 - New tests:
   - a brute-force reading of the canon's own tables, compared with the detector on every combination of four branches;
   - the shared families' findings, ids and order, compared with the detection before these families came, on every combination of four branches and of four stems;
-  - each form's paragraphs;
+  - each form's paragraphs, and its line in the list, word for word; every relationship's line is one whole sentence of its own reading, and a canon without a form's sentence is refused;
   - the arcs' levels and strands on every combination;
   - real charts for each new family, an arc of three strands and six feet on one card.
 - Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.

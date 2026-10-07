@@ -28,7 +28,7 @@ points at the cards it reads, as the panel's other lines do.
   - that stem's own stage on its branch;
   - the ground, the branch in this pillar, and the branch itself;
   - the Day Master on this ground (on the Day, its seat) and its stage here;
-  - the relationships that touch the pillar, each with its first sentence;
+  - the relationships that touch the pillar, each with its line (see below);
   - what these readings are.
 - **The Day Master's page**, from the Day Master line, which opens it:
   - what the Day Master is, and how it meets any ground;
@@ -39,8 +39,16 @@ points at the cards it reads, as the panel's other lines do.
   - the twelve stages;
   - the pattern of reconception.
 - **Relationships:**
-  - in the list, each relationship's first sentence under its name, and below
-    the list what each kind of relationship is;
+  - in the list, each relationship's line under its name, and below the list
+    what each kind of relationship is. The line is the canon's sentence about that
+    form of the relationship:
+    - with a pillar pairing, the pairing's first sentence;
+    - a half-frame or a half-punishment, the sentence on its own two branches (a
+      half-frame's names the branch it lacks);
+    - a whole punishment, its character;
+    - a harm, what it does in practice, which runs both ways;
+    - a self-punishment, its own branch's first sentence;
+    - anything else, its entry's first sentence.
   - on a relationship's page:
     - its pillar pairing;
     - for a stem combination, what it is with the Day Master, or between two
