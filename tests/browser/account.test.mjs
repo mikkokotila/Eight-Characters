@@ -736,6 +736,40 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'en');
     });
 
+    check("a menu reopened during its own question asks again once that one is answered", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'ask-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'ask-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      // The menu's first question of who the session is is answered at once, for the
+      // earlier account, and the answer held on its way.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const asked = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/account', async (route) => {
+        if (!holding || route.request().method() !== 'GET') return route.continue();
+        holding = false;
+        const response = await route.fetch();
+        sent();
+        await held;
+        return route.fulfill({ response });
+      });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await asked;
+      // Another tab signs in to another account; the menu is closed and opened again
+      // while that answer is still on its way.
+      await switchInAnotherTab(page, earlier, later);
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      release();
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);
