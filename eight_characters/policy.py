@@ -20,8 +20,8 @@ ENGINE_DECISIONS: dict[str, str] = {
     'D-001': 'Temporal scope is 1949-2100.',
     'D-002': 'Gregorian input only.',
     'D-003': 'Worldwide coordinates supported.',
-    'D-004': 'Output scope is Four Pillars only.',
-    'D-005': 'Gender is not an input.',
+    'D-004': 'Output scope is natal Four Pillars and optional ten-year luck pillars.',
+    'D-005': 'Gender is optional for natal pillars and required for luck pillars.',
     'D-006': 'Use VSOP87D full Earth series, not EMB.',
     'D-007': 'Use IAU 2000A nutation.',
     'D-007a': 'Use IAU 2006 mean obliquity.',
@@ -54,7 +54,7 @@ class EnginePolicy:
     calendar: str = SUPPORTED_CALENDAR
     astronomical_model: str = SUPPORTED_ASTRONOMICAL_MODEL
     reference_frame: str = SUPPORTED_REFERENCE_FRAME
-    output_scope: str = 'four_pillars_only'
+    output_scope: str = 'four_pillars_and_optional_luck_pillars'
     default_hour_basis: str = 'true_solar'
     default_zi_convention: str = 'split_midnight'
     allow_interpretive_layers: bool = False

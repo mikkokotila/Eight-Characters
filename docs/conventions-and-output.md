@@ -2,6 +2,10 @@
 
 ## Convention Parameters
 
+Ten-year luck pillars have an independent, opt-in elapsed-time convention,
+documented in [Luck pillars](Luck-Pillars.md). Gender affects their direction,
+not natal pillar calculation. Natal convention defaults below remain unchanged.
+
 ### `zi_convention`
 
 - `split_midnight` (default)

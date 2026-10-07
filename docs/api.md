@@ -47,6 +47,9 @@ example a suggestion from `POST /api/location_suggest`.
 
 Optional request fields:
 
+- `gender` (`male` or `female`; required when requesting luck pillars)
+- `include_luck_pillars` (`false` by default)
+- `luck_pillar_count` (strict integer 1-12, default 10)
 - `conventions`
 - `birth_time_uncertainty_seconds`
 - `include_chart` (`false` by default)
@@ -67,6 +70,9 @@ Response always includes:
 
 Response conditionally includes:
 
+- `luck_pillars` (when `include_luck_pillars=true`): direction, Jie reference,
+  onset age/date, uncertainty and ten-year periods. See [Luck pillars](Luck-Pillars.md)
+  for the explicit time-scale, calendar and age conventions.
 - `resolved_location` (when city resolution mode is used): the place the name
   was resolved to, with the same `city`, `region`, `country`, `timezone`,
   `latitude` and `longitude` fields as a `POST /api/location_search` result

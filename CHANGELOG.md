@@ -1,39 +1,49 @@
 # Changelog
 
-## 0.29.0
+## 0.29.2
 
-The Evolution explorer: a parameter pane, and runs that carry their own parameters. This rebuilds PR #7 from today's `main`.
-
-### Added
-- **A parameter pane in the explorer.** The Parameters button opens it beside the graph.
-  - It holds the run (particles, temperature steps, sweeps, seed), the clustering, the conventions and every constant of the model, in groups, each with its default and range.
-  - Recompute asks for the chart again with every value that differs from its default, so earlier changes stay applied. A change made while a recompute runs waits for the next.
-  - Discard Changes returns to what the chart was computed with; Reset to Defaults sets every value back to its default.
-  - A refused recompute says why, and the chart stays as it was.
-
-  On a phone the pane is a sheet over the foot of the page.
-- **`GET /api/evolution_controls`** lists every run setting, convention and model parameter, with its default, range, step and labels.
-- **`POST /api/evolution_explorer` takes `run` and `model`**: the run's size, seed and clustering, and overrides of the model's parameters by name. Each is checked against its range before any work, and the largest run takes about 4.5 times as long as the default one. `graph_data.parameters` reports what the run used.
-
-### Changed
-- **Each run carries its own parameters.** The energy, mechanics, rule families, inference, post-processing and the explorer's graph builder read every constant from the immutable `ModelParameters` the run is given, never from module state.
-  - Given none, a run uses the model's own values.
-  - The explorer's output equals 0.28.0's byte for byte for ten births.
-- Post-processing's five motif thresholds, which were written into the code, are model parameters now, with the same values.
-- `POST /api/evolution_explorer` refuses fields it doesn't know.
-- **The explorer measures its graph again whenever the canvas changes size**, not only when the window does: when the pane opens or closes, and when the web fonts arrive after the first drawing. Until now, at 1440 or 1100 px wide, the graph stayed drawn for a canvas 17 px taller than the one it ended up in.
+Unused strings leave the page's translations. Nothing on the page changes.
 
 ### Removed
-- The fallback that invented a basin (Standard mode, every ten god a Companion) when clustering formed none. Such a run is refused with 400, naming the two clustering settings; the explorer's default settings always form one.
+- **The old Support page's strings**, in Finnish and English: `context_support`, `context_companions`, `context_resources`, `context_support_meta`, `context_support_note`, `context_hidden` and `context_both`. Roles replaced that page, and nothing has read them since:
+  - no script, template, test or doc names them;
+  - no key the page builds at runtime can be one of them. The one `context_` key built from data takes a season's name, checked first to be one of the four seasons.
 
-### Tests
-- New tests cover:
-  - the parameters' defaults, limits, wiring and isolation;
-  - the API's catalogue, overrides, refusals and concurrency;
-  - the pane in the browser, desktop and mobile.
+### Changed
+- Version bumped to `0.29.2`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
-  Twenty planted faults, among them each of the review's findings on PR #7, fail them.
-- Version bumped to `0.29.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+## 0.29.1
+
+The installed package serves every file the app uses. Nothing changes where the app runs from its source tree, as on Render.
+
+### Fixed
+- **The explorer's files and the start page's fonts were missing from the package.** `package-data` had never listed anything under `eight_characters/explorer/`, so the wheel and the sdist carried only the explorer's Python module.
+  - Installed from its wheel and run from another directory, the app answered 404 for the explorer's stylesheet, d3, data and script, and for the two fonts the start page loads from `/explorer/vendor/fonts/`, Manrope and Cormorant Garamond.
+  - The Docker image served them only because uvicorn puts its working directory, `/app`, first on `sys.path`, so the copied source tree shadows the installed package.
+
+  `package-data` now lists the explorer's stylesheets, scripts, sample payloads, d3 and fonts.
+- **A test keeps it so** (`test_served_files_ship_in_the_package`): every file in a directory the app serves from (`/static`, `/explorer`) or renders templates from must match a `package-data` pattern, expanded the way setuptools expands it. On 0.29.0 it fails, naming the explorer's 16 files.
+
+### Changed
+- Version bumped to `0.29.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.29.0
+
+### Added
+- Backend ten-year luck pillars, opt-in through `include_luck_pillars` on
+  `POST /api/four_pillars`, with explicit `male`/`female` gender input and
+  1-12 actual cycles (default 10).
+- Direction from the Lichun-resolved year stem, progression from the natal
+  month pillar, and onset from the engine's own Jie instants in TT.
+- A documented continuous three-days-per-year convention, UTC calendar
+  boundaries, symbolic onset ages, pre-luck period and visible uncertainty.
+- Engine/API regression tests and independent package comparisons, included
+  in the core and API CI gates. No frontend integration.
+
+### Changed
+- Reject negative or non-finite birth-time uncertainty instead of calculating
+  with invalid uncertainty; reject finite values that overflow luck-age scaling.
+  Existing natal-only response sections are unchanged.
 
 ## 0.28.0
 

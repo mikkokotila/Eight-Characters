@@ -12,7 +12,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
@@ -48,6 +48,10 @@ from eight_characters.explorer_controls import (
     resolve_model_parameters,
 )
 from eight_characters.interactions import detect_interactions
+from eight_characters.luck_pillars import (
+    DEFAULT_LUCK_PILLAR_COUNT,
+    MAX_LUCK_PILLAR_COUNT,
+)
 from eight_characters.nutation import nutation_series
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 from eight_characters.reading import build_reading, check_reading_canon
@@ -61,6 +65,7 @@ from eight_characters.ten_gods import (
 from eight_characters.time_convert import (
     AmbiguousTimeError,
     BirthInput,
+    Gender,
     NonexistentTimeError,
 )
 from eight_characters.vsop87d import earth_series
@@ -153,6 +158,14 @@ class FourPillarsRequest(BaseModel):
     country: str | None = None
     conventions: ConventionInput = Field(default_factory=ConventionInput)
     birth_time_uncertainty_seconds: float | None = None
+    gender: Gender | None = None
+    include_luck_pillars: bool = False
+    luck_pillar_count: int = Field(
+        default=DEFAULT_LUCK_PILLAR_COUNT,
+        ge=1,
+        le=MAX_LUCK_PILLAR_COUNT,
+        strict=True,
+    )
     include_chart: bool = False
     include_hidden_stems: bool = False
     include_ten_gods: bool = False
@@ -161,6 +174,12 @@ class FourPillarsRequest(BaseModel):
     include_role_profile: bool = False
     include_reading: bool = False
     lang: str = 'fi'
+
+    @model_validator(mode='after')
+    def validate_luck_gender(self) -> 'FourPillarsRequest':
+        if self.include_luck_pillars and self.gender is None:
+            raise ValueError('gender is required when include_luck_pillars is true.')
+        return self
 
 
 class EvolutionRunSettings(BaseModel):
@@ -397,6 +416,9 @@ def _build_four_pillars_result(
     location: LocationInput,
     conventions_input: ConventionInput,
     birth_time_uncertainty_seconds: float | None,
+    gender: Gender | None = None,
+    include_luck_pillars: bool = False,
+    luck_pillar_count: int = DEFAULT_LUCK_PILLAR_COUNT,
 ) -> dict[str, Any]:
     year, month, day, hour, minute, second = _parse_date_and_time(
         date_value, time_value
@@ -419,10 +441,15 @@ def _build_four_pillars_result(
         fold=location.fold,
         birth_time_uncertainty_seconds=birth_time_uncertainty_seconds,
         conventions=conventions,
+        gender=gender,
     )
-    engine_payload = compute_engine_payload(birth_input)
+    engine_payload = compute_engine_payload(
+        birth_input,
+        include_luck_pillars=include_luck_pillars,
+        luck_pillar_count=luck_pillar_count,
+    )
 
-    return {
+    result = {
         'solar_time': {
             'utc_time': engine_payload['intermediate']['utc_time'],
             'local_mean_solar_time': engine_payload['intermediate'][
@@ -437,6 +464,9 @@ def _build_four_pillars_result(
         'flags': engine_payload['flags'],
         'engine': engine_payload['engine'],
     }
+    if include_luck_pillars:
+        result['luck_pillars'] = engine_payload['luck_pillars']
+    return result
 
 
 def _pillar_component_from_four_pillars(
@@ -977,6 +1007,9 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
             location=location,
             conventions_input=payload.conventions,
             birth_time_uncertainty_seconds=payload.birth_time_uncertainty_seconds,
+            gender=payload.gender,
+            include_luck_pillars=payload.include_luck_pillars,
+            luck_pillar_count=payload.luck_pillar_count,
         )
     except (ValueError, AmbiguousTimeError, NonexistentTimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -991,6 +1024,9 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     }
     if resolved_city is not None:
         response['resolved_location'] = _resolved_place(location, resolved_city)
+
+    if payload.include_luck_pillars:
+        response['luck_pillars'] = result['luck_pillars']
 
     four_pillars = cast(dict[str, Any], result['four_pillars'])
     try:
