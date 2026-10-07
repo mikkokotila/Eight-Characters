@@ -7,7 +7,7 @@ ENV PIP_NO_CACHE_DIR=1
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends build-essential \
+    && apt-get install -y --no-install-recommends build-essential git openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md /app/
