@@ -540,14 +540,26 @@ class TestSessionsAndCodes(StoreTestCase):
         )
         self.assertIsNone(self.store.code('reader@example.com'))
 
-    def test_expired_sessions_and_codes_are_dropped(self) -> None:
+    def test_expired_sessions_codes_and_requests_are_dropped(self) -> None:
         self.store.create_session(self.session('a'))
         self.store.put_code(self.code())
-        self.store.delete_expired('2026-10-07T12:10:00Z')
+        self.assertTrue(
+            self.store.allow_code_request(
+                'reader@example.com',
+                'client',
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                5,
+                20,
+            )
+        )
+        self.store.delete_expired('2026-10-07T12:10:00Z', '2026-10-07T11:10:00Z')
         self.assertIsNone(self.store.code('reader@example.com'))
         self.assertIsNotNone(self.store.session('a'))
-        self.store.delete_expired('2026-11-06T12:00:00Z')
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(1,)])
+        self.store.delete_expired('2026-11-06T12:00:00Z', '2026-10-07T12:00:01Z')
         self.assertIsNone(self.store.session('a'))
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
 
     def test_code_requests_are_limited_per_address_and_per_client(self) -> None:
         def ask(email: str, client: str, now: str = '2026-10-07T12:00:00Z') -> bool:

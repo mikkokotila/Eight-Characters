@@ -135,7 +135,7 @@ class SignIn:
         if purpose == 'create' and language is None:
             raise SignInError('Choose a language for the account.')
         now = self._clock()
-        self._store.delete_expired(timestamp(now))
+        self._store.delete_expired(timestamp(now), timestamp(now - REQUEST_WINDOW))
         allowed = self._store.allow_code_request(
             address,
             client,
@@ -237,6 +237,12 @@ class SignIn:
         return CurrentSession(
             user=user, token_hash=token_hash, expires_at=expires_at, renewed=renewed
         )
+
+    def sweep(self) -> None:
+        """Drops what has passed its time: ended sessions and codes, and the record of
+        codes asked for before the hourly window."""
+        now = self._clock()
+        self._store.delete_expired(timestamp(now), timestamp(now - REQUEST_WINDOW))
 
     def sign_out(self, token: str) -> None:
         if token and len(token) <= SESSION_TOKEN_MAX_LENGTH:
