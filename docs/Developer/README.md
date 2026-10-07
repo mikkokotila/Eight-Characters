@@ -7,4 +7,5 @@ This folder contains implementation-facing API documentation.
 - Environment setup and local workflow: `Get-Started.md`
 - Endpoint internals and call graph: `API.md`
 - The Standard view's design tokens and pillar grid: `Design-Tokens.md`
+- The account database, its encrypted backup and restore: `Accounts.md`
 - User-facing request/response reference: `../api.md`

@@ -17,6 +17,7 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
+from eight_characters.accounts.web import router as account_router
 from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
 from eight_characters.data import (
@@ -90,6 +91,7 @@ ELEMENT_INDEX_BY_NAME: dict[str, int] = {
 QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
 app = FastAPI(title='Eight Characters')
+app.include_router(account_router)
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 

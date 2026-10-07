@@ -8,6 +8,8 @@
 
 ## Endpoint Inventory
 
+The account endpoints (`/api/account/...`) are described in [Accounts](Accounts.md).
+
 ### `POST /api/four_pillars`
 
 - **Purpose**: canonical compute endpoint for solar time + Four Pillars.
