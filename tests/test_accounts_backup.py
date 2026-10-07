@@ -9,13 +9,13 @@ from unittest.mock import patch
 
 import pyrage
 
+from eight_characters.accounts import backup as backup_module
 from eight_characters.accounts.backup import (
     MANIFEST,
     BackupBusy,
     BackupError,
     Manifest,
     manifest_bytes,
-    own_tree,
     read_manifest,
     run_backup,
     squash_history,
@@ -246,28 +246,26 @@ class TestRunBackup(BackupTestCase):
         self.assertIn('not the backup this database last wrote', message)
 
     def test_a_failed_commit_leaves_the_checkout_as_it_was(self) -> None:
-        hooks = self.directory / 'hooks'
-        hooks.mkdir()
-        hook = hooks / 'pre-commit'
-        hook.write_text('#!/bin/sh\nexit 1\n')
-        hook.chmod(0o755)
-        git(self.checkout, 'config', 'core.hooksPath', str(hooks))
+        real = backup_module._git
+
+        def commit_refused(root: Path, *args: str, stdin: bytes | None = None) -> str:
+            if 'commit-tree' in args:
+                raise BackupError('git commit-tree failed (128): refused')
+            return real(root, *args, stdin=stdin)
+
+        refusing = patch.object(backup_module, '_git', commit_refused)
         first = self.store.create_user('first@example.com', 'fi')
-        with self.assertRaises(BackupError):
+        with refusing, self.assertRaises(BackupError):
             self.backup()
         self.assertEqual(self.status(), '')
         self.assertEqual([path.name for path in self.checkout.iterdir()], ['.git'])
-        hook.unlink()
         self.backup()
-        hook.write_text('#!/bin/sh\nexit 1\n')
-        hook.chmod(0o755)
         second = self.store.create_user('second@example.com', 'en')
-        with self.assertRaises(BackupError):
+        with refusing, self.assertRaises(BackupError):
             self.backup()
         self.assertEqual(self.status(), '')
         self.assertTrue(self.file_of(first.id).exists())
         self.assertFalse(self.file_of(second.id).exists())
-        hook.unlink()
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual((result.written, result.pushed), (1, True))
 
@@ -275,20 +273,91 @@ class TestRunBackup(BackupTestCase):
         self.store.create_user('reader@example.com', 'fi')
         stopped = StoreError('stopped')
         with (
-            patch.object(AccountStore, 'record_backup_tree', side_effect=stopped),
+            patch.object(AccountStore, 'record_backup_head', side_effect=stopped),
             self.assertRaises(StoreError),
         ):
             self.backup()
-        # The commit was made, but neither recorded nor pushed.
+        # The checkout moved to the commit, which was neither recorded nor pushed.
         self.assertEqual(self.status(), '')
-        self.assertIsNotNone(self.store.backup_snapshot().pending_tree)
+        made = git(self.checkout, 'rev-parse', 'HEAD').strip()
+        self.assertEqual(self.store.backup_snapshot().pending_head, made)
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual((result.written, result.pushed), (1, True))
         local = git(self.checkout, 'rev-parse', 'HEAD').strip()
         self.assertEqual(self.remote_head(), local)
+        self.assertEqual(git(self.checkout, 'rev-parse', 'HEAD~1').strip(), made)
         snapshot = self.store.backup_snapshot()
-        self.assertEqual(snapshot.tree, own_tree(self.checkout))
-        self.assertIsNone(snapshot.pending_tree)
+        self.assertEqual((snapshot.head, snapshot.pending_head), (local, None))
+
+    def test_a_run_stopped_before_moving_the_checkout_is_redone(self) -> None:
+        user = self.store.create_user('reader@example.com', 'fi')
+        with (
+            patch.object(backup_module, '_branch_ref', side_effect=KeyboardInterrupt),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            self.backup()
+        self.assertIsNotNone(self.store.backup_snapshot().pending_head)
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual((result.written, result.pushed), (1, True))
+        snapshot = self.store.backup_snapshot()
+        progress = (snapshot.head, snapshot.pending_head)
+        self.assertEqual(progress, (self.remote_head(), None))
+        plaintext = pyrage.decrypt(self.file_of(user.id).read_bytes(), [self.identity])
+        self.assertEqual(plaintext, encode_user(user))
+
+    def test_a_commit_made_by_hand_and_undone_stops_the_run(self) -> None:
+        # Its files are the backup's again, but pushing would publish the commits.
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        head = self.remote_head()
+        secret = 'plaintext that never leaves the server'
+        (self.checkout / 'notes.txt').write_text(secret)
+        self.commit_by_hand('notes')
+        git(self.checkout, 'revert', '--no-edit', 'HEAD')
+        self.store.create_user('later@example.com', 'en')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('commits the backup did not make', str(caught.exception))
+        self.assertEqual(self.remote_head(), head)
+        self.assertNotIn(secret.encode(), all_object_contents(self.remote))
+
+    def test_a_run_stopped_while_writing_is_taken_up_by_the_next(self) -> None:
+        first = self.store.create_user('first@example.com', 'fi')
+        self.backup()
+        second = self.store.create_user('second@example.com', 'en')
+        # What a run killed part way leaves: its marker, a file written and staged,
+        # another written, and Git's lock on the index.
+        git_dir = self.checkout / '.git'
+        (git_dir / 'eight-characters-backup.writing').touch()
+        self.file_of(first.id).write_bytes(b'half written')
+        git(self.checkout, 'add', '--all')
+        target = self.file_of(second.id)
+        target.parent.mkdir(parents=True)
+        target.write_bytes(b'half written')
+        (git_dir / 'index.lock').touch()
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertTrue(result.recovered)
+        self.assertEqual((result.written, result.pushed), (1, True))
+        self.assertEqual(self.status(), '')
+        self.assertFalse((git_dir / 'eight-characters-backup.writing').exists())
+        for user in (first, second):
+            ciphertext = self.file_of(user.id).read_bytes()
+            plaintext = pyrage.decrypt(ciphertext, [self.identity])
+            self.assertEqual(plaintext, encode_user(user))
+        later = run_backup(self.store, self.checkout, self.recipient)
+        self.assertFalse(later.recovered)
+
+    def test_a_file_it_writes_found_as_a_folder_stops_the_run(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        (self.checkout / 'README.md').unlink()
+        (self.checkout / 'README.md').mkdir()
+        (self.checkout / 'README.md' / 'inside').write_text('hand-made\n')
+        self.commit_by_hand('a folder for a file')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        message = str(caught.exception)
+        self.assertIn('README.md as something other than the file', message)
 
     def test_a_failed_push_keeps_the_changes_for_the_next_run(self) -> None:
         user = self.store.create_user('reader@example.com', 'fi')
@@ -369,7 +438,7 @@ class TestOwnerFolder(BackupTestCase):
         # Seeded by the repository's owner before the first run.
         self.owner_commit('on: schedule\n')
         self.store.create_user('reader@example.com', 'fi')
-        self.assertEqual(self.store.backup_snapshot().tree, None)
+        self.assertEqual(self.store.backup_snapshot().head, None)
         self.backup()
         self.owner_commit('on: workflow_dispatch\n')
         self.store.create_user('later@example.com', 'en')
@@ -378,6 +447,18 @@ class TestOwnerFolder(BackupTestCase):
         restored = self.directory / 'restored.sqlite3'
         restore_backup(self.fresh_clone(), self.identity, restored)
         self.assertEqual(AccountStore.open(restored).users(), self.store.users())
+
+    def test_an_owners_commit_beyond_the_owner_folder_stops_the_run(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        head = self.remote_head()
+        (self.checkout / 'README.md').write_text('changed by hand\n')
+        self.owner_commit('on: schedule\n')
+        self.store.create_user('later@example.com', 'en')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('commits the backup did not make', str(caught.exception))
+        self.assertEqual(self.remote_head(), head)
 
     def test_the_owner_folder_cannot_be_a_link(self) -> None:
         (self.checkout / '.github').symlink_to(self.directory, target_is_directory=True)
@@ -453,6 +534,81 @@ class TestSquashHistory(BackupTestCase):
                 with self.assertRaises(BackupError):
                     squash_history(self.store, checkout)
                 self.assertEqual(git(remote, 'rev-parse', 'HEAD').strip(), head)
+
+    def test_a_squash_stopped_after_its_push_is_finished_when_run_again(self) -> None:
+        for n in range(2):
+            self.store.create_user(f'u{n}@example.com', 'fi')
+            self.backup()
+        before = git(self.checkout, 'rev-parse', 'HEAD').strip()
+        real = backup_module._git
+
+        def stopped_before_moving_the_checkout(
+            root: Path, *args: str, stdin: bytes | None = None
+        ) -> str:
+            if args[:1] == ('update-ref',):
+                raise BackupError('stopped')
+            return real(root, *args, stdin=stdin)
+
+        with (
+            patch.object(backup_module, '_git', stopped_before_moving_the_checkout),
+            self.assertRaises(BackupError),
+        ):
+            squash_history(self.store, self.checkout)
+        # The remote holds the squash; the checkout still holds the old history.
+        self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '1')
+        self.assertEqual(git(self.checkout, 'rev-parse', 'HEAD').strip(), before)
+        self.store.create_user('later@example.com', 'fi')
+        with self.assertRaises(BackupError) as caught:
+            self.backup()
+        self.assertIn('run squash-history again', str(caught.exception))
+        squashed = squash_history(self.store, self.checkout)
+        self.assertEqual(self.remote_head(), squashed)
+        self.assertEqual(git(self.checkout, 'rev-parse', 'HEAD').strip(), squashed)
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual((result.written, result.pushed), (1, True))
+        self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '2')
+
+    def test_a_squash_stopped_before_its_push_is_finished_when_run_again(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        head = self.remote_head()
+        real = AccountStore.record_pending_squash
+
+        def killed_after_recording(store: AccountStore, commit: str, base: str) -> None:
+            real(store, commit, base)
+            raise KeyboardInterrupt
+
+        with (
+            patch.object(AccountStore, 'record_pending_squash', killed_after_recording),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            squash_history(self.store, self.checkout)
+        self.assertEqual(self.remote_head(), head)
+        with self.assertRaises(BackupError):
+            self.backup()
+        squashed = squash_history(self.store, self.checkout)
+        self.assertNotEqual(squashed, head)
+        self.assertEqual(self.remote_head(), squashed)
+        self.assertEqual(git(self.checkout, 'rev-parse', 'HEAD').strip(), squashed)
+        self.assertEqual(self.store.backup_snapshot().head, squashed)
+
+    def test_a_refused_squash_leaves_the_history_and_the_backup_goes_on(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        head = self.remote_head()
+        hook = self.remote / 'hooks' / 'pre-receive'
+        hook.write_text('#!/bin/sh\necho "no rewriting here" >&2\nexit 1\n')
+        hook.chmod(0o755)
+        with self.assertRaises(BackupError) as caught:
+            squash_history(self.store, self.checkout)
+        self.assertIn('the history stays as it was', str(caught.exception))
+        self.assertEqual(self.remote_head(), head)
+        snapshot = self.store.backup_snapshot()
+        progress = (snapshot.head, snapshot.pending_head, snapshot.squash_of)
+        self.assertEqual(progress, (head, None, None))
+        hook.unlink()
+        self.store.create_user('later@example.com', 'en')
+        self.assertTrue(run_backup(self.store, self.checkout, self.recipient).pushed)
 
     def test_squash_refuses_unpushed_or_moved_history(self) -> None:
         with self.assertRaises(BackupError):
@@ -562,6 +718,20 @@ class TestRestore(BackupTestCase):
         git(empty, 'init', '--quiet')
         with self.assertRaises(RestoreError):
             restore_backup(empty, self.identity, self.target)
+
+    def test_refuses_a_file_it_writes_found_as_a_folder(self) -> None:
+        for name in ('README.md', '.gitattributes', MANIFEST):
+            with self.subTest(name):
+                clone = self.fresh_clone(f'folder{name}')
+                (clone / name).unlink()
+                (clone / name).mkdir()
+                (clone / name / 'inside').write_text('x\n')
+                git(clone, 'add', '--all')
+                git(clone, 'commit', '--quiet', '--message', f'{name} as a folder')
+                with self.assertRaises(BackupError) as caught:
+                    restore_backup(clone, self.identity, self.target)
+                self.assertIn(name, str(caught.exception))
+                self.assertFalse(self.target.exists())
 
     def test_refuses_two_records_with_one_address(self) -> None:
         clone = self.fresh_clone('twins')

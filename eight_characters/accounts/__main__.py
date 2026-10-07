@@ -114,8 +114,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                 parse_recipient(cast(str, args.recipient)),
                 None if seconds is None else timedelta(seconds=seconds),
             )
+            taken_up = (
+                'took up a run that stopped part way; ' if result.recovered else ''
+            )
             print(
-                f'{result.written} written, {result.removed} removed'
+                f'{taken_up}{result.written} written, {result.removed} removed'
                 f'{", alive" if result.heartbeat else ""}, '
                 f'{"pushed" if result.pushed else "nothing to push"}; '
                 f'backed up through change {result.backed_up_seq}.'

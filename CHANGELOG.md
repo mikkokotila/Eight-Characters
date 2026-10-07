@@ -10,7 +10,7 @@ The backup gets ready to run on the server: it says when it is alive, its reposi
 - **Git and OpenSSH in the image**, which the backup job runs.
 
 ### Changed
-- **The backup leaves `.github/` to the repository's owner.** It never writes there, and its check that the checkout holds only its own commits now fingerprints its own files (everything but `.github/`) instead of the whole tree, so the owner's check does not stop it.
+- **The backup leaves `.github/` to the repository's owner.** It never writes there, and takes commits that change nothing but `.github/` as the owner's, building on them, so the owner's check does not stop it. Any other commit it did not make still stops it.
 
 ### Tests
 - The heartbeat (quiet runs, a recent commit, a run with something new), the owner's folder (seeded before the first run, changed later, refused as a link, kept through a restore) and `--heartbeat` refusing zero.
@@ -34,7 +34,7 @@ The account API: people can sign in with a code sent by email. The page starts u
 - **Settings** come from environment variables and are checked together: a missing or malformed one is named.
 
 ### Changed
-- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes all three.
+- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes its sessions and sign-in code; the record of codes asked for stays until it is an hour old, so that deleting and creating an account again does not reset the hourly limits.
 - Migrations read the database's version under the write lock, so two processes opening an older database at once never run one twice.
 
 ### Tests
@@ -55,11 +55,11 @@ Accounts get a home: one database, and a backup of every account as its own encr
   - Every change to a backed-up record is logged in the same transaction as the change.
 - **The backup.** Each run copies the accounts changed since the last run that reached the remote into a Git checkout, one file per account, encrypted with age to a public key, so the server and GitHub hold nothing readable. It writes a manifest (the key and the count), commits, pushes, and only then counts the changes as backed up: a failed push leaves them for the next run.
   - A checkout with changes of its own, a file or a link the backup never writes, records without a manifest, another key, or a file count that differs from the database stops the run with the reason.
-  - The database remembers the Git tree of the backup's last commit. The server cannot read the files, but any commit it did not make, such as a file corrupted by hand, stops the run before anything is added to it.
-  - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files.
+  - The database remembers the backup's last commit. The server cannot read the files, but any commit it did not make, such as a file corrupted by hand, stops the run before anything is added to it, even one undone since: a push would publish it.
+  - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files. A run stopped outright while writing (killed, or the server restarting) leaves a marker, and the next run puts its changes back and writes them again.
   - Git never waits for a password and each command has two minutes.
-  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It squashes only the backup the database last wrote, whole: its layout, a manifest that counts its records, and the tree the database recorded.
-  - The tree about to be committed is recorded as pending first, so a run stopped between its commit and its record is taken up by the next run.
+  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It squashes only the backup the database last wrote, whole: its layout, a manifest that counts its records, and the commit the database recorded. It is recorded before anything moves: stopped part way, it stops the backup until run again, which finishes it; a refused push leaves the history as it was.
+  - A commit is recorded as pending before the branch moves to it, so a run stopped between the two is taken up by the next run.
 - **The restore** rebuilds a database from a clone of the backup and the private key. It holds the checkout's lock and checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
 - **Commands:** `python -m eight_characters.accounts init`, `keygen`, `backup`, `restore` and `squash-history`. See [Accounts](docs/Developer/Accounts.md).
 
