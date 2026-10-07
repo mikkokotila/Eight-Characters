@@ -455,7 +455,7 @@
       applied = graphData.parameters;
       outcome = { text: 'Recomputed.', error: false };
     } catch (error) {
-      // An abort means a later recompute or a reset took over, and says so itself.
+      // An abort means a later recompute, a discard or a reset took over, and says so itself.
       if (error.name === 'AbortError' || inFlight !== controller) return;
       outcome = { text: `Recompute failed: ${error.message} The chart is unchanged.`, error: true };
     } finally {
@@ -468,7 +468,16 @@
     }
   }
 
+  // Discard and Reset both leave the chart as it was computed, so a recompute on its
+  // way is dropped too: its answer would apply the values they set aside.
+  function dropRecompute() {
+    if (!inFlight) return;
+    inFlight.abort();
+    inFlight = null;
+  }
+
   function discard() {
+    dropRecompute();
     drafts.clear();
     invalid.clear();
     outcome = null;
@@ -477,10 +486,7 @@
   }
 
   function resetToDefaults() {
-    if (inFlight) {
-      inFlight.abort();
-      inFlight = null;
-    }
+    dropRecompute();
     drafts.clear();
     invalid.clear();
     newSeedEachRun = false;

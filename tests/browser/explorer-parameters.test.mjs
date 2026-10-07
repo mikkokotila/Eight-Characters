@@ -280,6 +280,31 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => window.EC_EXPLORER.activeBasinIndex()), 0);
     });
 
+    check('a discard during a recompute drops the answer that was on its way', async (page) => {
+      await openExplorer(page);
+      await openPane(page);
+      await openGroups(page, 'Structure Mode');
+      let delivered;
+      const answer = new Promise((resolve) => { delivered = resolve; });
+      await page.route('**/api/evolution_explorer', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        // The page aborted this request; its answer, had it come, was to be ignored.
+        await route.continue().catch((error) => {
+          if (!/aborted|closed|disposed|handled/i.test(error.message)) throw error;
+        });
+        delivered();
+      });
+      await inputFor(page, 'model', 'LAMBDA_MODE').fill('6.5');
+      await page.locator('#parameterRecompute').click();
+      await page.waitForFunction(() => document.getElementById('parameterStatus').textContent === 'Recomputing…');
+      await page.locator('#parameterDiscard').click();
+      await answer;
+      await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 200)));
+      assert.equal(await statusOf(page), 'Computed with the defaults.');
+      assert.equal(await inputFor(page, 'model', 'LAMBDA_MODE').inputValue(), String(controlOf('LAMBDA_MODE').default));
+      assert.equal(await page.locator('#parameterRecompute').isDisabled(), true);
+    });
+
     check('a refused recompute says why and leaves the chart and the edits', async (page) => {
       await openExplorer(page);
       await openPane(page);
