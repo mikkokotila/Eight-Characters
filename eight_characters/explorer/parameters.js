@@ -131,7 +131,11 @@
     const ready = usable();
     recomputeButton.disabled = !ready || Boolean(inFlight) || invalid.size > 0 ||
       (drafts.size === 0 && !newSeedEachRun);
-    recomputeButton.textContent = inFlight ? 'Recomputing…' : 'Recompute';
+    // A click that blurs an edited field refreshes between its press and release.
+    // Rewriting the same label then replaces the text being pressed, and WebKit
+    // drops the click.
+    const label = inFlight ? 'Recomputing…' : 'Recompute';
+    if (recomputeButton.textContent !== label) recomputeButton.textContent = label;
     pane.setAttribute('aria-busy', String(Boolean(inFlight)));
     discardButton.disabled = !ready || (drafts.size === 0 && invalid.size === 0);
     resetButton.disabled = !ready || (changedFromDefaults(currentValue) === 0 && invalid.size === 0);
