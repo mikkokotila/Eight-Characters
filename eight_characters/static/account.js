@@ -413,14 +413,24 @@
       showCheck();
       email.focus();
     };
-    // A menu action: one at a time, and what went wrong said under the menu.
+    // A menu action: one at a time, and what went wrong said under the menu. It is for
+    // the session the page holds as it starts; `still` says whether the page still
+    // holds it as the answer comes. If not (signed in to another account in another
+    // tab, or found ended), the answer was about the earlier session: it changes
+    // nothing, and the menu says so.
     const act = async (control, run) => {
       if (busy) return;
       busy = true;
       control.disabled = true;
       setStatus(status, '');
+      const session = held;
+      const still = () => {
+        if (session === held) return true;
+        setStatus(status, t('account_changed'));
+        return false;
+      };
       try {
-        await run();
+        await run(still);
       } catch (err) {
         console.error(err);
         setStatus(status, err.message);
@@ -471,14 +481,13 @@
     languageSwitch.addEventListener('click', (event) => {
       const choice = event.target.closest('button[data-account-lang]');
       if (!choice || choice.getAttribute('aria-pressed') === 'true') return;
-      act(choice, async () => {
-        const session = held;
+      act(choice, async (still) => {
         const response = await call('PATCH', '/api/account', { language: choice.dataset.accountLang });
-        if (session !== held) return;
+        if (!still()) return;
         if (response.status === 401) return ended();
         if (!response.ok) throw refused(response);
         const value = await response.json();
-        if (session !== held) return;
+        if (!still()) return;
         account = accountOf(value);
         onLanguage(account.language);
         refresh();
@@ -486,11 +495,14 @@
       });
     });
 
-    exportButton.addEventListener('click', () => act(exportButton, async () => {
+    exportButton.addEventListener('click', () => act(exportButton, async (still) => {
       const response = await call('GET', '/api/account/export');
+      if (!still()) return;
       if (response.status === 401) return ended();
       if (!response.ok) throw refused(response);
-      const url = URL.createObjectURL(await response.blob());
+      const file = await response.blob();
+      if (!still()) return;
+      const url = URL.createObjectURL(file);
       // Inside the dialog: while it is open, the rest of the page is inert.
       const link = document.createElement('a');
       link.href = url;
@@ -510,9 +522,11 @@
       signedOut('account_signed_out');
     }));
 
-    signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async () => {
+    // A sign-out or a deletion that went through removed the browser's session cookie
+    // with its answer, whichever account it held by then: the page is signed out.
+    signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async (still) => {
       const response = await call('DELETE', '/api/account/sessions');
-      if (response.status === 401) return ended();
+      if (response.status === 401) return still() ? ended() : undefined;
       if (!response.ok) throw refused(response);
       signedOut('account_signed_out_everywhere');
     }));
@@ -526,7 +540,7 @@
 
     deleteForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      act(deleteConfirm, async () => {
+      act(deleteConfirm, async (still) => {
         const typed = deleteEmail.value.trim();
         if (typed.toLowerCase() !== account.email) {
           setStatus(deleteStatus, t('account_delete_mismatch'));
@@ -535,7 +549,7 @@
         }
         setStatus(deleteStatus, '');
         const response = await call('DELETE', '/api/account', { email: typed });
-        if (response.status === 401) return ended();
+        if (response.status === 401) return still() ? ended() : undefined;
         if (!response.ok) throw refused(response);
         signedOut('account_deleted');
       });

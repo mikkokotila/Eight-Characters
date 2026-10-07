@@ -632,6 +632,50 @@ for (const profile of profiles) {
       await page.waitForFunction(() => document.documentElement.lang === 'fi');
     });
 
+    check("a menu action's late refusal leaves an account taken meanwhile", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'act-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'act-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      // Download my data is asked for, and its answer held on its way: the server's
+      // refusal for the earlier session, which ends meanwhile.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const asked = new Promise((resolve) => { sent = resolve; });
+      await page.route('**/api/account/export', async (route) => {
+        sent();
+        await held;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${earlier.email}` }).waitFor();
+      await page.locator('#account-export').click();
+      await asked;
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // Another tab signs in to another account, which a comparison here takes.
+      await switchInAnotherTab(page, earlier, later);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      release();
+      // Time for the page to act on the refusal, as it would have, by signing out.
+      await page.waitForTimeout(500);
+      assert.equal(await text(page, '#account-btn'), 'Account');
+      assert.equal(await text(page, '#account-who'), `Signed in as ${later.email}`);
+      assert.equal(await text(page, '#account-status'), 'The account changed meanwhile: nothing was done.');
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);
