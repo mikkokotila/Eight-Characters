@@ -85,6 +85,7 @@ at those future dates.
 | Field | Meaning |
 | --- | --- |
 | `rule_version` | `dayun_elapsed_time_v1` |
+| `phase_rule` | `stem_then_branch_v1`: see [Phases](#phases) |
 | `gender`, `direction`, `year_stem_polarity` | Input and resolved direction evidence |
 | `onset_method` | `three_days_per_year_continuous` |
 | `interval_basis` | `terrestrial_time` |
@@ -96,11 +97,34 @@ at those future dates.
 | `uncertainty` | Birth uncertainty, solar-term allowance, amplified age uncertainty and boundary flag |
 
 Each pillar contains `sequence`, `stem` and `branch` (each with `index` and
-`chinese`), `start_age`, `end_age`, `start_utc` and `end_utc`.
+`chinese`), `start_age`, `end_age`, `start_utc`, `end_utc` and `phases`.
 Each age contains `years`, `months`, `days`, `hours`, `minutes` and `seconds`.
 Intervals include their start and exclude their end. Adjacent intervals meet
 exactly; there are no gaps or overlapping endpoints. `pre_luck_period` can be empty.
 No current-time-dependent active-pillar selection is performed.
+
+## Phases
+
+San Ming Tong Hui's same passage on major cycles: "凡行運，在干兼用地支之神，在支則棄天干之物"
+(Fan xing yun, zai gan jian yong di zhi zhi shen, zai zhi ze qi tian gan zhi wu):
+in every luck period, while it is on the stem the branch is used as well; while it is
+on the branch the stem is set aside. Its next clause gives the reason: the luck cycle
+weighs the branch more. The passage names no number of years; practice reads "on the
+stem" as a cycle's first five years and "on the branch" as its last five.
+
+Each pillar's `phases` holds exactly two intervals, in order:
+
+| `phase` | Interval | What acts |
+| --- | --- | --- |
+| `stem` | `start_utc` to the fifth anniversary | the stem, and the branch as well |
+| `branch` | the fifth anniversary to `end_utc` | the branch alone |
+
+Each phase has `start_age`, `end_age`, `start_utc` and `end_utc`. The stem phase
+starts with its pillar, the branch phase ends with it, and the two meet at the
+boundary between them. That boundary is a five-year calendar anniversary
+of the first onset, counted like the cycles' own boundaries: a 29 February onset
+clamps to 28 February in a common year, and the clamp never carries into a later
+boundary. Its age is the cycle's `start_age` with five more years.
 
 ## Uncertainty and reference comparison
 
@@ -145,7 +169,8 @@ regression fixture remain unchanged.
 
 `tests/test_luck_pillars.py` covers all year-stem/gender directions, conversion
 ratios, wraparound, exact Jie inclusion, Lichun crossing, same-instant timezone
-equivalence, leap dates, uncertainty, supported birth endpoints, independent
-package sequences and ephemeris instants, and deterministic JSON.
+equivalence, leap dates, phases and their leap-day anniversaries, uncertainty,
+supported birth endpoints, independent package sequences and ephemeris instants,
+and deterministic JSON.
 `tests/test_api_luck_pillars.py` covers input validation, city resolution, DST
 folds/gaps, explicit internal errors, OpenAPI and unchanged natal enrichments.

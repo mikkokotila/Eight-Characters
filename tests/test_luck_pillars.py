@@ -128,6 +128,39 @@ class TestLuckArithmetic(unittest.TestCase):
         self.assertTrue(p['pillars'][1]['start_utc'].startswith('2034-02-28T12:00:'))
         self.assertTrue(p['pillars'][2]['start_utc'].startswith('2044-02-29T12:00:'))
 
+    def test_each_decade_is_a_stem_phase_then_a_branch_phase(self):
+        payload = synthetic(datetime(2020, 1, 15, tzinfo=UTC), 3)
+        self.assertEqual(payload['phase_rule'], 'stem_then_branch_v1')
+        for pillar in payload['pillars']:
+            stem, branch = pillar['phases']
+            self.assertEqual((stem['phase'], branch['phase']), ('stem', 'branch'))
+            self.assertEqual(stem['start_utc'], pillar['start_utc'])
+            self.assertEqual(stem['end_utc'], branch['start_utc'])
+            self.assertEqual(branch['end_utc'], pillar['end_utc'])
+            self.assertEqual(stem['start_age'], pillar['start_age'])
+            self.assertEqual(
+                stem['end_age'],
+                {**pillar['start_age'], 'years': pillar['start_age']['years'] + 5},
+            )
+            self.assertEqual(branch['start_age'], stem['end_age'])
+            self.assertEqual(branch['end_age'], pillar['end_age'])
+        self.assertEqual(
+            [p['phases'][1]['start_utc'] for p in payload['pillars'][:2]],
+            ['2026-01-15T00:00:00.000000Z', '2036-01-15T00:00:00.000000Z'],
+        )
+
+    def test_a_phase_boundary_is_the_fifth_anniversary_of_the_first_onset(self):
+        # Onset 2024-02-29 12:00: the fifth anniversaries fall in common years and
+        # clamp to 28 February, without carrying the clamp into the next decade.
+        p = synthetic(datetime(2023, 2, 28, 12, tzinfo=UTC), 3 + 1 / 120)
+        middles = [pillar['phases'][1]['start_utc'][:16] for pillar in p['pillars'][:3]]
+        self.assertEqual(
+            middles, ['2029-02-28T12:00', '2039-02-28T12:00', '2049-02-28T12:00']
+        )
+        self.assertTrue(
+            p['pillars'][1]['phases'][1]['end_utc'].startswith('2044-02-29')
+        )
+
     def test_exact_jie_is_inclusive_backward_and_exclusive_forward(self):
         born = datetime(2020, 1, 15, tzinfo=UTC)
         jd = tt_jd(born)
