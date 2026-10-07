@@ -214,18 +214,15 @@ class SignIn:
         if not token or len(token) > SESSION_TOKEN_MAX_LENGTH:
             return None
         token_hash = self._hash('session', token)
-        session = self._store.session(token_hash)
-        if session is None:
+        found = self._store.session_and_user(token_hash)
+        if found is None:
             return None
+        session, user = found
         now = self._clock()
         expires_at = parse_timestamp(session.expires_at)
         if expires_at <= now:
             self._store.delete_session(token_hash)
             return None
-        user = self._store.user_by_id(session.user_id)
-        if user is None:
-            # Sessions go with their account, so this is a broken database.
-            raise SignInError('A session belongs to no account.')
         renewed = expires_at - now < SESSION_RENEWAL
         if renewed:
             expires_at = now + SESSION_LIFETIME

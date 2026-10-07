@@ -498,9 +498,8 @@ def export_account(
 ) -> Response:
     """Everything kept for the account, as a JSON file."""
     user = _signed_in(current).user
-    body = canonical_json(
-        {'account': dict(_view(user)), 'exported_at': timestamp(accounts.clock())}
-    )
+    data = accounts.store.account_data(user.id)
+    body = canonical_json({**data, 'exported_at': timestamp(accounts.clock())})
     return Response(
         body,
         media_type='application/json',

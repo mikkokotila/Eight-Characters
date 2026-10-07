@@ -326,14 +326,25 @@ class TestTheAccount(AccountApiTestCase):
         self.assertEqual(reply.status_code, 200)
         disposition = reply.headers['content-disposition']
         self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
+        exported = json.loads(reply.content)
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
         account = {
             'created_at': '2026-10-07T12:00:00Z',
             'email': 'reader@example.com',
+            'id': user.id,
             'language': 'fi',
             'plan': 'free',
+            'updated_at': '2026-10-07T12:00:00Z',
         }
-        exported = {'account': account, 'exported_at': '2026-10-07T12:00:00Z'}
-        self.assertEqual(json.loads(reply.content), exported)
+        self.assertEqual(exported['account'], account)
+        self.assertEqual(exported['exported_at'], '2026-10-07T12:00:00Z')
+        month_later = '2026-11-06T12:00:00Z'
+        session = {'created_at': '2026-10-07T12:00:00Z', 'expires_at': month_later}
+        self.assertEqual(exported['sessions'], [session])
+        request = {'client': 'testclient', 'requested_at': '2026-10-07T12:00:00Z'}
+        self.assertEqual(exported['code_requests'], [request])
+        self.assertIsNone(exported['sign_in_code'])
 
     def test_deleting_needs_the_address_typed_again(self) -> None:
         for typed in ('other@example.com', 'not an address'):

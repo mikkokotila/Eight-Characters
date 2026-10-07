@@ -195,17 +195,32 @@ def _user_version(connection: sqlite3.Connection) -> int:
     return version
 
 
-def _migrate(connection: sqlite3.Connection, from_version: int) -> None:
-    for version in range(from_version + 1, SCHEMA_VERSION + 1):
+def _migrate(connection: sqlite3.Connection) -> None:
+    """Runs the migrations the database lacks, each in its own transaction.
+
+    The version is read under the write lock, so a second process opening the same
+    database at the same moment finds each migration done instead of running it twice.
+    """
+    while True:
         connection.execute('BEGIN IMMEDIATE')
         try:
-            for statement in MIGRATIONS[version - 1]:
-                connection.execute(statement)
-            connection.execute(f'PRAGMA user_version = {version}')
+            version = _user_version(connection)
+            if version > SCHEMA_VERSION:
+                raise StoreError(
+                    f'The database has schema {version}; this version of the app '
+                    f'knows schemas up to {SCHEMA_VERSION}.'
+                )
+            current = version == SCHEMA_VERSION
+            if not current:
+                for statement in MIGRATIONS[version]:
+                    connection.execute(statement)
+                connection.execute(f'PRAGMA user_version = {version + 1}')
         except BaseException:
             connection.execute('ROLLBACK')
             raise
         connection.execute('COMMIT')
+        if current:
+            return
 
 
 def _fsync_directory(directory: Path) -> None:
@@ -330,7 +345,7 @@ class AccountStore:
                     f'The database at {path} has schema {version}; this version of '
                     f'the app knows schemas up to {SCHEMA_VERSION}.'
                 )
-            _migrate(connection, version)
+            _migrate(connection)
         return cls(path, clock=clock)
 
     @classmethod
@@ -379,7 +394,7 @@ class AccountStore:
         os.close(descriptor)
         try:
             with _connection(partial) as connection:
-                _migrate(connection, 0)
+                _migrate(connection)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
                     for user in users:
@@ -557,6 +572,28 @@ class AccountStore:
             expires_at=texts[3],
         )
 
+    def session_and_user(self, token_hash: str) -> tuple[Session, User] | None:
+        """A session and its account, read in one query, or None if either is gone:
+        an account deleted meanwhile takes its sessions with it."""
+        with _connection(self.path) as connection:
+            row = connection.execute(
+                'SELECT s.token_hash, s.user_id, s.created_at, s.expires_at, '
+                'u.id, u.email, u.language, u.plan, u.created_at, u.updated_at '
+                'FROM sessions AS s JOIN users AS u ON u.id = s.user_id '
+                'WHERE s.token_hash = ?',
+                (token_hash,),
+            ).fetchone()
+        if row is None:
+            return None
+        texts = _texts(row[:4])
+        session = Session(
+            token_hash=texts[0],
+            user_id=texts[1],
+            created_at=texts[2],
+            expires_at=texts[3],
+        )
+        return session, _user_from_row(row[4:])
+
     def extend_session(self, token_hash: str, expires_at: str) -> None:
         with self._write() as connection:
             connection.execute(
@@ -584,6 +621,57 @@ class AccountStore:
             connection.execute(
                 'DELETE FROM sign_in_codes WHERE expires_at <= ?', (now,)
             )
+
+    def account_data(self, user_id: str) -> dict[str, Any]:
+        """Everything kept for an account, read at one moment: its record, its sessions
+        and its address's sign-in code (without their hashes), and the record of codes
+        asked for, with the client addresses they came from."""
+        with self._read() as connection:
+            user = _select_user(connection, 'id', user_id)
+            if user is None:
+                raise UnknownUser('No account has that id.')
+            sessions = connection.execute(
+                'SELECT created_at, expires_at FROM sessions WHERE user_id = ? '
+                'ORDER BY created_at, expires_at',
+                (user.id,),
+            ).fetchall()
+            code = connection.execute(
+                'SELECT created_at, expires_at, attempts FROM sign_in_codes '
+                'WHERE email = ?',
+                (user.email,),
+            ).fetchone()
+            requests = connection.execute(
+                'SELECT requested_at, client FROM code_requests WHERE email = ? '
+                'ORDER BY requested_at, id',
+                (user.email,),
+            ).fetchall()
+        sign_in_code: dict[str, Any] | None = None
+        if code is not None:
+            created_at, expires_at = _texts(code[:2])
+            sign_in_code = {
+                'attempts': code[2],
+                'created_at': created_at,
+                'expires_at': expires_at,
+            }
+        return {
+            'account': {
+                'created_at': user.created_at,
+                'email': user.email,
+                'id': user.id,
+                'language': user.language,
+                'plan': user.plan,
+                'updated_at': user.updated_at,
+            },
+            'code_requests': [
+                dict(zip(('requested_at', 'client'), _texts(row), strict=True))
+                for row in requests
+            ],
+            'sessions': [
+                dict(zip(('created_at', 'expires_at'), _texts(row), strict=True))
+                for row in sessions
+            ],
+            'sign_in_code': sign_in_code,
+        }
 
     # ── Sign-in codes ──
 

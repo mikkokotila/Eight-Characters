@@ -20,7 +20,8 @@ in with a code sent by email. The page starts using the API in a later release.
   `synchronous = FULL`: a committed change survives a crash, a power cut or a deploy.
 - `AccountStore.open(path)` refuses a missing file (and never creates one), a file that
   is no account database, and a schema newer than the app knows. It runs the numbered
-  migrations an older database lacks, each in its own transaction.
+  migrations an older database lacks, each in its own transaction, reading the version
+  under the write lock, so two processes opening it at once never run one twice.
 - `AccountStore.create(path)` and `AccountStore.restore(path, users, tree=…)` build the
   database beside its final path (`<name>.partial`, created exclusively, so a second
   build at the same time fails at once) and move it into place only when complete;
@@ -82,7 +83,7 @@ so the database alone cannot be used to test guesses or take over a session.
 | `PATCH /api/account` | sets `language` | `200`; `401` |
 | `DELETE /api/account/session` | signs this browser out | `204` |
 | `DELETE /api/account/sessions` | signs the account out everywhere | `204`; `401` |
-| `GET /api/account/export` | everything kept for the account, as `bazi-account.json` | `200`; `401` |
+| `GET /api/account/export` | everything kept for the account, as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `401` |
 | `DELETE /api/account` | deletes the account; `{"email": …}` must repeat its address | `204`; `400`, `401` |
 
 Every request that changes something must carry the site's own `Origin`, or it is

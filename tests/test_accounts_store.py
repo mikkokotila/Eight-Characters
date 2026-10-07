@@ -102,6 +102,41 @@ class TestCreateAndOpen(StoreTestCase):
         )
         self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM later'), [(0,)])
 
+    def test_a_migration_already_run_by_another_process_is_not_run_again(self) -> None:
+        # What a second process finds if it read the version before the first one
+        # finished: the version is read again under the write lock.
+        connection = sqlite3.connect(self.path, isolation_level=None)
+        try:
+            store_module._migrate(connection)
+        finally:
+            connection.close()
+        self.assertEqual(_sql(self.path, 'PRAGMA user_version'), [(SCHEMA_VERSION,)])
+
+    def test_processes_opening_an_older_database_at_once_all_succeed(self) -> None:
+        older = self.directory / 'older.sqlite3'
+        with (
+            patch.object(store_module, 'MIGRATIONS', store_module.MIGRATIONS[:1]),
+            patch.object(store_module, 'SCHEMA_VERSION', 1),
+        ):
+            AccountStore.create(older)
+        barrier = threading.Barrier(8)
+        failures: list[BaseException] = []
+
+        def open_it() -> None:
+            barrier.wait()
+            try:
+                AccountStore.open(older)
+            except BaseException as exc:
+                failures.append(exc)
+
+        threads = [threading.Thread(target=open_it) for _ in range(8)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(failures, [])
+        self.assertEqual(_sql(older, 'PRAGMA user_version'), [(SCHEMA_VERSION,)])
+
     def test_a_failing_migration_leaves_the_database_as_it_was(self) -> None:
         broken = (
             *store_module.MIGRATIONS,
@@ -319,6 +354,65 @@ class TestSessionsAndCodes(StoreTestCase):
         self.assertEqual(self.store.delete_sessions(self.user.id), 2)
         self.assertIsNone(self.store.session('a'))
         self.assertIsNotNone(self.store.session('c'))
+
+    def test_a_session_and_its_account_are_read_together(self) -> None:
+        self.store.create_session(self.session('a'))
+        self.assertEqual(
+            self.store.session_and_user('a'), (self.session('a'), self.user)
+        )
+        self.store.delete_user(self.user.id)
+        self.assertIsNone(self.store.session_and_user('a'))
+        self.assertIsNone(self.store.session_and_user('unknown'))
+
+    def test_everything_kept_for_an_account(self) -> None:
+        self.store.create_session(self.session('a'))
+        self.store.put_code(self.code(attempts=2))
+        for email, client in (
+            (self.user.email, '192.0.2.1'),
+            (self.user.email, '198.51.100.7'),
+            ('other@example.com', '192.0.2.9'),
+        ):
+            self.store.allow_code_request(
+                email,
+                client,
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                5,
+                20,
+            )
+        account = {
+            'created_at': self.user.created_at,
+            'email': 'reader@example.com',
+            'id': self.user.id,
+            'language': 'fi',
+            'plan': 'free',
+            'updated_at': self.user.updated_at,
+        }
+        requests = [
+            {'client': client, 'requested_at': '2026-10-07T12:00:00Z'}
+            for client in ('192.0.2.1', '198.51.100.7')
+        ]
+        session = {
+            'created_at': '2026-10-07T12:00:00Z',
+            'expires_at': '2026-11-06T12:00:00Z',
+        }
+        code = {
+            'attempts': 2,
+            'created_at': '2026-10-07T12:00:00Z',
+            'expires_at': '2026-10-07T12:10:00Z',
+        }
+        data = self.store.account_data(self.user.id)
+        expected = {
+            'account': account,
+            'code_requests': requests,
+            'sessions': [session],
+            'sign_in_code': code,
+        }
+        self.assertEqual(data, expected)
+        # Hashes are not the account's data, and would only help a guesser.
+        self.assertNotIn('right', str(data))
+        with self.assertRaises(UnknownUser):
+            self.store.account_data('0' * 32)
 
     def test_a_session_needs_an_account(self) -> None:
         with self.assertRaises(sqlite3.IntegrityError):
