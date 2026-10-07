@@ -78,6 +78,16 @@ Its cards take the chart's display: characters, Ten Gods (read from the natal Da
 Master) or hidden stems. A long press turns one, and a click opens the branch's hidden
 stems, as on the natal cards. Its name opens the decade's page.
 
+The relationships it forms with the natal pillars stand as arcs, drawn as the natal arcs
+are: a stem's above the stems, a branch's below the branches, each in its kind's line
+(see [Relationships](Standard-Relationships.md)). They ride an outer band beyond the
+natal arcs' levels, every one ending on the luck pillar, the narrower lower. A triple's
+middle member stands under its arc. On a natal card their feet stand beyond the natal
+arcs' feet, so showing them moves no natal arc. In the branch phase a stem's
+relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs
+recede too, in the secondary line. A chart with a gender keeps the outer band whether
+the luck pillar shows or not.
+
 On a phone the luck pillar stands above the two-by-two chart, its stem beside its
 branch.
 

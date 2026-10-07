@@ -35,6 +35,9 @@ stem's role and qi type. Entries and details name the pillars plainly (Hour, Day
 Month, Year) in the chart's display order, as in "Hour–Year"; the API retains
 chronological pillar order.
 
+A chart with a gender draws the luck pillar's relationships too, while it shows, in
+an outer band beyond these: see [Luck pillars](Standard-Luck-Pillars.md).
+
 Each kind has its line, on the arcs, in the list, and around the selected cards:
 solid for a combination pair, 2px solid for a directional combination; dashed for
 a clash, 2px dashed for a punishment, half-punishment or self-punishment; 2px

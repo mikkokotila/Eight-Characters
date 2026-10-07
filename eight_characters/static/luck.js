@@ -384,11 +384,95 @@
         if (state === 'off' && component === 'stem') card.insertAdjacentHTML('afterbegin', `<span class='luck-ghost'>${esc(t('luck_ghost_off'))}</span>`);
       });
       onCards(column, focused, redrawn);
+      drawArcs();
     };
     const removeColumn = () => {
       column?.remove();
       column = null;
-      pillars.classList.remove('has-luck');
+      pillars.querySelectorAll('.luck-arcs').forEach((band) => band.remove());
+      pillars.classList.remove('has-luck', 'is-luck-shown');
+    };
+
+    // ── The luck pillar's arcs ──
+    // Its relationships, drawn as the natal ones are (relationships.js), in the outer
+    // band: above the stems' arcs and below the branches'. Every one ends on the luck
+    // pillar, so the narrower stands lower. A relationship of the families the canon
+    // adds joins an arc over the same columns as a strand. On a natal card their feet
+    // stand beyond the natal arcs' feet, so showing them moves no natal foot. A stem's
+    // relationship rests in the branch phase, and its arc recedes.
+    const OWN_ARC = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
+    const LUCK_LEVELS = 4;
+    const LUCK_STRANDS = 3;
+    const arcsFor = (relationships, component) => {
+      const slots = [];
+      const strands = relationships.map((relationship) => {
+        const columns = relationship.members.map((m) => DISPLAY_ORDER.indexOf(m.pillar)).sort((a, b) => a - b);
+        const from = columns[0];
+        const to = columns[columns.length - 1];
+        let slot = OWN_ARC.includes(relationship.kind) ? null : slots.find((other) => other.from === from && other.to === to);
+        if (!slot) {
+          slot = { from, to, strands: [] };
+          slots.push(slot);
+        }
+        const strand = { relationship, columns, from, to, slot, strand: slot.strands.length, feet: {} };
+        slot.strands.push(strand);
+        return strand;
+      });
+      [...slots].sort((a, b) => (a.to - a.from) - (b.to - b.from) || a.from - b.from).forEach((slot, index) => { slot.level = index + 1; });
+      require(slots.length <= LUCK_LEVELS && slots.every((slot) => slot.strands.length <= LUCK_STRANDS));
+      const height = (strand) => strand.slot.level - strand.strand / LUCK_STRANDS;
+      // The feet on one card, left to right, as the natal arcs order theirs: arcs from the
+      // left, lowest first; a triple's middle member; arcs to the right, highest first.
+      // Separate arcs' feet stand a spread apart, the strands of one arc half a spread.
+      DISPLAY_ORDER.forEach((pillar, column) => {
+        const feet = [
+          ...strands.filter((s) => s.to === column).sort((a, b) => height(a) - height(b)).map((s) => [s, 'to']),
+          ...strands.filter((s) => s.columns.length === 3 && s.columns[1] === column).map((s) => [s, 'middle']),
+          ...strands.filter((s) => s.from === column).sort((a, b) => height(b) - height(a)).map((s) => [s, 'from']),
+        ];
+        const at = [];
+        feet.forEach(([strand], index) => {
+          at.push(index === 0 ? 0 : at[index - 1] + (feet[index - 1][0].slot === strand.slot ? 0.5 : 1));
+        });
+        const edge = pillar === 'luck' ? null : luck.chart.feetEdge(component, pillar);
+        const start = pillar === 'luck' ? -(at.length ? at[at.length - 1] / 2 : 0) : edge === null ? 0 : edge + 1;
+        feet.forEach(([strand, end], index) => { strand.feet[end] = start + at[index]; });
+      });
+      return strands;
+    };
+    const arcMarkup = (arc, phase) => {
+      const style = [
+        `grid-column: ${arc.from + 1} / ${arc.to + 2}`, `--span: ${arc.to - arc.from}`, `--level: ${arc.slot.level}`,
+        `--strand: ${arc.strand}`, `--foot-from: ${arc.feet.from}`, `--foot-to: ${arc.feet.to}`,
+      ].join('; ');
+      // A triple's middle member stands under the arc where it is (at) of the way across;
+      // half an ellipse is sqrt(1 - x²) of its rise there, x from -1 to 1.
+      const at = arc.columns.length === 3 ? (arc.columns[1] - arc.from) / (arc.to - arc.from) : null;
+      const middle = at === null ? ''
+        : `<span class="relationship-arc-foot" style="--at: ${at}; --reach: ${Math.sqrt(1 - (2 * at - 1) ** 2)}; --foot: ${arc.feet.middle}"></span>`;
+      const rises = arc.relationship.component === 'branch'
+        ? '<span class="relationship-arc-rise is-from"></span><span class="relationship-arc-rise is-to"></span>' : '';
+      const resting = !arc.relationship.phases.includes(phase);
+      return `<span class="relationship-arc${resting ? ' is-resting' : ''}" data-arc-kind="${esc(arc.relationship.kind)}" data-relationship-id="${esc(arc.relationship.id)}" style="${style}">
+        <span class="relationship-arc-line"></span>${rises}${middle}
+      </span>`;
+    };
+    const drawArcs = () => {
+      pillars.querySelectorAll('.luck-arcs').forEach((band) => band.remove());
+      const on = columnState() === 'on';
+      pillars.classList.toggle('is-luck-shown', on);
+      if (!on) return;
+      const decade = decadeOf(cursor);
+      ['stem', 'branch'].forEach((component) => {
+        const relationships = decade.interactions.filter((relationship) => relationship.component === component);
+        if (relationships.length === 0) return;
+        const band = document.createElement('div');
+        band.className = 'luck-arcs';
+        band.dataset.component = component;
+        band.setAttribute('aria-hidden', 'true');
+        band.innerHTML = arcsFor(relationships, component).map((arc) => arcMarkup(arc, cursor.phase)).join('');
+        pillars.append(band);
+      });
     };
 
     // ── The page ──
@@ -400,9 +484,11 @@
     const memberChars = (relationship) => [...relationship.members]
       .sort((a, b) => DISPLAY_ORDER.indexOf(a.pillar) - DISPLAY_ORDER.indexOf(b.pillar))
       .map((m) => named(m.pinyin, m.char)).join(' – ');
-    // The cards a relationship with the luck pillar names: the natal ones, and the luck
-    // pillar's own, which the page shows standing in the chart.
-    const tokens = (relationship) => relationship.members.map((m) => `${relationship.component}:${m.pillar}`);
+    // What a relationship with the luck pillar names on the chart: its cards, the natal
+    // ones and the luck pillar's, which the page shows standing in the chart, and its arc.
+    const tokens = (relationship) => [
+      ...relationship.members.map((m) => `${relationship.component}:${m.pillar}`), `arc:${relationship.id}`,
+    ];
 
     const occurrenceMarkup = (e, phase) => {
       const resting = !e.phases.includes(phase);
@@ -657,8 +743,9 @@
       }
     });
 
-    // `cards` is the API's luck_chart, and `chart.relationshipLabel` names a natal
-    // relationship by its id, as the list does. Without luck pillars the ribbon and the
+    // `cards` is the API's luck_chart, `chart.relationshipLabel` names a natal
+    // relationship by its id, as the list does, and `chart.feetEdge` says where the natal
+    // arcs' feet stand on a card. Without luck pillars the ribbon and the
     // fifth pillar are gone.
     const render = (pillarsData, context, cards, chart, timezone) => {
       open = false;

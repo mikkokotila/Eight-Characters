@@ -124,9 +124,9 @@ function column(page) {
   }));
 }
 
-// Every card's box on the page, and the arcs', by the card's pillar and side.
+// Every card's box on the page, and the natal arcs', by the card's pillar and side.
 function boxes(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#pillars .card, #pillars .relationship-arc, #pillars .hidden-stems-panel')]
+  return page.evaluate(() => [...document.querySelectorAll('#pillars .card, #pillars .relationship-arcs .relationship-arc, #pillars .hidden-stems-panel')]
     // What is not drawn has no place (phones draw no arcs).
     .filter((node) => node.getClientRects().length > 0)
     .map((node) => {
@@ -868,6 +868,75 @@ for (const profile of profiles) {
         assert.ok(at['luck stem'].x > at['year stem'].x && at['luck stem'].y === at['year stem'].y && at['luck branch'].y === at['year branch'].y, JSON.stringify(at));
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    });
+
+    check('the luck pillar\'s relationships stand as arcs in an outer band, their feet beyond the natal arcs\'', async (page) => {
+      await openSample(page);
+      const natal = () => page.locator('#pillars .relationship-arcs .relationship-arc').evaluateAll((arcs) => arcs.map((arc) => {
+        const box = arc.querySelector('.relationship-arc-line').getBoundingClientRect();
+        return `${arc.dataset.relationshipId} ${Math.round(box.x)} ${Math.round(box.width)} ${Math.round(box.height)}`;
+      }));
+      const before = await natal();
+      await click(page, '#luck-switch [data-luck-show="on"]');
+      const luckArcs = () => page.evaluate(() => [...document.querySelectorAll('#pillars .luck-arcs .relationship-arc')].map((arc) => ({
+        id: arc.dataset.relationshipId,
+        level: Number(arc.style.getPropertyValue('--level')),
+        resting: arc.classList.contains('is-resting'),
+        middles: arc.querySelectorAll('.relationship-arc-foot').length,
+        depth: Math.round(arc.querySelector('.relationship-arc-line').getBoundingClientRect().height),
+        // The arc spans from the middle of its first card to the middle of the luck card.
+        ends: (() => {
+          const box = arc.getBoundingClientRect();
+          const component = arc.closest('.luck-arcs').dataset.component;
+          const middles = [...document.querySelectorAll(`#pillars .card.${component}`)].map((card) => {
+            const r = card.getBoundingClientRect();
+            return Math.round(r.x + r.width / 2);
+          });
+          return [middles.some((x) => Math.abs(x - box.x) <= 1), Math.abs(box.x + box.width - middles.at(-1)) <= 1];
+        })(),
+      })));
+      // 己丑 Ji Chou's stem combinations with the Month's and the Hour's 甲 Jia, in the stem phase.
+      const stems = await luckArcs();
+      assert.deepEqual(stems.map(({ id, level, resting, middles }) => [id, level, resting, middles]), [
+        ['stem_combination:1:month-luck', 1, false, 0],
+        ['stem_combination:1:hour-luck', 2, false, 0],
+      ]);
+      // Phones draw no arcs; elsewhere they rise in the outer band, above the natal four levels.
+      if (profile.name === 'desktop') {
+        assert.ok(stems.every((arc) => arc.depth > 44 && arc.ends.every(Boolean)), JSON.stringify(stems));
+      }
+      // The natal arcs stay where they are, and recede.
+      assert.deepEqual(await natal(), before);
+      assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), true);
+      // In the branch phase the stem's relationships rest.
+      await click(page, '[data-luck-step="1"]');
+      assert.deepEqual((await luckArcs()).map((arc) => arc.resting), [true, true]);
+      // 戊子 Wu Zi's Zi completes two Water frames and punishes the Year's Mao: the narrower
+      // stands lower, and each frame's Month stands under it.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, sampleLink({ luck: '4/branch' }), { place: HELSINKI });
+      const branches = await luckArcs();
+      assert.deepEqual(branches.map(({ id, level, resting, middles }) => [id, level, resting, middles]), [
+        ['harmony_frame:18:month-day-luck', 2, false, 1],
+        ['harmony_frame:18:month-hour-luck', 3, false, 1],
+        ['punishment:34:year-luck', 1, false, 0],
+      ]);
+      // Their feet: on the Day, the Hour and the Year beyond the natal arcs', which stand there
+      // already; on the luck card, around its middle.
+      const feet = await page.locator('#pillars .luck-arcs .relationship-arc').evaluateAll((arcs) =>
+        arcs.map((arc) => [arc.style.getPropertyValue('--foot-from').trim(), arc.style.getPropertyValue('--foot-to').trim()]));
+      assert.deepEqual(feet, [['1.5', '0'], ['1.5', '1'], ['1.5', '-1']]);
+      // A relationship on the page rings its arc.
+      await click(page, '[data-luck="4"]');
+      await page.locator('.luck-relationship').first().click();
+      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
+        nodes.filter((node) => node.matches('.relationship-arc')).map((node) => node.dataset.relationshipId)), ['harmony_frame:18:month-day-luck']);
+      // Hidden, the luck pillar draws none.
+      await click(page, '#luck-switch [data-luck-show="off"]');
+      assert.equal(await page.locator('#pillars .luck-arcs').count(), 0);
+      assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), false);
+      await screenshot(page, `${profile.name}-luck-arcs`);
     });
 
     check('on paper a luck pillar shown stands fifth, and a hidden one leaves the chart its four columns', async (page) => {

@@ -587,7 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
-      { relationshipLabel: relationships.labelOf }, request.location.timezone);
+      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);

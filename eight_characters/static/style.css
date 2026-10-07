@@ -129,6 +129,11 @@
   --arc-band: 40px;
   --arc-spread: 6px;
   --arc-strand: 3px;
+  /* The luck pillar's arcs ride an outer band beyond the natal four levels: its rise,
+     the rise of each level above it, and the band that holds both. */
+  --luck-arc-base: 44px;
+  --luck-arc-step: 7px;
+  --luck-arc-band: 74px;
 
   /* Gua line dimensions */
   --line-w: 54px;
@@ -1015,7 +1020,9 @@ body {
    (luck.js). It keeps its place and its size whether it shows or not, so showing it
    moves nothing: hidden, only what the decade adds is out of sight. ── */
 .pillars.has-luck,
-.pillars.has-luck .relationship-arcs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pillars.has-luck :is(.relationship-arcs, .luck-arcs) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+/* Its arcs' outer band is kept whether it shows or not. */
+.pillars.has-luck { --arc-band: var(--luck-arc-band); }
 .pillar.is-luck { position: relative; }
 /* Its lane: a quiet band behind the column, whether it shows or not. */
 .pillar.is-luck::before {
@@ -1717,7 +1724,7 @@ body {
    middle of its first card to the middle of its last, and rises above every
    arc it spans or crosses. Relationships that share an arc are its strands,
    each a little inside the one before. */
-.relationship-arcs {
+:is(.relationship-arcs, .luck-arcs) {
   position: absolute;
   inset: 0;
   z-index: -1;
@@ -1729,9 +1736,9 @@ body {
   animation: fadeIn 0.4s ease 0.6s both;
 }
 /* An absolutely placed item needs both lines: a missing end means the grid's edge. */
-.relationship-arcs[data-component='stem'] { grid-row: 4 / span 1; }
+:is(.relationship-arcs, .luck-arcs)[data-component='stem'] { grid-row: 4 / span 1; }
 /* The branch arcs also take the hidden stems' row, to reach the cards past it. */
-.relationship-arcs[data-component='branch'] { grid-row: 7 / span 2; }
+:is(.relationship-arcs, .luck-arcs)[data-component='branch'] { grid-row: 7 / span 2; }
 
 .relationship-arc {
   --arc-ink: var(--ink-2);
@@ -1750,8 +1757,17 @@ body {
 .relationship-arc[data-arc-kind='half_punishment'],
 .relationship-arc[data-arc-kind='self_punishment'] { --arc-line: 2px dashed; }
 .relationship-arc[data-arc-kind='harm'] { --arc-line: 2px dotted; }
-.relationship-arcs[data-component='stem'] .relationship-arc { align-self: end; height: var(--arc-depth); }
-.relationship-arcs[data-component='branch'] .relationship-arc { margin-bottom: calc(var(--arc-band) - var(--arc-depth)); }
+:is(.relationship-arcs, .luck-arcs)[data-component='stem'] .relationship-arc { align-self: end; height: var(--arc-depth); }
+:is(.relationship-arcs, .luck-arcs)[data-component='branch'] .relationship-arc { margin-bottom: calc(var(--arc-band) - var(--arc-depth)); }
+/* The luck pillar's arcs, in the outer band, in the ink; one that waits for the other
+   phase recedes. */
+.luck-arcs .relationship-arc {
+  --arc-ink: var(--ink-1);
+  --arc-depth: calc(var(--luck-arc-base) + var(--level) * var(--luck-arc-step) - var(--strand) * var(--arc-strand));
+}
+.luck-arcs .relationship-arc.is-resting { --arc-ink: var(--line-2); }
+/* They follow the choice at once. */
+.luck-arcs { animation: none; }
 
 /* The feet that meet on one card stand apart by --arc-spread. */
 .relationship-arc-line,
@@ -1766,12 +1782,12 @@ body {
   height: var(--arc-depth);
   border: var(--arc-line) var(--arc-ink);
 }
-.relationship-arcs[data-component='stem'] .relationship-arc-line {
+:is(.relationship-arcs, .luck-arcs)[data-component='stem'] .relationship-arc-line {
   top: 0;
   border-bottom: none;
   border-radius: 50% 50% 0 0 / 100% 100% 0 0;
 }
-.relationship-arcs[data-component='branch'] .relationship-arc-line {
+:is(.relationship-arcs, .luck-arcs)[data-component='branch'] .relationship-arc-line {
   bottom: 0;
   border-top: none;
   border-radius: 0 0 50% 50% / 0 0 100% 100%;
@@ -1796,17 +1812,19 @@ body {
   left: calc(var(--at) * 100% + var(--foot) * var(--arc-spread));
   border-left: var(--arc-line) var(--arc-ink);
 }
-.relationship-arcs[data-component='stem'] .relationship-arc-foot {
+:is(.relationship-arcs, .luck-arcs)[data-component='stem'] .relationship-arc-foot {
   top: calc(var(--arc-depth) * (1 - var(--reach)));
   bottom: 0;
 }
-.relationship-arcs[data-component='branch'] .relationship-arc-foot {
+:is(.relationship-arcs, .luck-arcs)[data-component='branch'] .relationship-arc-foot {
   top: 0;
   bottom: calc(var(--arc-depth) * (1 - var(--reach)));
 }
 
-/* A chosen relationship: its arc darkens and the others recede. */
-.relationship-arcs.has-selection .relationship-arc { --arc-ink: var(--line-2); }
+/* A chosen relationship: its arc darkens and the others recede. While the luck
+   pillar shows, the natal arcs recede for its own. */
+.relationship-arcs.has-selection .relationship-arc,
+.pillars.is-luck-shown .relationship-arcs .relationship-arc { --arc-ink: var(--line-2); }
 .relationship-arcs .relationship-arc.is-active { --arc-ink: var(--ink-1); }
 
 /* ── What the panel points at, on the chart ──
@@ -2461,7 +2479,7 @@ kbd {
   /* Two pillars to a row leave no line for the arcs to span; the relationships
      are listed in the sheet. Their rows are left empty, so they take no room,
      and the headers keep their own room above the cards. */
-  .relationship-arcs { display: none; }
+  :is(.relationship-arcs, .luck-arcs) { display: none; }
   .pillar-header { padding-bottom: var(--space-4); }
   /* The bottom padding holds the branch chevron (bottom 8px, 14px tall). */
   .card-face { padding: var(--space-5) var(--space-3); }
@@ -2644,5 +2662,5 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .pillar:nth-child(3) { grid-column: 3; }
   .pillar:nth-child(4) { grid-column: 4; }
   .pillar.is-luck { grid-column: 5; }
-  .relationship-arcs { position: relative; inset: auto; }
+  :is(.relationship-arcs, .luck-arcs) { position: relative; inset: auto; }
 }

@@ -106,6 +106,9 @@
     let selected = null;
     let chartByPillar = {};
     let tenGods = {};
+    // How far right the natal arcs' feet stand on each card, in spreads from its middle:
+    // the luck pillar's arcs stand their feet beyond them (luck.js).
+    let feetEdges = { stem: {}, branch: {} };
 
     const cardFor = (relationship, member) => {
       const card = root.querySelector(
@@ -286,8 +289,13 @@
         band.className = 'relationship-arcs';
         band.dataset.component = component;
         band.setAttribute('aria-hidden', 'true');
-        band.innerHTML = arcLayout(relationships.filter((relationship) => relationship.component === component))
-          .map(arcMarkup).join('');
+        const arcs = arcLayout(relationships.filter((relationship) => relationship.component === component));
+        feetEdges[component] = {};
+        arcs.forEach((arc) => Object.entries(arc.feet).forEach(([end, offset]) => {
+          const pillar = DISPLAY_ORDER[end === 'from' ? arc.from : end === 'to' ? arc.to : arc.columns[1]];
+          feetEdges[component][pillar] = Math.max(feetEdges[component][pillar] ?? -Infinity, offset);
+        }));
+        band.innerHTML = arcs.map(arcMarkup).join('');
         pillars.append(band);
       });
       // Each entry points at its cards and its arc.
@@ -309,7 +317,9 @@
       if (!relationship) throw new Error(`Unknown relationship ${id}.`);
       return labelFor(relationship);
     };
-    return { render, clear, labelOf };
+    // The rightmost natal foot on a card, or null where no natal arc stands.
+    const feetEdge = (component, pillar) => feetEdges[component][pillar] ?? null;
+    return { render, clear, labelOf, feetEdge };
   };
 
   window.EC_RELATIONSHIPS = { create };
