@@ -587,6 +587,83 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'fi');
     });
 
+    // Another tab of the same browser signs out, and in to another account: the
+    // session it signed out of ends, and the cookie the tabs share becomes the other
+    // account's.
+    const switchInAnotherTab = async (page, from, to) => {
+      await asAccount(playwright, from, async (request) => {
+        assert.equal((await request.delete('/api/account/session')).status(), 204);
+      });
+      await page.context().addCookies(to.cookies);
+    };
+
+    check('the menu names the account another tab signed in to, and exports its data', async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'tab-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'tab-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      await switchInAnotherTab(page, earlier, later);
+      // The menu asks who the session belongs to before it acts for it.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
+      const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#account-export').click()]);
+      const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
+      assert.equal(exported.account.email, later.email);
+    });
+
+    check("a comparison's check takes the account another tab signed in to", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'pair-a' });
+      const later = await newAccount(playwright, { language: 'fi', label: 'pair-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await switchInAnotherTab(page, earlier, later);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      // Taken as a sign-in here: the page speaks the account's language.
+      await page.waitForFunction(() => document.documentElement.lang === 'fi');
+    });
+
+    check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // Back to the second birth; the menu opens there, before the check's script has
+      // loaded; the session ends elsewhere; and the comparison comes forward again.
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+      });
+      await page.goForward();
+      await page.locator('#account-notice').filter({ hasText: 'Your session ended. Sign in again.' }).waitFor();
+      await turnstileAnswered(page);
+      await signInThroughDialog(page, account.email);
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+    });
+
     check('a code asked for is said as asked, even if the dialog changes side meanwhile', async (page) => {
       let release;
       const held = new Promise((resolve) => { release = resolve; });

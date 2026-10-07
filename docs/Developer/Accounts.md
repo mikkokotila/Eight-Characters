@@ -126,16 +126,20 @@ put on one.
   longer wanted asks nothing, so a sign-in made since for a newer one stays.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
-  cannot ask themselves. The check takes only whether the session holds, never the
-  account, which the page knows from the start page and its own changes (a language
-  set in the dialog meanwhile stays). The answer to a check for a comparison no longer
+  cannot ask themselves. Of the account, the check takes only who it is: another
+  account, signed in to in another tab, is taken as a sign-in here, with its language;
+  the same account keeps what the page knows of it (a language set in the dialog
+  meanwhile stays). The answer to a check for a comparison no longer
   wanted, or about a session the page no longer holds, changes nothing, and signing
   out abandons a comparison on its way. **The explorer**, given a birth, links to the start page to sign
   in.
 - **Signed in, the dialog is the account:** its address and plan, its language,
   Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
   account, which needs the address typed again. Signing out starts the page again,
-  empty.
+  empty. Tabs share the session cookie, so as the menu opens it asks who the session
+  belongs to (`GET /api/account`), and its actions wait for the answer: an account
+  signed in to in another tab is taken as a sign-in here, and a session ended
+  elsewhere asks for a sign-in.
 
 ## Settings
 

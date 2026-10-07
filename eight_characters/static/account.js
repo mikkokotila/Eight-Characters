@@ -221,7 +221,12 @@
       setStatus(deleteStatus, '');
     };
     const open = () => {
-      if (dialog.open) return;
+      if (dialog.open) {
+        // Already open: if the menu has just given way to signing in, that needs its
+        // check.
+        if (step === 'start') showCheck();
+        return;
+      }
       if (account) step = 'menu';
       else if (step === 'menu') step = 'start';
       closeDeleting();
@@ -229,6 +234,7 @@
       refresh();
       dialog.showModal();
       if (step === 'start') showCheck();
+      else if (step === 'menu') confirmSession();
       focusStep();
     };
     // Escape closes the dialog and nothing behind it, such as an open topic.
@@ -367,6 +373,20 @@
       email.focus();
     });
 
+    // What the server says of the account the session belongs to. Another account,
+    // signed in to in another tab (the tabs share the session cookie), is taken as a
+    // sign-in here: the page takes its language, and answers about the earlier session
+    // change nothing. The same account keeps what the page knows of it, which may be
+    // newer than the answer (a language set meanwhile).
+    const identify = (value) => {
+      const told = accountOf(value);
+      if (account !== null && told.email === account.email) return;
+      account = told;
+      held += 1;
+      onLanguage(account.language);
+      refresh();
+    };
+
     // ── The account ──
     // The account's session ended meanwhile (signed out elsewhere, or deleted): the
     // dialog asks for a sign-in instead.
@@ -410,6 +430,43 @@
       }
     };
     const refused = (response) => new Error(t('account_server_error', { status: response.status }));
+    // The menu's actions, which wait while the page asks who the session belongs to.
+    const actions = () => [
+      ...languageSwitch.querySelectorAll('button[data-account-lang]'),
+      exportButton, signOutButton, signOutEverywhereButton, deleteOpen, deleteConfirm,
+    ];
+    // Who the session belongs to now, asked as the menu opens: another tab may have
+    // signed out, or in to another account. Until the answer, the menu does nothing;
+    // without one, it says why, and asks again at the next opening.
+    const confirmSession = async () => {
+      if (busy) return;
+      busy = true;
+      const session = held;
+      actions().forEach((control) => { control.disabled = true; });
+      let known = false;
+      try {
+        const response = await call('GET', '/api/account');
+        if (session !== held) {
+          known = true;
+          return;
+        }
+        if (response.status === 401) {
+          known = true;
+          ended();
+          return;
+        }
+        if (!response.ok) throw refused(response);
+        const value = await response.json();
+        known = true;
+        if (session === held) identify(value);
+      } catch (err) {
+        console.error(err);
+        setStatus(status, err.message);
+      } finally {
+        busy = false;
+        if (known) actions().forEach((control) => { control.disabled = false; });
+      }
+    };
 
     languageSwitch.addEventListener('click', (event) => {
       const choice = event.target.closest('button[data-account-lang]');
@@ -506,9 +563,9 @@
     // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
     // no longer wanted (`wanted` says), or about a session the page no longer holds,
     // changes nothing, so a sign-in made meanwhile stays; the caller goes no further.
-    // Only whether the session holds is taken from the answer: the page knows the
-    // account from the start page and its own changes, which an answer asked for
-    // before one of them would undo.
+    // Of the account itself, only who it is is taken from the answer (identify): the
+    // page knows the rest from the start page and its own changes, which an answer
+    // asked for before one of them would undo.
     const stillSignedIn = async (wanted) => {
       if (!account) return false;
       const session = held;
@@ -519,6 +576,9 @@
         return false;
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
+      const value = await response.json();
+      if (!wanted() || session !== held) return false;
+      identify(value);
       return true;
     };
     // The server answered that no one is signed in: the session ended meanwhile.
@@ -529,6 +589,11 @@
       if (step === 'menu') step = 'start';
       noticeKey = 'account_session_ended';
       refresh();
+      // An open dialog that showed the account asks for a sign-in now, with its check.
+      if (dialog.open && step === 'start') {
+        showCheck();
+        email.focus();
+      }
     };
 
     return {
