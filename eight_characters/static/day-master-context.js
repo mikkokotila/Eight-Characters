@@ -215,7 +215,7 @@
       beforeSelect();
       selected = key;
       button.setAttribute('aria-expanded', 'true');
-      showPage(pages[key]);
+      showPage(key === 'roots' ? rootsPage() : pages[key]);
     });
     const clearAndReturnFocus = () => {
       const button = summary.querySelector('button[data-context][aria-expanded="true"]');
@@ -290,11 +290,11 @@
         delta.classList.toggle('is-hidden', !(luck !== null && luck.shown));
         button.setAttribute('aria-label', [button.dataset.label, luck !== null && luck.shown ? word : ''].filter(Boolean).join(' '));
       });
-      pages.roots = rootsPage();
-      // A topic open shows the luck pillar's part as it comes and goes.
+      // A topic open shows the luck pillar's part as it comes and goes. Pages are built
+      // when shown: while a new chart is drawn, this one's are not yet its own.
       if (selected === 'roots') {
         clearHighlights();
-        showPage(pages.roots);
+        showPage(rootsPage());
       } else if (selected === 'roles' && detail.dataset.topic === 'roles') {
         clearHighlights();
         showPage(pages.roles);
