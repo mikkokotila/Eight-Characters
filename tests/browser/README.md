@@ -237,5 +237,21 @@ The compare suite checks two charts side by side (#20).
   copies the pair. The commands offer Compare on a chart and leave the page's
   actions out of a compared chart.
 
+The explorer parameters suite checks the explorer's parameter pane (PR #7):
+- **Loading.** The chart is asked for exactly as before; the pane asks for its
+  controls only when it opens, and every control shows the value the graph was
+  computed with, in its range and step.
+- **Recompute.** It sends every value that differs from its default, so what was
+  applied stays applied. A change made while one runs waits for the next, only one
+  runs at a time, and a reset drops the answer on its way.
+- **Entries.** Sliders take fractional values and every one moves; an emptied entry
+  is marked and sends nothing; a vector's bars rescale to its largest entry; the
+  clustering weights stay shares of one.
+- **The seed and refusals.** A new seed each run sends and shows a fresh seed; a
+  refused recompute says why and leaves the chart and the edits.
+- **Layout.** The graph is measured again as the pane opens and closes, on a wide
+  screen, where the pane takes the basin column, and on a phone, where it is a
+  sheet. Escape closes it; the sample chart has nothing to recompute.
+
 `settled` in `chart-helpers.mjs` waits until nothing moves: a transition that the next
 change interrupts counts as done, and one that starts meanwhile is waited for too.

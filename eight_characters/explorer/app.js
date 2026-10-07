@@ -2088,10 +2088,46 @@
     rebuildGraph(true);
   }
 
+  // The parameter pane (parameters.js) draws the chart again with the graph data of a
+  // recompute; filters, views and the open basin carry over, as on a basin change.
+  function redraw(graphData) {
+    parseData(graphData);
+    writeMetaLine();
+    renderBasinTabs();
+    renderBasinMetadata();
+    renderPillarStrip();
+    updateFluxControls();
+    rebuildGraph(true);
+  }
+
+  // Whenever the canvas takes another size than the graph was drawn for (the window,
+  // the parameter pane, fonts arriving after the first drawing), the graph is measured
+  // and anchored again. A hidden graph waits until it is shown.
+  function relayoutOnResize() {
+    const canvas = document.querySelector('.canvas-wrap');
+    let resizeTimer;
+    new ResizeObserver(() => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const box = canvas.getBoundingClientRect();
+        if (box.width === 0 || box.height === 0) return;
+        if (Math.max(100, box.width) === width && Math.max(100, box.height) === height) return;
+        renderPillarStrip();
+        canvasSize();
+        svg.attr('viewBox', `0 0 ${width} ${height}`);
+        setAnchors();
+        boundsForce?.setSize(width, height);
+        simulation.alpha(0.45).restart();
+        fitToView();
+      }, 120);
+    }).observe(canvas);
+  }
+
   async function boot() {
     let graphData = GRAPH_DATA;
+    let queryPayload = null;
     try {
-      const queryPayload = queryInputPayload();
+      queryPayload = queryInputPayload();
       if (queryPayload) {
         graphData = await loadGraphData(queryPayload);
       }
@@ -2113,20 +2149,17 @@
     renderPillarStrip();
     updateFluxControls();
     rebuildGraph(true);
+    relayoutOnResize();
 
-    let resizeTimer;
-    window.addEventListener('resize', () => {
-      clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        renderPillarStrip();
-        canvasSize();
-        svg.attr('viewBox', `0 0 ${width} ${height}`);
-        setAnchors();
-        boundsForce?.setSize(width, height);
-        simulation.alpha(0.45).restart();
-        fitToView();
-      }, 120);
-    });
+    window.EC_EXPLORER = {
+      // The birth the chart was asked for, or null for the bundled sample chart.
+      birth: queryPayload,
+      // What the graph was computed with (graph_data.parameters); the sample has none.
+      parameters: graphData.parameters || null,
+      activeBasinIndex: () => state.activeBasinIndex,
+      redraw,
+    };
+    document.dispatchEvent(new CustomEvent('explorer:ready'));
   }
 
   document.addEventListener('DOMContentLoaded', () => {

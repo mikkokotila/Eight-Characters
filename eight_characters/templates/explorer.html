@@ -34,6 +34,7 @@
       </label>
       <button id="fitButton" class="btn">Fit</button>
       <button id="resetButton" class="btn">Reset Filters</button>
+      <button id="parameterToggle" class="btn" type="button" aria-expanded="false" aria-controls="parameterPane">Parameters</button>
     </div>
   </header>
 
@@ -92,6 +93,20 @@
         <div id="detailPanel" class="detail">Select a node to inspect flux details.</div>
       </section>
     </aside>
+
+    <aside class="panel parameter-pane" id="parameterPane" aria-labelledby="parameterHeading" hidden>
+      <div class="parameter-head">
+        <h2 id="parameterHeading">Parameters</h2>
+        <button id="parameterClose" class="parameter-close" type="button" aria-label="Close parameters">×</button>
+      </div>
+      <p id="parameterStatus" class="parameter-status" role="status"></p>
+      <div class="parameter-actions">
+        <button id="parameterRecompute" class="btn parameter-recompute" type="button" disabled>Recompute</button>
+        <button id="parameterDiscard" class="btn" type="button" disabled>Discard Changes</button>
+        <button id="parameterReset" class="btn" type="button" disabled>Reset to Defaults</button>
+      </div>
+      <div id="parameterControls" class="parameter-controls"></div>
+    </aside>
   </main>
 
   <footer class="status-bar" id="statusBar"></footer>
@@ -99,5 +114,6 @@
   <script src="/explorer/vendor/d3.v7.min.js?v={{ app_version }}"></script>
   <script src="/explorer/data.js?v={{ app_version }}"></script>
   <script src="/explorer/app.js?v={{ app_version }}"></script>
+  <script src="/explorer/parameters.js?v={{ app_version }}"></script>
 </body>
 </html>
