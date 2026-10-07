@@ -57,6 +57,11 @@ backup`, in this order:
 5. Commits and pushes; only then marks the changes backed up. A failed push leaves
    them for the next run, which pushes everything still on its way.
 
+A run that fails before its commit (a count that differs, Git refusing to commit or
+taking too long) puts the work tree and the index back to the last commit before it
+reports the reason, so the next run meets the same problem and names it, instead of
+stopping at files the failed run wrote.
+
 Git runs with a 120-second limit per command and never waits for a password
 (`GIT_TERMINAL_PROMPT=0`); SSH settings come from the environment
 (`GIT_SSH_COMMAND`). Commits carry the identity `Eight Characters backup`.

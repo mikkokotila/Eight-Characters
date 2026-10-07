@@ -52,6 +52,9 @@ class BackupTestCase(unittest.TestCase):
     def remote_head(self) -> str:
         return git(self.remote, 'rev-parse', 'HEAD').strip()
 
+    def status(self) -> str:
+        return git(self.checkout, 'status', '--porcelain', '--untracked-files=all')
+
     def commit_by_hand(self, message: str) -> None:
         git(self.checkout, 'add', '--all')
         git(self.checkout, 'commit', '--quiet', '--message', message)
@@ -178,9 +181,40 @@ class TestRunBackup(BackupTestCase):
         self.file_of(user.id).unlink()
         self.commit_by_hand('lose a record')
         self.store.create_user('later@example.com', 'fi')
-        with self.assertRaises(BackupError) as caught:
+        for _ in range(2):
+            with self.assertRaises(BackupError) as caught:
+                self.backup()
+            # Each run names the same problem: the last run's files are not left
+            # behind to be taken for changes the backup did not make.
+            message = str(caught.exception)
+            self.assertIn('1 user files but the database 2 users', message)
+            self.assertEqual(self.status(), '')
+
+    def test_a_failed_commit_leaves_the_checkout_as_it_was(self) -> None:
+        hooks = self.directory / 'hooks'
+        hooks.mkdir()
+        hook = hooks / 'pre-commit'
+        hook.write_text('#!/bin/sh\nexit 1\n')
+        hook.chmod(0o755)
+        git(self.checkout, 'config', 'core.hooksPath', str(hooks))
+        first = self.store.create_user('first@example.com', 'fi')
+        with self.assertRaises(BackupError):
             self.backup()
-        self.assertIn('1 user files but the database 2 users', str(caught.exception))
+        self.assertEqual(self.status(), '')
+        self.assertEqual([path.name for path in self.checkout.iterdir()], ['.git'])
+        hook.unlink()
+        self.backup()
+        hook.write_text('#!/bin/sh\nexit 1\n')
+        hook.chmod(0o755)
+        second = self.store.create_user('second@example.com', 'en')
+        with self.assertRaises(BackupError):
+            self.backup()
+        self.assertEqual(self.status(), '')
+        self.assertTrue(self.file_of(first.id).exists())
+        self.assertFalse(self.file_of(second.id).exists())
+        hook.unlink()
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual((result.written, result.pushed), (1, True))
 
     def test_a_failed_push_keeps_the_changes_for_the_next_run(self) -> None:
         user = self.store.create_user('reader@example.com', 'fi')
@@ -410,6 +444,10 @@ class TestIdentityFiles(unittest.TestCase):
                     read_identity(path)
         with self.assertRaises(RestoreError):
             read_identity(self.directory / 'missing.txt')
+        not_text = self.directory / 'not-text.txt'
+        not_text.write_bytes(b'\xff\xfe\x00AGE')
+        with self.assertRaises(RestoreError):
+            read_identity(not_text)
 
 
 if __name__ == '__main__':

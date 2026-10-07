@@ -25,7 +25,7 @@ from typing import Any, Final, cast
 import pyrage
 
 from eight_characters.accounts.records import canonical_json, encode_user, is_id
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import AccountStore, BackupSnapshot
 
 ENCRYPTED_SUFFIX: Final = '.age'
 MANIFEST: Final = 'manifest.json'
@@ -299,17 +299,90 @@ def _push_if_ahead(root: Path) -> bool:
     return True
 
 
+def _discard_uncommitted(root: Path) -> None:
+    """Puts the work tree and the index back to the last commit, dropping what a run
+    wrote. The run began with a clean checkout, so everything uncommitted is its own."""
+    if _git_ref(root, 'HEAD') is None:
+        _git(root, 'read-tree', '--empty')
+    else:
+        _git(root, 'reset', '--quiet', '--hard', 'HEAD')
+    _git(root, 'clean', '--quiet', '--force', '-d')
+
+
+def _write_and_commit(
+    root: Path,
+    snapshot: BackupSnapshot,
+    recipient: pyrage.x25519.Recipient,
+    scratch: Path,
+) -> tuple[int, int, str | None]:
+    """Writes the snapshot's records into the work tree and commits them; returns
+    how many were written and removed, and the commit (None if nothing changed)."""
+    touched: list[str] = []
+    for name, content in STATIC_FILES.items():
+        if _write_if_different(root / name, content, scratch):
+            touched.append(name)
+    written = 0
+    removed = 0
+    for change in snapshot.changes:
+        name = f'{change.path}{ENCRYPTED_SUFFIX}'
+        target = root / name
+        if change.user is not None:
+            ciphertext = pyrage.encrypt(encode_user(change.user), [recipient])
+            _write_atomically(target, ciphertext, scratch)
+            written += 1
+            touched.append(name)
+        elif target.exists():
+            target.unlink()
+            _remove_empty_parents(target.parent, root)
+            removed += 1
+            touched.append(name)
+        # A record made and deleted between two runs never reached the backup.
+    manifest = Manifest(recipient=str(recipient), user_count=snapshot.user_count)
+    if _write_if_different(root / MANIFEST, manifest_bytes(manifest), scratch):
+        touched.append(MANIFEST)
+    on_disk = len(record_files(root))
+    if on_disk != snapshot.user_count:
+        raise BackupError(
+            f'The checkout holds {on_disk} user files but the database '
+            f'{snapshot.user_count} users.'
+        )
+    if not touched:
+        return written, removed, None
+    _git(
+        root,
+        'add',
+        '--all',
+        '--pathspec-from-file=-',
+        '--pathspec-file-nul',
+        stdin='\0'.join(touched).encode(),
+    )
+    if not _git(root, 'diff', '--cached', '--name-only'):
+        return written, removed, None
+    _git(
+        root,
+        *_COMMITTER,
+        'commit',
+        '--quiet',
+        '--message',
+        f'backup: {written} written, {removed} removed',
+    )
+    return written, removed, _git(root, 'rev-parse', 'HEAD').strip()
+
+
 def run_backup(
     store: AccountStore, checkout: Path, recipient: pyrage.x25519.Recipient
 ) -> BackupResult:
     """Copies every record changed since the last backup into the checkout, then
-    commits, pushes and marks the changes backed up, in that order."""
+    commits, pushes and marks the changes backed up, in that order.
+
+    A run that fails before its commit puts the checkout back as it found it, so the
+    next run meets the same problem and names it.
+    """
     root = work_tree(checkout)
-    recipient_text = str(recipient)
     with checkout_lock(root):
         require_clean(root)
         existing = read_manifest(root)
-        if existing is not None and existing.recipient != recipient_text:
+        if existing is not None and existing.recipient != str(recipient):
             raise BackupError(
                 'The backup was encrypted to another key. Files made for two keys '
                 'would leave a restore that can read only some of them.'
@@ -317,55 +390,13 @@ def run_backup(
         record_files(root)
         scratch = Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
         snapshot = store.backup_snapshot()
-        touched: list[str] = []
-        for name, content in STATIC_FILES.items():
-            if _write_if_different(root / name, content, scratch):
-                touched.append(name)
-        written = 0
-        removed = 0
-        for change in snapshot.changes:
-            name = f'{change.path}{ENCRYPTED_SUFFIX}'
-            target = root / name
-            if change.user is not None:
-                ciphertext = pyrage.encrypt(encode_user(change.user), [recipient])
-                _write_atomically(target, ciphertext, scratch)
-                written += 1
-                touched.append(name)
-            elif target.exists():
-                target.unlink()
-                _remove_empty_parents(target.parent, root)
-                removed += 1
-                touched.append(name)
-            # A record made and deleted between two runs never reached the backup.
-        manifest = Manifest(recipient=recipient_text, user_count=snapshot.user_count)
-        if _write_if_different(root / MANIFEST, manifest_bytes(manifest), scratch):
-            touched.append(MANIFEST)
-        on_disk = len(record_files(root))
-        if on_disk != snapshot.user_count:
-            raise BackupError(
-                f'The checkout holds {on_disk} user files but the database '
-                f'{snapshot.user_count} users.'
+        try:
+            written, removed, commit = _write_and_commit(
+                root, snapshot, recipient, scratch
             )
-        commit: str | None = None
-        if touched:
-            _git(
-                root,
-                'add',
-                '--all',
-                '--pathspec-from-file=-',
-                '--pathspec-file-nul',
-                stdin='\0'.join(touched).encode(),
-            )
-            if _git(root, 'diff', '--cached', '--name-only'):
-                _git(
-                    root,
-                    *_COMMITTER,
-                    'commit',
-                    '--quiet',
-                    '--message',
-                    f'backup: {written} written, {removed} removed',
-                )
-                commit = _git(root, 'rev-parse', 'HEAD').strip()
+        except BaseException:
+            _discard_uncommitted(root)
+            raise
         pushed = _push_if_ahead(root)
         store.mark_backed_up(snapshot.through_seq)
     return BackupResult(

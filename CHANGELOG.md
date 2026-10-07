@@ -12,6 +12,7 @@ Accounts get a home: one database, and a backup of every account as its own encr
   - Every change to a backed-up record is logged in the same transaction as the change.
 - **The backup.** Each run copies the accounts changed since the last run that reached the remote into a Git checkout, one file per account, encrypted with age to a public key, so the server and GitHub hold nothing readable. It writes a manifest (the key and the count), commits, pushes, and only then counts the changes as backed up: a failed push leaves them for the next run.
   - A checkout with changes of its own, a file the backup never writes, another key, or a file count that differs from the database stops the run with the reason.
+  - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files.
   - Git never waits for a password and each command has two minutes.
   - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it.
 - **The restore** rebuilds a database from a clone of the backup and the private key. It checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
