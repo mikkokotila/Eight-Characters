@@ -655,12 +655,16 @@ class AccountStore:
                 'DELETE FROM sessions WHERE user_id = ?', (user_id,)
             ).rowcount
 
-    def delete_expired(self, now: str) -> None:
-        """Drops sessions and codes past their time."""
+    def delete_expired(self, now: str, requests_before: str) -> None:
+        """Drops sessions and codes past their time, and the record of codes asked
+        for before `requests_before`, the start of the hourly limits' window."""
         with self._write() as connection:
             connection.execute('DELETE FROM sessions WHERE expires_at <= ?', (now,))
             connection.execute(
                 'DELETE FROM sign_in_codes WHERE expires_at <= ?', (now,)
+            )
+            connection.execute(
+                'DELETE FROM code_requests WHERE requested_at < ?', (requests_before,)
             )
 
     def account_data(self, user_id: str) -> dict[str, Any]:

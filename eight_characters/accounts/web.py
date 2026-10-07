@@ -500,8 +500,10 @@ def export_account(
     response: Response, current: SessionDependency, accounts: AccountsDependency
 ) -> dict[str, Any]:
     """Everything kept for the account, as a JSON file. Returned as data, so a renewed
-    session cookie goes out with it."""
+    session cookie goes out with it. What has passed its time is dropped first, so the
+    file holds what the account keeps, and no request older than the hour."""
     user = _signed_in(current).user
+    accounts.sign_in.sweep()
     try:
         data = accounts.store.account_data(user.id)
     except UnknownUser as exc:

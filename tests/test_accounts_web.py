@@ -1,5 +1,6 @@
 import json
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from datetime import timedelta
@@ -346,6 +347,18 @@ class TestTheAccount(AccountApiTestCase):
         request = {'client': 'testclient', 'requested_at': '2026-10-07T12:00:00Z'}
         self.assertEqual(exported['code_requests'], [request])
         self.assertIsNone(exported['sign_in_code'])
+
+    def test_an_export_holds_no_request_older_than_the_hour(self) -> None:
+        self.clock.advance(timedelta(hours=1, seconds=1).total_seconds())
+        reply = self.client.get('/api/account/export')
+        self.assertEqual(json.loads(reply.content)['code_requests'], [])
+        # Dropped, not only left out of the file.
+        connection = sqlite3.connect(self.accounts.store.path)
+        try:
+            count = connection.execute('SELECT COUNT(*) FROM code_requests').fetchone()
+        finally:
+            connection.close()
+        self.assertEqual(count, (0,))
 
     def test_an_export_in_a_sessions_second_half_renews_its_cookie(self) -> None:
         self.clock.advance(timedelta(days=16).total_seconds())
