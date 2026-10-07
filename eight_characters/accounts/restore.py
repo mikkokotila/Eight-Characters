@@ -12,6 +12,8 @@ import pyrage
 
 from eight_characters.accounts.backup import (
     BackupError,
+    checkout_lock,
+    head_tree,
     read_manifest,
     record_files,
     require_clean,
@@ -36,6 +38,8 @@ def read_identity(path: Path) -> pyrage.x25519.Identity:
         lines = path.read_text(encoding='utf-8').splitlines()
     except OSError as exc:
         raise RestoreError(f'Cannot read the key file {path}: {exc.strerror}') from exc
+    except UnicodeDecodeError as exc:
+        raise RestoreError(f'{path} is not text, so it holds no age key.') from exc
     keys = [line.strip() for line in lines if line.strip() and not line.startswith('#')]
     if len(keys) != 1:
         raise RestoreError(f'{path} must hold exactly one age private key.')
@@ -52,36 +56,41 @@ def restore_backup(
     if database.exists():
         raise RestoreError(f'{database} exists already; restore into a new path.')
     root = work_tree(checkout)
-    require_clean(root)
-    manifest = read_manifest(root)
-    if manifest is None:
-        raise RestoreError('The checkout has no manifest.json; it is no backup.')
-    if manifest.recipient != str(identity.to_public()):
-        raise RestoreError('This key is not the one the backup was encrypted to.')
-    users: list[User] = []
-    emails: set[str] = set()
-    for name, user_id in record_files(root):
+    # Held while reading, so a backup run cannot change files half way through.
+    with checkout_lock(root):
+        require_clean(root)
+        manifest = read_manifest(root)
+        if manifest is None:
+            raise RestoreError('The checkout has no manifest.json; it is no backup.')
+        tree = head_tree(root)
+        if tree is None:
+            raise RestoreError('The checkout has no commits; it is no backup.')
+        if manifest.recipient != str(identity.to_public()):
+            raise RestoreError('This key is not the one the backup was encrypted to.')
+        users: list[User] = []
+        emails: set[str] = set()
+        for name, user_id in record_files(root):
+            try:
+                plaintext = pyrage.decrypt((root / name).read_bytes(), [identity])
+            except pyrage.DecryptError as exc:
+                raise RestoreError(f'{name} does not decrypt with this key.') from exc
+            try:
+                user = decode_user(plaintext)
+            except RecordError as exc:
+                raise RestoreError(f'{name}: {exc}') from exc
+            if user.id != user_id:
+                raise RestoreError(f'{name} holds the record of another user.')
+            if user.email in emails:
+                raise RestoreError(f"{name} repeats another account's email address.")
+            emails.add(user.email)
+            users.append(user)
+        if len(users) != manifest.user_count:
+            raise RestoreError(
+                f'The backup holds {len(users)} users but its manifest counts '
+                f'{manifest.user_count}.'
+            )
         try:
-            plaintext = pyrage.decrypt((root / name).read_bytes(), [identity])
-        except pyrage.DecryptError as exc:
-            raise RestoreError(f'{name} does not decrypt with this key.') from exc
-        try:
-            user = decode_user(plaintext)
-        except RecordError as exc:
-            raise RestoreError(f'{name}: {exc}') from exc
-        if user.id != user_id:
-            raise RestoreError(f'{name} holds the record of another user.')
-        if user.email in emails:
-            raise RestoreError(f"{name} repeats another account's email address.")
-        emails.add(user.email)
-        users.append(user)
-    if len(users) != manifest.user_count:
-        raise RestoreError(
-            f'The backup holds {len(users)} users but its manifest counts '
-            f'{manifest.user_count}.'
-        )
-    try:
-        AccountStore.restore(database, users)
-    except StoreError as exc:
-        raise RestoreError(str(exc)) from exc
+            AccountStore.restore(database, users, tree=tree)
+        except StoreError as exc:
+            raise RestoreError(str(exc)) from exc
     return RestoreResult(users=len(users))

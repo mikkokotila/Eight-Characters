@@ -57,10 +57,11 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         """
         CREATE TABLE backup_progress (
             id INTEGER PRIMARY KEY CHECK (id = 1),
-            backed_up_seq INTEGER NOT NULL
+            backed_up_seq INTEGER NOT NULL,
+            tree TEXT
         ) STRICT
         """,
-        'INSERT INTO backup_progress (id, backed_up_seq) VALUES (1, 0)',
+        'INSERT INTO backup_progress (id, backed_up_seq, tree) VALUES (1, 0, NULL)',
     ),
     # 2: sessions, sign-in codes and the requests for them. None is backed up: after a
     # restore, people sign in again.
@@ -156,6 +157,9 @@ class BackupSnapshot:
     through_seq: int
     changes: tuple[RecordChange, ...]
     user_count: int
+    # The Git tree of the backup's last commit, or of the backup a restore read;
+    # None before the first.
+    tree: str | None
 
 
 def _utc_now() -> datetime:
@@ -334,7 +338,7 @@ class AccountStore:
         cls, path: Path, *, clock: Callable[[], datetime] = _utc_now
     ) -> 'AccountStore':
         """A new, empty database at `path`, which must not exist."""
-        return cls._build(path, (), clock)
+        return cls._build(path, (), None, clock)
 
     @classmethod
     def restore(
@@ -342,36 +346,47 @@ class AccountStore:
         path: Path,
         users: Sequence[User],
         *,
+        tree: str,
         clock: Callable[[], datetime] = _utc_now,
     ) -> 'AccountStore':
-        """A new database at `path` holding exactly these users, as backed up.
+        """A new database at `path` holding exactly these users, as backed up in the
+        Git tree `tree`.
 
         Nothing is logged for the backup: the records came from it.
         """
-        return cls._build(path, users, clock)
+        return cls._build(path, users, tree, clock)
 
     @classmethod
     def _build(
         cls,
         path: Path,
         users: Sequence[User],
+        tree: str | None,
         clock: Callable[[], datetime],
     ) -> 'AccountStore':
         if path.exists():
             raise StoreError(f'{path} exists already; refusing to build over it.')
         partial = path.with_name(f'{path.name}.partial')
-        if partial.exists():
-            raise StoreError(
-                f'{partial} is left from an interrupted build; remove it first.'
-            )
+        # Made here and nowhere else at the same time: a second build fails at once
+        # instead of sharing, or later removing, this one's file.
         try:
-            with _connection(partial, 'rwc') as connection:
-                os.chmod(partial, 0o600)
+            descriptor = os.open(partial, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+        except FileExistsError as exc:
+            raise StoreError(
+                f'{partial} exists: another build is under way, or one was '
+                'interrupted. Remove it if none is running.'
+            ) from exc
+        os.close(descriptor)
+        try:
+            with _connection(partial) as connection:
                 _migrate(connection, 0)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
                     for user in users:
                         _insert_user(connection, user)
+                    connection.execute(
+                        'UPDATE backup_progress SET tree = ? WHERE id = 1', (tree,)
+                    )
                 except BaseException:
                     connection.execute('ROLLBACK')
                     raise
@@ -706,12 +721,26 @@ class AccountStore:
                 for path, record_id in sorted(latest.items())
             )
             user_count = _scalar(connection, 'SELECT COUNT(*) FROM users')
+            row = connection.execute(
+                'SELECT tree FROM backup_progress WHERE id = 1'
+            ).fetchone()
+        tree: object = None if row is None else row[0]
+        if tree is not None and not isinstance(tree, str):
+            raise StoreError('The backup progress holds a tree that is not text.')
         return BackupSnapshot(
             after_seq=after,
             through_seq=through,
             changes=changes,
             user_count=user_count,
+            tree=tree,
         )
+
+    def record_backup_tree(self, tree: str) -> None:
+        """Remembers the Git tree of the commit the backup just made."""
+        with self._write() as connection:
+            connection.execute(
+                'UPDATE backup_progress SET tree = ? WHERE id = 1', (tree,)
+            )
 
     def mark_backed_up(self, through_seq: int) -> None:
         """Records changes up to `through_seq` as safely in the backup."""
