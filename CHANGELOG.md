@@ -20,6 +20,10 @@ Charts need an account; the start page does not. Creating a chart while signed o
 - **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It renews a session in its second half, and removes the cookie of one that ended.
 - **The app reads its account settings, and opens its database, as it starts**: a missing or malformed setting stops it with the reason. Running it on a laptop needs the settings in [Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop).
 
+### Fixed
+- **Signing in when another tab made the account and it was deleted meanwhile** refused nothing and answered 500; it now refuses the code, as when an account goes before its session is made.
+- **A session renewed by one request while another found it ended** was deleted by the second, signing out a browser holding a fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live.
+
 ### Tests
 - `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), renewing and ending the cookie there, and starting the app with missing settings, a missing database, and complete ones.
 - The API tests sign in as the page does.
