@@ -40,8 +40,10 @@ Ctrl+K, on a chart) opens it:
 ## What is kept
 
 The account's email address and language, when it was made and changed, and its
-sessions. The IP address a code is asked from is kept for an hour, against misuse.
-Charts are calculated, not stored.
+sessions. The IP address a code is asked from is kept with that request, for the
+hourly limits on codes; a request is dropped once it is an hour old, when the next
+code is asked for. Deleting the account leaves its requests until then, so that the
+limits hold. Charts are calculated, not stored.
 
 A session lasts 30 days from its last use. After it ends, or after signing out on
 another device, the next chart asks you to sign in again, and then opens.
