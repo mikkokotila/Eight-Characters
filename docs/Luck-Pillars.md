@@ -1,8 +1,9 @@
 # Ten-year luck pillars (Da Yun)
 
-The backend computes luck pillars as an optional enrichment of
-`POST /api/four_pillars`. The natal chart and its enrichments retain their
-existing contracts. The frontend does not request or render this enrichment.
+The backend computes luck pillars, and what each brings to the natal chart, as
+optional enrichments of `POST /api/four_pillars`. The natal chart and its
+enrichments retain their existing contracts. The frontend does not request or
+render these enrichments yet.
 
 ## Request
 
@@ -126,6 +127,57 @@ of the first onset, counted like the cycles' own boundaries: a 29 February onset
 clamps to 28 February in a common year, and the clamp never carries into a later
 boundary. Its age is the cycle's `start_age` with five more years.
 
+## Luck context
+
+`include_luck_context` (`false` by default) adds `luck_context`: what each luck
+pillar brings to the natal chart, phase by phase. It requires `include_luck_pillars`,
+and so `gender`; asked for alone, it is refused with `400`.
+
+The luck pillar stands as a fifth position after the natal four, under the natal
+relationship rules ([Natal relationships](api.md#natal-relationships-include_interactions)), and it counts as adjacent to
+every natal pillar. The phase rule decides what acts when:
+
+- in the stem phase only: the luck stem, and each relationship it forms;
+- in both phases: the luck branch, its hidden stems, the Day Master's stage on it, and
+  each relationship it forms.
+
+| Field | Meaning |
+| --- | --- |
+| `policy` | `luck_context_v1` |
+| `natal_counts` | The natal chart's own counts (see Counts) |
+| `decades` | One entry for each luck pillar, in the same order |
+
+Each decade:
+
+| Field | Meaning |
+| --- | --- |
+| `sequence` | The luck pillar's `sequence` |
+| `occurrences` | The luck stem, then the hidden stems of the luck branch in main, middle, residual order, recorded as the role profile records stems (`char`, `pinyin`, `element`, `polarity`, `pillar` `luck`, `component` `stem` or `hidden_stem`, `branch`, `qi_type`, `ten_god` relative to the natal Day Master), with `new_to_chart` and `phases` |
+| `day_master_stage` | The Day Master's stage on the luck branch: 1 (Birth) to 12 (Nurture) |
+| `roots` | The luck branch's hidden stems of the Day Master's element, each with `match` (`exact_stem` or `opposite_polarity`) and `phases` |
+| `interactions` | Each relationship the luck pillar takes part in, in the shape and order of `interactions` (rule, then position), with `phases` |
+| `absorbed` | Each natal half that a complete whole with the luck pillar absorbs for the decade: its `id`, the absorbing wholes' ids in `by`, and `phases` |
+| `counts` | `stem` and `branch`: the counts with the luck pillar, phase by phase |
+
+`new_to_chart` is true when no natal stem occurrence has that Ten God.
+In `interactions`, the luck member's `pillar` is `luck`, and its ids name it last, as
+in `stem_combination:1:month-luck`. A relationship with the luck pillar is `adjacent`
+when its natal members are: always for a pair, and for a triple when its two natal
+pillars stand side by side. The natal halves of a frame or punishment triangle that a
+whole with the luck pillar completes are `absorbed` for the decade. A half that a
+natal whole already absorbs is not a natal relationship, so it is never listed there.
+
+Counts are tallies, not weights or strengths. Each holds every element and every Ten
+God, with zero where there is none:
+
+- `elements`: each visible character, stem or branch, by its own element. That is
+  eight natal characters; ten in the stem phase, nine in the branch phase.
+- `ten_gods`: each stem occurrence by its Ten God, that is, every visible stem but the
+  Day Master and every hidden stem. Natal ones, plus the luck pillar's that act in the
+  phase.
+
+Nothing in the context weighs strength, applies a transformation or predicts.
+
 ## Uncertainty and reference comparison
 
 Luck calculations use a declared 3-second solar-term allowance, added to the
@@ -174,3 +226,9 @@ supported birth endpoints, independent package sequences and ephemeris instants,
 and deterministic JSON.
 `tests/test_api_luck_pillars.py` covers input validation, city resolution, DST
 folds/gaps, explicit internal errors, OpenAPI and unchanged natal enrichments.
+`tests/test_api_interactions.py` compares the relationships a luck pillar forms, and
+the natal halves it absorbs, with independent readings of the canon on every
+combination of four natal branches and a luck branch, and of four natal stems and a
+luck stem. `tests/test_api_luck_context.py` checks the context of the design's sample
+chart (14 August 1975, 07:45, Helsinki, female) by hand, decade by decade, and
+through the API.
