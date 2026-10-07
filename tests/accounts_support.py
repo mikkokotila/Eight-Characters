@@ -1,7 +1,11 @@
 """Shared set-up for the account tests: a fixed clock, Git remotes and checkouts."""
 
+import email
+import re
 import subprocess
 from datetime import UTC, datetime, timedelta
+from email.message import EmailMessage
+from email.policy import default
 from pathlib import Path
 
 # Commits the tests make by hand carry an identity of their own, so no global Git
@@ -62,3 +66,61 @@ def all_object_contents(repository: Path) -> bytes:
         capture_output=True,
         check=True,
     ).stdout
+
+
+# ── The account API ──
+
+TEST_ORIGIN = 'https://testserver'
+TEST_SECRET = 'a test secret that is at least 32 bytes long'
+
+
+class FakePersonCheck:
+    """Answers Turnstile's question as told, and remembers what it was asked."""
+
+    def __init__(self, answer: bool | Exception = True) -> None:
+        self.answer = answer
+        self.asked: list[tuple[str, str | None]] = []
+
+    def verify(self, token: str, client: str | None) -> bool:
+        self.asked.append((token, client))
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        return self.answer
+
+
+def account_environment(directory: Path, **changes: str) -> dict[str, str]:
+    """A complete account setup in `directory`: its database and a mail folder."""
+    mail = directory / 'mail'
+    mail.mkdir(exist_ok=True)
+    env = {
+        'EC_APP_ORIGIN': TEST_ORIGIN,
+        'EC_DATABASE_PATH': str(directory / 'accounts.sqlite3'),
+        'EC_SECRET_KEY': TEST_SECRET,
+        'EC_MAIL_FROM': 'BaZi <kirjaudu@example.com>',
+        'EC_MAIL_TRANSPORT': 'directory',
+        'EC_MAIL_DIRECTORY': str(mail),
+        'EC_TURNSTILE_SITE_KEY': '1x00000000000000000000AA',
+        'EC_TURNSTILE_SECRET': '1x0000000000000000000000000000000AA',
+        'EC_CLIENT_IP_HEADER': 'peer',
+        'EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS': '5',
+        'EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT': '20',
+    }
+    env.update(changes)
+    return env
+
+
+def mails_to(directory: Path, address: str) -> list[EmailMessage]:
+    """The messages the mail folder holds for an address, oldest first."""
+    found: list[EmailMessage] = []
+    for path in sorted((directory / 'mail').glob('*.eml')):
+        message = email.message_from_bytes(path.read_bytes(), policy=default)
+        if isinstance(message, EmailMessage) and message['To'] == address:
+            found.append(message)
+    return found
+
+
+def code_in(message: EmailMessage) -> str:
+    match = re.search(r'(\d{3}) (\d{3})$', str(message['Subject']))
+    if match is None:
+        raise AssertionError(f'No code in: {message["Subject"]}')
+    return match.group(1) + match.group(2)
