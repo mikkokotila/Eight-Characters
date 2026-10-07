@@ -1,5 +1,49 @@
 # Changelog
 
+## 0.33.0
+
+Standard reads every relationship family the canon defines. Luck pillars will form these families with a chart most of all, so they come first.
+
+### Added
+- **Five more relationship families**, rules 22–44. They follow `canon/Taxonomy.md` where Evolution's catalog differs from it:
+  - half-frames: two of a frame's three branches, one of them its Peak Branch (子 Zi, 卯 Mao, 午 Wu or 酉 You). Birth and Storage without the Peak only cradle it and are not listed;
+  - the four directional combinations, 亥子丑 Hai-Zi-Chou, 寅卯辰 Yin-Mao-Chen, 巳午未 Si-Wu-Wei and 申酉戌 Shen-You-Xu, all three present;
+  - the punishments: the triangles of Ingratitude, 寅巳申 Yin-Si-Shen, and of Bullying by Strength, 丑未戌 Chou-Wei-Xu, two of three as a half-punishment, and 子卯 Zi-Mao;
+  - the four self-punishments: 辰 Chen, 午 Wu, 酉 You or 亥 Hai in two pillars;
+  - the six harms.
+
+  A complete frame or triangle absorbs the halves among its own members.
+- **Their readings, in English.** Each finding reads the canon's paragraphs for its own form:
+  - a half-frame: its frame's opening, the points of its two branches and the paragraph on half-frames;
+  - a whole punishment: what applies to the whole, and a half-punishment what applies to two of three;
+  - a self-punishment: its own branch.
+
+  Every paragraph of the canon now reaches some chart's reading. The labels the reading relies on are checked when the app starts.
+- **On the chart.** A combination, clash or frame keeps an arc of its own, as before. A half-frame, directional combination, punishment or harm joins an arc that already spans the same columns, as a strand 3px inside the one before. Where none does, it gets an arc of its own.
+  - Without the strands, 730 of the 20,736 combinations of four branches would need more than the four levels the arcs' rows hold. With them, every one fits in four levels and at most three strands.
+  - Charts with only the earlier families are laid out exactly as before.
+- **A line for each kind**, on the arcs, in the list and around the selected cards:
+  - a directional combination: 2px solid;
+  - a punishment, half-punishment or self-punishment: 2px dashed;
+  - a harm: 2px dotted;
+  - a half-frame: double, like its frame.
+- **Names.** English: Half-frame, Directional combination, Punishment, Half-punishment, Self-punishment, Branch harm. The Finnish names are provisional, for the maintainer to confirm: Puolikas kolmen haaran harmonia, Suuntayhdistelmä, Rangaistus, Puolikas rangaistus, Itserangaistus, Haarojen vahinko.
+
+### Changed
+- `include_interactions`: `kind` takes six more values, and `completeness` takes `half` (two of a triple's three). Rules 1–21, their ids and their order are unchanged.
+- An empty list says "No relationships between these pillars."
+- The canon's "About" lines under the list go by family, so a frame and a half-frame share one.
+
+### Tests
+- New tests:
+  - a brute-force reading of the canon's own tables, compared with the detector on every combination of four branches;
+  - the shared families' findings, ids and order, compared with the detection before these families came, on every combination of four branches and of four stems;
+  - each form's paragraphs;
+  - the arcs' levels and strands on every combination;
+  - real charts for each new family, an arc of three strands and six feet on one card.
+- Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.
+- Version bumped to `0.33.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.30.0
 
 The Evolution explorer: a parameter pane, and runs that carry their own parameters. This rebuilds PR #7 from today's `main`.
