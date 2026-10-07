@@ -1,0 +1,419 @@
+"""The backup: every account record as its own age-encrypted file in a Git checkout.
+
+A run writes the records changed since the last run that reached the remote, commits
+them and pushes; only then does the database count them as backed up. Files are
+encrypted to a public key (the recipient), so the server and GitHub hold nothing
+readable: the private key stays offline with whoever restores.
+
+The backup job owns the checkout. A checkout with changes of its own, a manifest made
+for another key, or a file count that differs from the database stops the run, with
+the reason, rather than being worked around.
+"""
+
+import fcntl
+import json
+import os
+import re
+import subprocess
+import tempfile
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Final, cast
+
+import pyrage
+
+from eight_characters.accounts.records import canonical_json, encode_user, is_id
+from eight_characters.accounts.store import AccountStore
+
+ENCRYPTED_SUFFIX: Final = '.age'
+MANIFEST: Final = 'manifest.json'
+MANIFEST_SCHEMA: Final = 1
+USER_FILE: Final = 'user.json.age'
+# Everything a backup checkout may hold at its root.
+TOP_LEVEL: Final = frozenset({'.git', '.gitattributes', 'README.md', MANIFEST, 'users'})
+_MANIFEST_FIELDS: Final = frozenset({'counts', 'encryption', 'recipient', 'schema'})
+_SHARD = re.compile(r'[0-9a-f]{2}')
+# A hung command fails the run instead of holding it forever.
+GIT_TIMEOUT_SECONDS: Final = 120.0
+README: Final = b"""# Eight Characters account backup
+
+Every account record is its own file under `users/`, encrypted with age
+(https://age-encryption.org) to the public key in `manifest.json`. Only the holder
+of the matching private key can read them.
+
+Rebuild an account database from a clone of this repository:
+
+    python -m eight_characters.accounts restore --checkout . --identity KEY_FILE --database NEW_DATABASE
+
+Read one record:
+
+    age --decrypt --identity KEY_FILE users/3f/3f.../user.json.age
+
+The backup job writes everything here. Commits made by hand stop it.
+"""
+STATIC_FILES: Final[dict[str, bytes]] = {
+    'README.md': README,
+    '.gitattributes': b'*.age binary\n',
+}
+_COMMITTER: Final = (
+    '-c',
+    'user.name=Eight Characters backup',
+    '-c',
+    'user.email=backup@eight-characters.invalid',
+    '-c',
+    'commit.gpgsign=false',
+)
+
+
+class BackupError(Exception):
+    """The backup run stopped; the message says why."""
+
+
+class BackupBusy(BackupError):
+    """Another backup run holds the checkout."""
+
+
+@dataclass(frozen=True)
+class BackupResult:
+    written: int
+    removed: int
+    commit: str | None
+    pushed: bool
+    backed_up_seq: int
+
+
+@dataclass(frozen=True)
+class Manifest:
+    """What the backup says of itself: the key its files are encrypted to, and how
+    many records it holds."""
+
+    recipient: str
+    user_count: int
+
+
+def _git_run(
+    root: Path, args: tuple[str, ...], stdin: bytes | None = None
+) -> subprocess.CompletedProcess[bytes]:
+    try:
+        return subprocess.run(
+            ('git', '-C', str(root), *args),
+            input=stdin,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            check=False,
+            # Never wait for a password nobody will type.
+            env={**os.environ, 'GIT_TERMINAL_PROMPT': '0'},
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise BackupError(
+            f'git {args[0]} took longer than {GIT_TIMEOUT_SECONDS:.0f} s.'
+        ) from exc
+
+
+def _git(root: Path, *args: str, stdin: bytes | None = None) -> str:
+    completed = _git_run(root, args, stdin)
+    if completed.returncode != 0:
+        message = completed.stderr.decode(errors='replace').strip()
+        raise BackupError(f'git {args[0]} failed ({completed.returncode}): {message}')
+    return completed.stdout.decode()
+
+
+def _git_ref(root: Path, ref: str) -> str | None:
+    """The commit a ref names, or None when it names none (yet)."""
+    completed = _git_run(
+        root, ('rev-parse', '--verify', '--quiet', f'{ref}^{{commit}}')
+    )
+    if completed.returncode == 1:
+        return None
+    if completed.returncode != 0:
+        message = completed.stderr.decode(errors='replace').strip()
+        raise BackupError(f'git rev-parse failed ({completed.returncode}): {message}')
+    return completed.stdout.decode().strip()
+
+
+def work_tree(checkout: Path) -> Path:
+    """The checkout's root, which must be the root of its own Git work tree."""
+    if not checkout.is_dir():
+        raise BackupError(f'The backup checkout {checkout} is not a folder.')
+    root = checkout.resolve()
+    completed = _git_run(root, ('rev-parse', '--show-toplevel'))
+    top = completed.stdout.decode().strip()
+    if completed.returncode != 0 or Path(top).resolve() != root:
+        raise BackupError(f'{checkout} is not the root of a Git checkout.')
+    return root
+
+
+@contextmanager
+def checkout_lock(root: Path) -> Generator[None, None, None]:
+    """Holds the checkout for one run; a second run at the same time is refused."""
+    git_dir = Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
+    with open(git_dir / 'eight-characters-backup.lock', 'w') as handle:
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise BackupBusy('Another backup run holds the checkout.') from exc
+        yield
+
+
+def require_clean(root: Path) -> None:
+    status = _git(root, 'status', '--porcelain=v1', '--untracked-files=all')
+    if status.strip():
+        raise BackupError(
+            'The backup checkout has changes the backup did not make; '
+            f'it holds only what the backup writes:\n{status.rstrip()}'
+        )
+
+
+def _write_atomically(target: Path, data: bytes, scratch: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    # Written beside the repository's own files, so a crash leaves nothing in the tree.
+    descriptor, name = tempfile.mkstemp(dir=scratch, prefix='eight-characters-')
+    try:
+        with os.fdopen(descriptor, 'wb') as handle:
+            handle.write(data)
+        os.replace(name, target)
+    except BaseException:
+        Path(name).unlink(missing_ok=True)
+        raise
+
+
+def _write_if_different(target: Path, data: bytes, scratch: Path) -> bool:
+    if target.is_file() and target.read_bytes() == data:
+        return False
+    _write_atomically(target, data, scratch)
+    return True
+
+
+def _remove_empty_parents(directory: Path, root: Path) -> None:
+    while directory != root and directory.is_dir() and not any(directory.iterdir()):
+        directory.rmdir()
+        directory = directory.parent
+
+
+def manifest_bytes(manifest: Manifest) -> bytes:
+    return canonical_json(
+        {
+            'counts': {'user': manifest.user_count},
+            'encryption': 'age',
+            'recipient': manifest.recipient,
+            'schema': MANIFEST_SCHEMA,
+        }
+    )
+
+
+def read_manifest(root: Path) -> Manifest | None:
+    """The checkout's manifest, or None before the first backup wrote one."""
+    path = root / MANIFEST
+    if not path.exists():
+        return None
+    data = path.read_bytes()
+    try:
+        value: object = json.loads(data.decode('utf-8'))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise BackupError('The backup manifest is not UTF-8 JSON.') from exc
+    if not isinstance(value, dict):
+        raise BackupError('The backup manifest must be a JSON object.')
+    fields = cast(dict[str, Any], value)
+    if frozenset(fields) != _MANIFEST_FIELDS:
+        raise BackupError(
+            f'The backup manifest has the wrong fields: {sorted(fields)}.'
+        )
+    schema: object = fields['schema']
+    if type(schema) is not int or schema != MANIFEST_SCHEMA:
+        raise BackupError(
+            f'A backup manifest of schema {schema!r} is not one this app reads.'
+        )
+    if fields['encryption'] != 'age':
+        raise BackupError('The backup manifest names an encryption other than age.')
+    recipient: object = fields['recipient']
+    counts: object = fields['counts']
+    if not isinstance(recipient, str) or not isinstance(counts, dict):
+        raise BackupError("The backup manifest's recipient or counts are malformed.")
+    tally = cast(dict[str, Any], counts)
+    user_count: object = tally.get('user')
+    if (
+        frozenset(tally) != frozenset({'user'})
+        or type(user_count) is not int
+        or user_count < 0
+    ):
+        raise BackupError("The backup manifest's counts are malformed.")
+    manifest = Manifest(recipient=recipient, user_count=user_count)
+    if manifest_bytes(manifest) != data:
+        raise BackupError('The backup manifest is not in canonical form.')
+    return manifest
+
+
+def record_files(root: Path) -> list[tuple[str, str]]:
+    """Every user record file in the checkout, as (path from the root, user id).
+
+    Anything the backup never writes stops it here, so that a restore never meets a
+    file it does not know. Empty folders, which Git does not keep, are passed over.
+    """
+    for entry in root.iterdir():
+        if entry.name not in TOP_LEVEL:
+            raise BackupError(
+                f'The backup holds something it never writes: {entry.name}'
+            )
+    users = root / 'users'
+    if not users.exists():
+        return []
+    if not users.is_dir():
+        raise BackupError('users in the backup is not a folder.')
+    found: list[tuple[str, str]] = []
+    for shard in sorted(users.iterdir()):
+        if not shard.is_dir() or _SHARD.fullmatch(shard.name) is None:
+            raise BackupError(
+                f'The backup holds something it never writes: users/{shard.name}'
+            )
+        for folder in sorted(shard.iterdir()):
+            where = f'users/{shard.name}/{folder.name}'
+            if (
+                not folder.is_dir()
+                or not is_id(folder.name)
+                or folder.name[:2] != shard.name
+            ):
+                raise BackupError(
+                    f'The backup holds something it never writes: {where}'
+                )
+            names = sorted(entry.name for entry in folder.iterdir())
+            if not names:
+                continue
+            if names != [USER_FILE]:
+                raise BackupError(
+                    f'{where} should hold {USER_FILE} alone, not {names}.'
+                )
+            found.append((f'{where}/{USER_FILE}', folder.name))
+    return found
+
+
+def _push_if_ahead(root: Path) -> bool:
+    branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
+    head = _git_ref(root, 'HEAD')
+    if head is None:
+        return False
+    if _git_ref(root, f'refs/remotes/origin/{branch}') == head:
+        return False
+    _git(root, 'push', '--quiet', 'origin', f'HEAD:refs/heads/{branch}')
+    return True
+
+
+def run_backup(
+    store: AccountStore, checkout: Path, recipient: pyrage.x25519.Recipient
+) -> BackupResult:
+    """Copies every record changed since the last backup into the checkout, then
+    commits, pushes and marks the changes backed up, in that order."""
+    root = work_tree(checkout)
+    recipient_text = str(recipient)
+    with checkout_lock(root):
+        require_clean(root)
+        existing = read_manifest(root)
+        if existing is not None and existing.recipient != recipient_text:
+            raise BackupError(
+                'The backup was encrypted to another key. Files made for two keys '
+                'would leave a restore that can read only some of them.'
+            )
+        record_files(root)
+        scratch = Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
+        snapshot = store.backup_snapshot()
+        touched: list[str] = []
+        for name, content in STATIC_FILES.items():
+            if _write_if_different(root / name, content, scratch):
+                touched.append(name)
+        written = 0
+        removed = 0
+        for change in snapshot.changes:
+            name = f'{change.path}{ENCRYPTED_SUFFIX}'
+            target = root / name
+            if change.user is not None:
+                ciphertext = pyrage.encrypt(encode_user(change.user), [recipient])
+                _write_atomically(target, ciphertext, scratch)
+                written += 1
+                touched.append(name)
+            elif target.exists():
+                target.unlink()
+                _remove_empty_parents(target.parent, root)
+                removed += 1
+                touched.append(name)
+            # A record made and deleted between two runs never reached the backup.
+        manifest = Manifest(recipient=recipient_text, user_count=snapshot.user_count)
+        if _write_if_different(root / MANIFEST, manifest_bytes(manifest), scratch):
+            touched.append(MANIFEST)
+        on_disk = len(record_files(root))
+        if on_disk != snapshot.user_count:
+            raise BackupError(
+                f'The checkout holds {on_disk} user files but the database '
+                f'{snapshot.user_count} users.'
+            )
+        commit: str | None = None
+        if touched:
+            _git(
+                root,
+                'add',
+                '--all',
+                '--pathspec-from-file=-',
+                '--pathspec-file-nul',
+                stdin='\0'.join(touched).encode(),
+            )
+            if _git(root, 'diff', '--cached', '--name-only'):
+                _git(
+                    root,
+                    *_COMMITTER,
+                    'commit',
+                    '--quiet',
+                    '--message',
+                    f'backup: {written} written, {removed} removed',
+                )
+                commit = _git(root, 'rev-parse', 'HEAD').strip()
+        pushed = _push_if_ahead(root)
+        store.mark_backed_up(snapshot.through_seq)
+    return BackupResult(
+        written=written,
+        removed=removed,
+        commit=commit,
+        pushed=pushed,
+        backed_up_seq=snapshot.through_seq,
+    )
+
+
+def squash_history(checkout: Path) -> str:
+    """Replaces the backup's history with one commit of its current files.
+
+    Deleted accounts leave the history this way. Everything must be pushed first, and
+    the remote must not have moved: the force push names the commit it replaces.
+    """
+    root = work_tree(checkout)
+    with checkout_lock(root):
+        require_clean(root)
+        branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
+        head = _git_ref(root, 'HEAD')
+        if head is None:
+            raise BackupError('The backup has no commits to squash.')
+        _git(root, 'fetch', '--quiet', 'origin', branch)
+        if _git_ref(root, f'refs/remotes/origin/{branch}') != head:
+            raise BackupError(
+                'The backup checkout and its remote differ; push or reconcile first.'
+            )
+        tree = _git(root, 'rev-parse', 'HEAD^{tree}').strip()
+        squashed = _git(
+            root,
+            *_COMMITTER,
+            'commit-tree',
+            tree,
+            '-m',
+            'backup: history squashed',
+        ).strip()
+        _git(
+            root,
+            'push',
+            '--quiet',
+            f'--force-with-lease=refs/heads/{branch}:{head}',
+            'origin',
+            f'{squashed}:refs/heads/{branch}',
+        )
+        _git(root, 'update-ref', f'refs/heads/{branch}', squashed, head)
+        # The old commits are gone from the remote; drop them here too.
+        _git(root, 'reflog', 'expire', '--expire=now', '--all')
+        _git(root, 'gc', '--quiet', '--prune=now')
+    return squashed
