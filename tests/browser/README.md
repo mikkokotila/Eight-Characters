@@ -2,14 +2,29 @@
 
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend
-build step, or alter the running app. The server address, module, and browser are
-explicit environment settings; a missing setting or browser fails the run.
+build step, or alter the running app. The server address, its mail folder, the module
+and the browser are explicit environment settings; a missing setting or browser fails
+the run.
 
-Start the app as usual, then run from the repository root:
+Charts need an account. Each suite signs in to an account of its own through the app's
+API, as the page does (`account-helpers.mjs`), reads the code from the folder the app
+writes its emails to, gives every page it opens that session, and deletes the account
+at the end. Start the app with its account settings (see
+[Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
+- `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
+- Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
+  the network;
+- `EC_APP_ORIGIN` the same as `EC_BASE_URL` here, since the app refuses account
+  requests from another origin;
+- `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` of at least 100: every suite, and most
+  account tests, ask for a code.
+
+Then run from the repository root:
 
 ```bash
 EC_PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 EC_BASE_URL=http://127.0.0.1:8000 \
+EC_MAIL_DIRECTORY=/the/app/mail/folder \
 EC_BROWSER=chromium \
 node --test --test-concurrency=1 tests/browser/*.test.mjs
 ```
@@ -26,9 +41,30 @@ changing typography, spacing, or responsive layout.
 
 The tests calculate charts and explorer graphs through the real API. They stub
 only location suggestions, whose fixed test coordinates the page sends as the
-chart's `location`, so no test depends on the geocoder. Malformed-response tests
-intentionally modify the real response to verify visible errors. No real birth
-records or saved user data are used.
+chart's `location`, so no test depends on the geocoder, and, in the account suites,
+Cloudflare's Turnstile widget. Malformed-response tests intentionally modify the real
+response to verify visible errors. No real birth records or saved user data are used,
+and every account is made for the run, on `example.com` addresses.
+
+The account suite (`account.test.mjs`) checks:
+- that the start page needs no account, and that creating a chart signed out opens the
+  account dialog before anything is sent, with no language preset;
+- that a new account needs its language, that its email and then the page take it, and
+  that the chart is asked for in it, once; a wrong code is said;
+- signing in an existing account, in its own language and in any letter case;
+- that closing the dialog asks for no chart and says why, keeping the birth;
+- that a Turnstile script that does not load is said, and no code is asked for;
+- the account: its address and plan, its language (the page follows it), Download my
+  data, Sign out, Sign out on every device (from the commands, on a chart), and Delete
+  account, which needs the address typed again;
+- that a session ended elsewhere asks for a sign-in once, and the chart is drawn again;
+- that a chart link and a comparison opened signed out ask first, the comparison
+  before its frames, in the account's language;
+- that the explorer links a visitor to the start page;
+- that the dialog fits a phone's screen.
+
+The foundations suite also audits the account dialog's fonts and contrast, signed in
+and signed out, in both languages and both themes.
 
 Coverage includes selection and keyboard focus, unchanged pillar geometry and
 natal colors, the display switch and individual flips (and the switch's mixed state),

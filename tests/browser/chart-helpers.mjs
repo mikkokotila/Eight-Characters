@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { before, after, describe, it } from 'node:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
+import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -13,8 +14,16 @@ assert.ok(baseURL, 'Set EC_BASE_URL to the app under test.');
 assert.ok(['chromium', 'webkit'].includes(engineName), 'Set EC_BROWSER to chromium or webkit.');
 const playwright = await import(moduleName);
 let browser;
-before(async () => { browser = await playwright[engineName].launch({ headless: true }); });
-after(async () => { if (browser) await browser.close(); });
+// Charts need an account: each suite signs in to one of its own, which every page gets.
+let account;
+before(async () => {
+  browser = await playwright[engineName].launch({ headless: true });
+  account = await newAccount(playwright);
+});
+after(async () => {
+  if (account) await deleteAccount(playwright, account);
+  if (browser) await browser.close();
+});
 
 const CHENGDU = {
   city: 'Chengdu', region: 'Sichuan', country: 'China', display: 'Chengdu, Sichuan, China',
@@ -166,13 +175,20 @@ async function screenshot(page, name) {
   await page.screenshot({ path: join(process.env.EC_SCREENSHOT_DIR, `${engineName}-${name}.png`), fullPage: true });
 }
 
+// A page with the suite's session, opened as `withPage` opens one (a new tab, say).
+async function signIn(page) {
+  await signInPage(page, account);
+}
+
 export {
   assert, describe, it, engineName, profiles, openChart, openLink, fillChart, count, settled, geometry, natalColors,
-  longPress, screenshot, showDisplay, openRelationships, CHENGDU, HELSINKI, TROMSO,
+  longPress, screenshot, showDisplay, openRelationships, signIn, playwright, CHENGDU, HELSINKI, TROMSO,
 };
-export async function withPage(profile, run) {
+// `signedIn: false` opens the page as a visitor without an account.
+export async function withPage(profile, run, { signedIn = true } = {}) {
   const { name, ...options } = profile;
   const page = await browser.newPage(options);
+  if (signedIn) await signIn(page);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try { await run(page); assert.deepEqual(errors, [], 'Uncaught browser errors'); }
