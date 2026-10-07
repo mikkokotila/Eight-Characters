@@ -2,8 +2,8 @@
 
 `eight_characters/accounts/` keeps the app's accounts: one SQLite database, and a
 backup of every record as its own age-encrypted file in a private Git repository,
-from which the database can be rebuilt with one command. The web app does not use
-it yet; sign-in arrives in a later release.
+from which the database can be rebuilt with one command, and the API that signs people
+in with a code sent by email. The page starts using the API in a later release.
 
 ## Goals
 
@@ -38,7 +38,78 @@ newline) with `"schema": 1` and `"kind"`. A file that decodes to a valid record 
 not exactly those bytes is refused.
 
 Every change to a backed-up record is logged in the `changes` table in the same
-transaction. Sign-in codes and sessions, when they arrive, stay out of the backup.
+transaction. Sessions, sign-in codes and the record of codes asked for are kept in the
+database too (schema 2) but stay out of the backup: after a restore, people sign in
+again.
+
+## Signing in
+
+There is no password and no separate sign-up form. A code sent to an address proves
+it; the first code redeemed for a new address creates its account.
+
+1. The page asks for a code (`POST /api/account/code`) with the address, the purpose
+   (`create` or `sign_in`), the account's language when creating (`fi` or `en`), the
+   page's language, and a Cloudflare Turnstile token.
+2. The server checks the token with Cloudflare, then the hourly limits (per address and
+   per client), and sends one of four emails:
+
+   | Asked to | The address has an account | Email | Language |
+   |---|---|---|---|
+   | create | no | a code that creates it | the chosen one |
+   | create | yes | a sign-in code, saying the account exists | the account's |
+   | sign in | yes | a sign-in code | the account's |
+   | sign in | no | word that there is no account, without a code | the page's |
+
+   The reply is `202 {"sent": true}` in every case, so it never tells who has an account.
+3. The page sends the code back (`POST /api/account/session`). A code has 6 digits,
+   works once, for 10 minutes, and at most 5 wrong tries; a new code replaces the last.
+   Spaces and hyphens in what is typed are ignored.
+4. The server sets the session cookie: `__Host-ec_session` over HTTPS (`ec_session` on a
+   laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 30 days. A session
+   used in its second half is extended to 30 days again.
+
+Codes and session tokens are stored only as HMAC-SHA256 hashes under `EC_SECRET_KEY`,
+so the database alone cannot be used to test guesses or take over a session.
+
+### The API
+
+| Request | Does | Answers |
+|---|---|---|
+| `POST /api/account/code` | sends a code, or word of no account | `202`; `400` malformed, `403` failed person check, `429` over the hourly limit (with `Retry-After`), `502` the email could not be sent, `503` Turnstile not answering |
+| `POST /api/account/session` | signs in with a code, creating the account if it was asked for | `200` and the account; `400` wrong or used code |
+| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at}`; `401` |
+| `PATCH /api/account` | sets `language` | `200`; `401` |
+| `DELETE /api/account/session` | signs this browser out | `204` |
+| `DELETE /api/account/sessions` | signs the account out everywhere | `204`; `401` |
+| `GET /api/account/export` | everything kept for the account, as `bazi-account.json` | `200`; `401` |
+| `DELETE /api/account` | deletes the account; `{"email": …}` must repeat its address | `204`; `400`, `401` |
+
+Every request that changes something must carry the site's own `Origin`, or it is
+refused with `403`.
+
+## Settings
+
+Everything that differs between a laptop, CI and the server comes from the environment
+(AGENTS.md). On the server the values live in `/etc/eight-characters/env`, outside Git.
+A missing or malformed value stops the account API with the list of what is wrong.
+
+| Variable | Production | On a laptop |
+|---|---|---|
+| `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://localhost:8000` |
+| `EC_DATABASE_PATH` | `/data/accounts.sqlite3` | any path, made with `init` |
+| `EC_SECRET_KEY` | 32 bytes or more, random | the same |
+| `EC_MAIL_FROM` | `BaZi <kirjaudu@nektari.fi>` | any address |
+| `EC_MAIL_TRANSPORT` | `smtp` | `directory` |
+| `EC_SMTP_HOST`, `EC_SMTP_PORT`, `EC_SMTP_USERNAME`, `EC_SMTP_PASSWORD` | `smtp.resend.com`, `465`, `resend`, the Resend key | — |
+| `EC_MAIL_DIRECTORY` | — | a folder; each email becomes a `.eml` file |
+| `EC_TURNSTILE_SITE_KEY`, `EC_TURNSTILE_SECRET` | the widget's keys | Cloudflare's test keys |
+| `EC_CLIENT_IP_HEADER` | `X-Real-IP` | `peer` (the socket's address) |
+| `EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS` | `5` | as needed |
+| `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` | `20` | as needed |
+
+SMTP is used with TLS from the first byte (port 465). Cloudflare publishes test keys
+for Turnstile: site key `1x00000000000000000000AA` and secret
+`1x0000000000000000000000000000000AA` always pass.
 
 ## The backup
 
