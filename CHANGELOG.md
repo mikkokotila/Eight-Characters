@@ -15,7 +15,7 @@ CI and the linters test the Python that production runs, 3.11. Nothing the app c
 - The developer guide names Python 3.11 and creates its venv with `python3.11`.
 
 ### Tests
-- **`test_production_python`**, in the regression-safety gate, fails when `requires-python`'s floor, ruff's target, pyright's version or any workflow's `python-version` names another Python than the Dockerfile's. Each workflow must set up its Python with `actions/setup-python`, one version per step. On 0.30.0 it fails 11 times: eight workflows, ruff, pyright and `requires-python`.
+- **`test_production_python`**, in the regression-safety gate, fails when `requires-python`'s floor, ruff's target, pyright's version or any workflow's `python-version` names another Python than the Dockerfile's. Each job must set up its own Python with `actions/setup-python`, one version per step: a job without it runs the runner's Python, whatever the other jobs set up. On 0.30.0 it fails 11 times: eight workflows, ruff, pyright and `requires-python`.
 - Version bumped to `0.30.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.30.0
