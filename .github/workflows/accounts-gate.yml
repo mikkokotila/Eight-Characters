@@ -29,4 +29,7 @@ jobs:
             tests.test_accounts_records \
             tests.test_accounts_store \
             tests.test_accounts_backup \
-            tests.test_accounts_cli
+            tests.test_accounts_cli \
+            tests.test_accounts_signin \
+            tests.test_accounts_mail \
+            tests.test_accounts_web
