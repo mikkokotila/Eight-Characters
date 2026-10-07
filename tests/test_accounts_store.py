@@ -307,8 +307,12 @@ class TestBackupLog(StoreTestCase):
 
     def test_the_backup_tree_is_remembered(self) -> None:
         self.assertIsNone(self.store.backup_snapshot().tree)
+        self.store.record_pending_tree(TREE)
+        snapshot = self.store.backup_snapshot()
+        self.assertEqual((snapshot.tree, snapshot.pending_tree), (None, TREE))
         self.store.record_backup_tree(TREE)
-        self.assertEqual(self.store.backup_snapshot().tree, TREE)
+        snapshot = self.store.backup_snapshot()
+        self.assertEqual((snapshot.tree, snapshot.pending_tree), (TREE, None))
 
     def test_progress_never_goes_back(self) -> None:
         self.store.create_user('reader@example.com', 'fi')
@@ -421,8 +425,9 @@ class TestSessionsAndCodes(StoreTestCase):
             self.store.account_data('0' * 32)
 
     def test_a_session_needs_an_account(self) -> None:
-        with self.assertRaises(sqlite3.IntegrityError):
-            self.store.create_session(self.session('a', '0' * 32))
+        self.assertTrue(self.store.create_session(self.session('a')))
+        self.assertFalse(self.store.create_session(self.session('b', '0' * 32)))
+        self.assertIsNone(self.store.session('b'))
 
     def test_deleting_the_account_takes_its_sessions_codes_and_requests(self) -> None:
         self.store.create_session(self.session('a'))

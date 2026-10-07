@@ -5,6 +5,7 @@ import tempfile
 import unittest
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
 import pyrage
 
@@ -14,6 +15,7 @@ from eight_characters.accounts.backup import (
     BackupError,
     Manifest,
     manifest_bytes,
+    own_tree,
     read_manifest,
     run_backup,
     squash_history,
@@ -24,7 +26,7 @@ from eight_characters.accounts.restore import (
     read_identity,
     restore_backup,
 )
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import AccountStore, StoreError
 from tests.accounts_support import (
     Clock,
     all_object_contents,
@@ -269,6 +271,25 @@ class TestRunBackup(BackupTestCase):
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual((result.written, result.pushed), (1, True))
 
+    def test_a_run_stopped_between_its_commit_and_its_record_is_taken_up(self) -> None:
+        self.store.create_user('reader@example.com', 'fi')
+        stopped = StoreError('stopped')
+        with (
+            patch.object(AccountStore, 'record_backup_tree', side_effect=stopped),
+            self.assertRaises(StoreError),
+        ):
+            self.backup()
+        # The commit was made, but neither recorded nor pushed.
+        self.assertEqual(self.status(), '')
+        self.assertIsNotNone(self.store.backup_snapshot().pending_tree)
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual((result.written, result.pushed), (1, True))
+        local = git(self.checkout, 'rev-parse', 'HEAD').strip()
+        self.assertEqual(self.remote_head(), local)
+        snapshot = self.store.backup_snapshot()
+        self.assertEqual(snapshot.tree, own_tree(self.checkout))
+        self.assertIsNone(snapshot.pending_tree)
+
     def test_a_failed_push_keeps_the_changes_for_the_next_run(self) -> None:
         user = self.store.create_user('reader@example.com', 'fi')
         git(
@@ -389,7 +410,7 @@ class TestSquashHistory(BackupTestCase):
             self.store.create_user(f'u{n}@example.com', 'fi')
             self.backup()
         tree = git(self.checkout, 'rev-parse', 'HEAD^{tree}').strip()
-        squashed = squash_history(self.checkout)
+        squashed = squash_history(self.store, self.checkout)
         self.assertEqual(self.remote_head(), squashed)
         self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '1')
         self.assertEqual(git(self.remote, 'rev-parse', 'HEAD^{tree}').strip(), tree)
@@ -399,6 +420,25 @@ class TestSquashHistory(BackupTestCase):
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(self.remote_head(), result.commit)
         self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '2')
+
+    def test_squash_keeps_the_history_of_a_backup_it_cannot_vouch_for(self) -> None:
+        first = self.store.create_user('first@example.com', 'fi')
+        self.store.create_user('second@example.com', 'en')
+        self.backup()
+        self.file_of(first.id).unlink()
+        self.commit_by_hand('lose a record')
+        git(self.checkout, 'push', '--quiet', 'origin', 'HEAD')
+        with self.assertRaises(BackupError) as caught:
+            squash_history(self.store, self.checkout)
+        self.assertIn('manifest counts 2', str(caught.exception))
+        git(self.checkout, 'revert', '--no-edit', 'HEAD')
+        (self.checkout / 'README.md').write_text('changed by hand\n')
+        self.commit_by_hand('change the readme')
+        git(self.checkout, 'push', '--quiet', 'origin', 'HEAD')
+        with self.assertRaises(BackupError) as caught:
+            squash_history(self.store, self.checkout)
+        self.assertIn('not the backup this database last wrote', str(caught.exception))
+        self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '4')
 
     def test_squash_leaves_any_other_repository_alone(self) -> None:
         for case, name in enumerate(('README.md', 'main.py')):
@@ -411,12 +451,12 @@ class TestSquashHistory(BackupTestCase):
                 git(checkout, 'push', '--quiet', 'origin', 'HEAD')
                 head = git(remote, 'rev-parse', 'HEAD').strip()
                 with self.assertRaises(BackupError):
-                    squash_history(checkout)
+                    squash_history(self.store, checkout)
                 self.assertEqual(git(remote, 'rev-parse', 'HEAD').strip(), head)
 
     def test_squash_refuses_unpushed_or_moved_history(self) -> None:
         with self.assertRaises(BackupError):
-            squash_history(self.checkout)
+            squash_history(self.store, self.checkout)
         self.store.create_user('reader@example.com', 'fi')
         self.backup()
         other = self.fresh_clone()
@@ -425,7 +465,7 @@ class TestSquashHistory(BackupTestCase):
         git(other, 'push', '--quiet', 'origin', 'HEAD')
         moved = self.remote_head()
         with self.assertRaises(BackupError):
-            squash_history(self.checkout)
+            squash_history(self.store, self.checkout)
         self.assertEqual(self.remote_head(), moved)
 
 

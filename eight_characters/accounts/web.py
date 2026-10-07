@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Final, Literal
+from typing import Annotated, Any, Final, Literal
 from urllib.parse import urlsplit
 
 import httpx
@@ -39,7 +39,6 @@ from eight_characters.accounts.records import (
     Language,
     RecordError,
     User,
-    canonical_json,
     normalize_email,
     timestamp,
 )
@@ -53,7 +52,7 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import AccountStore, UnknownUser
 
 logger = logging.getLogger(__name__)
 
@@ -466,7 +465,11 @@ def update_account(
     language of its emails."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
-    return _view(accounts.store.set_language(user.id, payload.language))
+    try:
+        return _view(accounts.store.set_language(user.id, payload.language))
+    except UnknownUser as exc:
+        # Deleted since the session was found.
+        raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
 
 
 @router.delete('/session', status_code=204)
@@ -494,17 +497,17 @@ def sign_out_everywhere(
 
 @router.get('/export')
 def export_account(
-    current: SessionDependency, accounts: AccountsDependency
-) -> Response:
-    """Everything kept for the account, as a JSON file."""
+    response: Response, current: SessionDependency, accounts: AccountsDependency
+) -> dict[str, Any]:
+    """Everything kept for the account, as a JSON file. Returned as data, so a renewed
+    session cookie goes out with it."""
     user = _signed_in(current).user
-    data = accounts.store.account_data(user.id)
-    body = canonical_json({**data, 'exported_at': timestamp(accounts.clock())})
-    return Response(
-        body,
-        media_type='application/json',
-        headers={'Content-Disposition': 'attachment; filename="bazi-account.json"'},
-    )
+    try:
+        data = accounts.store.account_data(user.id)
+    except UnknownUser as exc:
+        raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
+    response.headers['Content-Disposition'] = 'attachment; filename="bazi-account.json"'
+    return {**data, 'exported_at': timestamp(accounts.clock())}
 
 
 @router.delete('', status_code=204)
@@ -529,5 +532,8 @@ def delete_account(
         raise HTTPException(
             status_code=400, detail="Type the account's email address to delete it."
         )
-    accounts.store.delete_user(user.id)
+    try:
+        accounts.store.delete_user(user.id)
+    except UnknownUser as exc:
+        raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
     _clear_session_cookie(response, accounts)

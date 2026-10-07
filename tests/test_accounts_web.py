@@ -6,12 +6,13 @@ from datetime import timedelta
 from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import Any
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
 from eight_characters.accounts.mail import MailError
 from eight_characters.accounts.person_check import PersonCheckUnavailable
-from eight_characters.accounts.store import AccountStore, StoreError
+from eight_characters.accounts.store import AccountStore, StoreError, UnknownUser
 from eight_characters.accounts.web import (
     Accounts,
     ConfigError,
@@ -345,6 +346,30 @@ class TestTheAccount(AccountApiTestCase):
         request = {'client': 'testclient', 'requested_at': '2026-10-07T12:00:00Z'}
         self.assertEqual(exported['code_requests'], [request])
         self.assertIsNone(exported['sign_in_code'])
+
+    def test_an_export_in_a_sessions_second_half_renews_its_cookie(self) -> None:
+        self.clock.advance(timedelta(days=16).total_seconds())
+        reply = self.client.get('/api/account/export')
+        self.assertEqual(reply.status_code, 200)
+        self.assertIn('__Host-ec_session=', reply.headers['set-cookie'])
+        disposition = reply.headers['content-disposition']
+        self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
+
+    def test_an_account_deleted_meanwhile_answers_as_signed_out(self) -> None:
+        gone = UnknownUser('gone')
+        confirm = {'email': 'reader@example.com'}
+        requests: dict[str, tuple[str, str, dict[str, str] | None]] = {
+            'set_language': ('PATCH', '/api/account', {'language': 'en'}),
+            'account_data': ('GET', '/api/account/export', None),
+            'delete_user': ('DELETE', '/api/account', confirm),
+        }
+        for method, (verb, path, body) in requests.items():
+            with (
+                self.subTest(method),
+                patch.object(self.accounts.store, method, side_effect=gone),
+            ):
+                reply = self.client.request(verb, path, json=body)
+                self.assertEqual(reply.status_code, 401)
 
     def test_deleting_needs_the_address_typed_again(self) -> None:
         for typed in ('other@example.com', 'not an address'):

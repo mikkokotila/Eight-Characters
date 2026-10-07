@@ -58,10 +58,11 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         CREATE TABLE backup_progress (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             backed_up_seq INTEGER NOT NULL,
-            tree TEXT
+            tree TEXT,
+            pending_tree TEXT
         ) STRICT
         """,
-        'INSERT INTO backup_progress (id, backed_up_seq, tree) VALUES (1, 0, NULL)',
+        'INSERT INTO backup_progress (id, backed_up_seq) VALUES (1, 0)',
     ),
     # 2: sessions, sign-in codes and the requests for them. None is backed up: after a
     # restore, people sign in again.
@@ -162,6 +163,9 @@ class BackupSnapshot:
     # The Git tree of the backup's last commit, or of the backup a restore read;
     # None before the first.
     tree: str | None
+    # The tree of a commit about to be made: if the run stopped after making it but
+    # before recording it, the next run finds the checkout at this tree.
+    pending_tree: str | None
 
 
 def _utc_now() -> datetime:
@@ -293,6 +297,12 @@ def _insert_user(connection: sqlite3.Connection, user: User) -> None:
             user.updated_at,
         ),
     )
+
+
+def _tree_or_none(value: object) -> str | None:
+    if value is None or isinstance(value, str):
+        return value
+    raise StoreError('The backup progress holds a tree that is not text.')
 
 
 def _scalar(connection: sqlite3.Connection, query: str, *params: object) -> int:
@@ -553,18 +563,21 @@ class AccountStore:
 
     # ── Sessions ──
 
-    def create_session(self, session: Session) -> None:
+    def create_session(self, session: Session) -> bool:
+        """Keeps a session for its account, in the same statement that finds the
+        account: False, and no session, if the account is gone."""
         with self._write() as connection:
-            connection.execute(
+            created = connection.execute(
                 'INSERT INTO sessions (token_hash, user_id, created_at, expires_at) '
-                'VALUES (?, ?, ?, ?)',
+                'SELECT ?, id, ?, ? FROM users WHERE id = ?',
                 (
                     session.token_hash,
-                    session.user_id,
                     session.created_at,
                     session.expires_at,
+                    session.user_id,
                 ),
-            )
+            ).rowcount
+        return created == 1
 
     def session(self, token_hash: str) -> Session | None:
         with _connection(self.path) as connection:
@@ -821,24 +834,34 @@ class AccountStore:
             )
             user_count = _scalar(connection, 'SELECT COUNT(*) FROM users')
             row = connection.execute(
-                'SELECT tree FROM backup_progress WHERE id = 1'
+                'SELECT tree, pending_tree FROM backup_progress WHERE id = 1'
             ).fetchone()
-        tree: object = None if row is None else row[0]
-        if tree is not None and not isinstance(tree, str):
-            raise StoreError('The backup progress holds a tree that is not text.')
+        if row is None:
+            raise StoreError('The database keeps no backup progress.')
+        tree = _tree_or_none(row[0])
+        pending_tree = _tree_or_none(row[1])
         return BackupSnapshot(
             after_seq=after,
             through_seq=through,
             changes=changes,
             user_count=user_count,
             tree=tree,
+            pending_tree=pending_tree,
         )
 
-    def record_backup_tree(self, tree: str) -> None:
-        """Remembers the Git tree of the commit the backup just made."""
+    def record_pending_tree(self, tree: str) -> None:
+        """Remembers the Git tree of a commit the backup is about to make."""
         with self._write() as connection:
             connection.execute(
-                'UPDATE backup_progress SET tree = ? WHERE id = 1', (tree,)
+                'UPDATE backup_progress SET pending_tree = ? WHERE id = 1', (tree,)
+            )
+
+    def record_backup_tree(self, tree: str) -> None:
+        """Remembers the Git tree of the commit the backup made last."""
+        with self._write() as connection:
+            connection.execute(
+                'UPDATE backup_progress SET tree = ?, pending_tree = NULL WHERE id = 1',
+                (tree,),
             )
 
     def mark_backed_up(self, through_seq: int) -> None:

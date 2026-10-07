@@ -198,14 +198,15 @@ class SignIn:
                     raise
         token = secrets.token_urlsafe(32)
         expires_at = now + SESSION_LIFETIME
-        self._store.create_session(
-            Session(
-                token_hash=self._hash('session', token),
-                user_id=user.id,
-                created_at=timestamp(now),
-                expires_at=timestamp(expires_at),
-            )
+        session = Session(
+            token_hash=self._hash('session', token),
+            user_id=user.id,
+            created_at=timestamp(now),
+            expires_at=timestamp(expires_at),
         )
+        if not self._store.create_session(session):
+            # The account was deleted meanwhile, taking its code's worth with it.
+            raise CodeRefused('That code is wrong or no longer works.')
         return SignedIn(user=user, token=token, expires_at=expires_at, created=created)
 
     def current(self, token: str) -> CurrentSession | None:
