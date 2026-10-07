@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.34.0
+
+Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
+
+### Added
+- **The account dialog**, on the start page (Sign in) and when a chart needs it.
+  - A new account needs its language, Finnish or English, chosen and never preset. Its emails come in it, and signing in sets the page to it; the chart asked for is then drawn in it.
+  - An existing account signs in from the same dialog, without a language. Every answer reads the same whether the address has an account or not.
+  - Cloudflare Turnstile checks for a person; its script loads only when the dialog first opens, so the start page loads nothing from another site. A script that does not load is said, and tried again.
+  - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
+- **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty.
+- **A session that ended** (signed out elsewhere, deleted, or unused for 30 days) asks for a sign-in once more, and the chart is asked for again.
+- **A comparison** opened signed out asks on its own page, before its frames ask for their charts. **The explorer**, given a birth, links a visitor to the start page to sign in.
+- **[Your account](docs/Account.md)**, a guide for readers.
+
+### Changed
+- **Charts need an account.** `POST /api/four_pillars`, `/api/chart`, `/api/hidden_stems` and `/api/evolution_explorer` answer `401` without one, before reading the request. The place search and `GET /api/evolution_controls` stay open. A test holds both lists, so a new request must join one.
+- **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It renews a session in its second half, and removes the cookie of one that ended.
+- **The app reads its account settings, and opens its database, as it starts**: a missing or malformed setting stops it with the reason. Running it on a laptop needs the settings in [Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop).
+
+### Tests
+- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), renewing and ending the cookie there, and starting the app with missing settings, a missing database, and complete ones.
+- The API tests sign in as the page does.
+- The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
+- Version bumped to `0.34.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.33.0
 
 The backup gets ready to run on the server: it says when it is alive, its repository can watch it, and the image carries the tools it runs. Nothing on the page changes.
