@@ -15,7 +15,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.13"
+          python-version: "3.11"
           cache: pip
 
       - name: Install dependencies
@@ -25,7 +25,9 @@ jobs:
 
       - name: Run regression safety tests
         run: |
-          python -m unittest tests.test_phase5_verification_harness
+          python -m unittest \
+            tests.test_phase5_verification_harness \
+            tests.test_production_python
 
       - name: Ensure fixtures remain unchanged
         run: |
