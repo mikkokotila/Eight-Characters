@@ -307,8 +307,12 @@ class TestBackupLog(StoreTestCase):
 
     def test_the_backup_tree_is_remembered(self) -> None:
         self.assertIsNone(self.store.backup_snapshot().tree)
+        self.store.record_pending_tree(TREE)
+        snapshot = self.store.backup_snapshot()
+        self.assertEqual((snapshot.tree, snapshot.pending_tree), (None, TREE))
         self.store.record_backup_tree(TREE)
-        self.assertEqual(self.store.backup_snapshot().tree, TREE)
+        snapshot = self.store.backup_snapshot()
+        self.assertEqual((snapshot.tree, snapshot.pending_tree), (TREE, None))
 
     def test_progress_never_goes_back(self) -> None:
         self.store.create_user('reader@example.com', 'fi')

@@ -80,6 +80,7 @@ def _parser() -> argparse.ArgumentParser:
         'squash-history',
         help='Replace the backup history with one commit of its current files.',
     )
+    squash.add_argument('--database', type=Path, required=True)
     squash.add_argument('--checkout', type=Path, required=True)
     return parser
 
@@ -115,7 +116,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             print(f'Restored {restored.users} users into {args.database}.')
         elif command == 'squash-history':
-            print(squash_history(cast(Path, args.checkout)))
+            store = AccountStore.open(cast(Path, args.database))
+            print(squash_history(store, cast(Path, args.checkout)))
         else:
             raise AssertionError(f'Unhandled command {command!r}')
     except (BackupError, RecordError, StoreError) as exc:

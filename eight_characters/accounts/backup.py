@@ -16,7 +16,7 @@ import os
 import re
 import subprocess
 import tempfile
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -334,6 +334,7 @@ def _write_and_commit(
     snapshot: BackupSnapshot,
     recipient: pyrage.x25519.Recipient,
     scratch: Path,
+    before_commit: Callable[[str], None],
 ) -> tuple[int, int, str | None]:
     """Writes the snapshot's records into the work tree and commits them; returns
     how many were written and removed, and the commit (None if nothing changed)."""
@@ -378,6 +379,7 @@ def _write_and_commit(
     )
     if not _git(root, 'diff', '--cached', '--name-only'):
         return written, removed, None
+    before_commit(_git(root, 'write-tree').strip())
     _git(
         root,
         *_COMMITTER,
@@ -418,14 +420,18 @@ def run_backup(
         # Without the private key the server cannot read a file, but it knows what it
         # committed last: anything else in the checkout, such as a file corrupted or
         # changed by hand, stops the run before it adds to it.
-        if head_tree(root) != snapshot.tree:
-            raise BackupError(
-                'The checkout is not the backup this database last wrote: it holds '
-                'commits the backup did not make, or another backup.'
-            )
+        current = head_tree(root)
+        if current != snapshot.tree:
+            if snapshot.pending_tree is None or current != snapshot.pending_tree:
+                raise BackupError(
+                    'The checkout is not the backup this database last wrote: it '
+                    'holds commits the backup did not make, or another backup.'
+                )
+            # The last run made this commit and stopped before recording it.
+            store.record_backup_tree(snapshot.pending_tree)
         try:
             written, removed, commit = _write_and_commit(
-                root, snapshot, recipient, scratch
+                root, snapshot, recipient, scratch, store.record_pending_tree
             )
         except BaseException:
             _discard_uncommitted(root)
@@ -445,20 +451,31 @@ def run_backup(
     )
 
 
-def squash_history(checkout: Path) -> str:
+def squash_history(store: AccountStore, checkout: Path) -> str:
     """Replaces the backup's history with one commit of its current files.
 
-    Deleted accounts leave the history this way. Everything must be pushed first, and
-    the remote must not have moved: the force push names the commit it replaces.
+    Deleted accounts leave the history this way. Only the backup this database last
+    wrote, whole, is squashed: the history may be all that holds a record lost since.
+    Everything must be pushed first, and the remote must not have moved: the force push
+    names the commit it replaces.
     """
     root = work_tree(checkout)
     with checkout_lock(root):
         require_clean(root)
-        # Only an account backup: its own layout and a valid manifest. Any other
-        # repository keeps its history.
-        record_files(root)
-        if read_manifest(root) is None:
+        records = record_files(root)
+        manifest = read_manifest(root)
+        if manifest is None:
             raise BackupError('The checkout has no manifest.json; it is no backup.')
+        if len(records) != manifest.user_count:
+            raise BackupError(
+                f'The backup holds {len(records)} records but its manifest counts '
+                f'{manifest.user_count}; its history may hold the others.'
+            )
+        if head_tree(root) != store.backup_snapshot().tree:
+            raise BackupError(
+                'The checkout is not the backup this database last wrote; its '
+                'history stays.'
+            )
         branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
         head = _git_ref(root, 'HEAD')
         if head is None:

@@ -42,7 +42,8 @@ Accounts get a home: one database, and a backup of every account as its own encr
   - The database remembers the Git tree of the backup's last commit. The server cannot read the files, but any commit it did not make, such as a file corrupted by hand, stops the run before anything is added to it.
   - A run that fails before its commit puts the checkout back as it found it, so the next run names the same problem instead of its predecessor's files.
   - Git never waits for a password and each command has two minutes.
-  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It works only on a checkout with the backup's own layout and manifest.
+  - `squash-history` replaces the backup's history with one commit of its files, so deleted accounts leave it. It squashes only the backup the database last wrote, whole: its layout, a manifest that counts its records, and the tree the database recorded.
+  - The tree about to be committed is recorded as pending first, so a run stopped between its commit and its record is taken up by the next run.
 - **The restore** rebuilds a database from a clone of the backup and the private key. It holds the checkout's lock and checks the manifest, the key, the layout, every file's decryption and form, and the count before the new database appears.
 - **Commands:** `python -m eight_characters.accounts init`, `keygen`, `backup`, `restore` and `squash-history`. See [Accounts](docs/Developer/Accounts.md).
 

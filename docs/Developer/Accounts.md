@@ -133,7 +133,10 @@ backup`, in this order:
 4. Writes `manifest.json` (the recipient and the record count) and checks that the
    files match the database's count.
 5. Commits and pushes; only then marks the changes backed up. A failed push leaves
-   them for the next run, which pushes everything still on its way.
+   them for the next run, which pushes everything still on its way. The tree about to
+   be committed is recorded first as pending, and as the backup's own once committed,
+   so a run stopped between its commit and its record is taken up by the next run
+   instead of being taken for a commit the backup did not make.
 
 A run that fails before its commit (a count that differs, Git refusing to commit or
 taking too long) puts the work tree and the index back to the last commit before it
@@ -163,9 +166,11 @@ object hashes cover each commit, so the manifest needs no per-file hashes.
 ### History
 
 `squash-history` replaces the remote's history with one commit of the current files,
-so deleted accounts leave the history. It refuses any checkout without the backup's own
-layout and a valid manifest, and runs only when everything is pushed and the remote has
-not moved; its force push names the commit it replaces.
+so deleted accounts leave the history. It squashes only the backup the database last
+wrote, whole (its layout, a manifest whose count matches the records, and the tree the
+database recorded), since the history may be all that holds a record lost since. It
+runs only when everything is pushed and the remote has not moved, and its force push
+names the commit it replaces.
 
 ## Restore
 
@@ -199,6 +204,6 @@ offline. `age --decrypt --identity backup-key.txt FILE` reads any one record.
 | `keygen --identity PATH` | makes the backup key pair |
 | `backup --database PATH --checkout DIR --recipient AGE1…` | one backup run |
 | `restore --checkout DIR --identity PATH --database PATH` | rebuilds a database |
-| `squash-history --checkout DIR` | one commit of the current files |
+| `squash-history --database PATH --checkout DIR` | one commit of the current files |
 
 Each prints one line and exits `0`, or prints `error: …` and exits `1`.
