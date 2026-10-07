@@ -13,13 +13,23 @@
     子: 'Rat', 丑: 'Ox', 寅: 'Tiger', 卯: 'Rabbit', 辰: 'Dragon', 巳: 'Snake',
     午: 'Horse', 未: 'Goat', 申: 'Monkey', 酉: 'Rooster', 戌: 'Dog', 亥: 'Pig',
   };
-  const KINDS = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
-  const ABOUT_KIND = {
-    stem_combination: 'About stem combinations',
-    branch_combination: 'About the six harmonies',
-    branch_clash: 'About clashes',
-    harmony_frame: 'About the three harmonies',
+  // Each kind of relationship by its family in the canon, whose introduction says what
+  // the kind is. The list's 'About' lines go by family, in the canon's sections' order;
+  // each keeps the name its first kind gave it.
+  const FAMILY_OF = {
+    stem_combination: 'stem_combinations', branch_combination: 'six_harmonies', branch_clash: 'clashes',
+    harmony_frame: 'three_harmonies', half_frame: 'three_harmonies', directional_combination: 'directional',
+    punishment: 'punishments', half_punishment: 'punishments', self_punishment: 'punishments', harm: 'harms',
   };
+  const ABOUT_FAMILY = [
+    ['stem_combinations', 'about-stem_combination', 'About stem combinations'],
+    ['six_harmonies', 'about-branch_combination', 'About the six harmonies'],
+    ['clashes', 'about-branch_clash', 'About clashes'],
+    ['three_harmonies', 'about-harmony_frame', 'About the three harmonies'],
+    ['directional', 'about-directional_combination', 'About the directional combinations'],
+    ['punishments', 'about-punishment', 'About punishments'],
+    ['harms', 'about-harm', 'About harms'],
+  ];
   // The chevron the branches use for their hidden stems.
   const CHEVRON = '<svg class="canon-line-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
   const NOTE = 'Readings quote the canon’s Taxonomy, after 三命通会. The chart chooses which apply; nothing in them assesses strength or predicts.';
@@ -43,7 +53,8 @@
     const marks = (text) => arrows(esc(text)
       .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
       .replace(/\*([^*]+)\*/g, '<em>$1</em>'));
-    const sentences = (text) => text.split(/(?<=[.!?])\s+/);
+    // A sentence ends at its stop, or just after the closing quote that follows it.
+    const sentences = (text) => text.split(/(?<=[.!?]["”]?)\s+/);
     const paragraphMarkup = (p) => `<p class="canon-text">${p.label === null ? '' : `<strong>${arrows(esc(p.label))}:</strong>${p.text ? ' ' : ''}`}${marks(p.text)}</p>`;
     // A link names its page in the app's words; `quote`, the canon's words there, follows.
     const link = (label, target, tokens = [], quote = null) => `<button type="button" class="canon-link" data-canon-go="${esc(target)}"${spot.attr(tokens)}>${esc(label)}${quote === null ? '' : `<span class="canon-link-quote">${marks(quote)}</span>`}</button>`;
@@ -110,7 +121,7 @@
           links: [link('The whole cycle', 'day-master#dm-cycle')] }),
         touching.length
           ? `<div class="canon-here"><p class="canon-line-key">Relationships here</p><p class="canon-links">${touching.map(([id, rel]) => link(
-            relationshipLabel(id), `relationships/${id}`, [`arc:${id}`], sentences((rel.pairing || rel.entry.paragraphs[0]).text)[0])).join('')}</p></div>`
+            relationshipLabel(id), `relationships/${id}`, [`arc:${id}`], rel.line)).join('')}</p></div>`
           : '',
         line({ part: 'about-pillar', key: 'About these readings', paragraphs: [...reading.branches_introduction, ...reading.day_master.grounds_introduction] }),
       ].join(''));
@@ -136,21 +147,24 @@
         r.mechanics.length ? line({ part: 'mechanics', key: 'When a combination transforms', paragraphs: r.mechanics, tokens: [`arc:${id}`] }) : '',
       ].join(''));
     };
-    // The meaning under a relationship's name in the list.
+    // The meaning under a relationship's name in the list: the canon's sentence about its
+    // own form, which the reading chooses (a pairing's first sentence, a half's own pair).
     const chipLine = (id) => {
       if (!reading) return '';
       const r = reading.relationships[id];
       if (!r) fail(`relationship ${id}`);
-      return `<span class="canon-chip-line">${marks(sentences((r.pairing || r.entry.paragraphs[0]).text)[0])}</span>`;
+      if (typeof r.line !== 'string' || !r.line) fail(`the line of ${id}`);
+      return `<span class="canon-chip-line">${marks(r.line)}</span>`;
     };
-    // What each kind of relationship in the list is.
+    // What each family of relationship in the list is.
     const relationshipsAbout = () => {
       if (!reading) return '';
-      const kinds = KINDS.filter((kind) => Object.values(reading.relationships).some((r) => r.kind === kind));
-      return lines(kinds.map((kind) => line({
-        part: `about-${kind}`, key: ABOUT_KIND[kind],
-        paragraphs: Object.values(reading.relationships).find((r) => r.kind === kind).introduction,
-      })).join(''));
+      const found = Object.values(reading.relationships);
+      found.forEach((r) => { if (!Object.hasOwn(FAMILY_OF, r.kind)) fail(`the kind ${r.kind}`); });
+      return lines(ABOUT_FAMILY.filter(([family]) => found.some((r) => FAMILY_OF[r.kind] === family))
+        .map(([family, part, key]) => line({
+          part, key, paragraphs: found.find((r) => FAMILY_OF[r.kind] === family).introduction,
+        })).join(''));
     };
 
     const rolesAbout = () => (reading

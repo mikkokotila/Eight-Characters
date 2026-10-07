@@ -1,41 +1,95 @@
 // Presence only: the cards keep their natal elements and their existing gestures.
 (() => {
   const DISPLAY_ORDER = ['hour', 'day', 'month', 'year'];
-  const KINDS = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
-  // The arcs' rows hold four levels. No combination of stems or branches needs
-  // more (tests/test_api_interactions.py walks every one with this layout).
+  // What each kind is, as the API states it: its component, how many members it has,
+  // how complete it is, and whether a transformation could be assessed at all.
+  const KIND_RULES = {
+    stem_combination: { component: 'stem', sizes: [2], transformation: 'not_assessed' },
+    branch_combination: { component: 'branch', sizes: [2], transformation: 'not_assessed' },
+    branch_clash: { component: 'branch', sizes: [2], transformation: 'not_applicable' },
+    harmony_frame: { component: 'branch', sizes: [3], transformation: 'not_assessed' },
+    half_frame: { component: 'branch', sizes: [2], half: true, transformation: 'not_assessed' },
+    directional_combination: { component: 'branch', sizes: [3], transformation: 'not_assessed' },
+    punishment: { component: 'branch', sizes: [2, 3], transformation: 'not_applicable' },
+    half_punishment: { component: 'branch', sizes: [2], half: true, transformation: 'not_applicable' },
+    self_punishment: { component: 'branch', sizes: [2], transformation: 'not_applicable' },
+    harm: { component: 'branch', sizes: [2], transformation: 'not_applicable' },
+  };
+  // The shared families each keep an arc of their own, as they always have.
+  const OWN_ARC = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
+  // The arcs' rows hold four levels, and an arc at most three strands. No combination of
+  // stems or branches needs more (tests/test_api_interactions.py walks every one with
+  // this layout).
   const ARC_LEVELS = 4;
+  const ARC_STRANDS = 3;
 
-  // Each arc spans its members' columns. It rises one level for each column it
-  // spans, and higher still to stand above every arc it spans or crosses: narrow
-  // arcs are placed first, each at least one level above the highest it
+  // Each arc spans its members' columns. A relationship of the families the canon adds
+  // to the shared ones joins an arc that already spans the same columns, as a strand
+  // inside it; where none does, it has an arc of its own. An arc rises one level for
+  // each column it spans, and higher still to stand above every arc it spans or crosses:
+  // narrow arcs are placed first, each at least one level above the highest it
   // overlaps. Arcs that only meet at a card may share a level.
   const arcLayout = (relationships) => {
-    const arcs = relationships.map((relationship) => {
+    const slots = [];
+    const strands = relationships.map((relationship) => {
       const columns = relationship.members.map((member) => DISPLAY_ORDER.indexOf(member.pillar)).sort((a, b) => a - b);
-      return { relationship, columns, from: columns[0], to: columns[columns.length - 1], feet: {} };
+      const from = columns[0];
+      const to = columns[columns.length - 1];
+      let slot = OWN_ARC.includes(relationship.kind) ? null : slots.find((other) => other.from === from && other.to === to);
+      if (!slot) {
+        slot = { from, to, strands: [] };
+        slots.push(slot);
+      }
+      const strand = { relationship, columns, from, to, slot, strand: slot.strands.length, feet: {} };
+      slot.strands.push(strand);
+      return strand;
     });
-    const byWidth = [...arcs].sort((a, b) => (a.to - a.from) - (b.to - b.from) || a.from - b.from);
-    byWidth.forEach((arc, index) => {
+    if (slots.some((slot) => slot.strands.length > ARC_STRANDS)) {
+      throw new Error(`A relationship arc needs more than ${ARC_STRANDS} strands.`);
+    }
+    const byWidth = [...slots].sort((a, b) => (a.to - a.from) - (b.to - b.from) || a.from - b.from);
+    byWidth.forEach((slot, index) => {
       const overlapped = byWidth.slice(0, index)
-        .filter((other) => Math.max(arc.from, other.from) < Math.min(arc.to, other.to));
-      arc.level = Math.max(arc.to - arc.from, 1 + Math.max(0, ...overlapped.map((other) => other.level)));
+        .filter((other) => Math.max(slot.from, other.from) < Math.min(slot.to, other.to));
+      slot.level = Math.max(slot.to - slot.from, 1 + Math.max(0, ...overlapped.map((other) => other.level)));
     });
-    if (arcs.some((arc) => arc.level > ARC_LEVELS)) {
+    if (slots.some((slot) => slot.level > ARC_LEVELS)) {
       throw new Error(`Relationship arcs need more than ${ARC_LEVELS} levels.`);
     }
-    // The feet on one card, left to right: arcs from the left, lowest first; a frame's
+    // A strand stands a little inside the one before it: lower, and narrower.
+    const height = (strand) => strand.slot.level - strand.strand / ARC_STRANDS;
+    // The feet on one card, left to right: arcs from the left, lowest first; a triple's
     // middle member; arcs to the right, highest first. No arc's foot then crosses
-    // another arc that ends on the same card.
+    // another arc that ends on the same card. Separate arcs' feet stand a spread apart,
+    // the strands of one arc half a spread.
     DISPLAY_ORDER.forEach((_, column) => {
       const feet = [
-        ...arcs.filter((arc) => arc.to === column).sort((a, b) => a.level - b.level).map((arc) => [arc, 'to']),
-        ...arcs.filter((arc) => arc.columns.length === 3 && arc.columns[1] === column).map((arc) => [arc, 'middle']),
-        ...arcs.filter((arc) => arc.from === column).sort((a, b) => b.level - a.level).map((arc) => [arc, 'from']),
+        ...strands.filter((s) => s.to === column).sort((a, b) => height(a) - height(b)).map((s) => [s, 'to']),
+        ...strands.filter((s) => s.columns.length === 3 && s.columns[1] === column).map((s) => [s, 'middle']),
+        ...strands.filter((s) => s.from === column).sort((a, b) => height(b) - height(a)).map((s) => [s, 'from']),
       ];
-      feet.forEach(([arc, end], index) => { arc.feet[end] = index - (feet.length - 1) / 2; });
+      const at = [];
+      feet.forEach(([strand], index) => {
+        at.push(index === 0 ? 0 : at[index - 1] + (feet[index - 1][0].slot === strand.slot ? 0.5 : 1));
+      });
+      const middle = at.length ? at[at.length - 1] / 2 : 0;
+      feet.forEach(([strand, end], index) => { strand.feet[end] = at[index] - middle; });
     });
-    return arcs;
+    strands.forEach((strand) => { strand.level = strand.slot.level; });
+    return strands;
+  };
+
+  const NOTE_KEY = {
+    stem_combination: 'relationship_combination_note',
+    branch_combination: 'relationship_combination_note',
+    branch_clash: 'relationship_clash_note',
+    harmony_frame: 'relationship_frame_note',
+    half_frame: 'relationship_half_frame_note',
+    directional_combination: 'relationship_directional_note',
+    punishment: 'relationship_punishment_note',
+    half_punishment: 'relationship_punishment_note',
+    self_punishment: 'relationship_punishment_note',
+    harm: 'relationship_harm_note',
   };
 
   const create = ({ root, translate: t, escape: esc, spot, canon, beforeSelect }) => {
@@ -129,9 +183,7 @@
       if (relationship.potential_element !== null) {
         meta.push(t('relationship_potential_element', {element: t('element_' + relationship.potential_element)}));
       }
-      const noteKey = relationship.kind === 'branch_clash'
-        ? 'relationship_clash_note'
-        : relationship.kind === 'harmony_frame' ? 'relationship_frame_note' : 'relationship_combination_note';
+      const noteKey = NOTE_KEY[relationship.kind];
       const displayMembers = [...relationship.members].sort(
         (a, b) => DISPLAY_ORDER.indexOf(a.pillar) - DISPLAY_ORDER.indexOf(b.pillar)
       );
@@ -173,9 +225,9 @@
     const arcMarkup = (arc) => {
       const style = [
         `grid-column: ${arc.from + 1} / ${arc.to + 2}`, `--span: ${arc.to - arc.from}`, `--level: ${arc.level}`,
-        `--foot-from: ${arc.feet.from}`, `--foot-to: ${arc.feet.to}`,
+        `--strand: ${arc.strand}`, `--foot-from: ${arc.feet.from}`, `--foot-to: ${arc.feet.to}`,
       ].join('; ');
-      // A frame's middle member stands under the arc where it is (at) of the way
+      // A triple's middle member stands under the arc where it is (at) of the way
       // across; half an ellipse is sqrt(1 - x²) of its rise there, x from -1 to 1.
       const at = arc.columns.length === 3 ? (arc.columns[1] - arc.from) / (arc.to - arc.from) : null;
       const middle = at === null ? ''
@@ -201,14 +253,14 @@
       tenGods = tenGodsData;
       const ids = new Set();
       relationships.forEach((relationship) => {
-        const size = relationship.kind === 'harmony_frame' ? 3 : 2;
-        if (!KINDS.includes(relationship.kind) || typeof relationship.id !== 'string' || ids.has(relationship.id)
-          || relationship.component !== (relationship.kind === 'stem_combination' ? 'stem' : 'branch')
-          || !Array.isArray(relationship.members) || relationship.members.length !== size
+        const rule = KIND_RULES[relationship.kind];
+        const size = Array.isArray(relationship.members) ? relationship.members.length : 0;
+        if (!rule || typeof relationship.id !== 'string' || ids.has(relationship.id)
+          || relationship.component !== rule.component || !rule.sizes.includes(size)
           || new Set(relationship.members.map((member) => member.pillar)).size !== size
           || typeof relationship.adjacent !== 'boolean'
-          || relationship.completeness !== (size === 3 ? 'complete' : 'pair')
-          || relationship.transformation !== (relationship.kind === 'branch_clash' ? 'not_applicable' : 'not_assessed')) {
+          || relationship.completeness !== (rule.half ? 'half' : size === 3 ? 'complete' : 'pair')
+          || relationship.transformation !== rule.transformation) {
           throw new Error(t('interactions_error'));
         }
         ids.add(relationship.id);
