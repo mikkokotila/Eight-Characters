@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.32.0
+
+The account API: people can sign in with a code sent by email. The page starts using it in the next release; until then nothing on it changes, and charts need no account.
+
+### Added
+- **Signing in with a code**, without passwords or a separate sign-up.
+  - Asking for a code to create an account takes its language, Finnish or English, which then sets the language of its emails.
+  - The first code redeemed for a new address creates the account. Codes have six digits, work once, for ten minutes, with at most five wrong tries.
+  - Every request gets the same answer, `202`, so the answer never tells who has an account. The email says what happened instead: a code to create the account, a code to sign in, word that the account exists already, or word that there is none.
+  - Codes and session tokens are kept only as keyed hashes.
+- **Sessions** in an HttpOnly, SameSite=Lax cookie (`__Host-` over HTTPS) for 30 days, extended when used in their second half. Signing out ends this browser's session or every session of the account.
+- **The account API** (`/api/account`): ask for a code, sign in, read the account, change its language, sign out, download the account as JSON, and delete it after typing its address again. Every request that changes something must come from the site's own origin. See [Accounts](docs/Developer/Accounts.md).
+- **Emails** in Finnish and English, plain text, sent over SMTP with TLS from the first byte (Resend, from nektari.fi), or written to a folder when running on a laptop.
+- **Cloudflare Turnstile** checks for a person before any email is sent. Without an answer from Cloudflare, nothing is sent.
+- **Limits:** codes per address and per client per hour, both set by the environment. Refused requests do not count, so asking again never lengthens a wait.
+- **Settings** come from environment variables and are checked together: a missing or malformed one is named.
+
+### Changed
+- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes all three.
+
+### Tests
+- The `accounts-gate` adds the sign-in logic, the emails and Turnstile, the settings and every account endpoint, among them the same answer for every address, the cookie's attributes, the Origin check and the hourly limits.
+- Version bumped to `0.32.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.31.0
 
 Accounts get a home: one database, and a backup of every account as its own encrypted file in a private Git repository, from which the database can be rebuilt with one command. Nothing on the page changes; signing in comes in a later release.
