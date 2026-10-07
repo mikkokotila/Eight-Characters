@@ -10,6 +10,12 @@ years and months to the Gregorian UTC birth, clamp an invalid day to the
 month's last day, then add the remaining days and time. Each subsequent cycle
 starts on the ten-year UTC anniversary of the first start. Periods include
 their start and exclude their end. This is arithmetic, not interpretation.
+
+The same passage: while a cycle is on its stem, its branch is used as well;
+while it is on its branch, the stem is set aside. Each cycle is therefore a
+stem phase, its first five years, and a branch phase, its last five; the phase
+boundary is the fifth UTC anniversary of the cycle's start, counted from the
+first start like the cycles' own boundaries.
 """
 
 from calendar import monthrange
@@ -48,6 +54,17 @@ class Component(TypedDict):
     chinese: str
 
 
+PhaseName = Literal['stem', 'branch']
+
+
+class LuckPhase(TypedDict):
+    phase: PhaseName
+    start_age: LuckAge
+    end_age: LuckAge
+    start_utc: str
+    end_utc: str
+
+
 class LuckPillar(TypedDict):
     sequence: int
     stem: Component
@@ -56,6 +73,7 @@ class LuckPillar(TypedDict):
     end_age: LuckAge
     start_utc: str
     end_utc: str
+    phases: list[LuckPhase]
 
 
 class ReferenceJie(TypedDict):
@@ -80,6 +98,7 @@ class PreLuckPeriod(TypedDict):
 
 class LuckPillarsPayload(TypedDict):
     rule_version: str
+    phase_rule: Literal['stem_then_branch_v1']
     gender: Gender
     direction: Literal['forward', 'backward']
     year_stem_polarity: Literal['yang', 'yin']
@@ -147,6 +166,11 @@ def _onset(instant: datetime, age: LuckAge) -> datetime:
     )
 
 
+def _in_year(age: LuckAge, years: int) -> LuckAge:
+    """The onset age's months, days and time, in another age year; a fresh record."""
+    return {**age, 'years': years}
+
+
 def _iso_utc(instant: datetime) -> str:
     return (
         instant.astimezone(UTC)
@@ -209,7 +233,9 @@ def build_luck_pillars(
     interval = abs(term_jd - birth_jd_tt) * 86400.0
     age = start_age_from_interval(interval)
     onset = _onset(birth_utc.astimezone(UTC), age)
-    boundaries = [_calendar_months(onset, index * 120) for index in range(count + 1)]
+    # Every fifth anniversary of the first onset: cycle k starts at boundary 2(k-1),
+    # changes from its stem to its branch at 2k-1, and ends at 2k.
+    boundaries = [_calendar_months(onset, index * 60) for index in range(2 * count + 1)]
     pillars: list[LuckPillar] = []
     for index in range(1, count + 1):
         pillar = Pillar(
@@ -217,6 +243,10 @@ def build_luck_pillars(
             (month_pillar.branch_idx + direction * index) % 12,
         )
         pillar.validate_polarity()
+        first = age['years'] + (index - 1) * 10
+        start_utc = _iso_utc(boundaries[2 * index - 2])
+        middle_utc = _iso_utc(boundaries[2 * index - 1])
+        end_utc = _iso_utc(boundaries[2 * index])
         pillars.append(
             {
                 'sequence': index,
@@ -225,15 +255,32 @@ def build_luck_pillars(
                     'index': pillar.branch_idx,
                     'chinese': BRANCHES[pillar.branch_idx],
                 },
-                'start_age': {**age, 'years': age['years'] + (index - 1) * 10},
-                'end_age': {**age, 'years': age['years'] + index * 10},
-                'start_utc': _iso_utc(boundaries[index - 1]),
-                'end_utc': _iso_utc(boundaries[index]),
+                'start_age': _in_year(age, first),
+                'end_age': _in_year(age, first + 10),
+                'start_utc': start_utc,
+                'end_utc': end_utc,
+                'phases': [
+                    {
+                        'phase': 'stem',
+                        'start_age': _in_year(age, first),
+                        'end_age': _in_year(age, first + 5),
+                        'start_utc': start_utc,
+                        'end_utc': middle_utc,
+                    },
+                    {
+                        'phase': 'branch',
+                        'start_age': _in_year(age, first + 5),
+                        'end_age': _in_year(age, first + 10),
+                        'start_utc': middle_utc,
+                        'end_utc': end_utc,
+                    },
+                ],
             }
         )
     boundary_distance = min(abs(jd - birth_jd_tt) * 86400.0 for _, jd in terms)
     return {
         'rule_version': 'dayun_elapsed_time_v1',
+        'phase_rule': 'stem_then_branch_v1',
         'gender': gender,
         'direction': 'forward' if direction == 1 else 'backward',
         'year_stem_polarity': 'yang' if year_pillar.stem_idx % 2 == 0 else 'yin',

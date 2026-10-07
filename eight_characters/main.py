@@ -49,6 +49,7 @@ from eight_characters.explorer_controls import (
     resolve_model_parameters,
 )
 from eight_characters.interactions import detect_interactions
+from eight_characters.luck_context import build_luck_context
 from eight_characters.luck_pillars import (
     DEFAULT_LUCK_PILLAR_COUNT,
     MAX_LUCK_PILLAR_COUNT,
@@ -168,6 +169,7 @@ class FourPillarsRequest(BaseModel):
         le=MAX_LUCK_PILLAR_COUNT,
         strict=True,
     )
+    include_luck_context: bool = False
     include_chart: bool = False
     include_hidden_stems: bool = False
     include_ten_gods: bool = False
@@ -181,6 +183,8 @@ class FourPillarsRequest(BaseModel):
     def validate_luck_gender(self) -> 'FourPillarsRequest':
         if self.include_luck_pillars and self.gender is None:
             raise ValueError('gender is required when include_luck_pillars is true.')
+        if self.include_luck_context and not self.include_luck_pillars:
+            raise ValueError('include_luck_context requires include_luck_pillars.')
         return self
 
 
@@ -1054,6 +1058,13 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
         if payload.include_interactions:
             response['interactions'] = detect_interactions(
                 _chart_components_from_four_pillars(four_pillars)
+            )
+        if payload.include_luck_context:
+            response['luck_context'] = build_luck_context(
+                _chart_components_from_four_pillars(four_pillars),
+                result['luck_pillars']['pillars'],
+                _load_hidden_stems_lookup(),
+                _load_ten_gods_lookup(),
             )
         if payload.include_reading:
             components = _chart_components_from_four_pillars(four_pillars)
