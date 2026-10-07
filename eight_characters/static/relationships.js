@@ -262,7 +262,8 @@
         throw new Error(t('interactions_error'));
       }
       chartByPillar = Object.fromEntries(DISPLAY_ORDER.map((name, index) => [name, chartData.pillars[index]]));
-      tenGods = tenGodsData;
+      // Its own copy: the luck pillar's roles join it (setLuck), not the chart's.
+      tenGods = { ...tenGodsData };
       const ids = new Set();
       relationships.forEach((relationship) => {
         const rule = KIND_RULES[relationship.kind];

@@ -974,8 +974,35 @@ for (const profile of profiles) {
       const luckChips = page.locator('.relationship-luck-heading ~ .relationship-chip');
       assert.deepEqual((await luckChips.allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
         ['Month–Luck · Stem combination', 'Hour–Luck · Stem combination']);
+      // Each arc's ink as it reads: in the ink, or receded. No line in the panel points.
+      const inks = async () => {
+        assert.equal(await page.locator('#pillars[data-spotlight]').count(), 0);
+        return page.evaluate(() => {
+          const probe = (ink) => {
+            const node = document.createElement('span');
+            node.style.borderLeft = `1px solid var(${ink})`;
+            document.body.append(node);
+            const color = getComputedStyle(node).borderLeftColor;
+            node.remove();
+            return color;
+          };
+          const named = { [probe('--ink-1')]: 'ink', [probe('--line-2')]: 'receded' };
+          return Object.fromEntries([...document.querySelectorAll('#pillars .relationship-arc')].map((arc) =>
+            [arc.dataset.relationshipId, named[getComputedStyle(arc.querySelector('.relationship-arc-line')).borderLeftColor] ?? 'neither']));
+        });
+      };
+      const natalArcs = { 'self_punishment:35:day-hour': 'receded', 'harm:42:year-day': 'receded', 'harm:42:year-hour': 'receded' };
+      // While the luck pillar shows, the natal arcs recede for its own.
+      assert.deepEqual(await inks(), { ...natalArcs, 'stem_combination:1:month-luck': 'ink', 'stem_combination:1:hour-luck': 'ink' });
+      // A relationship chosen stands in the ink, and every other arc recedes, natal or not.
+      await page.locator('.relationship-chip[data-relationship="self_punishment:35:day-hour"]').click();
+      await settled(page);
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
+      });
       await luckChips.first().click();
       await settled(page);
+      assert.deepEqual(await inks(), { ...natalArcs, 'stem_combination:1:month-luck': 'ink', 'stem_combination:1:hour-luck': 'receded' });
       assert.equal(await linkPart(page, 'topic'), 'relationships/stem_combination:1:month-luck');
       assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Month–Luck · Stem combination');
       assert.deepEqual(await page.locator('#relationship-detail .relationship-identity').allTextContents(), ['Jia 甲', 'Ji 己']);

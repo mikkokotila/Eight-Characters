@@ -1827,11 +1827,11 @@ body {
   bottom: calc(var(--arc-depth) * (1 - var(--reach)));
 }
 
-/* A chosen relationship: its arc darkens and the others recede. While the luck
-   pillar shows, the natal arcs recede for its own. */
-.relationship-arcs.has-selection .relationship-arc,
+/* A chosen relationship: its arc darkens and the others recede, the natal ones and the
+   luck pillar's alike. While the luck pillar shows, the natal arcs recede for its own. */
+.pillars :is(.relationship-arcs, .luck-arcs).has-selection .relationship-arc,
 .pillars.is-luck-shown .relationship-arcs .relationship-arc { --arc-ink: var(--line-2); }
-.relationship-arcs .relationship-arc.is-active { --arc-ink: var(--ink-1); }
+.pillars :is(.relationship-arcs, .luck-arcs) .relationship-arc.is-active { --arc-ink: var(--ink-1); }
 
 /* ── What the panel points at, on the chart ──
    A line in the panel under the pointer (after half a second), a control there with
