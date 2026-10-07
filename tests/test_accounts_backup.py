@@ -501,6 +501,39 @@ class TestSquashHistory(BackupTestCase):
         self.assertEqual((result.written, result.pushed), (1, True))
         self.assertEqual(git(self.remote, 'rev-list', '--count', 'HEAD').strip(), '2')
 
+    def test_a_squash_killed_while_moving_the_checkout_is_finished_when_run_again(
+        self,
+    ) -> None:
+        # Killed while Git held the branch's lock: the lock stays behind.
+        self.store.create_user('reader@example.com', 'fi')
+        self.backup()
+        real = backup_module._git
+        branch = git(self.checkout, 'symbolic-ref', 'HEAD').strip()
+        branch_lock = self.checkout / '.git' / f'{branch}.lock'
+
+        def killed_holding_the_lock(
+            root: Path, *args: str, stdin: bytes | None = None
+        ) -> str:
+            if args[:1] == ('update-ref',):
+                branch_lock.write_text('')
+                raise KeyboardInterrupt
+            return real(root, *args, stdin=stdin)
+
+        with (
+            patch.object(backup_module, '_git', killed_holding_the_lock),
+            self.assertRaises(KeyboardInterrupt),
+        ):
+            squash_history(self.store, self.checkout)
+        self.assertTrue(branch_lock.exists())
+        squashed = squash_history(self.store, self.checkout)
+        self.assertFalse(branch_lock.exists())
+        self.assertEqual(self.remote_head(), squashed)
+        self.assertEqual(git(self.checkout, 'rev-parse', 'HEAD').strip(), squashed)
+        self.store.create_user('later@example.com', 'en')
+        result = run_backup(self.store, self.checkout, self.recipient)
+        outcome = (result.written, result.pushed, result.recovered)
+        self.assertEqual(outcome, (1, True, False))
+
     def test_a_squash_stopped_before_its_push_is_finished_when_run_again(self) -> None:
         self.store.create_user('reader@example.com', 'fi')
         self.backup()
