@@ -1,6 +1,6 @@
 import csv
 import json
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import datetime
@@ -101,7 +101,7 @@ QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
 
 @asynccontextmanager
-async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     # The account settings are read before the first request: a missing or malformed
     # one stops the app at start, naming what is wrong.
     accounts_from_environment()
