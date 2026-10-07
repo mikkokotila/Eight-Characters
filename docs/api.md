@@ -326,11 +326,57 @@ Request (mode A):
 }
 ```
 
-Optional request fields: `conventions`, `birth_time_uncertainty_seconds`,
-`basin_index` (`0` by default), `flux_threshold` (`0.0` by default).
+Optional request fields:
+
+- `conventions`, `birth_time_uncertainty_seconds`, `basin_index` (`0` by
+  default) and `flux_threshold` (`0.0` by default).
+- `run`: the run's size, seed and clustering. Any of:
+  - `particles`, 8 to 64 (default 24);
+  - `temperature_steps`, 1 to 4 (default 2);
+  - `sweeps_per_step`, 1 to 2 (default 1);
+  - `seed`, 0 to 2147483647 (default 42);
+  - `dbscan_eps`, 0.01 to 1.0 (default 0.08);
+  - `dbscan_min_samples`, 1 to 64 and at most `particles` (default 1).
+
+  Whole numbers must be JSON integers. The largest run takes about four and a
+  half times as long as the default one.
+- `model`: overrides of the model's parameters, by name. Each must lie in the
+  range `GET /api/evolution_controls` gives it; a table is a list of numbers,
+  or a list of rows. The three clustering weights must add up to 1.
+
+Request with overrides:
+
+```json
+{
+  "date": "1988-02-04",
+  "time": "15:40",
+  "location": {
+    "timezone": "Asia/Shanghai",
+    "longitude": 115.34289,
+    "latitude": 26.36828
+  },
+  "run": {"particles": 48, "seed": 7},
+  "model": {"LAMBDA_MODE": 6.5, "PROXIMITY_WEIGHT_BY_GAP": [1.0, 0.6, 0.3]}
+}
+```
+
+Each request computes with its own parameters, so concurrent requests never
+affect each other. A request is rejected with `400`, and nothing is computed,
+when it has:
+
+- a field the endpoint doesn't know;
+- a parameter the model doesn't have;
+- a value outside its range, or of the wrong kind;
+- a table of the wrong shape.
+
+A run whose clustering leaves every particle outside any basin is also rejected
+with `400`, naming the two clustering settings. The `detail` names the field
+in each case.
 
 Response always includes `graph_data`; in mode B it also includes
 `resolved_location`, as described for `POST /api/four_pillars`.
+`graph_data.parameters` reports what the run used: its `run` settings, its
+`conventions`, and every model parameter in `model`.
 
 The explorer page reads the birth from its URL and calls this endpoint. The
 start page links to it with the picked place's coordinates:
@@ -339,6 +385,33 @@ Links with `city` and `country` instead of the coordinates, made before the
 coordinates were passed, still work in mode B. A link with only part of the
 date, time or place, or with both coordinates and a city, shows an error;
 `/explorer/` with no birth in the URL shows a bundled sample chart.
+
+### `GET /api/evolution_controls`
+
+Lists what `POST /api/evolution_explorer` lets a caller change, in three lists:
+`run`, `conventions` and `model`. Each control has:
+
+- an `id`, the field's or parameter's name;
+- a `kind`: `integer`, `number`, `vector`, `matrix` or `choice`;
+- a `group`, a `label`, a `description` and its `default`.
+
+Numbers and tables also give their `min`, `max` and `step`. A vector names its
+entries in `columns`, and a matrix names its `rows` and `columns`. A choice
+lists its `options`, each with a `value` and a `label`.
+
+```json
+{
+  "id": "LAMBDA_MODE",
+  "kind": "number",
+  "group": "Structure Mode",
+  "label": "Structure-Mode Fidelity Weight",
+  "description": "Weight of the chart's fit to its structure mode.",
+  "default": 4.0,
+  "min": 0.1,
+  "max": 20.0,
+  "step": 0.01
+}
+```
 
 ### `POST /api/chart`
 

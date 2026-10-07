@@ -37,16 +37,28 @@
 - **Purpose**: graph data for the evolution explorer page.
 - **Primary callers**: `eight_characters/explorer/app.js`.
 - **Input modes**: the same as `POST /api/four_pillars` (`location`, or
-  `city` + `country`), plus `basin_index` and `flux_threshold`.
+  `city` + `country`), plus `basin_index` and `flux_threshold`, and the
+  optional `run` settings and `model` overrides. Unknown fields are rejected.
 - **Internal calls**:
+  - `_explorer_run` and `explorer_controls.resolve_model_parameters`, before any
+    other work: the run's `ExplorerRun` and `ModelParameters`, range-checked
   - `_resolve_four_pillars_location`
   - `_build_four_pillars_result`
   - `_build_hidden_stems_result`
   - `_build_evolution_input_from_four_pillars`
-  - `_build_evolution_explorer_graph_data` (in a worker thread)
+  - `_build_evolution_explorer_graph_data` (in a worker thread), which runs the
+    engine and draws the graph with the same `ModelParameters`
 - **Error behavior**:
-  - `400` for user/input/time-validation errors
+  - `400` for user/input/time-validation errors, for an override out of range,
+    unknown or of the wrong shape, and for a run that forms no basin
   - `500` when the geocoder is unavailable or for unexpected internal errors
+
+### `GET /api/evolution_controls`
+
+- **Purpose**: the explorer's run settings, conventions and model parameters,
+  with their defaults, ranges and labels.
+- **Primary callers**: `eight_characters/explorer/app.js`.
+- **Internal calls**: `explorer_controls.catalogue`.
 
 ### `POST /api/chart`
 
