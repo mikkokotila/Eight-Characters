@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.39.0
+
+Luck pillars on the chart. This is the third slice of the luck pillar design: the form takes an optional gender, the chart shows its decades on a ribbon, and a decade opens a page of its own.
+
+### Added
+- **The gender, optional.** The form asks for it: Not given, Female or Male. Only luck pillars need it. A chart with one asks the API for its luck pillars and their context, and its link names it (`gender`). Edit keeps it; New chart starts without one.
+- **The ribbon**, under the chart's topics: the years before the first decade, then each decade by its characters, names and starting age. The decades are grouped by the direction their branch travels: East · Spring, South · Summer, West · Autumn, North · Winter. Today's decade and phase are marked.
+  - A chip opens its decade at today's phase, or else at its stem phase. Pressed again, it closes.
+  - ‹ and › step one phase at a time, from the years before the decades to the last decade's branch phase.
+  - Today opens today's phase.
+  - The chips take one tab stop; the arrows, Home and End move between them.
+  - The commands offer the years before the decades and each decade.
+  - Where the decades do not fit, the ribbon scrolls within itself and keeps the open decade, or today's, in sight. On a phone its name and Today stand above it.
+- **A decade's page**, in the panel:
+  - its two phases with their dates: the stem phase, when the stem leads and the branch acts too, and the branch phase, when the branch acts alone;
+  - what it brings: the luck stem and the branch's hidden stems, with their Ten Gods, each marked when new to the chart. In the branch phase the stem says "not now";
+  - the Day Master's stage on the luck branch, named as the canon names it, and its roots there;
+  - its relationships with the natal chart and when each acts; a whole names the natal half it takes in, and each points at its natal cards;
+  - the elements counted with the luck pillar: ten characters in the stem phase, nine in the branch phase.
+- **The years before the first decade**, with a page of their own.
+- **Links** to a phase: `topic=luck/before` and `topic=luck/<decade>/<stem|branch>`.
+- **Strict reading.** The page checks the luck pillars as it reads them: decades in sequence and meeting end to end, two phases each that meet, relationships that name the luck pillar, counts that add up. Otherwise no chart is drawn, and the form says why.
+- **Finnish, provisional until confirmed:** Sukupuoli (valinnainen), Ei annettu, Nainen, Mies; Onnenpilarit, Onnenpilari; Ennen, Tänään, Edellinen vaihe, Seuraava vaihe; Itä, Etelä, Länsi, Pohjoinen; eteenpäin, taaksepäin; Rungon vaihe, Haaran vaihe; Mitä se tuo, uusi tälle kartalle; Päivän mestarin juuret, Syntymäkartan kanssa. The twelve stages: Syntymä, Kylpy, Kruunaus, Virkaan astuminen, Keisarin huippu, Heikkeneminen, Sairaus, Kuolema, Hauta, Sammuminen, Alkio, Hoiva.
+
+### Tests
+- `tests/browser/luck.test.mjs`, desktop and mobile, on the design's sample with the clock at 7 October 2026:
+  - the optional gender, the ribbon, Today and both phases, word for word;
+  - steps, chips, focus, the tab stop and arrows;
+  - the years before the decades, and a child's and an old chart;
+  - links, an absorbed natal half, refused data, Finnish, the language switch and the commands.
+- The foundations audits (fonts, glyphs, contrast and element dots) visit a chart with luck pillars.
+- `luck.js`'s pinyin and direction tables match the engine's, and the English stage names match the canon's twelve.
+- Version bumped to `0.39.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
+
 ## 0.37.0
 
 The engine says what each luck pillar brings to a chart, phase by phase. This is the second slice of the luck pillar design; the API comes first, and the screens follow.
