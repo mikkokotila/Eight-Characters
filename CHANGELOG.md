@@ -34,6 +34,35 @@ Charts need an account; the start page does not. Creating a chart while signed o
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.36.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
+## 0.37.0
+
+The engine says what each luck pillar brings to a chart, phase by phase. This is the second slice of the luck pillar design; the API comes first, and the screens follow.
+
+### Added
+- **Phases.** Each luck pillar is a stem phase, its first five years, and a branch phase, its last five. San Ming Tong Hui's passage on major cycles: while a cycle is on its stem, the branch is used as well; while it is on its branch, the stem is set aside. Each pillar's `phases` gives both intervals with their ages and UTC instants. The boundary between them is the fifth anniversary of the cycle's start, counted from the first onset like the cycles' own boundaries. `luck_pillars.phase_rule` is `stem_then_branch_v1`.
+- **The luck context**, with `include_luck_context` (which needs `include_luck_pillars`). For each decade:
+  - the luck stem and the hidden stems of the luck branch, each with its Ten God, whether the chart has that Ten God at all, and the phases it acts in;
+  - the Day Master's stage on the luck branch, and its roots there;
+  - each relationship the luck pillar forms with the natal pillars, under the natal rules, with the phases it acts in: a stem's in the stem phase, a branch's in both. The luck pillar counts as adjacent to every natal pillar;
+  - the natal halves that a frame or triangle completed by the luck pillar absorbs for the decade;
+  - element and Ten God counts, natal and with the luck pillar in each phase: eight characters natal, ten in the stem phase, nine in the branch phase.
+
+  Counts are tallies, not weights; nothing weighs strength, transforms or predicts.
+
+### Changed
+- `luck_pillars`: each pillar gains `phases`, and the payload `phase_rule`. Everything else in it is unchanged, the decades' boundaries included.
+- Relationship detection gathers each combination's characters once for all the rules, about three times faster, with the same findings, ids and order.
+
+### Fixed
+- The 0.35.0 entry gave the Finnish relationship names as provisional; the maintainer has confirmed them.
+
+### Tests
+- The relationships a luck pillar forms, and the natal halves it absorbs, against independent readings of the canon on every combination of four natal branches and a luck branch (248,832), and of four natal stems and a luck stem (100,000).
+- The design's sample chart (14 August 1975, 07:45, Helsinki, female), decade by decade by hand, and through the API.
+- Phases, and their leap-day anniversaries.
+- `tests.test_api_luck_context` runs in the API integration gate.
+- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 is held by the open PR #48.)
+
 ## 0.35.0
 
 Standard reads every relationship family the canon defines. Luck pillars will form these families with a chart most of all, so they come first.
@@ -69,7 +98,7 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - a punishment, half-punishment or self-punishment: 2px dashed;
   - a harm: 2px dotted;
   - a half-frame: double, like its frame.
-- **Names.** English: Half-frame, Directional combination, Punishment, Half-punishment, Self-punishment, Branch harm. The Finnish names are provisional, for the maintainer to confirm: Puolikas kolmen haaran harmonia, Suuntayhdistelmä, Rangaistus, Puolikas rangaistus, Itserangaistus, Haarojen vahinko.
+- **Names.** English: Half-frame, Directional combination, Punishment, Half-punishment, Self-punishment, Branch harm. Finnish: Puolikas kolmen haaran harmonia, Suuntayhdistelmä, Rangaistus, Puolikas rangaistus, Itserangaistus, Haarojen vahinko.
 
 ### Changed
 - `include_interactions`: `kind` takes six more values, and `completeness` takes `half` (two of a triple's three). Rules 1–21, their ids and their order are unchanged.

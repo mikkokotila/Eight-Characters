@@ -13,8 +13,10 @@ from eight_characters.interactions import (
     CANON_PUNISHMENT_TRIANGLES,
     CANON_SELF_PUNISHMENTS,
     INTERACTION_RULES,
+    LUCK,
     PILLAR_NAMES,
     detect_interactions,
+    detect_luck_interactions,
 )
 from tests.accounts_support import signed_in_client
 
@@ -360,22 +362,26 @@ CANON_REFERENCE = {
 ADDED_KINDS = tuple(CANON_REFERENCE)
 
 
+# The whole relationships' keys as sorted characters: a combination of branches is one
+# when its sorted branches are one of these.
+WHOLE_KEYS = {
+    kind: {tuple(sorted(key)) for key in CANON_REFERENCE[kind]}
+    for kind in ('directional_combination', 'punishment', 'self_punishment', 'harm')
+}
+FRAME_KEYS = {tuple(sorted(key)) for key, _ in CANON_REFERENCE['half_frame']}
+
+
 def canon_reading(branches):
-    """The added families' findings on four branches, by brute force: (kind, positions)."""
+    """The added families' findings on four branches (five with a luck pillar), by
+    brute force: (kind, positions)."""
     found = []
     for size in (2, 3):
-        for positions in itertools.combinations(range(4), size):
+        for positions in itertools.combinations(range(len(branches)), size):
             chars = [branches[p] for p in positions]
             distinct = set(chars)
-            for kind in (
-                'directional_combination',
-                'punishment',
-                'self_punishment',
-                'harm',
-            ):
-                for key in CANON_REFERENCE[kind]:
-                    if len(key) == size and sorted(chars) == sorted(key):
-                        found.append((kind, positions))
+            for kind, keys in WHOLE_KEYS.items():
+                if tuple(sorted(chars)) in keys:
+                    found.append((kind, positions))
             if size == 2 and len(distinct) == 2:
                 for key, peak in CANON_REFERENCE['half_frame']:
                     if distinct <= set(key) and peak in distinct:
@@ -386,11 +392,8 @@ def canon_reading(branches):
     # A complete frame or triangle absorbs the halves among its members.
     frames = [
         set(positions)
-        for positions in itertools.combinations(range(4), 3)
-        if any(
-            sorted(branches[p] for p in positions) == sorted(key)
-            for key, _ in CANON_REFERENCE['half_frame']
-        )
+        for positions in itertools.combinations(range(len(branches)), 3)
+        if tuple(sorted(branches[p] for p in positions)) in FRAME_KEYS
     ]
     triangles = [
         set(positions)
@@ -412,18 +415,19 @@ def canon_reading(branches):
     return sorted((k, p) for k, p in found if not absorbed(k, p))
 
 
-# The pillars in the order each relationship's id names them.
-ID_ORDER = ('year', 'month', 'day', 'hour')
+# The pillars in the order each relationship's id names them, a luck pillar last.
+ID_ORDER = ('year', 'month', 'day', 'hour', 'luck')
 
 
 def old_shared_detection(stems, branches):
-    """The shared families exactly as Standard found them before the canon's were added:
-    each finding's id, in order. The ids number the rules 1-21 in REFERENCE's order."""
+    """The shared families exactly as Standard found them before the canon's were added,
+    on four pillars or five with a luck pillar: each finding's id, in order. The ids
+    number the rules 1-21 in REFERENCE's order."""
     found = []
     rules = ((kind, key) for kind, keys in REFERENCE.items() for key in keys)
     for rule_index, (kind, key) in enumerate(rules, start=1):
         chars = stems if kind == 'stem_combination' else branches
-        for positions in itertools.combinations(range(4), len(key)):
+        for positions in itertools.combinations(range(len(chars)), len(key)):
             if {chars[p] for p in positions} == set(key):
                 found.append(
                     f'{kind}:{rule_index}:' + '-'.join(ID_ORDER[p] for p in positions)
@@ -582,6 +586,232 @@ class TestCanonFamilies(unittest.TestCase):
             ):
                 self.assertIsNone(r['potential_element'])
                 self.assertEqual(r['transformation'], 'not_applicable')
+
+
+LUCK_NAMES = (*PILLAR_NAMES, LUCK)
+BRANCH_CHARS = '子丑寅卯辰巳午未申酉戌亥'
+
+
+def positions_of(relationship):
+    return tuple(
+        LUCK_NAMES.index(member['pillar']) for member in relationship['members']
+    )
+
+
+def parsed(identifier):
+    """(kind, positions) of an id such as half_frame:22:year-month."""
+    kind, _, names = identifier.split(':')
+    return kind, tuple(LUCK_NAMES.index(name) for name in names.split('-'))
+
+
+class TestLuckInteractions(unittest.TestCase):
+    # The sample of the luck pillar design: 14 August 1975, 07:45, Helsinki, female.
+    # Natal 乙卯 Yi Mao, 甲申 Jia Shen, 壬辰 Ren Chen, 甲辰 Jia Chen; its ten decades
+    # run forward from 乙酉 Yi You.
+    SAMPLE = pillars('乙甲壬甲', '卯申辰辰')
+    SAMPLE_DECADES = (
+        (
+            '乙酉',
+            [
+                'branch_combination:9:day-luck',
+                'branch_combination:9:hour-luck',
+                'branch_clash:15:year-luck',
+            ],
+        ),
+        (
+            '丙戌',
+            [
+                'branch_combination:8:year-luck',
+                'branch_clash:16:day-luck',
+                'branch_clash:16:hour-luck',
+            ],
+        ),
+        (
+            '丁亥',
+            [
+                'stem_combination:4:day-luck',
+                'half_frame:23:year-luck',
+                'harm:43:month-luck',
+            ],
+        ),
+        (
+            '戊子',
+            [
+                'harmony_frame:18:month-day-luck',
+                'harmony_frame:18:month-hour-luck',
+                'punishment:34:year-luck',
+            ],
+        ),
+        ('己丑', ['stem_combination:1:month-luck', 'stem_combination:1:hour-luck']),
+        (
+            '庚寅',
+            [
+                'stem_combination:2:year-luck',
+                'branch_clash:14:month-luck',
+                'directional_combination:27:year-day-luck',
+                'directional_combination:27:year-hour-luck',
+                'half_punishment:32:month-luck',
+            ],
+        ),
+        ('辛卯', ['harm:42:day-luck', 'harm:42:hour-luck']),
+        (
+            '壬辰',
+            [
+                'self_punishment:35:day-luck',
+                'self_punishment:35:hour-luck',
+                'harm:42:year-luck',
+            ],
+        ),
+        ('癸巳', ['branch_combination:10:month-luck', 'half_punishment:32:month-luck']),
+        ('甲午', []),
+    )
+
+    def test_the_sample_chart_decade_by_decade(self):
+        for (stem, branch), ids in self.SAMPLE_DECADES:
+            found = detect_luck_interactions(self.SAMPLE, (stem, branch))
+            self.assertEqual(
+                [r['id'] for r in found['interactions']], ids, stem + branch
+            )
+            self.assertEqual(found['absorbed'], [], stem + branch)
+
+    def test_the_luck_pillar_is_adjacent_to_every_natal_pillar(self):
+        found = detect_luck_interactions(self.SAMPLE, ('戊', '子'))['interactions']
+        self.assertEqual(
+            [(r['id'], r['adjacent'], r['completeness']) for r in found],
+            [
+                # Month and Day stand side by side; Month and Hour do not.
+                ('harmony_frame:18:month-day-luck', True, 'complete'),
+                ('harmony_frame:18:month-hour-luck', False, 'complete'),
+                ('punishment:34:year-luck', True, 'pair'),
+            ],
+        )
+        self.assertEqual(
+            found[0]['members'],
+            [
+                {'pillar': 'month', 'char': '申', 'pinyin': 'Shen'},
+                {'pillar': 'day', 'char': '辰', 'pinyin': 'Chen'},
+                {'pillar': 'luck', 'char': '子', 'pinyin': 'Zi'},
+            ],
+        )
+        self.assertEqual(found[0]['potential_element'], 'water')
+        self.assertEqual(found[0]['transformation'], 'not_assessed')
+
+    def test_a_whole_with_the_luck_pillar_absorbs_the_natal_halves_among_its_members(
+        self,
+    ):
+        natal = pillars(branches='申子戌戌')
+        self.assertEqual(
+            [r['id'] for r in detect_interactions(natal)], ['half_frame:22:year-month']
+        )
+        found = detect_luck_interactions(natal, ('甲', '辰'))
+        self.assertEqual(
+            [r['id'] for r in found['interactions']],
+            [
+                'branch_clash:16:day-luck',
+                'branch_clash:16:hour-luck',
+                'harmony_frame:18:year-month-luck',
+            ],
+        )
+        self.assertEqual(
+            found['absorbed'],
+            [
+                {
+                    'id': 'half_frame:22:year-month',
+                    'by': ['harmony_frame:18:year-month-luck'],
+                }
+            ],
+        )
+
+    def test_a_half_a_natal_whole_absorbs_is_not_the_luck_pillars_to_absorb(self):
+        natal = pillars(branches='申子辰戌')
+        found = detect_luck_interactions(natal, ('甲', '子'))
+        self.assertEqual(
+            [(r['id'], r['adjacent']) for r in found['interactions']],
+            [('harmony_frame:18:year-day-luck', False)],
+        )
+        self.assertEqual(found['absorbed'], [])
+
+    def test_a_luck_branch_repeating_one_of_the_four_is_a_self_punishment(self):
+        found = detect_luck_interactions(pillars(branches='午子子子'), ('甲', '午'))
+        self.assertEqual(
+            [r['id'] for r in found['interactions'] if r['kind'] == 'self_punishment'],
+            ['self_punishment:36:year-luck'],
+        )
+        found = detect_luck_interactions(pillars(branches='寅子子子'), ('甲', '寅'))
+        self.assertNotIn('self_punishment', [r['kind'] for r in found['interactions']])
+
+    def test_invalid_luck_pillars_fail_explicitly(self):
+        for luck in (('甲', 'X'), ('X', '子'), ('甲',), ('甲', '子', '子')):
+            with self.assertRaises(ValueError):
+                detect_luck_interactions(pillars(), luck)
+        with self.assertRaises(ValueError):
+            detect_luck_interactions({'year': ('甲', '子')}, ('甲', '子'))
+
+    def test_every_branch_combination_matches_the_independent_readings(self):
+        # Each natal four with each luck branch. What the luck pillar takes part in is
+        # the canon's reading of all five that holds the luck pillar; a natal half the
+        # reading of five no longer lists is absorbed, by wholes with the luck pillar.
+        for natal in itertools.product(BRANCH_CHARS, repeat=4):
+            on_four = set(canon_reading(natal))
+            for luck in BRANCH_CHARS:
+                branches = (*natal, luck)
+                on_five = canon_reading(branches)
+                natal_part = {(kind, p) for kind, p in on_five if 4 not in p}
+                self.assertLessEqual(natal_part, on_four)
+                found = detect_luck_interactions(
+                    pillars('甲甲甲甲', natal), ('甲', luck)
+                )
+                label = ''.join(branches)
+                self.assertEqual(
+                    sorted(
+                        (r['kind'], positions_of(r))
+                        for r in found['interactions']
+                        if r['kind'] in ADDED_KINDS
+                    ),
+                    sorted((kind, p) for kind, p in on_five if 4 in p),
+                    label,
+                )
+                self.assertEqual(
+                    [r['id'] for r in found['interactions'] if r['kind'] in REFERENCE],
+                    [
+                        identifier
+                        for identifier in old_shared_detection('甲甲甲甲甲', branches)
+                        if identifier.endswith('-luck')
+                    ],
+                    label,
+                )
+                self.assertEqual(
+                    sorted(parsed(a['id']) for a in found['absorbed']),
+                    sorted(on_four - natal_part),
+                    label,
+                )
+                for absorbed in found['absorbed']:
+                    held = set(parsed(absorbed['id'])[1])
+                    for whole in absorbed['by']:
+                        self.assertIn(4, parsed(whole)[1])
+                        self.assertLessEqual(held, set(parsed(whole)[1]))
+
+    def test_every_stem_combination_with_a_luck_stem_matches_the_reference(self):
+        for natal in itertools.product('甲乙丙丁戊己庚辛壬癸', repeat=4):
+            for luck in '甲乙丙丁戊己庚辛壬癸':
+                found = detect_luck_interactions(
+                    pillars(natal, '子子子子'), (luck, '子')
+                )
+                self.assertEqual(
+                    [
+                        r['id']
+                        for r in found['interactions']
+                        if r['component'] == 'stem'
+                    ],
+                    [
+                        identifier
+                        for identifier in old_shared_detection(
+                            (*natal, luck), '子子子子子'
+                        )
+                        if identifier.startswith('stem_combination:')
+                        and identifier.endswith('-luck')
+                    ],
+                )
 
 
 class TestInteractionsAPI(unittest.TestCase):

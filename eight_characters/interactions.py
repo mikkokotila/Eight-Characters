@@ -1,4 +1,5 @@
-"""Deterministic natal relationship presence, independent of Evolution inference.
+"""Deterministic relationship presence, natal and with a luck pillar, independent of
+Evolution inference.
 
 Rules 1-21 are the shared family catalog's: five stem combinations, six branch
 combinations, six branch clashes, and four complete harmony frames. Rules 22-44 are
@@ -8,7 +9,7 @@ the three punishments with their halves, the four self-punishments, and the six 
 Presence is not activation, strength, transformation, or a life prediction.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Literal
@@ -24,6 +25,8 @@ from eight_characters.evolution.families import (
 )
 
 PILLAR_NAMES = ('year', 'month', 'day', 'hour')
+# A luck pillar's position, after the natal four (detect_luck_interactions).
+LUCK = 'luck'
 InteractionKind = Literal[
     'stem_combination',
     'branch_combination',
@@ -58,6 +61,17 @@ class Interaction(TypedDict):
     completeness: Completeness
     potential_element: ElementName | None
     transformation: Transformation
+
+
+class AbsorbedInteraction(TypedDict):
+    # A natal half, and the complete wholes with the luck pillar that absorb it.
+    id: str
+    by: list[str]
+
+
+class LuckInteractions(TypedDict):
+    interactions: list[Interaction]
+    absorbed: list[AbsorbedInteraction]
 
 
 @dataclass(frozen=True)
@@ -216,21 +230,129 @@ def _build_rules() -> tuple[InteractionRule, ...]:
 
 
 INTERACTION_RULES = _build_rules()
+# Each rule's members as a set, for matching.
+_MEMBERS: dict[int, frozenset[str]] = {
+    rule.rule_index: frozenset(rule.members) for rule in INTERACTION_RULES
+}
 
 
-def _matches(rule: InteractionRule, chars: tuple[str, ...]) -> bool:
-    found = set(chars)
+def _matches(rule: InteractionRule, found: frozenset[str]) -> bool:
+    """Whether the distinct characters at some positions make the rule's relationship."""
+    members = _MEMBERS[rule.rule_index]
     if rule.kind in _HALVES:
         return (
             len(found) == 2
-            and found <= set(rule.members)
+            and found <= members
             and (rule.peak is None or rule.peak in found)
         )
-    return found == set(rule.members)
+    return found == members
 
 
 def _size(rule: InteractionRule) -> int:
     return 2 if rule.kind in _HALVES else len(rule.members)
+
+
+Pair = tuple[str, str]
+Found = list[tuple[InteractionRule, tuple[int, ...]]]
+
+
+def _check_pair(name: str, pair: Pair) -> None:
+    if len(pair) != 2 or pair[0] not in STEMS or pair[1] not in BRANCHES:
+        raise ValueError(f'Invalid stem/branch pair for {name}: {pair!r}')
+
+
+def _natal_pairs(pillars: Mapping[str, Pair]) -> list[Pair]:
+    if set(pillars) != set(PILLAR_NAMES):
+        raise ValueError('Interactions require exactly year, month, day, and hour.')
+    for name in PILLAR_NAMES:
+        _check_pair(name, pillars[name])
+    return [pillars[name] for name in PILLAR_NAMES]
+
+
+def _find(pairs: Sequence[Pair]) -> Found:
+    """Every rule's matches among the positions, ordered by rule then position."""
+    # Each component's characters at each pair or triple of positions, gathered once
+    # for all the rules that look at them.
+    groups: dict[tuple[int, int], list[tuple[tuple[int, ...], frozenset[str]]]] = {}
+    found: Found = []
+    for rule in INTERACTION_RULES:
+        component_index = 0 if rule.component == 'stem' else 1
+        size = _size(rule)
+        group = groups.get((component_index, size))
+        if group is None:
+            group = [
+                (
+                    positions,
+                    frozenset(
+                        pairs[position][component_index] for position in positions
+                    ),
+                )
+                for positions in combinations(range(len(pairs)), size)
+            ]
+            groups[(component_index, size)] = group
+        found.extend(
+            (rule, positions) for positions, chars in group if _matches(rule, chars)
+        )
+    return found
+
+
+def _absorbers(
+    rule: InteractionRule, positions: tuple[int, ...], found: Found
+) -> Found:
+    """The complete wholes of a half's own members that hold all of its positions."""
+    if rule.kind not in _WHOLE_OF:
+        return []
+    return [
+        (whole, held)
+        for whole, held in found
+        if whole.kind == _WHOLE_OF[rule.kind]
+        and set(whole.members) == set(rule.members)
+        and set(positions) <= set(held)
+    ]
+
+
+def _id(rule: InteractionRule, positions: tuple[int, ...], names: Sequence[str]) -> str:
+    return f'{rule.kind}:{rule.rule_index}:' + '-'.join(names[p] for p in positions)
+
+
+def _interaction(
+    rule: InteractionRule,
+    positions: tuple[int, ...],
+    names: Sequence[str],
+    pairs: Sequence[Pair],
+    adjacent: bool,
+) -> Interaction:
+    component_index = 0 if rule.component == 'stem' else 1
+    members: list[InteractionMember] = [
+        {
+            'pillar': names[position],
+            'char': pairs[position][component_index],
+            'pinyin': (
+                STEMS[pairs[position][0]]['pinyin']
+                if rule.component == 'stem'
+                else BRANCHES[pairs[position][1]]['pinyin']
+            ),
+        }
+        for position in positions
+    ]
+    return {
+        'id': _id(rule, positions, names),
+        'kind': rule.kind,
+        'component': rule.component,
+        'members': members,
+        'adjacent': adjacent,
+        'completeness': (
+            'half'
+            if rule.kind in _HALVES
+            else 'complete'
+            if len(positions) == 3
+            else 'pair'
+        ),
+        'potential_element': rule.potential_element,
+        'transformation': (
+            'not_assessed' if rule.kind in _COMBINING else 'not_applicable'
+        ),
+    }
 
 
 def detect_interactions(
@@ -244,66 +366,61 @@ def detect_interactions(
     A complete frame or punishment triangle absorbs the halves of its own kind
     among its own members.
     """
-    if set(pillars) != set(PILLAR_NAMES):
-        raise ValueError('Interactions require exactly year, month, day, and hour.')
-    for name in PILLAR_NAMES:
-        pair = pillars[name]
-        if len(pair) != 2 or pair[0] not in STEMS or pair[1] not in BRANCHES:
-            raise ValueError(f'Invalid stem/branch pair for {name}: {pair!r}')
-
-    found: list[tuple[InteractionRule, tuple[int, ...]]] = []
-    for rule in INTERACTION_RULES:
-        component_index = 0 if rule.component == 'stem' else 1
-        chars = tuple(pillars[name][component_index] for name in PILLAR_NAMES)
-        for positions in combinations(range(4), _size(rule)):
-            if _matches(rule, tuple(chars[position] for position in positions)):
-                found.append((rule, positions))
-    wholes = [
-        (rule.kind, set(rule.members), set(positions))
-        for rule, positions in found
-        if rule.kind in _WHOLE_OF.values()
-    ]
-    result: list[Interaction] = []
-    for rule, positions in found:
-        if rule.kind in _WHOLE_OF and any(
-            kind == _WHOLE_OF[rule.kind]
-            and members == set(rule.members)
-            and set(positions) <= held
-            for kind, members, held in wholes
-        ):
-            continue
-        component_index = 0 if rule.component == 'stem' else 1
-        members: list[InteractionMember] = [
-            {
-                'pillar': PILLAR_NAMES[position],
-                'char': pillars[PILLAR_NAMES[position]][component_index],
-                'pinyin': (
-                    STEMS[pillars[PILLAR_NAMES[position]][0]]['pinyin']
-                    if rule.component == 'stem'
-                    else BRANCHES[pillars[PILLAR_NAMES[position]][1]]['pinyin']
-                ),
-            }
-            for position in positions
-        ]
-        result.append(
-            {
-                'id': f'{rule.kind}:{rule.rule_index}:'
-                + '-'.join(member['pillar'] for member in members),
-                'kind': rule.kind,
-                'component': rule.component,
-                'members': members,
-                'adjacent': positions[-1] - positions[0] == len(positions) - 1,
-                'completeness': (
-                    'half'
-                    if rule.kind in _HALVES
-                    else 'complete'
-                    if len(positions) == 3
-                    else 'pair'
-                ),
-                'potential_element': rule.potential_element,
-                'transformation': (
-                    'not_assessed' if rule.kind in _COMBINING else 'not_applicable'
-                ),
-            }
+    pairs = _natal_pairs(pillars)
+    found = _find(pairs)
+    return [
+        _interaction(
+            rule,
+            positions,
+            PILLAR_NAMES,
+            pairs,
+            positions[-1] - positions[0] == len(positions) - 1,
         )
-    return result
+        for rule, positions in found
+        if not _absorbers(rule, positions, found)
+    ]
+
+
+def detect_luck_interactions(
+    pillars: Mapping[str, tuple[str, str]],
+    luck: tuple[str, str],
+) -> LuckInteractions:
+    """The relationships a luck pillar forms with the natal chart.
+
+    The luck pillar is a fifth position after the natal four, under the same rules,
+    and it counts as adjacent to every natal pillar: a relationship it takes part in
+    is adjacent when its natal members are. Listed are the relationships the luck
+    pillar takes part in, ordered by rule then position, and the natal halves that a
+    complete whole with the luck pillar absorbs. A half a natal whole already
+    absorbs is not a natal finding, so the luck pillar cannot absorb it.
+    """
+    pairs = _natal_pairs(pillars)
+    _check_pair(LUCK, luck)
+    pairs.append(luck)
+    names = (*PILLAR_NAMES, LUCK)
+    at = len(PILLAR_NAMES)
+    found = _find(pairs)
+    interactions: list[Interaction] = []
+    absorbed: list[AbsorbedInteraction] = []
+    for rule, positions in found:
+        absorbers = _absorbers(rule, positions, found)
+        if at in positions:
+            if not absorbers:
+                natal = [position for position in positions if position != at]
+                interactions.append(
+                    _interaction(
+                        rule,
+                        positions,
+                        names,
+                        pairs,
+                        natal[-1] - natal[0] == len(natal) - 1,
+                    )
+                )
+        elif absorbers and all(at in held for _, held in absorbers):
+            absorbed.append(
+                {
+                    'id': _id(rule, positions, names),
+                    'by': [_id(whole, held, names) for whole, held in absorbers],
+                }
+            )
+    return {'interactions': interactions, 'absorbed': absorbed}
