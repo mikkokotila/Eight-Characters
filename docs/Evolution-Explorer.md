@@ -146,7 +146,7 @@ The pane lists, in groups:
 | Tables | The element interaction and pillar domain resonance matrices, and the life-stage vitality, partial-state weight and pillar distance curves. |
 
 - **What is marked:** a value changed from its default carries a dot by its name; one not yet applied, a ring. The status line says what the chart was computed with and how many changes wait.
-- **What a recompute sends:** every value that differs from its default, so earlier changes stay applied. A change made while a recompute runs waits for the next one.
+- **What a recompute sends:** every value that differs from its default, so earlier changes stay applied. A change made while a recompute runs waits for the next one, even a change back to the value the chart had.
 - **Going back:** Discard Changes returns to what the chart was computed with. Reset to Defaults sets every value back to its default, ready to recompute.
 - **Errors:** an entry that isn't a number within its range is marked, and Recompute waits until it's fixed. If the server refuses a recompute, its reason shows in the status line and the chart stays as it was.
 - **Cost:** the largest run takes about four and a half times as long as the default one.

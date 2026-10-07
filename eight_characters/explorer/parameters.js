@@ -79,9 +79,18 @@
     return `${control.label}, ${cell}`;
   }
 
+  // An edit that matches what the chart was computed with changes nothing. While a
+  // recompute runs, the chart may yet take other values, so every edit is kept until
+  // the answer lands; pruneDrafts then drops those that match it.
   function setDraft(key, value) {
-    if (same(value, appliedValue(key))) drafts.delete(key);
+    if (!inFlight && same(value, appliedValue(key))) drafts.delete(key);
     else drafts.set(key, value);
+  }
+
+  function pruneDrafts() {
+    [...drafts.entries()].forEach(([key, value]) => {
+      if (same(value, appliedValue(key))) drafts.delete(key);
+    });
   }
 
   const usable = () => Boolean(explorer && explorer.birth && catalogue && applied);
@@ -441,9 +450,6 @@
       if (inFlight !== controller) return;
       explorer.redraw(graphData);
       applied = graphData.parameters;
-      [...drafts.entries()].forEach(([key, value]) => {
-        if (same(value, appliedValue(key))) drafts.delete(key);
-      });
       outcome = { text: 'Recomputed.', error: false };
     } catch (error) {
       // An abort means a later recompute or a reset took over, and says so itself.
@@ -452,6 +458,7 @@
     } finally {
       if (inFlight === controller) {
         inFlight = null;
+        pruneDrafts();
         renderValues();
         refresh();
       }

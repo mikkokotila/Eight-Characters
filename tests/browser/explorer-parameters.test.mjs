@@ -235,6 +235,27 @@ for (const profile of profiles) {
       assert.equal(await inputFor(page, 'run', 'particles').inputValue(), '8');
     });
 
+    check('an edit made while a recompute runs is kept, even one back to the value the chart had', async (page) => {
+      await openExplorer(page);
+      await openPane(page);
+      await openGroups(page, 'Structure Mode');
+      await page.route('**/api/evolution_explorer', async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+        await route.continue();
+      });
+      const before = String(controlOf('LAMBDA_MODE').default);
+      await inputFor(page, 'model', 'LAMBDA_MODE').fill('6.5');
+      await page.locator('#parameterRecompute').click();
+      await page.waitForFunction(() => document.getElementById('parameterStatus').textContent === 'Recomputing…');
+      await inputFor(page, 'model', 'LAMBDA_MODE').fill(before);
+      await page.waitForFunction(() => /^Recomputed/.test(document.getElementById('parameterStatus').textContent));
+      assert.equal(await statusOf(page), 'Recomputed. Computed with 1 value changed from its default. 1 change to apply.');
+      assert.equal(await inputFor(page, 'model', 'LAMBDA_MODE').inputValue(), before);
+      const body = await recompute(page);
+      assert.equal('model' in body, false);
+      assert.equal(await statusOf(page), 'Recomputed. Computed with the defaults.');
+    });
+
     check('a reset during a recompute drops the answer that was on its way', async (page) => {
       await openExplorer(page);
       await openPane(page);

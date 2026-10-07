@@ -242,8 +242,9 @@ The explorer parameters suite checks the explorer's parameter pane (PR #7):
   controls only when it opens, and every control shows the value the graph was
   computed with, in its range and step.
 - **Recompute.** It sends every value that differs from its default, so what was
-  applied stays applied. A change made while one runs waits for the next, only one
-  runs at a time, and a reset drops the answer on its way.
+  applied stays applied. A change made while one runs waits for the next, even one
+  back to the value the chart had; only one runs at a time, and a reset drops the
+  answer on its way.
 - **Entries.** Sliders take fractional values and every one moves; an emptied entry
   is marked and sends nothing; a vector's bars rescale to its largest entry; the
   clustering weights stay shares of one.
