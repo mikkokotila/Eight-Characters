@@ -384,10 +384,11 @@ class TestSessionsAndCodes(StoreTestCase):
         self.assertFalse(
             self.store.extend_session('gone', '2027-01-01T00:00:00Z', ended_at)
         )
-        self.store.end_expired_session('a', '2026-11-06T11:59:59Z')
+        self.assertFalse(self.store.end_expired_session('a', '2026-11-06T11:59:59Z'))
         self.assertEqual(self.store.session('a'), self.session('a'))
-        self.store.end_expired_session('a', ended_at)
+        self.assertTrue(self.store.end_expired_session('a', ended_at))
         self.assertIsNone(self.store.session('a'))
+        self.assertFalse(self.store.end_expired_session('a', ended_at))
 
     def test_signing_out_everywhere_ends_only_that_account(self) -> None:
         other = self.store.create_user('other@example.com', 'en')

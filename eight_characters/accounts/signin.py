@@ -93,7 +93,8 @@ class CurrentSession:
     user: User
     token_hash: str
     expires_at: datetime
-    # Extended now, so the browser's cookie must be set again.
+    # Extended, by this request or by another one since the browser's cookie was
+    # set, so the cookie must be set again.
     renewed: bool
 
 
@@ -224,8 +225,22 @@ class SignIn:
         expires_at = parse_timestamp(session.expires_at)
         if expires_at <= now:
             # Only while it is still ended: another request may have renewed it.
-            self._store.end_expired_session(token_hash, timestamp(now))
-            return None
+            if self._store.end_expired_session(token_hash, timestamp(now)):
+                return None
+            # Renewed meanwhile, or signed out: as it is now. The cookie this request
+            # carried names the old end, so a renewed session sets it again.
+            found = self._store.session_and_user(token_hash)
+            if found is None:
+                return None
+            session, user = found
+            expires_at = parse_timestamp(session.expires_at)
+            if expires_at <= now:
+                raise RuntimeError(
+                    'A session kept as renewed has ended: only renewal moves its end.'
+                )
+            return CurrentSession(
+                user=user, token_hash=token_hash, expires_at=expires_at, renewed=True
+            )
         renewed = expires_at - now < SESSION_RENEWAL
         if renewed:
             expires_at = now + SESSION_LIFETIME

@@ -269,25 +269,59 @@ class TestSessions(SignInTestCase):
         self.assertTrue(current.renewed)
         self.assertEqual(current.expires_at, self.clock.now + SESSION_LIFETIME)
 
-    def test_a_session_renewed_meanwhile_is_not_ended(self) -> None:
+    def test_a_session_renewed_meanwhile_is_kept_as_renewed(self) -> None:
         # This request reads the session just before it ends; another renews it; this
-        # one's clock then passes the old end.
+        # one's clock then passes the old end. It finds the session as renewed, and
+        # has the browser's cookie set again, rather than turning it away.
         self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)
         read = self.store.session_and_user
+        renewals: list[str] = []
 
         def renewed_meanwhile(token_hash: str) -> tuple[Session, User] | None:
             found = read(token_hash)
-            now = self.clock.now
-            renewal = timestamp(now + SESSION_LIFETIME)
-            self.assertTrue(
-                self.store.extend_session(token_hash, renewal, timestamp(now))
-            )
-            self.clock.advance(2)
+            if not renewals:
+                now = self.clock.now
+                renewal = timestamp(now + SESSION_LIFETIME)
+                self.assertTrue(
+                    self.store.extend_session(token_hash, renewal, timestamp(now))
+                )
+                renewals.append(renewal)
+                self.clock.advance(2)
             return found
 
         with patch.object(self.store, 'session_and_user', renewed_meanwhile):
+            current = self.sign_in.current(self.signed.token)
+        assert current is not None
+        self.assertEqual(current.user.id, self.signed.user.id)
+        self.assertTrue(current.renewed)
+        self.assertEqual(timestamp(current.expires_at), renewals[0])
+        later = self.sign_in.current(self.signed.token)
+        assert later is not None
+        self.assertFalse(later.renewed)
+
+    def test_a_session_read_as_ended_and_signed_out_meanwhile_is_gone(self) -> None:
+        self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)
+        read = self.store.session_and_user
+
+        def signed_out_meanwhile(token_hash: str) -> tuple[Session, User] | None:
+            found = read(token_hash)
+            if found is not None:
+                self.store.delete_session(token_hash)
+                self.clock.advance(2)
+            return found
+
+        with patch.object(self.store, 'session_and_user', signed_out_meanwhile):
             self.assertIsNone(self.sign_in.current(self.signed.token))
-        self.assertIsNotNone(self.sign_in.current(self.signed.token))
+        self.assertIsNone(self.sign_in.current(self.signed.token))
+
+    def test_a_session_kept_as_renewed_that_has_still_ended_is_an_error(self) -> None:
+        # Only renewal keeps an ended session, and it moves the end past now.
+        self.clock.advance(SESSION_LIFETIME.total_seconds())
+        with (
+            patch.object(self.store, 'end_expired_session', return_value=False),
+            self.assertRaises(RuntimeError),
+        ):
+            self.sign_in.current(self.signed.token)
 
     def test_a_session_ended_meanwhile_is_not_renewed(self) -> None:
         self.clock.advance(timedelta(days=16).total_seconds())

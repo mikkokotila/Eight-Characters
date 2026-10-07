@@ -15,7 +15,9 @@ from unittest.mock import patch
 from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 
-from eight_characters.accounts.store import AccountStore, StoreError
+from eight_characters.accounts.records import User, timestamp
+from eight_characters.accounts.signin import SESSION_LIFETIME
+from eight_characters.accounts.store import AccountStore, Session, StoreError
 from eight_characters.accounts.web import (
     SIGN_IN_REQUIRED,
     ConfigError,
@@ -168,6 +170,40 @@ class TestTheStartPage(unittest.TestCase):
         cookie = response.headers['set-cookie']
         self.assertTrue(cookie.startswith(f'{SESSION_COOKIE}='), cookie)
         self.assertIn(f'Max-Age={int(timedelta(days=30).total_seconds())}', cookie)
+
+    def test_a_page_crossing_the_end_of_a_session_renewed_meanwhile_keeps_it(
+        self,
+    ) -> None:
+        # The page's request reads the session just before it ends; another request
+        # renews it; the page's clock then passes the old end.
+        client = site_client()
+        sign_in(client, self.accounts, 'crossing@example.com')
+        clock = cast(Clock, self.accounts.clock)
+        clock.advance(SESSION_LIFETIME.total_seconds() - 1)
+        store = self.accounts.store
+        read = store.session_and_user
+        renewals: list[str] = []
+
+        def renewed_meanwhile(token_hash: str) -> tuple[Session, User] | None:
+            found = read(token_hash)
+            if not renewals:
+                now = clock.now
+                renewal = timestamp(now + SESSION_LIFETIME)
+                self.assertTrue(
+                    store.extend_session(token_hash, renewal, timestamp(now))
+                )
+                renewals.append(renewal)
+                clock.advance(2)
+            return found
+
+        with patch.object(store, 'session_and_user', renewed_meanwhile):
+            response = client.get('/')
+        state = self.account_state(response.text)
+        self.assertIsNotNone(state)
+        cookie = response.headers['set-cookie']
+        self.assertTrue(cookie.startswith(f'{SESSION_COOKIE}='), cookie)
+        renewed_for = int(SESSION_LIFETIME.total_seconds()) - 2
+        self.assertIn(f'Max-Age={renewed_for}', cookie)
 
     def test_a_page_with_an_ended_session_ends_its_cookie(self) -> None:
         client = site_client()

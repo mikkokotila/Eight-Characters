@@ -22,12 +22,12 @@ Charts need an account; the start page does not. Creating a chart while signed o
 
 ### Fixed
 - **Signing in when another tab made the account and it was deleted meanwhile** refused nothing and answered 500; it now refuses the code, as when an account goes before its session is made.
-- **A session renewed by one request while another found it ended** was deleted by the second, signing out a browser holding a fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live.
+- **A session renewed by one request while another found it ended** was deleted by the second, or turned away by it, and its answer removed the browser's fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live; a request that found it ended after another renewed it takes it as renewed, and sets its cookie again.
 - **The account export listed requests for codes older than the hour**, kept until the next code was asked for. Exporting now drops what has passed its time first: ended sessions and codes, and requests older than the hourly window.
 - **A full or unwritable mail folder** (on a laptop) answered 500; it is now a mail error, answered 502 like any message that could not be sent.
 
 ### Tests
-- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), renewing and ending the cookie there, and starting the app with missing settings, a missing database, and complete ones.
+- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), renewing and ending the cookie there (also when another request renews the session as the page's crosses its old end), and starting the app with missing settings, a missing database, and complete ones.
 - The API tests sign in as the page does.
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.34.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.

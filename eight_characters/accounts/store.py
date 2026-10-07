@@ -633,14 +633,15 @@ class AccountStore:
             ).rowcount
         return extended == 1
 
-    def end_expired_session(self, token_hash: str, now: str) -> None:
-        """Deletes a session if it has ended by `now`: a request that renewed it
-        meanwhile keeps it."""
+    def end_expired_session(self, token_hash: str, now: str) -> bool:
+        """Deletes a session if it has ended by `now`; False if it is gone, or a
+        request renewed it meanwhile and it is kept."""
         with self._write() as connection:
-            connection.execute(
+            ended = connection.execute(
                 'DELETE FROM sessions WHERE token_hash = ? AND expires_at <= ?',
                 (token_hash, now),
-            )
+            ).rowcount
+        return ended == 1
 
     def delete_session(self, token_hash: str) -> None:
         with self._write() as connection:
