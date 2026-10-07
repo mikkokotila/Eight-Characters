@@ -344,6 +344,20 @@ for (const profile of profiles) {
       assert.match(await statusOf(page), /^Recomputed\./);
     });
 
+    check('a clustering weight typed finer than its step still leaves the three summing to one', async (page) => {
+      await openExplorer(page);
+      await openPane(page);
+      await openGroups(page, 'Run', 'Clustering');
+      await inputFor(page, 'model', 'CLUSTER_ALPHA').fill('0.333');
+      const weights = await Promise.all(['ALPHA', 'BETA', 'GAMMA']
+        .map((name) => inputFor(page, 'model', `CLUSTER_${name}`).inputValue().then(Number)));
+      assert.deepEqual(weights, [0.333, 0.5, 0.167]);
+      await inputFor(page, 'run', 'particles').fill('8');
+      const body = await recompute(page);
+      assert.deepEqual(body.model, { CLUSTER_ALPHA: 0.333, CLUSTER_BETA: 0.5, CLUSTER_GAMMA: 0.167 });
+      assert.match(await statusOf(page), /^Recomputed\./);
+    });
+
     check('the graph is measured again whenever the pane opens or closes', async (page) => {
       await openExplorer(page);
       const before = await graphFitsItsCanvas(page);

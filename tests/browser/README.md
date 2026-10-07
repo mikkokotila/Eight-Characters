@@ -247,7 +247,7 @@ The explorer parameters suite checks the explorer's parameter pane (PR #7):
   answer on its way.
 - **Entries.** Sliders take fractional values and every one moves; an emptied entry
   is marked and sends nothing; a vector's bars rescale to its largest entry; the
-  clustering weights stay shares of one.
+  clustering weights stay shares of one, even when one is typed finer than its step.
 - **The seed and refusals.** A new seed each run sends and shows a fresh seed; a
   refused recompute says why and leaves the chart and the edits.
 - **Layout.** The graph is measured again as the pane opens and closes, on a wide

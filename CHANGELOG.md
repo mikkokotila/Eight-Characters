@@ -32,7 +32,7 @@ The Evolution explorer: a parameter pane, and runs that carry their own paramete
   - the API's catalogue, overrides, refusals and concurrency;
   - the pane in the browser, desktop and mobile.
 
-  Twenty planted faults, among them each of the review's findings on PR #7, fail them.
+  Twenty-two planted faults, among them each of the reviews' findings on PR #7, fail them.
 - Version bumped to `0.30.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.29.2

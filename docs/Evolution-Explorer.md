@@ -140,7 +140,7 @@ The pane lists, in groups:
 | Group | What it holds |
 |---|---|
 | Run | Particles (8 to 64), temperature steps (1 to 4), sweeps per step (1 to 2), and the seed. The same seed and settings give the same result. "New seed each run" draws a fresh seed for every recompute and shows it. |
-| Clustering | The basin clustering radius and minimum, and the three shares of the distance between particles: rule switches and mode, effective elements, qi activations. Changing one share moves the other two, so they always add up to 1. |
+| Clustering | The basin clustering radius and minimum, and the three shares of the distance between particles: rule switches and mode, effective elements, qi activations. Changing one share moves the other two, so they always add up to 1, even for a share typed finer than its step. |
 | Conventions | The Zi hour, and whether the hour pillar and the day boundary follow true solar time or clock time. |
 | Polarity, Rule Activation, Structure Mode, Damage, Energy Weights, Motifs | The model's constants, one each, such as the Structure-Mode Fidelity Weight. Each shows its default and range. |
 | Tables | The element interaction and pillar domain resonance matrices, and the life-stage vitality, partial-state weight and pillar distance curves. |

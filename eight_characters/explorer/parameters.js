@@ -356,17 +356,20 @@
   }
 
   // The three clustering weights stay shares of one: the other two take up what one
-  // gives or takes, in proportion.
+  // gives or takes, in proportion. The first of them is rounded to the step, never past
+  // what is left; the last takes the rest exactly, to twelve places, so a weight typed
+  // finer than the step still leaves the three summing to one.
   function setClusterWeight(id, weight) {
     const others = CLUSTER_WEIGHTS.filter((item) => item !== id);
     const control = controlOf(keyOf('model', id));
     const rest = 1 - weight;
     const current = others.map((item) => currentValue(keyOf('model', item)));
     const total = current[0] + current[1];
-    const first = roundTo(total > 0 ? (rest * current[0]) / total : rest / 2, control.step);
+    const share = total > 0 ? (rest * current[0]) / total : rest / 2;
+    const first = Math.min(roundTo(share, control.step), rest);
     setDraft(keyOf('model', id), weight);
     setDraft(keyOf('model', others[0]), first);
-    setDraft(keyOf('model', others[1]), roundTo(rest - first, control.step));
+    setDraft(keyOf('model', others[1]), Number((rest - first).toFixed(12)));
   }
 
   function onInput(event) {
