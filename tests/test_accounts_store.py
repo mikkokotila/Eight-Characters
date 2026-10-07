@@ -444,23 +444,30 @@ class TestSessionsAndCodes(StoreTestCase):
         self.assertFalse(self.store.create_session(self.session('b', '0' * 32)))
         self.assertIsNone(self.store.session('b'))
 
-    def test_deleting_the_account_takes_its_sessions_codes_and_requests(self) -> None:
+    def test_deleting_the_account_takes_its_sessions_and_code(self) -> None:
         self.store.create_session(self.session('a'))
         self.store.put_code(self.code())
-        self.assertTrue(
-            self.store.allow_code_request(
-                self.user.email,
-                'client',
-                '2026-10-07T12:00:00Z',
-                '2026-10-07T11:00:00Z',
-                5,
-                20,
-            )
-        )
         self.store.delete_user(self.user.id)
         self.assertIsNone(self.store.session('a'))
         self.assertIsNone(self.store.code(self.user.email))
-        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
+
+    def test_deleting_the_account_keeps_the_hourly_limits(self) -> None:
+        # Otherwise deleting and creating the account again would reset them.
+        def ask(client: str) -> bool:
+            return self.store.allow_code_request(
+                self.user.email,
+                client,
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                2,
+                1,
+            )
+
+        self.assertTrue(ask('first'))
+        self.assertTrue(ask('second'))
+        self.store.delete_user(self.user.id)
+        self.assertFalse(ask('third'))
+        self.assertFalse(ask('first'))
 
     def test_a_new_code_replaces_the_last(self) -> None:
         self.store.put_code(self.code(code_hash='first'))

@@ -18,7 +18,7 @@ The account API: people can sign in with a code sent by email. The page starts u
 - **Settings** come from environment variables and are checked together: a missing or malformed one is named.
 
 ### Changed
-- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes all three.
+- The account database is at schema 2: sessions, sign-in codes and the record of codes asked for. None of them is backed up. Deleting an account deletes its sessions and sign-in code; the record of codes asked for stays until it is an hour old, so that deleting and creating an account again does not reset the hourly limits.
 - Migrations read the database's version under the write lock, so two processes opening an older database at once never run one twice.
 
 ### Tests

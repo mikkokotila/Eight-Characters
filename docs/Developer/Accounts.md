@@ -85,7 +85,7 @@ so the database alone cannot be used to test guesses or take over a session.
 | `DELETE /api/account/session` | signs this browser out | `204` |
 | `DELETE /api/account/sessions` | signs the account out everywhere | `204`; `401` |
 | `GET /api/account/export` | everything kept for the account, as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `401` |
-| `DELETE /api/account` | deletes the account; `{"email": …}` must repeat its address | `204`; `400`, `401` |
+| `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …}` must repeat its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.

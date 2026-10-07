@@ -549,8 +549,11 @@ class AccountStore:
         return changed
 
     def delete_user(self, user_id: str) -> None:
-        """Deletes the account and everything kept for it: its sessions, its address's
-        sign-in code and the record of codes asked for."""
+        """Deletes the account, its sessions and its address's sign-in code.
+
+        The record of codes asked for stays until it is an hour old, as for any
+        address: deleting the account must not reset the hourly limits, or deleting
+        and creating it again would send emails without end."""
         with self._write() as connection:
             user = _select_user(connection, 'id', user_id)
             if user is None:
@@ -559,9 +562,6 @@ class AccountStore:
             connection.execute('DELETE FROM users WHERE id = ?', (user.id,))
             connection.execute(
                 'DELETE FROM sign_in_codes WHERE email = ?', (user.email,)
-            )
-            connection.execute(
-                'DELETE FROM code_requests WHERE email = ?', (user.email,)
             )
             _log_change(connection, 'user', user.id, user_path(user.id))
 
