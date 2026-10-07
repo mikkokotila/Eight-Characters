@@ -62,6 +62,12 @@ def timestamp(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime(_TIMESTAMP_FORMAT)
 
 
+def parse_timestamp(value: str) -> datetime:
+    """A moment the records wrote, back as an aware UTC datetime."""
+    _check_timestamp('A timestamp', value)
+    return datetime.strptime(value, _TIMESTAMP_FORMAT).replace(tzinfo=UTC)
+
+
 def normalize_email(raw: str) -> str:
     """The address as accounts are keyed by it: trimmed and lowercased.
 

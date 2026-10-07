@@ -15,6 +15,8 @@ from eight_characters.accounts.store import (
     AccountStore,
     EmailTaken,
     RecordChange,
+    Session,
+    SignInCode,
     StoreError,
     UnknownUser,
 )
@@ -262,6 +264,168 @@ class TestBackupLog(StoreTestCase):
         self.store.mark_backed_up(1)
         with self.assertRaises(StoreError):
             self.store.mark_backed_up(0)
+
+
+class TestSessionsAndCodes(StoreTestCase):
+    def setUp(self) -> None:
+        super().setUp()
+        self.user = self.store.create_user('reader@example.com', 'fi')
+
+    def session(self, name: str, user_id: str | None = None) -> Session:
+        return Session(
+            token_hash=name,
+            user_id=user_id or self.user.id,
+            created_at='2026-10-07T12:00:00Z',
+            expires_at='2026-11-06T12:00:00Z',
+        )
+
+    def code(self, **changes: object) -> SignInCode:
+        base = SignInCode(
+            email='reader@example.com',
+            code_hash='right',
+            new_language=None,
+            created_at='2026-10-07T12:00:00Z',
+            expires_at='2026-10-07T12:10:00Z',
+            attempts=0,
+        )
+        return replace(base, **changes)
+
+    def test_sessions_are_kept_extended_and_ended(self) -> None:
+        self.store.create_session(self.session('a'))
+        self.assertEqual(self.store.session('a'), self.session('a'))
+        self.store.extend_session('a', '2026-12-01T00:00:00Z')
+        self.assertEqual(
+            self.store.session('a'),
+            replace(self.session('a'), expires_at='2026-12-01T00:00:00Z'),
+        )
+        self.store.delete_session('a')
+        self.assertIsNone(self.store.session('a'))
+
+    def test_signing_out_everywhere_ends_only_that_account(self) -> None:
+        other = self.store.create_user('other@example.com', 'en')
+        for name in ('a', 'b'):
+            self.store.create_session(self.session(name))
+        self.store.create_session(self.session('c', other.id))
+        self.assertEqual(self.store.delete_sessions(self.user.id), 2)
+        self.assertIsNone(self.store.session('a'))
+        self.assertIsNotNone(self.store.session('c'))
+
+    def test_a_session_needs_an_account(self) -> None:
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.store.create_session(self.session('a', '0' * 32))
+
+    def test_deleting_the_account_takes_its_sessions_codes_and_requests(self) -> None:
+        self.store.create_session(self.session('a'))
+        self.store.put_code(self.code())
+        self.assertTrue(
+            self.store.allow_code_request(
+                self.user.email,
+                'client',
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                5,
+                20,
+            )
+        )
+        self.store.delete_user(self.user.id)
+        self.assertIsNone(self.store.session('a'))
+        self.assertIsNone(self.store.code(self.user.email))
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
+
+    def test_a_new_code_replaces_the_last(self) -> None:
+        self.store.put_code(self.code(code_hash='first'))
+        self.store.put_code(self.code(code_hash='second', new_language='en'))
+        self.assertEqual(
+            self.store.code('reader@example.com'),
+            self.code(code_hash='second', new_language='en'),
+        )
+
+    def test_taking_the_right_code_uses_it_up(self) -> None:
+        self.store.put_code(self.code())
+        taken = self.store.take_code(
+            'reader@example.com', 'right', '2026-10-07T12:05:00Z', 5
+        )
+        self.assertEqual(taken, self.code())
+        self.assertIsNone(self.store.code('reader@example.com'))
+        self.assertIsNone(
+            self.store.take_code(
+                'reader@example.com', 'right', '2026-10-07T12:05:00Z', 5
+            )
+        )
+
+    def test_wrong_tries_are_counted_and_the_last_drops_the_code(self) -> None:
+        self.store.put_code(self.code())
+        for tries in range(1, 5):
+            self.assertIsNone(
+                self.store.take_code(
+                    'reader@example.com', 'wrong', '2026-10-07T12:01:00Z', 5
+                )
+            )
+            self.assertEqual(
+                self.store.code('reader@example.com'), self.code(attempts=tries)
+            )
+        self.assertIsNone(
+            self.store.take_code(
+                'reader@example.com', 'wrong', '2026-10-07T12:01:00Z', 5
+            )
+        )
+        self.assertIsNone(self.store.code('reader@example.com'))
+        self.assertIsNone(
+            self.store.take_code(
+                'reader@example.com', 'right', '2026-10-07T12:01:00Z', 5
+            )
+        )
+
+    def test_an_expired_code_is_dropped_unused(self) -> None:
+        self.store.put_code(self.code())
+        self.assertIsNone(
+            self.store.take_code(
+                'reader@example.com', 'right', '2026-10-07T12:10:00Z', 5
+            )
+        )
+        self.assertIsNone(self.store.code('reader@example.com'))
+
+    def test_expired_sessions_and_codes_are_dropped(self) -> None:
+        self.store.create_session(self.session('a'))
+        self.store.put_code(self.code())
+        self.store.delete_expired('2026-10-07T12:10:00Z')
+        self.assertIsNone(self.store.code('reader@example.com'))
+        self.assertIsNotNone(self.store.session('a'))
+        self.store.delete_expired('2026-11-06T12:00:00Z')
+        self.assertIsNone(self.store.session('a'))
+
+    def test_code_requests_are_limited_per_address_and_per_client(self) -> None:
+        def ask(email: str, client: str, now: str = '2026-10-07T12:00:00Z') -> bool:
+            return self.store.allow_code_request(
+                email, client, now, '2026-10-07T11:00:00Z', 2, 3
+            )
+
+        self.assertTrue(ask('a@example.com', 'one'))
+        self.assertTrue(ask('a@example.com', 'two'))
+        self.assertFalse(ask('a@example.com', 'three'))
+        self.assertTrue(ask('b@example.com', 'one'))
+        # The client's third request is allowed, its fourth is not.
+        self.assertTrue(ask('c@example.com', 'one'))
+        self.assertFalse(ask('d@example.com', 'one'))
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(4,)])
+
+    def test_requests_older_than_the_window_no_longer_count(self) -> None:
+        old = '2026-10-07T10:00:00Z'
+        for _ in range(2):
+            self.store.allow_code_request(
+                'a@example.com', 'one', old, '2026-10-07T09:00:00Z', 2, 9
+            )
+        self.assertTrue(
+            self.store.allow_code_request(
+                'a@example.com',
+                'one',
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                2,
+                9,
+            )
+        )
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(1,)])
 
 
 class TestRestore(StoreTestCase):

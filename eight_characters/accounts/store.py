@@ -7,6 +7,7 @@ one that is missing fails, and a new or restored one is built aside and moved in
 place only when complete.
 """
 
+import hmac
 import os
 import sqlite3
 from collections.abc import Callable, Generator, Sequence
@@ -61,6 +62,39 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         """,
         'INSERT INTO backup_progress (id, backed_up_seq) VALUES (1, 0)',
     ),
+    # 2: sessions, sign-in codes and the requests for them. None is backed up: after a
+    # restore, people sign in again.
+    (
+        """
+        CREATE TABLE sessions (
+            token_hash TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL
+        ) STRICT
+        """,
+        'CREATE INDEX sessions_by_user ON sessions (user_id)',
+        """
+        CREATE TABLE sign_in_codes (
+            email TEXT PRIMARY KEY,
+            code_hash TEXT NOT NULL,
+            new_language TEXT CHECK (new_language IN ('fi', 'en')),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            attempts INTEGER NOT NULL CHECK (attempts >= 0)
+        ) STRICT
+        """,
+        """
+        CREATE TABLE code_requests (
+            id INTEGER PRIMARY KEY,
+            email TEXT NOT NULL,
+            client TEXT NOT NULL,
+            requested_at TEXT NOT NULL
+        ) STRICT
+        """,
+        'CREATE INDEX code_requests_by_email ON code_requests (email, requested_at)',
+        'CREATE INDEX code_requests_by_client ON code_requests (client, requested_at)',
+    ),
 )
 SCHEMA_VERSION: Final = len(MIGRATIONS)
 BUSY_TIMEOUT_SECONDS: Final = 5.0
@@ -85,6 +119,29 @@ class RecordChange:
 
     path: str
     user: User | None
+
+
+@dataclass(frozen=True)
+class Session:
+    """A signed-in browser. Only a keyed hash of its token is kept."""
+
+    token_hash: str
+    user_id: str
+    created_at: str
+    expires_at: str
+
+
+@dataclass(frozen=True)
+class SignInCode:
+    """The code last sent to an address. `new_language` is set when redeeming it
+    creates the account, in that language."""
+
+    email: str
+    code_hash: str
+    new_language: Language | None
+    created_at: str
+    expires_at: str
+    attempts: int
 
 
 @dataclass(frozen=True)
@@ -215,6 +272,31 @@ def _scalar(connection: sqlite3.Connection, query: str, *params: object) -> int:
     if not isinstance(value, int):
         raise StoreError(f'Expected a number from: {query}')
     return value
+
+
+def _texts(row: tuple[Any, ...]) -> tuple[str, ...]:
+    if not all(isinstance(value, str) for value in row):
+        raise StoreError('A row holds a value that is not text.')
+    return tuple(str(value) for value in row)
+
+
+def _code_from_row(row: tuple[Any, ...]) -> SignInCode:
+    address, code_hash, new_language, created_at, expires_at, attempts = row
+    if new_language is not None and not (
+        isinstance(new_language, str) and is_language(new_language)
+    ):
+        raise StoreError('A sign-in code holds an unknown language.')
+    if not isinstance(attempts, int):
+        raise StoreError('A sign-in code holds a count that is not a number.')
+    texts = _texts((address, code_hash, created_at, expires_at))
+    return SignInCode(
+        email=texts[0],
+        code_hash=texts[1],
+        new_language=new_language,
+        created_at=texts[2],
+        expires_at=texts[3],
+        attempts=attempts,
+    )
 
 
 class AccountStore:
@@ -412,13 +494,183 @@ class AccountStore:
         return changed
 
     def delete_user(self, user_id: str) -> None:
+        """Deletes the account and everything kept for it: its sessions, its address's
+        sign-in code and the record of codes asked for."""
         with self._write() as connection:
-            deleted = connection.execute(
-                'DELETE FROM users WHERE id = ?', (user_id,)
-            ).rowcount
-            if deleted != 1:
+            user = _select_user(connection, 'id', user_id)
+            if user is None:
                 raise UnknownUser('No account has that id.')
-            _log_change(connection, 'user', user_id, user_path(user_id))
+            # Sessions go with the user (ON DELETE CASCADE).
+            connection.execute('DELETE FROM users WHERE id = ?', (user.id,))
+            connection.execute(
+                'DELETE FROM sign_in_codes WHERE email = ?', (user.email,)
+            )
+            connection.execute(
+                'DELETE FROM code_requests WHERE email = ?', (user.email,)
+            )
+            _log_change(connection, 'user', user.id, user_path(user.id))
+
+    # ── Sessions ──
+
+    def create_session(self, session: Session) -> None:
+        with self._write() as connection:
+            connection.execute(
+                'INSERT INTO sessions (token_hash, user_id, created_at, expires_at) '
+                'VALUES (?, ?, ?, ?)',
+                (
+                    session.token_hash,
+                    session.user_id,
+                    session.created_at,
+                    session.expires_at,
+                ),
+            )
+
+    def session(self, token_hash: str) -> Session | None:
+        with _connection(self.path) as connection:
+            row = connection.execute(
+                'SELECT token_hash, user_id, created_at, expires_at FROM sessions '
+                'WHERE token_hash = ?',
+                (token_hash,),
+            ).fetchone()
+        if row is None:
+            return None
+        texts = _texts(row)
+        return Session(
+            token_hash=texts[0],
+            user_id=texts[1],
+            created_at=texts[2],
+            expires_at=texts[3],
+        )
+
+    def extend_session(self, token_hash: str, expires_at: str) -> None:
+        with self._write() as connection:
+            connection.execute(
+                'UPDATE sessions SET expires_at = ? WHERE token_hash = ?',
+                (expires_at, token_hash),
+            )
+
+    def delete_session(self, token_hash: str) -> None:
+        with self._write() as connection:
+            connection.execute(
+                'DELETE FROM sessions WHERE token_hash = ?', (token_hash,)
+            )
+
+    def delete_sessions(self, user_id: str) -> int:
+        """Signs the account out everywhere; returns how many sessions ended."""
+        with self._write() as connection:
+            return connection.execute(
+                'DELETE FROM sessions WHERE user_id = ?', (user_id,)
+            ).rowcount
+
+    def delete_expired(self, now: str) -> None:
+        """Drops sessions and codes past their time."""
+        with self._write() as connection:
+            connection.execute('DELETE FROM sessions WHERE expires_at <= ?', (now,))
+            connection.execute(
+                'DELETE FROM sign_in_codes WHERE expires_at <= ?', (now,)
+            )
+
+    # ── Sign-in codes ──
+
+    def put_code(self, code: SignInCode) -> None:
+        """Keeps this code for its address, replacing any earlier one."""
+        with self._write() as connection:
+            connection.execute(
+                'INSERT OR REPLACE INTO sign_in_codes '
+                '(email, code_hash, new_language, created_at, expires_at, attempts) '
+                'VALUES (?, ?, ?, ?, ?, ?)',
+                (
+                    code.email,
+                    code.code_hash,
+                    code.new_language,
+                    code.created_at,
+                    code.expires_at,
+                    code.attempts,
+                ),
+            )
+
+    def code(self, email: str) -> SignInCode | None:
+        with _connection(self.path) as connection:
+            row = connection.execute(
+                'SELECT email, code_hash, new_language, created_at, expires_at, '
+                'attempts FROM sign_in_codes WHERE email = ?',
+                (email,),
+            ).fetchone()
+        return None if row is None else _code_from_row(row)
+
+    def take_code(
+        self, email: str, code_hash: str, now: str, tries: int
+    ) -> SignInCode | None:
+        """The address's code if `code_hash` is its hash and it is still good, used
+        up by being taken. A wrong try is counted, and the code is dropped at
+        `tries` wrong ones. All in one write, so two tries never race."""
+        with self._write() as connection:
+            row = connection.execute(
+                'SELECT email, code_hash, new_language, created_at, expires_at, '
+                'attempts FROM sign_in_codes WHERE email = ?',
+                (email,),
+            ).fetchone()
+            if row is None:
+                return None
+            code = _code_from_row(row)
+            if code.expires_at <= now:
+                connection.execute(
+                    'DELETE FROM sign_in_codes WHERE email = ?', (email,)
+                )
+                return None
+            if not hmac.compare_digest(code.code_hash, code_hash):
+                if code.attempts + 1 >= tries:
+                    connection.execute(
+                        'DELETE FROM sign_in_codes WHERE email = ?', (email,)
+                    )
+                else:
+                    connection.execute(
+                        'UPDATE sign_in_codes SET attempts = attempts + 1 '
+                        'WHERE email = ?',
+                        (email,),
+                    )
+                return None
+            connection.execute('DELETE FROM sign_in_codes WHERE email = ?', (email,))
+        return code
+
+    def delete_code(self, email: str) -> None:
+        with self._write() as connection:
+            connection.execute('DELETE FROM sign_in_codes WHERE email = ?', (email,))
+
+    def allow_code_request(
+        self,
+        email: str,
+        client: str,
+        now: str,
+        window_start: str,
+        per_address: int,
+        per_client: int,
+    ) -> bool:
+        """Records a request for a code unless the address or the client has made
+        its limit of requests since `window_start`. Refused requests are not
+        counted, so asking again cannot lengthen a wait."""
+        with self._write() as connection:
+            connection.execute(
+                'DELETE FROM code_requests WHERE requested_at < ?', (window_start,)
+            )
+            by_address = _scalar(
+                connection,
+                'SELECT COUNT(*) FROM code_requests WHERE email = ?',
+                email,
+            )
+            by_client = _scalar(
+                connection,
+                'SELECT COUNT(*) FROM code_requests WHERE client = ?',
+                client,
+            )
+            if by_address >= per_address or by_client >= per_client:
+                return False
+            connection.execute(
+                'INSERT INTO code_requests (email, client, requested_at) '
+                'VALUES (?, ?, ?)',
+                (email, client, now),
+            )
+        return True
 
     # ── Backup ──
 
