@@ -203,7 +203,7 @@ class ExplorerRun:
             if not control.minimum <= value <= control.maximum:
                 raise ValueError(
                     f'run.{control.id} must be from {control.minimum} to '
-                    f'{control.maximum}, not {value!r}.'
+                    f'{control.maximum}, not {shown(value)}.'
                 )
         if self.dbscan_min_samples > self.particles:
             raise ValueError(
@@ -698,19 +698,29 @@ def _sequence(value: object, length: int) -> list[object] | None:
 
 
 def _in_range(name: str, value: object, control: Control) -> float:
+    # JSON's integers have no bound: one is compared as an integer, and becomes a float
+    # only once it is known to be within range.
     if (
         isinstance(value, bool)
         or not isinstance(value, int | float)
-        or not math.isfinite(value)
+        or (isinstance(value, float) and not math.isfinite(value))
     ):
-        raise ValueError(f'{name} must be a number, not {value!r}.')
+        raise ValueError(f'{name} must be a number, not {shown(value)}.')
     assert control.minimum is not None and control.maximum is not None
     if not control.minimum <= value <= control.maximum:
         raise ValueError(
             f'{name} must be from {control.minimum} to {control.maximum}, '
-            f'not {value!r}.'
+            f'not {shown(value)}.'
         )
     return float(value)
+
+
+def shown(value: object) -> str:
+    """A value as a message quotes it: briefly, and without printing a huge integer."""
+    if isinstance(value, int) and not isinstance(value, bool) and abs(value) >= 10**36:
+        return 'a number beyond 10**36'
+    text = repr(value)
+    return text if len(text) <= 40 else f'{text[:37]}...'
 
 
 def describe_model(parameters: ModelParameters) -> dict[str, Any]:

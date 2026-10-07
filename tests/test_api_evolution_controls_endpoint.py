@@ -249,6 +249,20 @@ class TestApiEvolutionControlsEndpoint(unittest.TestCase):
                 {'run': {'particles': 100}},
                 'run.particles must be from 8 to 64, not 100',
             ),
+            # JSON's integers have no bound; none may reach a float conversion.
+            (
+                {'model': {'LAMBDA_MODE': 10**400}},
+                'model.LAMBDA_MODE must be from 0.1 to 20.0, not a number beyond 10**36',
+            ),
+            (
+                {'model': {'STAGE_AMPLITUDE_BY_STAGE': [10**400] * 12}},
+                'model.STAGE_AMPLITUDE_BY_STAGE must be from 0.0 to 1.5, not a number',
+            ),
+            (
+                {'run': {'particles': 10**400}},
+                'run.particles must be from 8 to 64, not a number beyond 10**36',
+            ),
+            ({'run': {'dbscan_eps': 10**400}}, 'run.dbscan_eps'),
             ({'run': {'particles': 24.5}}, 'run.particles'),
             ({'run': {'particles': True}}, 'run.particles'),
             (
