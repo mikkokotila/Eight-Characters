@@ -454,6 +454,11 @@ def squash_history(checkout: Path) -> str:
     root = work_tree(checkout)
     with checkout_lock(root):
         require_clean(root)
+        # Only an account backup: its own layout and a valid manifest. Any other
+        # repository keeps its history.
+        record_files(root)
+        if read_manifest(root) is None:
+            raise BackupError('The checkout has no manifest.json; it is no backup.')
         branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
         head = _git_ref(root, 'HEAD')
         if head is None:
