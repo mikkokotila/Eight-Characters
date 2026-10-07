@@ -541,9 +541,11 @@
       sync();
       status.textContent = t('luck_selected', { title: spoken(choice) });
     };
-    // Closes the page; what stands in the chart stays.
+    // Closes the page; what stands in the chart stays. Focus that was in the page goes
+    // to the period's chip.
     const close = () => {
       if (luck === null || !open) return;
+      const pageFocus = detail.contains(document.activeElement);
       open = false;
       detail.classList.add('hidden');
       detail.innerHTML = '';
@@ -551,6 +553,7 @@
       status.textContent = '';
       syncRibbon();
       drawColumn();
+      if (pageFocus) ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`).focus({ preventScroll: true });
     };
     // Shows or hides the luck pillar. Hiding it closes its page.
     const setShown = (on) => {

@@ -1015,7 +1015,7 @@ body {
    (luck.js). It keeps its place and its size whether it shows or not, so showing it
    moves nothing: hidden, only what the decade adds is out of sight. ── */
 .pillars.has-luck,
-.pillars.has-luck .relationship-arcs { grid-template-columns: repeat(4, minmax(0, 1fr)) minmax(0, 1.2fr); }
+.pillars.has-luck .relationship-arcs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .pillar.is-luck { position: relative; }
 /* Its lane: a quiet band behind the column, whether it shows or not. */
 .pillar.is-luck::before {

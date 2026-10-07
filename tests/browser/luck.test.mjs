@@ -718,6 +718,15 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar hidden.');
       await page.keyboard.press('Shift+L');
       assert.equal(await linkPart(page, 'luck'), '5/stem');
+      // L from the open page closes it with the luck pillar, and focus goes to the chip.
+      await page.keyboard.press('n');
+      await settled(page);
+      await page.locator('[data-luck-phase="branch"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual([await linkPart(page, 'luck'), await linkPart(page, 'topic'), await focused(page)], [null, null, 'chip 5']);
+      await page.keyboard.press('l');
+      assert.equal(await linkPart(page, 'luck'), '5/stem');
       // At the last decade a decade's step stays where it is, in either phase.
       const ends = [];
       for (const key of ['}', '}', '}', '}', '}', '}', ']', '}']) {
