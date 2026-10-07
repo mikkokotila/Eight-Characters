@@ -294,19 +294,22 @@
         if (widget === null) showCheck();
         return;
       }
+      // What is asked for is what the dialog showed when sent, even if it changes side
+      // while the answer is on its way.
+      const purpose = mode;
       setBusy(send, true, 'account_sending');
       try {
         const response = await call('POST', '/api/account/code', {
           email: address,
-          purpose: mode,
-          language: mode === 'create' ? chosen.value : null,
+          purpose,
+          language: purpose === 'create' ? chosen.value : null,
           page_language: language(),
           turnstile: answer,
         });
         if (response.status !== 202) {
           throw new Error(t(CODE_REFUSALS[response.status] ?? 'account_server_error', { status: response.status }));
         }
-        asked = { email: address, purpose: mode };
+        asked = { email: address, purpose };
         noticeKey = null;
         step = 'code';
         code.value = '';
@@ -488,6 +491,20 @@
       open();
       return waiting.promise;
     };
+    // Whether the session still holds, as the server says: one that ended since the page
+    // was served (signed out elsewhere, or unused for 30 days) is forgotten.
+    const stillSignedIn = async () => {
+      if (!account) return false;
+      const response = await call('GET', '/api/account');
+      if (response.status === 401) {
+        forget();
+        return false;
+      }
+      if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
+      account = accountOf(await response.json());
+      refresh();
+      return true;
+    };
     // The server answered that no one is signed in: the session ended meanwhile.
     const forget = () => {
       account = null;
@@ -499,6 +516,7 @@
 
     return {
       signedIn: () => account !== null,
+      stillSignedIn,
       signIn,
       forget,
       open,

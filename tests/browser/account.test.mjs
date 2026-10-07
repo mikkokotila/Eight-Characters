@@ -350,6 +350,59 @@ for (const profile of profiles) {
       assert.deepEqual(['a', 'b'].map((side) => new URLSearchParams(address.get(side)).get('lang')), ['fi', 'fi']);
     });
 
+    check('a comparison started after the session ended asks for a sign-in before its frames', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'pair' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      // Signed out on every device, from another one, while the second birth is typed.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+      });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await dialogOpens(page);
+      assert.equal(await page.locator('#compare-charts iframe').count(), 0);
+      assert.equal(await text(page, '#account-notice'), 'Your session ended. Sign in again.');
+      await signInThroughDialog(page, account.email);
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      for (const side of ['a', 'b']) {
+        const frame = page.frameLocator(`#compare-charts .compare-frame[data-side="${side}"]`);
+        await frame.locator('#chart-view:not(.hidden) #pillars .card').first().waitFor({ state: 'attached' });
+      }
+    });
+
+    check('a code asked for is said as asked, even if the dialog changes side meanwhile', async (page) => {
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      await page.route('**/api/account/code', async (route) => {
+        await held;
+        await route.continue();
+      });
+      await visit(page, { lang: 'en' });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-mode').click();
+      const email = newAddress('side');
+      await page.locator('#account-email').fill(email);
+      await turnstileAnswered(page);
+      await page.locator('#account-send').click();
+      await page.locator('#account-send.is-pending').waitFor();
+      // To creating an account, while the sign-in request is on its way.
+      await page.locator('#account-mode').click();
+      release();
+      await page.locator('#account-code-step').waitFor({ state: 'visible' });
+      assert.equal(await text(page, '#account-sent'),
+        `If ${email} has an account, we sent it a code. It works once, for 10 minutes.`);
+    });
+
     check('the explorer sends a visitor to the start page to sign in', async (page) => {
       await page.goto(new URL(EXPLORER, baseURL).href);
       const status = page.locator('#statusBar');

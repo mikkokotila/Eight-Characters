@@ -12,7 +12,7 @@ Charts need an account; the start page does not. Creating a chart while signed o
   - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
 - **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty.
 - **A session that ended** (signed out elsewhere, deleted, or unused for 30 days) asks for a sign-in once more, and the chart is asked for again.
-- **A comparison** opened signed out asks on its own page, before its frames ask for their charts. **The explorer**, given a birth, links a visitor to the start page to sign in.
+- **A comparison** opened signed out, or after the session ended elsewhere, asks on its own page (which checks the session with the server first), before its frames ask for their charts. **The explorer**, given a birth, links a visitor to the start page to sign in.
 - **[Your account](docs/Account.md)**, a guide for readers.
 
 ### Changed

@@ -1471,18 +1471,24 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       askForChart();
-      // The page asks for a sign-in before the frames ask for their charts.
-      if (!account.signedIn()) {
-        try {
+      // The frames cannot ask for a sign-in themselves, so the page makes sure of the
+      // session first, with the server: one that ended since the page was served asks
+      // here, before the frames ask for their charts.
+      let signedInHere = false;
+      try {
+        if (!(await account.stillSignedIn())) {
           await account.signIn();
-        } catch (err) {
-          if (arrival !== arrivals) return;
-          console.error(err);
-          setFormError(err.message);
-          addressForm('replaceState');
-          return;
+          signedInHere = true;
         }
+      } catch (err) {
         if (arrival !== arrivals) return;
+        console.error(err);
+        setFormError(err.message);
+        addressForm('replaceState');
+        return;
+      }
+      if (arrival !== arrivals) return;
+      if (signedInHere) {
         // Signing in set the account's language, which both charts take.
         const inLanguage = (params) => {
           const next = new URLSearchParams(params);

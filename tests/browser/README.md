@@ -59,7 +59,10 @@ The account suite (`account.test.mjs`) checks:
   account, which needs the address typed again;
 - that a session ended elsewhere asks for a sign-in once, and the chart is drawn again;
 - that a chart link and a comparison opened signed out ask first, the comparison
-  before its frames, in the account's language;
+  before its frames, in the account's language, and that a comparison started after
+  the session ended elsewhere asks too;
+- that a code is described as it was asked for, even if the dialog changes side
+  while the answer is on its way;
 - that the explorer links a visitor to the start page;
 - that the dialog fits a phone's screen.
 
