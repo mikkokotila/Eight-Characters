@@ -60,7 +60,8 @@
 
 - **Purpose**: the explorer's run settings, conventions and model parameters,
   with their defaults, ranges and labels.
-- **Primary callers**: `eight_characters/explorer/app.js`.
+- **Primary callers**: `eight_characters/explorer/parameters.js`, when the
+  parameter pane first opens.
 - **Internal calls**: `explorer_controls.catalogue`.
 
 ### `POST /api/chart`
