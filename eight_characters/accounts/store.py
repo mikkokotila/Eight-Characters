@@ -58,8 +58,10 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         CREATE TABLE backup_progress (
             id INTEGER PRIMARY KEY CHECK (id = 1),
             backed_up_seq INTEGER NOT NULL,
-            tree TEXT,
-            pending_tree TEXT
+            head TEXT,
+            pending_head TEXT,
+            squash_of TEXT,
+            CHECK (squash_of IS NULL OR pending_head IS NOT NULL)
         ) STRICT
         """,
         'INSERT INTO backup_progress (id, backed_up_seq) VALUES (1, 0)',
@@ -160,12 +162,14 @@ class BackupSnapshot:
     through_seq: int
     changes: tuple[RecordChange, ...]
     user_count: int
-    # The Git tree of the backup's last commit, or of the backup a restore read;
-    # None before the first.
-    tree: str | None
-    # The tree of a commit about to be made: if the run stopped after making it but
-    # before recording it, the next run finds the checkout at this tree.
-    pending_tree: str | None
+    # The backup's last commit, or the one a restore read; None before the first.
+    head: str | None
+    # A commit made and about to become the checkout's: if the run stopped after
+    # moving the checkout to it but before recording it, the next run finds it there.
+    pending_head: str | None
+    # While a squash of the history is under way, the commit it replaces; the squash
+    # is then `pending_head`.
+    squash_of: str | None
 
 
 def _utc_now() -> datetime:
@@ -299,10 +303,10 @@ def _insert_user(connection: sqlite3.Connection, user: User) -> None:
     )
 
 
-def _tree_or_none(value: object) -> str | None:
+def _commit_or_none(value: object) -> str | None:
     if value is None or isinstance(value, str):
         return value
-    raise StoreError('The backup progress holds a tree that is not text.')
+    raise StoreError('The backup progress holds a commit that is not text.')
 
 
 def _scalar(connection: sqlite3.Connection, query: str, *params: object) -> int:
@@ -381,22 +385,22 @@ class AccountStore:
         path: Path,
         users: Sequence[User],
         *,
-        tree: str,
+        head: str,
         clock: Callable[[], datetime] = _utc_now,
     ) -> 'AccountStore':
         """A new database at `path` holding exactly these users, as backed up in the
-        Git tree `tree`.
+        Git commit `head`.
 
         Nothing is logged for the backup: the records came from it.
         """
-        return cls._build(path, users, tree, clock)
+        return cls._build(path, users, head, clock)
 
     @classmethod
     def _build(
         cls,
         path: Path,
         users: Sequence[User],
-        tree: str | None,
+        head: str | None,
         clock: Callable[[], datetime],
     ) -> 'AccountStore':
         if path.exists():
@@ -421,7 +425,7 @@ class AccountStore:
                     for user in users:
                         _insert_user(connection, user)
                     connection.execute(
-                        'UPDATE backup_progress SET tree = ? WHERE id = 1', (tree,)
+                        'UPDATE backup_progress SET head = ? WHERE id = 1', (head,)
                     )
                 except BaseException:
                     connection.execute('ROLLBACK')
@@ -834,34 +838,45 @@ class AccountStore:
             )
             user_count = _scalar(connection, 'SELECT COUNT(*) FROM users')
             row = connection.execute(
-                'SELECT tree, pending_tree FROM backup_progress WHERE id = 1'
+                'SELECT head, pending_head, squash_of FROM backup_progress WHERE id = 1'
             ).fetchone()
         if row is None:
             raise StoreError('The database keeps no backup progress.')
-        tree = _tree_or_none(row[0])
-        pending_tree = _tree_or_none(row[1])
         return BackupSnapshot(
             after_seq=after,
             through_seq=through,
             changes=changes,
             user_count=user_count,
-            tree=tree,
-            pending_tree=pending_tree,
+            head=_commit_or_none(row[0]),
+            pending_head=_commit_or_none(row[1]),
+            squash_of=_commit_or_none(row[2]),
         )
 
-    def record_pending_tree(self, tree: str) -> None:
-        """Remembers the Git tree of a commit the backup is about to make."""
+    def record_pending_head(self, commit: str) -> None:
+        """Remembers a commit the backup made and is about to move the checkout to."""
         with self._write() as connection:
             connection.execute(
-                'UPDATE backup_progress SET pending_tree = ? WHERE id = 1', (tree,)
+                'UPDATE backup_progress SET pending_head = ?, squash_of = NULL '
+                'WHERE id = 1',
+                (commit,),
             )
 
-    def record_backup_tree(self, tree: str) -> None:
-        """Remembers the Git tree of the commit the backup made last."""
+    def record_pending_squash(self, commit: str, replaces: str) -> None:
+        """Remembers a squash under way: its commit, and the one it replaces."""
         with self._write() as connection:
             connection.execute(
-                'UPDATE backup_progress SET tree = ?, pending_tree = NULL WHERE id = 1',
-                (tree,),
+                'UPDATE backup_progress SET pending_head = ?, squash_of = ? '
+                'WHERE id = 1',
+                (commit, replaces),
+            )
+
+    def record_backup_head(self, commit: str | None) -> None:
+        """Remembers the commit the backup made last, and that nothing is pending."""
+        with self._write() as connection:
+            connection.execute(
+                'UPDATE backup_progress '
+                'SET head = ?, pending_head = NULL, squash_of = NULL WHERE id = 1',
+                (commit,),
             )
 
     def mark_backed_up(self, through_seq: int) -> None:

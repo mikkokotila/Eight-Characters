@@ -5,9 +5,9 @@ them and pushes; only then does the database count them as backed up. Files are
 encrypted to a public key (the recipient), so the server and GitHub hold nothing
 readable: the private key stays offline with whoever restores.
 
-The backup job owns the checkout. A checkout with changes of its own, a manifest made
-for another key, or a file count that differs from the database stops the run, with
-the reason, rather than being worked around.
+The backup job owns the checkout. A checkout with changes of its own, a commit the
+backup did not make, a manifest made for another key, or a file count that differs
+from the database stops the run, with the reason, rather than being worked around.
 """
 
 import fcntl
@@ -16,7 +16,7 @@ import os
 import re
 import subprocess
 import tempfile
-from collections.abc import Callable, Generator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
@@ -31,8 +31,12 @@ ENCRYPTED_SUFFIX: Final = '.age'
 MANIFEST: Final = 'manifest.json'
 MANIFEST_SCHEMA: Final = 1
 USER_FILE: Final = 'user.json.age'
-# Everything a backup checkout may hold at its root.
+# Everything a backup checkout may hold at its root, and which of it are files.
 TOP_LEVEL: Final = frozenset({'.git', '.gitattributes', 'README.md', MANIFEST, 'users'})
+_TOP_LEVEL_FILES: Final = frozenset({'.gitattributes', 'README.md', MANIFEST})
+# In the Git directory while a run writes into the checkout: the next run knows from
+# it that one stopped part way, and takes up what it left.
+WRITING_MARKER: Final = 'eight-characters-backup.writing'
 _MANIFEST_FIELDS: Final = frozenset({'counts', 'encryption', 'recipient', 'schema'})
 _SHARD = re.compile(r'[0-9a-f]{2}')
 # A hung command fails the run instead of holding it forever.
@@ -82,6 +86,8 @@ class BackupResult:
     commit: str | None
     pushed: bool
     backed_up_seq: int
+    # Whether the run first took up one that stopped while writing.
+    recovered: bool = False
 
 
 @dataclass(frozen=True)
@@ -157,6 +163,45 @@ def checkout_lock(root: Path) -> Generator[None, None, None]:
         yield
 
 
+def git_dir(root: Path) -> Path:
+    return Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
+
+
+def _branch_ref(root: Path) -> str:
+    return _git(root, 'symbolic-ref', 'HEAD').strip()
+
+
+def _take_up_stopped_run(root: Path, directory: Path) -> bool:
+    """Puts back a checkout that a run left part written, as a killed process or a
+    restart leaves it, and says whether there was one. Its marker says the changes it
+    left are its own; the database still holds them, so the next run writes them
+    again. Without the marker, changes are someone else's, and stop the run."""
+    marker = directory / WRITING_MARKER
+    if not marker.exists():
+        return False
+    # Locks that Git commands stopped with it left behind. The checkout lock is held,
+    # so no other run is using them.
+    for lock in ('index.lock', f'{_branch_ref(root)}.lock'):
+        (directory / lock).unlink(missing_ok=True)
+    _discard_uncommitted(root)
+    marker.unlink()
+    return True
+
+
+def _mark_writing(directory: Path) -> None:
+    # On disk before the first file is written, so that even a power cut leaves it.
+    descriptor = os.open(directory / WRITING_MARKER, os.O_WRONLY | os.O_CREAT, 0o600)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    folder = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(folder)
+    finally:
+        os.close(folder)
+
+
 def require_clean(root: Path) -> None:
     status = _git(root, 'status', '--porcelain=v1', '--untracked-files=all')
     if status.strip():
@@ -208,6 +253,8 @@ def read_manifest(root: Path) -> Manifest | None:
     path = root / MANIFEST
     if not path.exists():
         return None
+    if path.is_symlink() or not path.is_file():
+        raise BackupError(f'{MANIFEST} in the backup is not a file.')
     data = path.read_bytes()
     try:
         value: object = json.loads(data.decode('utf-8'))
@@ -269,6 +316,11 @@ def record_files(root: Path) -> list[tuple[str, str]]:
             raise BackupError(
                 f'The backup holds something it never writes: {entry.name}'
             )
+        if entry.name in _TOP_LEVEL_FILES and not entry.is_file():
+            raise BackupError(
+                f'The backup holds {entry.name} as something other than the file '
+                'it writes.'
+            )
     users = root / 'users'
     if not users.exists():
         return []
@@ -301,11 +353,9 @@ def record_files(root: Path) -> list[tuple[str, str]]:
     return found
 
 
-def head_tree(root: Path) -> str | None:
-    """The Git tree of the checkout's last commit, or None before the first."""
-    if _git_ref(root, 'HEAD') is None:
-        return None
-    return _git(root, 'rev-parse', 'HEAD^{tree}').strip()
+def head_commit(root: Path) -> str | None:
+    """The checkout's last commit, or None before the first."""
+    return _git_ref(root, 'HEAD')
 
 
 def _push_if_ahead(root: Path) -> bool:
@@ -329,12 +379,63 @@ def _discard_uncommitted(root: Path) -> None:
     _git(root, 'clean', '--quiet', '--force', '-d')
 
 
+def _advance(root: Path, store: AccountStore, tree: str, message: str) -> str:
+    """Commits `tree` on the checkout's branch and returns the commit. It is recorded
+    as pending before the branch moves to it, and as the backup's own after: a run
+    stopped in between is taken up by the next, which finds the checkout at the
+    pending commit."""
+    parent = head_commit(root)
+    commit = _git(
+        root,
+        *_COMMITTER,
+        'commit-tree',
+        tree,
+        *(('-p', parent) if parent is not None else ()),
+        '-m',
+        message,
+    ).strip()
+    store.record_pending_head(commit)
+    # Moves only from the parent: anything else there makes Git refuse.
+    _git(root, 'update-ref', _branch_ref(root), commit, parent or '')
+    store.record_backup_head(commit)
+    return commit
+
+
+def _require_own_head(
+    root: Path, store: AccountStore, snapshot: BackupSnapshot
+) -> None:
+    """Stops the run unless the checkout's last commit is the one the backup made last
+    (or read, when restored), or one it made and had not recorded yet. Comparing
+    commits, not files, catches commits made by hand even when undone since: pushing
+    would publish them."""
+    if snapshot.squash_of is not None:
+        raise BackupError(
+            'A squash of the history stopped part way; run squash-history again '
+            'to finish it.'
+        )
+    current = head_commit(root)
+    if current == snapshot.head:
+        if snapshot.pending_head is not None:
+            # The last run stopped before moving the checkout to its commit.
+            store.record_backup_head(current)
+        return
+    if snapshot.pending_head is not None and current == snapshot.pending_head:
+        # The last run moved the checkout to its commit and stopped before recording
+        # it.
+        store.record_backup_head(current)
+        return
+    raise BackupError(
+        'The checkout is not the backup this database last wrote: it holds commits '
+        'the backup did not make (even ones undone since), or another backup.'
+    )
+
+
 def _write_and_commit(
     root: Path,
+    store: AccountStore,
     snapshot: BackupSnapshot,
     recipient: pyrage.x25519.Recipient,
     scratch: Path,
-    before_commit: Callable[[str], None],
 ) -> tuple[int, int, str | None]:
     """Writes the snapshot's records into the work tree and commits them; returns
     how many were written and removed, and the commit (None if nothing changed)."""
@@ -379,16 +480,13 @@ def _write_and_commit(
     )
     if not _git(root, 'diff', '--cached', '--name-only'):
         return written, removed, None
-    before_commit(_git(root, 'write-tree').strip())
-    _git(
+    commit = _advance(
         root,
-        *_COMMITTER,
-        'commit',
-        '--quiet',
-        '--message',
+        store,
+        _git(root, 'write-tree').strip(),
         f'backup: {written} written, {removed} removed',
     )
-    return written, removed, _git(root, 'rev-parse', 'HEAD').strip()
+    return written, removed, commit
 
 
 def run_backup(
@@ -398,10 +496,13 @@ def run_backup(
     commits, pushes and marks the changes backed up, in that order.
 
     A run that fails before its commit puts the checkout back as it found it, so the
-    next run meets the same problem and names it.
+    next run meets the same problem and names it; one stopped outright (killed, or
+    the server restarting) is put back by the next run.
     """
     root = work_tree(checkout)
     with checkout_lock(root):
+        scratch = git_dir(root)
+        recovered = _take_up_stopped_run(root, scratch)
         require_clean(root)
         records = record_files(root)
         existing = read_manifest(root)
@@ -415,31 +516,23 @@ def run_backup(
                 'The backup was encrypted to another key. Files made for two keys '
                 'would leave a restore that can read only some of them.'
             )
-        scratch = Path(_git(root, 'rev-parse', '--absolute-git-dir').strip())
         snapshot = store.backup_snapshot()
         # Without the private key the server cannot read a file, but it knows what it
         # committed last: anything else in the checkout, such as a file corrupted or
         # changed by hand, stops the run before it adds to it.
-        current = head_tree(root)
-        if current != snapshot.tree:
-            if snapshot.pending_tree is None or current != snapshot.pending_tree:
-                raise BackupError(
-                    'The checkout is not the backup this database last wrote: it '
-                    'holds commits the backup did not make, or another backup.'
-                )
-            # The last run made this commit and stopped before recording it.
-            store.record_backup_tree(snapshot.pending_tree)
+        _require_own_head(root, store, snapshot)
+        _mark_writing(scratch)
         try:
+            # The commit is recorded before the push, so a failed push leaves it for
+            # the next run to push.
             written, removed, commit = _write_and_commit(
-                root, snapshot, recipient, scratch, store.record_pending_tree
+                root, store, snapshot, recipient, scratch
             )
         except BaseException:
             _discard_uncommitted(root)
+            (scratch / WRITING_MARKER).unlink()
             raise
-        if commit is not None:
-            # Recorded before the push, so a failed push leaves the commit for the
-            # next run to push.
-            store.record_backup_tree(_git(root, 'rev-parse', 'HEAD^{tree}').strip())
+        (scratch / WRITING_MARKER).unlink()
         pushed = _push_if_ahead(root)
         store.mark_backed_up(snapshot.through_seq)
     return BackupResult(
@@ -448,6 +541,7 @@ def run_backup(
         commit=commit,
         pushed=pushed,
         backed_up_seq=snapshot.through_seq,
+        recovered=recovered,
     )
 
 
@@ -458,9 +552,15 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
     wrote, whole, is squashed: the history may be all that holds a record lost since.
     Everything must be pushed first, and the remote must not have moved: the force push
     names the commit it replaces.
+
+    The squash is recorded before anything moves, and the remote moves before the
+    checkout. Stopped part way, it stops the backup until it is run again, which
+    finishes it; a push that fails while the remote has not moved leaves the history
+    as it was, and the backup goes on.
     """
     root = work_tree(checkout)
     with checkout_lock(root):
+        _take_up_stopped_run(root, git_dir(root))
         require_clean(root)
         records = record_files(root)
         manifest = read_manifest(root)
@@ -471,38 +571,77 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
                 f'The backup holds {len(records)} records but its manifest counts '
                 f'{manifest.user_count}; its history may hold the others.'
             )
-        if head_tree(root) != store.backup_snapshot().tree:
-            raise BackupError(
-                'The checkout is not the backup this database last wrote; its '
-                'history stays.'
-            )
+        snapshot = store.backup_snapshot()
         branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
-        head = _git_ref(root, 'HEAD')
-        if head is None:
+        local = head_commit(root)
+        if local is None:
             raise BackupError('The backup has no commits to squash.')
         _git(root, 'fetch', '--quiet', 'origin', branch)
-        if _git_ref(root, f'refs/remotes/origin/{branch}') != head:
-            raise BackupError(
-                'The backup checkout and its remote differ; push or reconcile first.'
+        remote = _git_ref(root, f'refs/remotes/origin/{branch}')
+        if snapshot.squash_of is None:
+            if local != snapshot.head:
+                raise BackupError(
+                    'The checkout is not the backup this database last wrote; its '
+                    'history stays.'
+                )
+            if remote != local:
+                raise BackupError(
+                    'The backup checkout and its remote differ; push or reconcile '
+                    'first.'
+                )
+            tree = _git(root, 'rev-parse', 'HEAD^{tree}').strip()
+            squashed = _git(
+                root,
+                *_COMMITTER,
+                'commit-tree',
+                tree,
+                '-m',
+                'backup: history squashed',
+            ).strip()
+            base = local
+            store.record_pending_squash(squashed, base)
+        else:
+            squashed, base = snapshot.pending_head, snapshot.squash_of
+            if squashed is None:
+                raise BackupError('The database records a squash without its commit.')
+            # The remote moves first, so the checkout never stands ahead of it.
+            if (
+                local not in (base, squashed)
+                or remote not in (base, squashed)
+                or (local == squashed and remote == base)
+            ):
+                raise BackupError(
+                    'A squash stopped part way, and its checkout or remote has moved '
+                    'since; reconcile them by hand.'
+                )
+        if remote == base:
+            pushed = _git_run(
+                root,
+                (
+                    'push',
+                    '--quiet',
+                    f'--force-with-lease=refs/heads/{branch}:{base}',
+                    'origin',
+                    f'{squashed}:refs/heads/{branch}',
+                ),
             )
-        tree = _git(root, 'rev-parse', 'HEAD^{tree}').strip()
-        squashed = _git(
-            root,
-            *_COMMITTER,
-            'commit-tree',
-            tree,
-            '-m',
-            'backup: history squashed',
-        ).strip()
-        _git(
-            root,
-            'push',
-            '--quiet',
-            f'--force-with-lease=refs/heads/{branch}:{head}',
-            'origin',
-            f'{squashed}:refs/heads/{branch}',
-        )
-        _git(root, 'update-ref', f'refs/heads/{branch}', squashed, head)
+            if pushed.returncode != 0:
+                message = pushed.stderr.decode(errors='replace').strip()
+                _git(root, 'fetch', '--quiet', 'origin', branch)
+                if _git_ref(root, f'refs/remotes/origin/{branch}') != base:
+                    raise BackupError(
+                        f'git push failed ({pushed.returncode}) and the remote has '
+                        f'moved: {message}'
+                    )
+                # Nothing moved: the backup goes on with its history.
+                store.record_backup_head(base)
+                raise BackupError(
+                    f'git push failed ({pushed.returncode}); the history stays as it '
+                    f'was: {message}'
+                )
+        if local == base:
+            _git(root, 'update-ref', f'refs/heads/{branch}', squashed, base)
+        store.record_backup_head(squashed)
         # The old commits are gone from the remote; drop them here too.
         _git(root, 'reflog', 'expire', '--expire=now', '--all')
         _git(root, 'gc', '--quiet', '--prune=now')
