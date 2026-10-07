@@ -143,9 +143,25 @@ class TestApiIndexRoute(unittest.TestCase):
             'palette.js',
             'spotlight.js',
             'compare.js',
+            'account.js',
             'app.js',
         ):
             self.assertIn(f'/static/{asset}?v={__version__}', response.text)
+
+    def test_every_text_the_page_translates_has_finnish_and_english(self) -> None:
+        # The page's own words, and the account dialog's, which it sets by key.
+        page = self.client.get('/').text
+        keys = set(re.findall(r'data-i18n(?:-placeholder)?="([a-z0-9_]+)"', page))
+        account = (BASE_DIR / 'static' / 'account.js').read_text(encoding='utf-8')
+        keys |= set(re.findall(r"'((?:account|plan)_[a-z0-9_]+)'", account))
+        keys |= {f'plan_{plan}' for plan in ('free', 'basic', 'pro', 'max')}
+        self.assertIn('account_sign_in', keys)
+        source = (BASE_DIR / 'static' / 'localization.js').read_text(encoding='utf-8')
+        fi_block, en_block = source.split('\n    en: {\n', 1)
+        for lang, block in (('fi', fi_block), ('en', en_block)):
+            defined = set(re.findall(r'\n\s+([a-z0-9_]+): ', block))
+            with self.subTest(lang):
+                self.assertEqual(sorted(keys - defined), [])
 
     def test_birth_date_field_takes_the_engine_scope(self) -> None:
         response = self.client.get('/')
