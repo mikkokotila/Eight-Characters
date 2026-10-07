@@ -14,6 +14,7 @@ from eight_characters.data import BRANCHES, STEMS
 from eight_characters.engine import TERM_LABEL_BY_TARGET
 from eight_characters.main import BASE_DIR, app, templates
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
+from tests.accounts_support import install_accounts
 
 EXPLORER_ASSETS = (
     'styles.css',
@@ -56,6 +57,7 @@ def _css_declarations(css: str) -> list[tuple[str, str, str]]:
 class TestApiIndexRoute(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        install_accounts(cls)
         cls.client = TestClient(app)
 
     def test_index_renders_single_page_application(self) -> None:

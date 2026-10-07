@@ -32,4 +32,5 @@ jobs:
             tests.test_accounts_cli \
             tests.test_accounts_signin \
             tests.test_accounts_mail \
-            tests.test_accounts_web
+            tests.test_accounts_web \
+            tests.test_accounts_app

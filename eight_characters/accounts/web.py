@@ -302,6 +302,11 @@ def _signed_in(current: CurrentSession | None) -> CurrentSession:
     return current
 
 
+def require_account(current: SessionDependency) -> User:
+    """For what needs an account: the signed-in user, or 401."""
+    return _signed_in(current).user
+
+
 def _same_origin(request: Request, accounts: Accounts) -> None:
     # Browsers send Origin with every request that can change something; another
     # site's page cannot forge it.
@@ -333,7 +338,8 @@ class AccountView(TypedDict):
     created_at: str
 
 
-def _view(user: User) -> AccountView:
+def account_view(user: User) -> AccountView:
+    """What the page is told of an account: never its id or a session."""
     return {
         'email': user.email,
         'language': user.language,
@@ -446,12 +452,12 @@ def sign_in(
             status_code=400, detail='That code is wrong or no longer works.'
         ) from exc
     _set_session_cookie(response, accounts, signed.token, signed.expires_at)
-    return _view(signed.user)
+    return account_view(signed.user)
 
 
 @router.get('')
 def read_account(current: SessionDependency) -> AccountView:
-    return _view(_signed_in(current).user)
+    return account_view(_signed_in(current).user)
 
 
 @router.patch('')
@@ -466,7 +472,7 @@ def update_account(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     try:
-        return _view(accounts.store.set_language(user.id, payload.language))
+        return account_view(accounts.store.set_language(user.id, payload.language))
     except UnknownUser as exc:
         # Deleted since the session was found.
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc

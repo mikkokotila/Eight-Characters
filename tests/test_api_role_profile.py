@@ -3,12 +3,12 @@ import itertools
 import unittest
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
 from lunar_python.util import LunarUtil
 
 from eight_characters.day_master_context import build_day_master_context
-from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup, app
+from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup
 from eight_characters.role_profile import build_role_profile
+from tests.accounts_support import signed_in_client
 
 NAMES = ('year', 'month', 'day', 'hour')
 STEMS = '甲乙丙丁戊己庚辛壬癸'
@@ -312,7 +312,7 @@ class TestRoleProfile(unittest.TestCase):
 class TestRoleProfileAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def request(self, **flags):
         return self.client.post(

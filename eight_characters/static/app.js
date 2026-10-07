@@ -271,6 +271,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!resolvedLocation && !locationStatus.textContent) {
       setLocationStatus('', '');
     }
+    account.refresh();
   };
 
   // The field is a combobox: focus stays in it and the active option is announced from it.
@@ -509,21 +510,50 @@ document.addEventListener('DOMContentLoaded', () => {
     ...(zi === ZI_CONVENTIONS[0] ? {} : { conventions: { zi_convention: zi } }),
   });
 
-  // Requests a chart and draws it, and says whether it did: a later request supersedes
-  // it. Anything missing or inconsistent throws before the chart view is shown.
-  const showChart = async (request, place) => {
-    const serial = ++drawing;
+  // A chart's record from the API, and the request it answers. Charts need an account:
+  // signed out, the account dialog asks for one first, and a session that ended
+  // meanwhile (signed out elsewhere, or unused for 30 days) asks once more. Signing in
+  // sets the page to the account's language, and the chart is asked for in it.
+  const askForPillars = async (request) => {
     // The canon speaks English: its readings come with an English chart only.
-    const withReading = request.lang === 'en';
-    const pillarsRes = await fetch('/api/four_pillars', {
+    const post = (asked) => fetch('/api/four_pillars', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, include_reading: withReading }),
+      body: JSON.stringify({ ...asked, include_reading: asked.lang === 'en' }),
     });
+    let asked = request;
+    if (!account.signedIn()) {
+      await account.signIn();
+      asked = { ...asked, lang: currentLanguage };
+    }
+    let response = await post(asked);
+    if (response.status === 401) {
+      account.forget();
+      await account.signIn();
+      asked = { ...asked, lang: currentLanguage };
+      response = await post(asked);
+    }
+    return { asked, response };
+  };
+
+  // Requests a chart and draws it, and says whether it did: a later request supersedes
+  // it. Anything missing or inconsistent throws before the chart view is shown.
+  const showChart = async (wanted, place) => {
+    const serial = ++drawing;
+    let answer;
+    try {
+      answer = await askForPillars(wanted);
+    } catch (err) {
+      // A sign-in given up, or a failed connection, for a chart no longer wanted.
+      if (serial !== drawing) return false;
+      throw err;
+    }
+    const { asked: request, response: pillarsRes } = answer;
+    const withReading = request.lang === 'en';
     const pillarsData = await pillarsRes.json();
     if (serial !== drawing) return false;
     if (!pillarsRes.ok) {
-      throw new Error(pillarsData.detail || t('pillars_error'));
+      throw new Error(pillarsRes.status === 401 ? t('account_needed') : pillarsData.detail || t('pillars_error'));
     }
 
     const chartData = pillarsData.chart;
@@ -750,6 +780,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     return t(key, vars);
   };
+
+  // ── The account (account.js): charts need one, the start page does not ──
+  const accountState = document.getElementById('account-state');
+  if (!accountState) throw new Error('The page names no account state.');
+  const account = window.EC_ACCOUNT.create({
+    dialog: document.getElementById('account-dialog'),
+    button: document.getElementById('account-btn'),
+    state: JSON.parse(accountState.textContent),
+    translate: requiredTranslation,
+    language: () => currentLanguage,
+    embedded,
+    // Signing in, or choosing the account's language, sets the page's.
+    onLanguage: (lang) => {
+      currentLanguage = i18n.setLanguage(lang);
+      applyLanguage();
+    },
+    // Signed out, the page starts again, empty, as New chart leaves it.
+    onSignedOut: () => {
+      compare.hide();
+      askForChart();
+      leaveChart();
+      addressForm('replaceState');
+      form.reset();
+      clearResolvedLocation();
+      setFieldError(dateInput, dateStatus, '');
+      setFieldError(timeInput, timeStatus, '');
+      setFormError('');
+    },
+  });
 
   // One topic is open at a time, in the panel: a relationship (or their list), the
   // Day Master context, or a pillar's changes.
@@ -1412,6 +1471,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       askForChart();
+      // The page asks for a sign-in before the frames ask for their charts.
+      if (!account.signedIn()) {
+        try {
+          await account.signIn();
+        } catch (err) {
+          if (arrival !== arrivals) return;
+          console.error(err);
+          setFormError(err.message);
+          addressForm('replaceState');
+          return;
+        }
+        if (arrival !== arrivals) return;
+        // Signing in set the account's language, which both charts take.
+        const inLanguage = (params) => {
+          const next = new URLSearchParams(params);
+          next.set('lang', currentLanguage);
+          return next.toString();
+        };
+        pair = { a: { params: inLanguage(pair.a.params) }, b: { params: inLanguage(pair.b.params) } };
+        history.replaceState(null, '',
+          `${formAddress()}${COMPARE_ROUTE}${new URLSearchParams({ a: pair.a.params, b: pair.b.params })}`);
+      }
       inputView.classList.add('hidden');
       compare.show(pair.a.params, pair.b.params, currentLanguage);
       return;
@@ -1613,11 +1694,13 @@ document.addEventListener('DOMContentLoaded', () => {
     add(chart, requiredTranslation('print'), () => window.print());
     if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
     add(chart, requiredTranslation('keys_title'), openKeys);
+    if (!embedded) add(chart, requiredTranslation(account.signedIn() ? 'account_title' : 'account_sign_in'), account.open);
     return commands;
   };
 
   document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || chartView.classList.contains('hidden') || keysDialog.open || paletteDialog.open) return;
+    if (event.defaultPrevented || chartView.classList.contains('hidden') || keysDialog.open || paletteDialog.open
+      || account.isOpen()) return;
     if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
       event.preventDefault();
       palette.open(chartCommands());

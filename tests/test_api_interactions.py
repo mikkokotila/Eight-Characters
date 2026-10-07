@@ -3,14 +3,12 @@ import itertools
 import unittest
 from unittest.mock import patch
 
-from fastapi.testclient import TestClient
-
 from eight_characters.interactions import (
     INTERACTION_RULES,
     PILLAR_NAMES,
     detect_interactions,
 )
-from eight_characters.main import app
+from tests.accounts_support import signed_in_client
 
 # Independent character-level reference, not derived from the runtime catalog.
 # San Ming Tong Hui, vol. 2: ten-stem combinations, six branch combinations,
@@ -269,7 +267,7 @@ class TestRelationshipArcLevels(unittest.TestCase):
 class TestInteractionsAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def request(self, **flags):
         return self.client.post(
