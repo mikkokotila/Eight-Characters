@@ -424,8 +424,12 @@
     // stand beyond the natal arcs' feet, so showing them moves no natal foot. A stem's
     // relationship rests in the branch phase, and its arc recedes.
     const OWN_ARC = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
+    // The outer band holds four levels, an arc at most four strands: a luck pillar's
+    // relationships with four natal pillars never need more (tests/test_api_interactions.py
+    // walks every combination with this layout). Four strands: a branch combination with
+    // three directional combinations over the same columns, as 子亥亥亥 with a luck 丑.
     const LUCK_LEVELS = 4;
-    const LUCK_STRANDS = 3;
+    const LUCK_STRANDS = 4;
     const arcsFor = (relationships, component) => {
       const slots = [];
       const strands = relationships.map((relationship) => {
