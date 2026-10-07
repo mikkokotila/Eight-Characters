@@ -91,6 +91,23 @@ the luck pillar shows or not.
 On a phone the luck pillar stands above the two-by-two chart, its stem beside its
 branch.
 
+## The topics with luck
+
+While the luck pillar stands in the chart, the period it shows adds to the chart's
+topics, for its phase:
+- **Roots** reads "+ luck" when the luck branch roots the Day Master. The Roots page
+  then adds the luck branch, with its roots, beside the natal root branches.
+- **Roles** reads "+ 2 new" for the roles new to the chart that act in the phase. The
+  Roles page adds what the luck pillar brings, each marked when new.
+- **Relationships** adds the luck pillar's that act in the phase to its count, as in
+  "Relationships (3 + 2)". The list adds them under their own heading. They open as the
+  natal ones do, with the luck pillar's card and arc; the canon has no readings for
+  them yet.
+
+The added words keep their place, unseen, while the luck pillar is hidden, so the
+topics' row never rewraps on L. A luck relationship chosen that stops acting, as a stem's
+does in the branch phase, closes.
+
 ## A decade's page
 
 The page shows:

@@ -255,6 +255,10 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   frame's middle member stands under it. Their feet stand beyond the natal arcs'
   feet, and the natal arcs do not move. A stem's arc rests in the branch phase. A line
   on the decade's page rings its arc, and a hidden luck pillar draws none.
+- **Topics.** Roots, Roles and Relationships carry what the period adds, in place but
+  unseen while the luck pillar is hidden. The pages add the luck branch's roots, the roles
+  it brings, and its relationships, which open with its card and arc and close when they
+  stop acting. A link opens one.
 - **Asking.** The gender is optional, in both languages. A chart without one asks for
   no luck pillars, shows no ribbon, and its link names no gender.
 - **The ribbon.** Each decade by its characters, names, years and starting age, and the
