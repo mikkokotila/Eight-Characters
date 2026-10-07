@@ -384,15 +384,17 @@ class TestTheAccount(AccountApiTestCase):
         self.assertIsNone(self.accounts.store.user_by_email('reader@example.com'))
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
-    def test_the_charts_need_no_account_yet(self) -> None:
+    def test_charts_need_an_account(self) -> None:
         pillars = {
             'year_pillar': '甲子',
             'month_pillar': '乙丑',
             'day_pillar': '丙寅',
             'hour_pillar': '丁卯',
         }
-        reply = TestClient(app).post('/api/hidden_stems', json=pillars)
-        self.assertEqual(reply.status_code, 200)
+        anonymous = TestClient(app).post('/api/hidden_stems', json=pillars)
+        self.assertEqual(anonymous.status_code, 401)
+        signed_in = self.client.post('/api/hidden_stems', json=pillars)
+        self.assertEqual(signed_in.status_code, 200)
 
 
 if __name__ == '__main__':
