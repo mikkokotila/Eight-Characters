@@ -711,6 +711,31 @@ for (const profile of profiles) {
       await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
     });
 
+    check('the menu shows a language another tab set, and can set it back', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'tongue-tab' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      // Another tab sets the account's language to Finnish.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi' } })).status(), 200);
+      });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      // And English can be set again from here.
+      await page.locator('[data-account-lang="en"]').click();
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="en"]').getAttribute('aria-pressed') === 'true');
+      const stored = await asAccount(playwright, account, async (request) => (await request.get('/api/account')).json());
+      assert.equal(stored.language, 'en');
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);

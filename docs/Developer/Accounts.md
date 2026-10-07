@@ -138,9 +138,9 @@ put on one.
   account, which needs the address typed again. Signing out starts the page again,
   empty. Tabs share the session cookie, so as the menu opens it asks who the session
   belongs to (`GET /api/account`; opened while an action is under way, once that
-  action ends), and its actions wait for the answer: an account
-  signed in to in another tab is taken as a sign-in here, and a session ended
-  elsewhere asks for a sign-in. An action whose answer comes after the page has
+  action ends), and its actions wait for the answer, which it takes whole (a language
+  another tab set shows): an account signed in to in another tab is taken as a
+  sign-in here, and a session ended elsewhere asks for a sign-in. An action whose answer comes after the page has
   learned of another session changes nothing, and says so; a sign-out or deletion that
   went through still signs the page out, since its answer removed the cookie.
 

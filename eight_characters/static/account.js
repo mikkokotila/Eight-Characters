@@ -389,6 +389,18 @@
       onLanguage(account.language);
       refresh();
     };
+    // The same, asked when no change of the page's own can be on its way (as the menu
+    // opens, its actions waiting): the answer is newer than anything the page knows,
+    // so the same account is taken whole, with a language another tab set.
+    const learn = (value) => {
+      const told = accountOf(value);
+      if (account === null || told.email !== account.email) {
+        identify(value);
+        return;
+      }
+      account = told;
+      refresh();
+    };
 
     // ── The account ──
     // The account's session ended meanwhile (signed out elsewhere, or deleted): the
@@ -480,7 +492,7 @@
         if (!response.ok) throw refused(response);
         const value = await response.json();
         known = true;
-        if (session === held) identify(value);
+        if (session === held) learn(value);
       } catch (err) {
         console.error(err);
         setStatus(status, err.message);
