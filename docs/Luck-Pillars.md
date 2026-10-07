@@ -131,7 +131,7 @@ from eight_characters.engine import compute_engine_payload
 from eight_characters.time_convert import BirthInput
 
 result = compute_engine_payload(
-    BirthInput(utc_timestamp="1988-02-04T08:30:00Z", gender="male"),
+    BirthInput(utc_timestamp='1988-02-04T08:30:00Z', gender='male'),
     include_luck_pillars=True,
     luck_pillar_count=10,
 )
