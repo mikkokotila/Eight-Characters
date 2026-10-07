@@ -414,23 +414,23 @@ def canon_reading(branches):
     return sorted((k, p) for k, p in found if not absorbed(k, p))
 
 
+# The pillars in the order each relationship's id names them.
+ID_ORDER = ('year', 'month', 'day', 'hour')
+
+
 def old_shared_detection(stems, branches):
-    """The shared families exactly as Standard found them before the canon's were added."""
+    """The shared families exactly as Standard found them before the canon's were added:
+    each finding's id, in order. The ids number the rules 1-21 in REFERENCE's order."""
     found = []
-    for kind, keys in REFERENCE.items():
+    rules = ((kind, key) for kind, keys in REFERENCE.items() for key in keys)
+    for rule_index, (kind, key) in enumerate(rules, start=1):
         chars = stems if kind == 'stem_combination' else branches
-        for key in keys:
-            for positions in itertools.combinations(range(4), len(key)):
-                if {chars[p] for p in positions} == set(key):
-                    found.append((kind, key, positions))
-    order = {
-        (kind, key): index
-        for index, (kind, key) in enumerate(
-            (kind, key) for kind, keys in REFERENCE.items() for key in keys
-        )
-    }
-    found.sort(key=lambda item: (order[(item[0], item[1])], item[2]))
-    return [(kind, positions) for kind, _, positions in found]
+        for positions in itertools.combinations(range(4), len(key)):
+            if {chars[p] for p in positions} == set(key):
+                found.append(
+                    f'{kind}:{rule_index}:' + '-'.join(ID_ORDER[p] for p in positions)
+                )
+    return found
 
 
 class TestCanonFamilies(unittest.TestCase):
@@ -486,10 +486,7 @@ class TestCanonFamilies(unittest.TestCase):
             ),
         ):
             shared = [
-                (
-                    r['kind'],
-                    tuple(PILLAR_NAMES.index(m['pillar']) for m in r['members']),
-                )
+                r['id']
                 for r in detect_interactions(pillars(stems, branches))
                 if r['kind'] in REFERENCE
             ]
