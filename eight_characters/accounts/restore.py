@@ -36,6 +36,8 @@ def read_identity(path: Path) -> pyrage.x25519.Identity:
         lines = path.read_text(encoding='utf-8').splitlines()
     except OSError as exc:
         raise RestoreError(f'Cannot read the key file {path}: {exc.strerror}') from exc
+    except UnicodeDecodeError as exc:
+        raise RestoreError(f'{path} is not text, so it holds no age key.') from exc
     keys = [line.strip() for line in lines if line.strip() and not line.startswith('#')]
     if len(keys) != 1:
         raise RestoreError(f'{path} must hold exactly one age private key.')
