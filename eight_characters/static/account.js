@@ -506,6 +506,9 @@
     // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
     // no longer wanted (`wanted` says), or about a session the page no longer holds,
     // changes nothing, so a sign-in made meanwhile stays; the caller goes no further.
+    // Only whether the session holds is taken from the answer: the page knows the
+    // account from the start page and its own changes, which an answer asked for
+    // before one of them would undo.
     const stillSignedIn = async (wanted) => {
       if (!account) return false;
       const session = held;
@@ -516,10 +519,6 @@
         return false;
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
-      const value = await response.json();
-      if (!wanted() || session !== held) return false;
-      account = accountOf(value);
-      refresh();
       return true;
     };
     // The server answered that no one is signed in: the session ended meanwhile.

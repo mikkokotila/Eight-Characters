@@ -499,23 +499,20 @@ for (const profile of profiles) {
       await askForChart(page);
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      // The comparison's check of the session is answered, but its body is held on
-      // its way.
-      await page.evaluate(() => {
-        const fetched = window.fetch.bind(window);
-        let holding = true;
-        window.__bodyAsked = new Promise((resolve) => { window.__bodyAskedNow = resolve; });
-        window.fetch = async (url, init) => {
-          const response = await fetched(url, init);
-          const method = (init && init.method) || 'GET';
-          if (!holding || String(url) !== '/api/account' || method !== 'GET') return response;
-          holding = false;
-          const released = new Promise((resolve) => { window.__releaseBody = resolve; });
-          const json = response.json.bind(response);
-          response.json = async () => { await released; return json(); };
-          window.__bodyAskedNow();
-          return response;
-        };
+      // The comparison's check of the session is answered at once, for the earlier
+      // account, and the answer is held on its way.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const answered = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/account', async (route) => {
+        if (!holding || route.request().method() !== 'GET') return route.continue();
+        holding = false;
+        const response = await route.fetch();
+        sent();
+        await held;
+        return route.fulfill({ response });
       });
       await page.locator('#compare-btn').click();
       await page.locator('#compare-note').waitFor({ state: 'visible' });
@@ -524,14 +521,14 @@ for (const profile of profiles) {
       await page.locator('#location').fill(CHENGDU.city);
       await page.locator('.location-suggestion').click();
       await page.locator('#create-chart-btn').click();
-      await page.evaluate(() => window.__bodyAsked);
-      // Signed out, and in as another account, while that body is on its way.
+      await answered;
+      // Signed out, and in as another account, while that answer is on its way.
       await page.locator('#account-btn').click();
       await dialogOpens(page);
       await page.locator('#account-sign-out').click();
       await page.locator('#account-notice').filter({ hasText: 'You are signed out.' }).waitFor();
       await signInThroughDialog(page, later.email);
-      await page.evaluate(() => window.__releaseBody());
+      release();
       // Time for the page to act on it, as it would have: the comparison abandoned by
       // signing out came back, and the menu named the earlier account.
       await page.waitForTimeout(500);
@@ -540,6 +537,54 @@ for (const profile of profiles) {
       await page.locator('#account-btn').click();
       await dialogOpens(page);
       assert.equal(await text(page, '#account-who'), `Signed in as ${later.email}`);
+    });
+
+    check("a comparison's late answer leaves a language set since", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'tongue' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The comparison's check of the session is answered at once, while the account is
+      // still in English, and the answer is held on its way.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const answered = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/account', async (route) => {
+        if (!holding || route.request().method() !== 'GET') return route.continue();
+        holding = false;
+        const response = await route.fetch();
+        sent();
+        await held;
+        return route.fulfill({ response });
+      });
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await answered;
+      // The account's language is set to Finnish meanwhile, in the dialog.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('[data-account-lang="fi"]').click();
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      release();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // Time for the page to act on the answer, as it would have, by naming English.
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('[data-account-lang="en"]').getAttribute('aria-pressed'), 'false');
+      const stored = await asAccount(playwright, account, async (request) => (await request.get('/api/account')).json());
+      assert.equal(stored.language, 'fi');
     });
 
     check('a code asked for is said as asked, even if the dialog changes side meanwhile', async (page) => {
