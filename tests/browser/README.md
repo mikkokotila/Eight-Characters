@@ -128,14 +128,16 @@ keeps the birth and New chart empties the form; and the column headers pair each
 plain pillar name with its poetic one, while the panel uses the plain names in
 the chart's order.
 
-The arcs suite checks the relationships drawn on the chart (#19). On eight charts
-the API calculates, from none to seven relationships and with four levels of stem
-or branch arcs, at 1440, 1024 and 700px: every relationship has one arc, from the
-middle of its first card to the middle of its last, in its line (solid, dashed or
-double), standing on the stems or hanging from the branches within its own row;
-a frame's middle member has its foot; the feet on one card stand 6px apart around
-its middle; and arcs that span or cross each other stand at different heights,
-the wider above. It also checks that a chosen relationship darkens its arc and
+The arcs suite checks the relationships drawn on the chart (#19). On thirteen
+charts the API calculates, from none to ten relationships, with four levels of stem
+or branch arcs, every new family of the canon, an arc of three strands and six feet
+on one card, at 1440, 1024 and 700px: every relationship has one arc, from the
+middle of its first card to the middle of its last, in its line and width (solid,
+dashed, dotted or double), standing on the stems or hanging from the branches
+within its own row; a triple's middle member has its foot; the feet on one card
+stand 6px apart, the strands of one arc 3px, around its middle; relationships on
+the same columns nest, each strand 3px inside the one before; and arcs that span
+or cross each other stand at different heights, the wider above. It also checks that a chosen relationship darkens its arc and
 fades the others until cleared; that opened hidden stems cover the feet passing
 behind them (compared pixel for pixel with the arcs hidden) while the arcs keep
 their shape; that arcs needing more than the rows hold fail visibly; and, on

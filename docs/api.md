@@ -119,15 +119,33 @@ stems keep the order and `qi_type` of the `hidden_stems` payload. Values are
 
 #### Natal relationships (`include_interactions`)
 
-This independent, opt-in enrichment detects the five stem combinations, six
-branch combinations, six branch clashes, and four complete three-harmony frames.
-It compares the normalized natal pillars only; hidden stems do not create extra
-stem combinations. It does not run Evolution inference or change any natal element.
+This independent, opt-in enrichment detects every relationship family the canon
+(`canon/Taxonomy.md`) defines: the five stem combinations, six branch combinations,
+six branch clashes, four three-harmony frames and their half-frames, four
+directional combinations, three punishments with their halves, four
+self-punishments, and six harms. It compares the normalized natal pillars only;
+hidden stems do not create extra stem combinations. It does not run Evolution
+inference or change any natal element.
+
+Rules 1-21 are the shared family catalog's. Rules 22-44 follow the canon where
+Evolution's catalog differs from it:
+
+| Rules | `kind` | Members |
+| --- | --- | --- |
+| 22-25 | `half_frame` | two of a frame's three branches, one of them its Peak Branch (子 Zi, 卯 Mao, 午 Wu or 酉 You) |
+| 26-29 | `directional_combination` | 亥子丑 Hai-Zi-Chou, 寅卯辰 Yin-Mao-Chen, 巳午未 Si-Wu-Wei or 申酉戌 Shen-You-Xu, all three |
+| 30-31 | `punishment` | 寅巳申 Yin-Si-Shen or 丑未戌 Chou-Wei-Xu, all three |
+| 32-33 | `half_punishment` | two of 寅巳申 Yin-Si-Shen or of 丑未戌 Chou-Wei-Xu |
+| 34 | `punishment` | 子卯 Zi-Mao |
+| 35-38 | `self_punishment` | 辰 Chen, 午 Wu, 酉 You or 亥 Hai in two pillars |
+| 39-44 | `harm` | 子未 Zi-Wei, 丑午 Chou-Wu, 寅巳 Yin-Si, 卯辰 Mao-Chen, 申亥 Shen-Hai or 酉戌 You-Xu |
 
 Every matching occurrence is returned, including repeated and non-adjacent pairs.
-A frame requires all three distinct branch members; incomplete sets are not emitted.
-An empty array means no matches in this supported scope, not that the chart has no
-other relationships. Records are ordered by shared rule index, then by natal
+A frame, directional combination or punishment triangle requires all three distinct
+branch members. A complete frame or triangle absorbs the halves of its own kind
+among its members, so a half is listed only where its whole is not. Birth and
+Storage without the Peak are not a half-frame. An empty array means the chart
+holds none of these relationships. Records are ordered by rule index, then by natal
 position (year, month, day, hour). Overlapping records are retained independently.
 
 For the canonical `1988-02-04 16:30:00` Chengdu chart:
@@ -152,17 +170,21 @@ For the canonical `1988-02-04 16:30:00` Chengdu chart:
 }
 ```
 
-`kind` is `stem_combination`, `branch_combination`, `branch_clash`, or
-`harmony_frame`. Each record identifies its `stem` or `branch` component and
-all participating cards. `adjacent` means the participating pillars occupy
-consecutive natal positions, independent of responsive screen layout.
-`completeness` is `pair` or `complete` (a three-member frame).
+`kind` is `stem_combination`, `branch_combination`, `branch_clash`,
+`harmony_frame`, `half_frame`, `directional_combination`, `punishment`,
+`half_punishment`, `self_punishment`, or `harm`. Each record identifies its `stem`
+or `branch` component and all participating cards. `adjacent` means the
+participating pillars occupy consecutive natal positions, independent of responsive
+screen layout. `completeness` is `pair` (two members), `complete` (all three of a
+triple), or `half` (two of a triple's three).
 
-`potential_element` is only a reference target for stem combinations and complete
-frames. Branch-pair targets are not published because they vary by convention;
-clashes have no target. Both use `null`. `transformation` is `not_assessed` for
-combinations and frames, and `not_applicable` for clashes. No activation, strength,
-transformation, favorable/unfavorable verdict, or life outcome is inferred.
+`potential_element` is only a reference target for stem combinations, frames,
+half-frames and directional combinations. Branch-pair targets are not published
+because they vary by convention; clashes, punishments and harms have no target.
+They use `null`. `transformation` is `not_assessed` for combinations, frames,
+half-frames and directional combinations, and `not_applicable` for clashes,
+punishments and harms. No activation, strength, transformation,
+favorable/unfavorable verdict, or life outcome is inferred.
 
 The flag does not implicitly include `chart`, `hidden_stems`, or `ten_gods`;
 request those separately. Existing response sections are unchanged.
@@ -291,6 +313,8 @@ The `language` is `en` whatever `lang` is, because the canon is English.
 - **`branches_introduction`.**
 - **`relationships`,** keyed by the same ids as `interactions`:
   - `kind`;
+  - `line`: the one sentence the list shows, the canon's sentence about this form
+    of the relationship (see [Readings](Standard-Readings.md));
   - the kind's `introduction`;
   - the pillar `pairing`, which is `null` for a frame;
   - the `entry`: `title` and `paragraphs`;

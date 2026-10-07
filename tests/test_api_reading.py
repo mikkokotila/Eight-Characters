@@ -13,6 +13,8 @@ from eight_characters.reading import build_reading, check_reading_canon
 from tests.test_canon import parsed_texts
 
 PILLARS = ('year', 'month', 'day', 'hour')
+# A sentence ends at its stop, or just after a closing quote that follows it.
+SENTENCE_END = re.compile(r'(?<=[.!?])\s+|(?<=[.!?]["”])\s+')
 GODS = dict(
     zip(
         (
@@ -137,7 +139,15 @@ class TestReadingApi(unittest.TestCase):
                 'hour': 'rob_wealth',
             },
         )
-        (clash,) = result['relationships'].values()
+        # Beside the Zi-Wu clash: Zi and Chen half a Water frame, Zi punishes Mao,
+        # and Mao and Chen harm each other.
+        self.assertEqual(
+            sorted(r['kind'] for r in result['relationships'].values()),
+            ['branch_clash', 'half_frame', 'harm', 'punishment'],
+        )
+        (clash,) = [
+            r for r in result['relationships'].values() if r['kind'] == 'branch_clash'
+        ]
         self.assertEqual(clash['pairing']['label'], 'Month–Day')
         self.assertEqual(clash['condition']['season'], 'summer')
         self.assertTrue(
@@ -254,6 +264,12 @@ class TestReadingSelection(unittest.TestCase):
             'branch_combination': 'six_harmonies',
             'branch_clash': 'clashes',
             'harmony_frame': 'three_harmonies',
+            'half_frame': 'three_harmonies',
+            'directional_combination': 'directional',
+            'punishment': 'punishments',
+            'half_punishment': 'punishments',
+            'self_punishment': 'punishments',
+            'harm': 'harms',
         }
         seen = set()
         for stems in itertools.product('甲己丁壬', repeat=4):
@@ -261,6 +277,9 @@ class TestReadingSelection(unittest.TestCase):
                 ('子', '午', '丑', '未'),
                 ('申', '子', '辰', '巳'),
                 ('寅', '亥', '卯', '戌'),
+                ('寅', '巳', '申', '辰'),
+                ('亥', '子', '丑', '午'),
+                ('辰', '辰', '卯', '酉'),
             ):
                 pillars = dict(
                     zip(PILLARS, zip(stems, branches, strict=True), strict=True)
@@ -272,10 +291,13 @@ class TestReadingSelection(unittest.TestCase):
                     members = [m['pillar'] for m in interaction['members']]
                     chars = {m['char'] for m in interaction['members']}
                     self.assertEqual(got['kind'], interaction['kind'])
-                    self.assertEqual(
-                        set(got['entry']['title'].split(' — ')[0]) & chars, chars
-                    )
-                    if interaction['kind'] == 'harmony_frame':
+                    head = got['entry']['title'].split(' — ')[0]
+                    if interaction['kind'] == 'self_punishment':
+                        self.assertEqual(head, '自刑')
+                    else:
+                        self.assertEqual(set(head) & chars, chars)
+                    # Only the canon's pairs with pairing passages read one.
+                    if len(members) == 3 or not family['pairings']:
                         self.assertIsNone(got['pairing'])
                     else:
                         first, second = sorted(members, key=PILLARS.index)
@@ -302,8 +324,146 @@ class TestReadingSelection(unittest.TestCase):
                         self.assertEqual(
                             got['mechanics'], self.canon['combination_mechanics']
                         )
+                    # The list's line is one whole sentence of what the reading says:
+                    # its pairing where it has one, else its own paragraphs.
+                    said = [
+                        sentence
+                        for p in (
+                            [got['pairing']]
+                            if got['pairing']
+                            else got['entry']['paragraphs']
+                        )
+                        for sentence in SENTENCE_END.split(p['text'])
+                    ]
+                    self.assertIn(got['line'], said)
                     seen.add(interaction['kind'])
         self.assertEqual(seen, set(families))
+
+    def test_the_list_reads_the_canons_sentence_about_each_form(self):
+        def line(branches, kind):
+            pillars = dict(
+                zip(PILLARS, zip('甲甲甲甲', branches, strict=True), strict=True)
+            )
+            (found,) = [
+                r['line']
+                for r in reading(pillars)['relationships'].values()
+                if r['kind'] == kind
+            ]
+            return found
+
+        # A half-frame: the sentence on its own pair, which names the branch it lacks.
+        self.assertEqual(
+            line('申子戌戌', 'half_frame'),
+            'The half-frames: Shen-Zi without Chen creates a powerful current with no'
+            " reservoir — intelligence that flows but isn't stored.",
+        )
+        self.assertEqual(
+            line('子辰戌戌', 'half_frame'),
+            'Zi-Chen without Shen creates a deep reservoir with no source — depth'
+            ' without the generating mechanism to refill it.',
+        )
+        # Two of a punishment triangle: that pair's sentence.
+        self.assertEqual(
+            line('寅申卯卯', 'half_punishment'),
+            'Yin-Shen creates a friction between growth and cutting — the person builds'
+            ' and destroys in alternating cycles.',
+        )
+        self.assertEqual(
+            line('丑戌卯卯', 'half_punishment'),
+            'Chou-Xu is the cold vault versus the hot vault — both guarding, neither'
+            ' trusting the other.',
+        )
+        # A whole punishment: its character. The Zi-Mao sentence ends inside quotes.
+        self.assertEqual(
+            line('寅巳申卯', 'punishment'),
+            'The character of this punishment is ingratitude — the classical name means'
+            ' the punishment without kindness.',
+        )
+        self.assertEqual(
+            line('丑未戌卯', 'punishment'),
+            'The character of this punishment is bullying by strength — the classical'
+            ' name means the punishment of relying on power.',
+        )
+        self.assertEqual(
+            line('子卯戌戌', 'punishment'),
+            'The character of this punishment is specifically about the violation of'
+            ' proper relationships — hence "uncivilized."',
+        )
+        # A self-punishment: its own branch.
+        self.assertEqual(line('辰辰戌戌', 'self_punishment'), 'Too much stored Water.')
+        # A harm: what it does in practice, which runs both ways.
+        self.assertEqual(
+            line('寅巳卯卯', 'harm'),
+            'In practice: the ambitious growth domain and the transformative intensity'
+            ' domain interfere with each other through their opposing relationships to'
+            ' the deep creative source.',
+        )
+        # A directional combination: its entry's first sentence.
+        self.assertEqual(
+            line('亥子丑戌', 'directional_combination'), 'The full winter.'
+        )
+        # A family with pairings: the pairing's first sentence, as before.
+        self.assertEqual(
+            line('子午戌戌', 'branch_clash'), 'The ancestry collides with the career.'
+        )
+
+    def test_each_form_of_a_relationship_reads_its_own_paragraphs(self):
+        def read(branches, kind):
+            pillars = dict(
+                zip(PILLARS, zip('甲甲甲甲', branches, strict=True), strict=True)
+            )
+            return next(
+                r['entry']['paragraphs']
+                for r in reading(pillars)['relationships'].values()
+                if r['kind'] == kind
+            )
+
+        def labels(paragraphs):
+            return [p['label'] for p in paragraphs]
+
+        frame = self.canon['three_harmonies']['entries']['申子辰']['paragraphs']
+        # Shen and Zi: the frame's opening, their two points and the half-frames;
+        # not Chen's point, nor what the whole frame does.
+        half = read('申子戌戌', 'half_frame')
+        self.assertEqual(
+            labels(half), [None, 'Birth point (Shen)', 'Peak point (Zi)', None]
+        )
+        self.assertEqual(half[0], frame[0])
+        self.assertTrue(half[-1]['text'].startswith('The half-frames:'))
+        self.assertEqual(len(read('申子辰戌', 'harmony_frame')), len(frame))
+        # The Ingratitude triangle whole, and two of its three.
+        self.assertEqual(
+            labels(read('寅巳申卯', 'punishment')),
+            [None, None, None, 'Across pillar positions'],
+        )
+        self.assertEqual(
+            labels(read('寅巳卯卯', 'half_punishment')),
+            [None, None, None, 'When two of three are present (half-punishment)'],
+        )
+        # Bullying by Strength has no pillar paragraph; Zi-Mao has no half.
+        self.assertEqual(labels(read('丑未戌卯', 'punishment')), [None, None, None])
+        self.assertEqual(
+            labels(read('丑未卯卯', 'half_punishment')),
+            [None, None, None, 'When two of three are present'],
+        )
+        self.assertEqual(
+            labels(read('子卯戌戌', 'punishment')),
+            [None, None, None, 'Across pillar positions'],
+        )
+        # A self-punishment reads its own branch between the entry's opening and close.
+        self.assertEqual(
+            labels(read('辰辰戌戌', 'self_punishment')),
+            [None, '辰辰 Chen-Chen (Dragon meets Dragon)', None],
+        )
+        # Harms and directional combinations read their whole entry.
+        self.assertEqual(
+            read('子未戌戌', 'harm'),
+            self.canon['harms']['entries']['子未']['paragraphs'],
+        )
+        self.assertEqual(
+            read('亥子丑戌', 'directional_combination'),
+            self.canon['directional']['entries']['亥子丑']['paragraphs'],
+        )
 
     def test_the_zi_wu_clash_says_what_its_season_decides(self):
         for month in BRANCH_CHARS:
@@ -332,7 +492,7 @@ class TestReadingSelection(unittest.TestCase):
 def every_selection():
     """Pillars for every path a reading takes: every Day Master under every stem on every
     branch, in every pillar; every stem pair and branch pair in every pillar pairing; and
-    every frame in every placement."""
+    every frame, directional combination and punishment triangle in every placement."""
     for day_master, stem, branch, pillar in itertools.product(
         STEM_CHARS, STEM_CHARS, BRANCH_CHARS, PILLARS
     ):
@@ -350,7 +510,11 @@ def every_selection():
             pillars = {name: ('甲', '寅') for name in PILLARS}
             pillars[first], pillars[second] = ('甲', a), ('甲', b)
             yield pillars
-    for frame in ('申子辰', '亥卯未', '寅午戌', '巳酉丑'):
+    for frame in (
+        *('申子辰', '亥卯未', '寅午戌', '巳酉丑'),
+        *('亥子丑', '寅卯辰', '巳午未', '申酉戌'),
+        *('寅巳申', '丑未戌'),
+    ):
         for members in itertools.permutations(PILLARS, 3):
             pillars = {name: ('甲', '寅') for name in PILLARS}
             for name, branch in zip(members, frame, strict=True):
@@ -371,22 +535,14 @@ def paragraph_texts(value, found):
 
 
 class TestWhatTheReadingsCover(unittest.TestCase):
-    def test_every_paragraph_is_read_but_those_of_families_not_yet_detected(self):
-        # Standard does not detect directional combinations, punishments or harms yet,
-        # so no chart's reading holds their paragraphs; every other paragraph of the
-        # canon is in some chart's reading. What is left is listed in the ticket for the
-        # rest of the canon.
+    def test_every_paragraph_is_read_by_some_chart(self):
+        # Every family the canon defines is detected, so every paragraph the canon's
+        # parser reads is in some chart's reading.
         canon = load_canon()
         shown = set()
         for pillars in every_selection():
             paragraph_texts(reading(pillars), shown)
-        not_yet = set()
-        for family in ('directional', 'punishments', 'harms'):
-            not_yet |= {p['text'] for p in canon[family]['introduction']}
-            for entry in canon[family]['entries'].values():
-                not_yet |= {p['text'] for p in entry['paragraphs']}
-        self.assertEqual(set(parsed_texts(canon)) - shown, not_yet)
-        self.assertEqual(not_yet & shown, set())
+        self.assertEqual(set(parsed_texts(canon)) - shown, set())
 
 
 class TestReadingCanonChecks(unittest.TestCase):
@@ -404,6 +560,30 @@ class TestReadingCanonChecks(unittest.TestCase):
         canon['cycle']['table']['甲']['亥'] = 2
         with self.assertRaises(CanonError):
             check_reading_canon(canon)
+
+    def test_a_form_without_its_sentence_is_refused(self):
+        def without(family, key, words, instead):
+            canon = copy.deepcopy(load_canon())
+            paragraphs = canon[family]['entries'][key]['paragraphs']
+            (index,) = [i for i, p in enumerate(paragraphs) if words in p['text']]
+            paragraphs[index] = {
+                **paragraphs[index],
+                'text': paragraphs[index]['text'].replace(words, instead),
+            }
+            return canon
+
+        for canon in (
+            without('harms', '寅巳', 'In practice:', 'In effect:'),
+            without(
+                'punishments', '丑未戌', 'The character of this', 'The nature of this'
+            ),
+            without(
+                'three_harmonies', '巳酉丑', 'You-Chou without Si', 'You-Chou alone'
+            ),
+            without('punishments', '寅巳申', 'Si-Shen creates', 'Si and Shen create'),
+        ):
+            with self.assertRaises(CanonError):
+                check_reading_canon(canon)
 
 
 if __name__ == '__main__':

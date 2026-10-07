@@ -5,7 +5,15 @@ from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 
+from eight_characters.canon import load_canon
+from eight_characters.data import BRANCHES
 from eight_characters.interactions import (
+    CANON_DIRECTIONAL,
+    CANON_HALF_FRAMES,
+    CANON_HARMS,
+    CANON_PUNISHMENT_PAIR,
+    CANON_PUNISHMENT_TRIANGLES,
+    CANON_SELF_PUNISHMENTS,
     INTERACTION_RULES,
     PILLAR_NAMES,
     detect_interactions,
@@ -27,6 +35,9 @@ CANONICAL = {
     'day': ('己', '丑'),
     'hour': ('壬', '申'),
 }
+
+
+BRANCH_PINYIN = {char: info['pinyin'] for char, info in BRANCHES.items()}
 
 
 def pillars(stems='甲甲甲甲', branches='子子子子'):
@@ -148,9 +159,18 @@ class TestInteractionRecognition(unittest.TestCase):
         self.assertEqual(len(found), 4)
         self.assertEqual(len({r['id'] for r in found}), 4)
         self.assertEqual(sum(r['adjacent'] for r in found), 3)
+        # Four clashes, and the two Horses punish themselves (the canon's 午午).
         branches = detect_interactions(pillars(branches='子午子午'))
-        self.assertEqual(len(branches), 4)
-        self.assertTrue(all(r['kind'] == 'branch_clash' for r in branches))
+        self.assertEqual(
+            [r['id'] for r in branches],
+            [
+                'branch_clash:12:year-month',
+                'branch_clash:12:year-hour',
+                'branch_clash:12:month-day',
+                'branch_clash:12:day-hour',
+                'self_punishment:36:month-hour',
+            ],
+        )
 
     def test_duplicate_third_member_produces_two_complete_occurrences(self):
         found = [
@@ -162,10 +182,19 @@ class TestInteractionRecognition(unittest.TestCase):
         self.assertNotEqual(found[0]['id'], found[1]['id'])
 
     def test_overlapping_combination_and_clash_both_survive(self):
+        # Beside them, the canon's other findings on these branches: the two Horses'
+        # self-punishment, and the Ox harming each Horse.
         found = detect_interactions(pillars(branches='子丑午午'))
         self.assertEqual(
             [r['kind'] for r in found],
-            ['branch_combination', 'branch_clash', 'branch_clash'],
+            [
+                'branch_combination',
+                'branch_clash',
+                'branch_clash',
+                'self_punishment',
+                'harm',
+                'harm',
+            ],
         )
         self.assertIsNone(found[0]['potential_element'])
         self.assertEqual(found[0]['transformation'], 'not_assessed')
@@ -201,26 +230,46 @@ class TestInteractionRecognition(unittest.TestCase):
 
 
 # The chart draws each relationship as an arc (static/relationships.js, arcLayout).
-# An arc rises one level for each column it spans, and at least one level above
-# every narrower arc it overlaps; arcs that only meet at a card may share a
-# level. The arcs' rows in the page hold four levels.
+# Each relationship of the shared families has an arc of its own. One of the canon's
+# added families joins an arc that already spans the same columns, as a strand inside
+# it, and stands alone only where none does. An arc rises one level for each column it
+# spans, and at least one level above every narrower arc it overlaps; arcs that only
+# meet at a card may share a level. The arcs' rows in the page hold four levels.
 DISPLAY_COLUMNS = {'hour': 0, 'day': 1, 'month': 2, 'year': 3}
 ARC_LEVELS = 4
+ARC_STRANDS = 3
+SHARED_KINDS = {
+    'stem_combination',
+    'branch_combination',
+    'branch_clash',
+    'harmony_frame',
+}
+
+
+def arc_slots(interactions):
+    slots = []
+    for interaction in interactions:
+        columns = sorted(
+            DISPLAY_COLUMNS[member['pillar']] for member in interaction['members']
+        )
+        span = (columns[0], columns[-1])
+        if interaction['kind'] not in SHARED_KINDS:
+            host = next((slot for slot in slots if slot['span'] == span), None)
+            if host is not None:
+                host['strands'].append(interaction)
+                continue
+        slots.append({'span': span, 'strands': [interaction]})
+    return slots
 
 
 def arc_levels(interactions):
-    arcs = sorted(
-        (
-            sorted(
-                DISPLAY_COLUMNS[member['pillar']] for member in interaction['members']
-            )
-            for interaction in interactions
-        ),
-        key=lambda columns: (columns[-1] - columns[0], columns[0]),
+    slots = sorted(
+        arc_slots(interactions),
+        key=lambda slot: (slot['span'][1] - slot['span'][0], slot['span'][0]),
     )
     placed: list[tuple[int, int, int]] = []
-    for columns in arcs:
-        start, end = columns[0], columns[-1]
+    for slot in slots:
+        start, end = slot['span']
         overlapped = [
             level
             for (other_start, other_end, level) in placed
@@ -237,6 +286,7 @@ class TestRelationshipArcLevels(unittest.TestCase):
             ('branch', '子丑寅卯辰巳午未申酉戌亥'),
         ):
             deepest = 0
+            strands = 0
             for combination in itertools.product(chars, repeat=4):
                 stems, branches = (
                     (''.join(combination), '子子子子')
@@ -249,9 +299,27 @@ class TestRelationshipArcLevels(unittest.TestCase):
                     if interaction['component'] == component
                 ]
                 deepest = max(deepest, *arc_levels(interactions), 0)
+                strands = max(
+                    strands,
+                    *(len(slot['strands']) for slot in arc_slots(interactions)),
+                    0,
+                )
             with self.subTest(component=component):
                 # Reached, and never exceeded.
                 self.assertEqual(deepest, ARC_LEVELS)
+                self.assertLessEqual(strands, ARC_STRANDS)
+
+    def test_the_shared_families_keep_an_arc_each(self):
+        # Their arcs, and so every chart that has only them, are laid out as before:
+        # a strand of the added families never displaces one of them.
+        for combination in itertools.product('子丑寅卯辰巳午未申酉戌亥', repeat=4):
+            for slot in arc_slots(
+                detect_interactions(pillars('甲甲甲甲', combination))
+            ):
+                shared = [s for s in slot['strands'] if s['kind'] in SHARED_KINDS]
+                self.assertLessEqual(len(shared), 1)
+                if shared:
+                    self.assertIs(slot['strands'][0], shared[0])
 
     def test_levels_follow_span_and_overlap(self):
         # Hour, day, month and year: 丁丁壬壬 combine month-day, month-hour,
@@ -264,6 +332,258 @@ class TestRelationshipArcLevels(unittest.TestCase):
         self.assertEqual(sorted(arc_levels(interactions)), [1, 2, 3, 4])
         # One arc across all four pillars rises three levels.
         self.assertEqual(arc_levels(detect_interactions(CANONICAL)), [3])
+
+    def test_relationships_on_the_same_columns_share_one_arc(self):
+        # 寅巳 in Year and Day is both a harm and two of the Ingratitude triangle: one
+        # arc, the harm's strand inside the half-punishment's.
+        found = detect_interactions(pillars('甲甲甲甲', '寅子巳子'))
+        self.assertEqual(
+            [[s['id'] for s in slot['strands']] for slot in arc_slots(found)],
+            [['half_punishment:32:year-day', 'harm:41:year-day']],
+        )
+
+
+# The canon's families beyond the shared catalog, written out from canon/Taxonomy.md
+# here rather than taken from the runtime tables.
+CANON_REFERENCE = {
+    # Each frame and its Peak Branch: a half-frame is two of three, one of them the peak.
+    'half_frame': (
+        ('申子辰', '子'),
+        ('亥卯未', '卯'),
+        ('寅午戌', '午'),
+        ('巳酉丑', '酉'),
+    ),
+    'directional_combination': ('亥子丑', '寅卯辰', '巳午未', '申酉戌'),
+    'punishment': ('寅巳申', '丑未戌', '子卯'),
+    'half_punishment': ('寅巳申', '丑未戌'),
+    'self_punishment': ('辰辰', '午午', '酉酉', '亥亥'),
+    'harm': ('子未', '丑午', '寅巳', '卯辰', '申亥', '酉戌'),
+}
+ADDED_KINDS = tuple(CANON_REFERENCE)
+
+
+def canon_reading(branches):
+    """The added families' findings on four branches, by brute force: (kind, positions)."""
+    found = []
+    for size in (2, 3):
+        for positions in itertools.combinations(range(4), size):
+            chars = [branches[p] for p in positions]
+            distinct = set(chars)
+            for kind in (
+                'directional_combination',
+                'punishment',
+                'self_punishment',
+                'harm',
+            ):
+                for key in CANON_REFERENCE[kind]:
+                    if len(key) == size and sorted(chars) == sorted(key):
+                        found.append((kind, positions))
+            if size == 2 and len(distinct) == 2:
+                for key, peak in CANON_REFERENCE['half_frame']:
+                    if distinct <= set(key) and peak in distinct:
+                        found.append(('half_frame', positions))
+                for key in CANON_REFERENCE['half_punishment']:
+                    if distinct <= set(key):
+                        found.append(('half_punishment', positions))
+    # A complete frame or triangle absorbs the halves among its members.
+    frames = [
+        set(positions)
+        for positions in itertools.combinations(range(4), 3)
+        if any(
+            sorted(branches[p] for p in positions) == sorted(key)
+            for key, _ in CANON_REFERENCE['half_frame']
+        )
+    ]
+    triangles = [
+        set(positions)
+        for kind, positions in found
+        if kind == 'punishment' and len(positions) == 3
+    ]
+
+    def absorbed(kind, positions):
+        if kind == 'half_frame':
+            within = [held for held in frames if set(positions) <= held]
+            return any(
+                {branches[p] for p in held} >= {branches[p] for p in positions}
+                for held in within
+            )
+        if kind == 'half_punishment':
+            return any(set(positions) <= held for held in triangles)
+        return False
+
+    return sorted((k, p) for k, p in found if not absorbed(k, p))
+
+
+# The pillars in the order each relationship's id names them.
+ID_ORDER = ('year', 'month', 'day', 'hour')
+
+
+def old_shared_detection(stems, branches):
+    """The shared families exactly as Standard found them before the canon's were added:
+    each finding's id, in order. The ids number the rules 1-21 in REFERENCE's order."""
+    found = []
+    rules = ((kind, key) for kind, keys in REFERENCE.items() for key in keys)
+    for rule_index, (kind, key) in enumerate(rules, start=1):
+        chars = stems if kind == 'stem_combination' else branches
+        for positions in itertools.combinations(range(4), len(key)):
+            if {chars[p] for p in positions} == set(key):
+                found.append(
+                    f'{kind}:{rule_index}:' + '-'.join(ID_ORDER[p] for p in positions)
+                )
+    return found
+
+
+class TestCanonFamilies(unittest.TestCase):
+    def test_rules_follow_the_canons_own_entries(self):
+        canon = load_canon()
+        self.assertEqual(tuple(canon['harms']['entries']), CANON_HARMS)
+        self.assertEqual(tuple(canon['harms']['entries']), CANON_REFERENCE['harm'])
+        self.assertEqual(
+            tuple(canon['directional']['entries']),
+            tuple(members for members, _ in CANON_DIRECTIONAL),
+        )
+        self.assertEqual(
+            tuple(canon['punishments']['entries']),
+            (*CANON_PUNISHMENT_TRIANGLES, CANON_PUNISHMENT_PAIR, '自刑'),
+        )
+        labels = [
+            p['label'][:2]
+            for p in canon['punishments']['entries']['自刑']['paragraphs']
+            if p['label'] is not None
+        ]
+        self.assertEqual(labels, [branch * 2 for branch in CANON_SELF_PUNISHMENTS])
+        # Each frame names its Peak Branch; that is the one a half-frame must hold.
+        for members, peak in CANON_HALF_FRAMES:
+            entry = canon['three_harmonies']['entries'][members]
+            peaks = [
+                p['label']
+                for p in entry['paragraphs']
+                if p['label'] is not None and p['label'].startswith('Peak point')
+            ]
+            self.assertEqual(peaks, [f'Peak point ({BRANCH_PINYIN[peak]})'])
+
+    def test_every_branch_combination_matches_an_independent_reading_of_the_canon(self):
+        for branches in itertools.product('子丑寅卯辰巳午未申酉戌亥', repeat=4):
+            found = [
+                (
+                    r['kind'],
+                    tuple(PILLAR_NAMES.index(m['pillar']) for m in r['members']),
+                )
+                for r in detect_interactions(pillars('甲甲甲甲', branches))
+                if r['kind'] in ADDED_KINDS
+            ]
+            self.assertEqual(sorted(found), canon_reading(branches), ''.join(branches))
+
+    def test_the_shared_families_keep_their_findings_ids_and_order(self):
+        for stems, branches in (
+            *(
+                (('甲甲甲甲'), b)
+                for b in itertools.product('子丑寅卯辰巳午未申酉戌亥', repeat=4)
+            ),
+            *(
+                (s, '子子子子')
+                for s in itertools.product('甲乙丙丁戊己庚辛壬癸', repeat=4)
+            ),
+        ):
+            shared = [
+                r['id']
+                for r in detect_interactions(pillars(stems, branches))
+                if r['kind'] in REFERENCE
+            ]
+            self.assertEqual(shared, old_shared_detection(stems, branches))
+
+    def test_half_frames_hold_their_peak(self):
+        # Shen and Chen without Zi only cradle the absent middle: no half-frame.
+        self.assertEqual(detect_interactions(pillars(branches='申辰丑丑')), [])
+        found = detect_interactions(pillars(branches='申子戌戌'))
+        self.assertEqual(
+            [
+                (
+                    r['id'],
+                    r['completeness'],
+                    r['potential_element'],
+                    r['transformation'],
+                )
+                for r in found
+                if r['kind'] == 'half_frame'
+            ],
+            [('half_frame:22:year-month', 'half', 'water', 'not_assessed')],
+        )
+
+    def test_a_complete_frame_or_triangle_absorbs_its_halves(self):
+        # With the whole frame, none of its halves (beside it, Chen clashes the Dog).
+        self.assertEqual(
+            [r['id'] for r in detect_interactions(pillars(branches='申子辰戌'))],
+            ['branch_clash:16:day-hour', 'harmony_frame:18:year-month-day'],
+        )
+        found = detect_interactions(pillars(branches='寅巳申卯'))
+        self.assertNotIn('half_punishment', [r['kind'] for r in found])
+        self.assertIn('punishment:30:year-month-day', [r['id'] for r in found])
+        # Without the Monkey, two of three: each pair of the triangle that is present.
+        found = detect_interactions(pillars(branches='寅巳寅卯'))
+        self.assertEqual(
+            [r['id'] for r in found if r['kind'] == 'half_punishment'],
+            ['half_punishment:32:year-month', 'half_punishment:32:month-day'],
+        )
+
+    def test_directional_combinations_need_all_three(self):
+        self.assertEqual(detect_interactions(pillars(branches='亥子戌戌')), [])
+        found = detect_interactions(pillars(branches='亥子丑卯'))
+        self.assertEqual(
+            [
+                (
+                    r['id'],
+                    r['completeness'],
+                    r['potential_element'],
+                    r['transformation'],
+                )
+                for r in found
+                if r['kind'] == 'directional_combination'
+            ],
+            [
+                (
+                    'directional_combination:26:year-month-day',
+                    'complete',
+                    'water',
+                    'not_assessed',
+                )
+            ],
+        )
+
+    def test_self_punishment_needs_one_of_the_canons_four_branches(self):
+        self.assertEqual(detect_interactions(pillars(branches='子子寅寅')), [])
+        found = detect_interactions(pillars(branches='午午午丑'))
+        self.assertEqual(
+            [r['id'] for r in found if r['kind'] == 'self_punishment'],
+            [
+                'self_punishment:36:year-month',
+                'self_punishment:36:year-day',
+                'self_punishment:36:month-day',
+            ],
+        )
+
+    def test_punishments_and_harms_carry_no_target_or_transformation(self):
+        found = detect_interactions(pillars(branches='子卯未丑'))
+        self.assertEqual(
+            [(r['id'], r['completeness']) for r in found],
+            [
+                ('branch_combination:6:year-hour', 'pair'),
+                ('branch_clash:13:day-hour', 'pair'),
+                ('half_frame:23:month-day', 'half'),
+                ('half_punishment:33:day-hour', 'half'),
+                ('punishment:34:year-month', 'pair'),
+                ('harm:39:year-day', 'pair'),
+            ],
+        )
+        for r in found:
+            if r['kind'] in (
+                'punishment',
+                'half_punishment',
+                'self_punishment',
+                'harm',
+            ):
+                self.assertIsNone(r['potential_element'])
+                self.assertEqual(r['transformation'], 'not_applicable')
 
 
 class TestInteractionsAPI(unittest.TestCase):
@@ -316,7 +636,8 @@ class TestInteractionsAPI(unittest.TestCase):
         response = self.client.post(
             '/api/four_pillars',
             json={
-                'date': '1990-01-01',
+                # 己巳 丁丑 庚辰 辛巳: no relationship of any family.
+                'date': '1990-01-15',
                 'time': '12:00',
                 'include_interactions': True,
                 'location': {

@@ -160,12 +160,13 @@ for (const profile of profiles) {
     });
 
     check('empty charts say what was checked and still expose Ten Gods', async (page) => {
-      await openChart(page, { date: '1990-01-01', time: '12:00' });
+      // 己巳 丁丑 庚辰 辛巳: no relationship of any family.
+      await openChart(page, { date: '1990-01-15', time: '12:00' });
       assert.equal(await page.locator('.relationship-chip').count(), 0);
       assert.equal(await page.locator('#relationships-topic').textContent(), 'Relationships (0)');
       await openRelationships(page);
       assert.equal(await page.locator('#relationship-empty').isVisible(), true);
-      assert.match(await page.locator('#relationship-empty').innerText(), /No combinations, clashes or complete harmony frames/);
+      assert.match(await page.locator('#relationship-empty').innerText(), /No relationships between these pillars/);
       await showDisplay(page, 'ten-gods');
       await count(page, '.card.is-flipped', 8);
     });
@@ -202,7 +203,7 @@ for (const profile of profiles) {
       await page.locator('.relationship-chip').click();
       await showDisplay(page, 'ten-gods');
       await page.locator('#back-btn').click();
-      await fillChart(page, { date: '1990-01-01', time: '12:00' });
+      await fillChart(page, { date: '1990-01-15', time: '12:00' });
       await count(page, '.card.is-related', 0);
       await count(page, '.card.is-flipped', 0);
       assert.equal(await page.locator('#display-switch button[data-display="characters"]').getAttribute('aria-pressed'), 'true');
