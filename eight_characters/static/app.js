@@ -134,7 +134,9 @@ document.addEventListener('DOMContentLoaded', () => {
   if (!chartNotices || !ziSwitch) throw new Error('Chart header is incomplete.');
   const ZI_CONVENTIONS = ['split_midnight', 'whole_zi_23'];
   // Reads the flags, checking them against the pillars; inconsistent flags stop the chart.
-  const readFlags = (flags, fourPillars, request) => {
+  // Luck pillars count their start from a jie too, within an allowance of their own: a
+  // birth that close to one has a nominal luck timeline, and the chart says so.
+  const readFlags = (flags, fourPillars, request, luckPillars) => {
     const fail = () => { throw new Error(requiredTranslation('flags_error')); };
     if (!flags || typeof flags.zi_hour_window !== 'boolean' || typeof flags.solar_term_ambiguous !== 'boolean'
       || typeof flags.high_latitude_warning !== 'boolean' || typeof flags.model_uncertainty_seconds !== 'number'
@@ -164,6 +166,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(flags.model_uncertainty_seconds);
       notices.push(requiredTranslation(
         nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }));
+    }
+    if (luckPillars) {
+      const uncertainty = luckPillars.uncertainty;
+      const allowance = uncertainty?.birth_time_seconds + uncertainty?.solar_term_allowance_seconds;
+      if (typeof uncertainty?.boundary_ambiguous !== 'boolean' || !(allowance > 0)) fail();
+      // Five hundredths either way: the engine and this check round differently.
+      if (uncertainty.boundary_ambiguous !== (nearest.seconds <= allowance)
+        && Math.abs(nearest.seconds - allowance) > 0.05) fail();
+      if (uncertainty.boundary_ambiguous) {
+        const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(allowance);
+        notices.push(requiredTranslation(
+          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }));
+      }
     }
     if (flags.high_latitude_warning) notices.push(requiredTranslation('notice_high_latitude'));
     return { zi, notices };
@@ -494,8 +509,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let drawing = 0;
 
   // A chart for a birth at a picked place: its coordinates, not its name, which would
-  // resolve to the first place so named.
-  const chartRequest = ({ date, time, place, lang, zi }) => ({
+  // resolve to the first place so named. With a gender it has its luck pillars.
+  const GENDERS = ['female', 'male'];
+  const chartRequest = ({ date, time, place, lang, zi, gender = null }) => ({
     date,
     time,
     location: { timezone: place.timezone, latitude: place.latitude, longitude: place.longitude },
@@ -507,7 +523,13 @@ document.addEventListener('DOMContentLoaded', () => {
     include_role_profile: true,
     lang,
     ...(zi === ZI_CONVENTIONS[0] ? {} : { conventions: { zi_convention: zi } }),
+    ...(gender === null ? {} : { gender, include_luck_pillars: true, include_luck_context: true }),
   });
+  // The form's gender, or null when none is given.
+  const formGender = () => (GENDERS.includes(form.gender.value) ? form.gender.value : null);
+  const setFormGender = (gender) => {
+    form.querySelector(`input[name="gender"][value="${gender ?? ''}"]`).checked = true;
+  };
 
   // Requests a chart and draws it, and says whether it did: a later request supersedes
   // it. Anything missing or inconsistent throws before the chart view is shown.
@@ -550,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     chartSolarTime.textContent = solarTime.text;
     pillarChanges.render(pillarsData.four_pillars, chartData, { civil: birth, true_solar: solarTime.reading });
     // Read after the pillar changes are checked: the month's changes decide the term notice.
-    renderFlags(readFlags(pillarsData.flags, pillarsData.four_pillars, request));
+    renderFlags(readFlags(pillarsData.flags, pillarsData.four_pillars, request, pillarsData.luck_pillars ?? null));
     populateTenGods(tenGodsData);
     if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
     populateHiddenStems(pillarsData.hidden_stems);
@@ -558,6 +580,13 @@ document.addEventListener('DOMContentLoaded', () => {
     if (withReading && !pillarsData.reading) throw new Error(t('chart_error'));
     canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
+    // A chart asked for with a gender has its luck pillars and their context; one
+    // without has neither.
+    if (Boolean(request.gender) !== Boolean(pillarsData.luck_pillars && pillarsData.luck_context)) {
+      throw new Error(t('luck_error'));
+    }
+    luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null,
+      { relationshipLabel: relationships.labelOf }, request.location.timezone);
     relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
@@ -605,6 +634,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const request = chartRequest({
       date: form.date.value, time: form.time.value, place: resolvedLocation, lang: currentLanguage, zi: ZI_CONVENTIONS[0],
+      gender: formGender(),
     });
 
     // A comparison's second chart is drawn in its own frame: the address names the pair.
@@ -768,21 +798,27 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   const relationships = window.EC_RELATIONSHIPS.create({
     root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
-    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); },
+    beforeSelect: () => { dayMasterContext.clear(); pillarChanges.clear(); luck.clear(); },
   });
   const dayMasterContext = window.EC_DAY_MASTER_CONTEXT.create({
     root: chartView, translate: requiredTranslation, escape: esc, spot, canon: canonReadings,
-    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
+    beforeSelect: () => { relationships.clear(); pillarChanges.clear(); luck.clear(); setRelationshipsOpen(false); },
   });
   const pillarChanges = window.EC_PILLAR_CHANGES.create({
     root: chartView, translate: requiredTranslation, escape: esc, canon: canonReadings,
     format: { parseWallClock, date: formatDate, time: formatTime, duration: formatDuration },
-    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); setRelationshipsOpen(false); },
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); luck.clear(); setRelationshipsOpen(false); },
+  });
+  // The luck pillars: the ribbon of decades, and the chosen decade's page (luck.js).
+  const luck = window.EC_LUCK.create({
+    root: chartView, translate: requiredTranslation, escape: esc, spot, locale,
+    beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
   });
   const closePanel = () => {
     relationships.clear();
     dayMasterContext.clear();
     pillarChanges.clear();
+    luck.clear();
     setRelationshipsOpen(false);
   };
   relationshipsTopic.addEventListener('click', () => {
@@ -1164,16 +1200,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // and the display replace the current one. The address never names a chart that is
   // not on screen.
   const CHART_ROUTE = '#chart?';
-  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'zi', 'display', 'topic'];
+  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'gender', 'zi', 'display', 'topic'];
   const DISPLAYS = ['characters', 'ten-gods', 'hidden-stems'];
   // The pages a topic can show. Whether this chart has the one named is known once it is drawn.
-  const TOPIC_PATH = /^(day-master|season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year))$/;
+  const TOPIC_PATH = /^(day-master|season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year)|luck\/(before|\d{1,2}\/(stem|branch)))$/;
   const linkError = (part) => new Error(t('link_error', { part }));
   const formAddress = () => `${location.pathname}${location.search}`;
 
   // The topic open in the panel, as the address names it, or null.
   const contextDetail = document.getElementById('context-detail');
   const currentTopic = () => {
+    if (luck.topic() !== null) return luck.topic();
     if (!contextDetail.classList.contains('hidden')) return contextDetail.dataset.topic;
     if (relationshipsTopic.getAttribute('aria-expanded') === 'true') {
       const chosen = relationshipsSection.querySelector('.relationship-chip.is-active');
@@ -1195,6 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
       timezone: request.location.timezone,
       lang: request.lang,
     });
+    if (request.gender) params.set('gender', request.gender);
     const zi = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
     if (zi !== ZI_CONVENTIONS[0]) params.set('zi', zi);
     return params;
@@ -1273,6 +1311,7 @@ document.addEventListener('DOMContentLoaded', () => {
         timezone: text('timezone'),
       },
       lang,
+      gender: optional('gender', (value) => GENDERS.includes(value)),
       zi: optional('zi', (value) => ZI_CONVENTIONS.includes(value)) ?? ZI_CONVENTIONS[0],
       display: optional('display', (value) => DISPLAYS.includes(value)) ?? 'characters',
       topic: optional('topic', (value) => TOPIC_PATH.test(value)),
@@ -1344,7 +1383,8 @@ document.addEventListener('DOMContentLoaded', () => {
       && request.date === link.date && request.time === link.time && request.lang === link.lang
       && request.location.latitude === link.place.latitude && request.location.longitude === link.place.longitude
       && request.location.timezone === link.place.timezone
-      && (request.conventions?.zi_convention ?? ZI_CONVENTIONS[0]) === link.zi;
+      && (request.conventions?.zi_convention ?? ZI_CONVENTIONS[0]) === link.zi
+      && (request.gender ?? null) === link.gender;
   };
 
   // Opens the topic a link names, as a reader would, and checks that it is the one open.
@@ -1362,6 +1402,8 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (first === 'pillar') {
       need(chartView.querySelector(`.pillar-identity[data-pillar="${rest[0]}"]`)).click();
+    } else if (first === 'luck') {
+      if (!luck.select(rest.join('/'))) throw linkError('topic');
     } else {
       need(chartView.querySelector(`#day-master-context button[data-context="${first}"]`)).click();
       // roles/<role>, roles/stem/<pillar>, or roles/<role>/stem/<pillar>
@@ -1436,6 +1478,7 @@ document.addEventListener('DOMContentLoaded', () => {
       applyLanguage();
     }
     dateInput.value = link.date;
+    setFormGender(link.gender);
     timeInput.value = link.time;
     setFieldError(dateInput, dateStatus, '');
     setFieldError(timeInput, timeStatus, '');
@@ -1593,6 +1636,11 @@ document.addEventListener('DOMContentLoaded', () => {
       add(requiredTranslation('palette_pillars'),
         `${requiredTranslation('pillar_' + button.dataset.pillar)} · ${button.textContent}`,
         () => goToTopic(`pillar/${button.dataset.pillar}`));
+    });
+    // A chart with luck pillars: the period before them and each decade, as the ribbon
+    // names them.
+    luck.choices().forEach(({ label, topic }) => {
+      add(requiredTranslation('luck_ribbon_label'), label, () => goToTopic(topic));
     });
     displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
       add(requiredTranslation('display_label'), button.textContent, () => button.click());

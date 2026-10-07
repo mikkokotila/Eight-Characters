@@ -12,6 +12,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Chart links, history and Copy link: `Standard-Links.md`
 - Copying a chart as text, and printing it: `Standard-Copy-and-Print.md`
 - Two charts side by side: `Standard-Compare.md`
+- Luck pillars, the ribbon of decades and a decade's page: `Standard-Luck-Pillars.md`
 - What the canon says of a chart, in its pages: `Standard-Readings.md`
 - The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
 - Developer endpoint internals: `Developer/API.md`
@@ -27,6 +28,7 @@ The engine computes:
 - Four Pillars (year, month, day, hour)
 
 Standard mode also annotates hidden stems, Ten Gods, detected natal relationships,
-and Day Master seasonal context, roots, and support evidence.
+and Day Master seasonal context, roots, and support evidence. Given a gender, it
+shows the luck pillars and what each brings to the natal chart.
 These annotations do not assert transformation, strength, or life outcomes.
 Evolution is a separate mode with its own documentation.

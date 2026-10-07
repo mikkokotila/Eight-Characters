@@ -30,6 +30,14 @@ is a group. Each is named by its pillar and the side it shows, such as "Year 丁
 Fire", or "Year Indirect Resource" once turned. The pillars are a group named Pillars,
 described by the keys above.
 
+## The luck pillars
+
+In a chart with a gender, the ribbon's chips take a single tab stop: the open decade's
+chip, else today's. Left and Right arrows move between them, and Home and End go to
+the first and the last; moving opens nothing. Enter or Space opens the decade, and
+Escape closes it, giving focus back to its chip. The steps and Today are buttons of
+their own. See [Luck pillars](Standard-Luck-Pillars.md).
+
 ## ? and the commands
 
 - ? lists the keys, in a dialog, while focus is on the chart. A character key acts only
@@ -38,7 +46,8 @@ described by the keys above.
 - ⌘K or Ctrl+K opens the commands wherever focus is, while a chart is shown. Typing
   narrows them, every word counting; arrows choose, Enter or a click runs the chosen
   one. The commands are:
-  - the topics, each relationship, each role's page and each pillar's changes, which
+  - the topics, each relationship, each role's page and each pillar's changes, and in
+    a chart with a gender the years before the luck pillars and each decade, which
     open as a link opens them, in one step of the history;
   - the display, the other language and the Evolution view;
   - Copy link, Copy as text, Edit, New chart, Compare, Print, Close (when a topic is

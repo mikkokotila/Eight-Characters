@@ -2,8 +2,8 @@
 
 The backend computes luck pillars, and what each brings to the natal chart, as
 optional enrichments of `POST /api/four_pillars`. The natal chart and its
-enrichments retain their existing contracts. The frontend does not request or
-render these enrichments yet.
+enrichments retain their existing contracts. Standard mode asks for both when the
+form has a gender: see [Luck pillars in Standard mode](Standard-Luck-Pillars.md).
 
 ## Request
 

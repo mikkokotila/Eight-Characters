@@ -407,6 +407,61 @@ body {
   color: var(--ink-error);
 }
 
+/* The gender, optional: only the luck pillars need it. Radio buttons, drawn as one
+   pill of choices like the chart's switches. */
+.gender-group {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  margin: 0 auto var(--space-7);
+  padding: 0;
+  border: none;
+}
+.gender-group legend {
+  margin: 0 auto var(--space-2);
+  padding: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.gender-options {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--line-1);
+  border-radius: 20px;
+  background: var(--surface-1);
+}
+.gender-option { position: relative; display: inline-flex; }
+.gender-option input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.gender-option span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border-radius: 16px;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  color: var(--ink-2);
+  transition: background 0.2s ease, color 0.2s ease;
+}
+.gender-option:hover input:not(:checked) + span { background: var(--surface-2); color: var(--ink-1); }
+.gender-option input:checked + span { background: var(--ink-1); color: var(--bg); }
+.gender-option input:focus-visible + span { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.field-hint {
+  max-width: 28em;
+  margin: 0;
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-1);
+  text-align: center;
+  color: var(--ink-2);
+}
+
 /* Why a chart could not be created, when no single field is at fault. */
 .form-error {
   max-width: 560px;
@@ -625,6 +680,217 @@ body {
 .chart-topics .context-toggle[aria-expanded='true'] { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
 .topic-button:focus-visible,
 .chart-topics .context-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
+/* ── The luck pillars: a ribbon of the decades under the topics, each a stem phase and a
+   branch phase, grouped by the direction their branch travels (luck.js). The track
+   scrolls sideways within the ribbon; the page never does. ── */
+.luck-ribbon {
+  /* A group's direction stands over its chips; the buttons beside the track keep to
+     the chips' row. */
+  --luck-direction-height: 16px;
+  --luck-track-padding: var(--space-1);
+  display: flex;
+  align-items: stretch;
+  gap: var(--space-1);
+  min-width: 0;
+  margin: 0 0 var(--space-5);
+}
+/* Named for assistive technology; on a phone, where Today shares its row, shown too. */
+.luck-ribbon-label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+}
+/* As wide as its decades, up to the room there is: the next step follows the last. */
+.luck-track {
+  display: flex;
+  flex: 0 1 auto;
+  gap: var(--space-3);
+  min-width: 0;
+  overflow-x: auto;
+  /* Room for a chip's focus ring and today's dot, which the track would clip. */
+  padding: var(--luck-track-padding);
+  scrollbar-width: thin;
+}
+/* Every group's chips fill the same row, so the period before the first decade stands
+   as tall as a decade. */
+.luck-group { display: grid; grid-template-rows: var(--luck-direction-height) 1fr; gap: var(--space-1); }
+.luck-direction {
+  font-size: var(--text-1);
+  line-height: var(--luck-direction-height);
+  letter-spacing: var(--tracking-1);
+  white-space: nowrap;
+  color: var(--ink-2);
+}
+.luck-chips { display: flex; gap: var(--space-1); }
+.luck-chip {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  min-width: 56px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+.luck-chip:hover { border-color: var(--line-2); background: var(--surface-2); }
+.luck-chip.is-selected { border-color: var(--ink-1); background: var(--ink-1); color: var(--bg); }
+.luck-chip-chars { font-family: var(--font-glyph); font-size: var(--text-3); line-height: 1.2; white-space: nowrap; }
+.luck-chip-names,
+.luck-chip-age { font-size: var(--text-1); line-height: 1.25; white-space: nowrap; }
+.luck-chip-age { font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.luck-chip.is-selected .luck-chip-age { color: inherit; }
+/* The decade's two phases: the chosen one full, today's half. */
+.luck-chip-phases { display: flex; gap: var(--space-1); width: 100%; margin-top: var(--space-1); }
+.luck-chip-phases i { flex: 1; height: 3px; border-radius: 2px; background: currentColor; opacity: 0.18; }
+.luck-chip-phases i[data-today] { opacity: 0.5; }
+.luck-chip-phases i.is-chosen { opacity: 1; }
+.luck-chip.is-before { align-content: center; min-width: 0; font-size: var(--text-1); color: var(--ink-2); }
+.luck-chip.is-before.is-selected { color: var(--bg); }
+/* Today's period wears a dot. */
+.luck-chip:not(.is-today) .luck-today-dot { display: none; }
+.luck-today-dot {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  background: var(--ink-1);
+}
+.luck-chip.is-selected .luck-today-dot { border-color: var(--ink-1); background: var(--bg); }
+.luck-step,
+.luck-today { margin-block: calc(var(--luck-track-padding) + var(--luck-direction-height) + var(--space-1)) var(--luck-track-padding); }
+.luck-step {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 28px;
+  padding: 0;
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: var(--surface-1);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.luck-step svg { width: 16px; height: 16px; }
+.luck-step:hover { background: var(--surface-2); color: var(--ink-1); }
+.luck-today {
+  flex: 0 0 auto;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-2);
+  border-radius: 12px;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 500;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.luck-today[disabled] { opacity: 0.4; cursor: default; }
+/* On a phone the track keeps the ribbon's width between the steps, and the ribbon's
+   name and Today stand over it. */
+@media (max-width: 640px) {
+  .luck-ribbon {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: 'label label today' 'previous track next';
+    align-items: center;
+    row-gap: var(--space-2);
+  }
+  .luck-ribbon-label {
+    grid-area: label;
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
+    font-size: var(--text-1);
+    letter-spacing: var(--tracking-2);
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+  .luck-step[data-luck-step="-1"] { grid-area: previous; align-self: stretch; }
+  .luck-track { grid-area: track; }
+  .luck-step[data-luck-step="1"] { grid-area: next; align-self: stretch; }
+  .luck-today { grid-area: today; min-height: 44px; margin-block: 0; padding: 0 var(--space-3); }
+}
+.luck-chip:focus-visible,
+.luck-step:focus-visible,
+.luck-today:focus-visible,
+.luck-phase:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
+/* A decade's page in the panel. */
+.luck-sequence {
+  margin: 0 0 var(--space-1);
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.luck-meta { margin: var(--space-2) 0 var(--space-4); font-size: var(--text-1); line-height: 1.5; color: var(--ink-2); }
+/* A nominal timeline says so before its dates are read. */
+.luck-nominal { margin: 0 0 var(--space-4); font-size: var(--text-1); font-weight: 500; line-height: 1.5; }
+.luck-phases { display: grid; gap: var(--space-2); }
+.luck-phase {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  text-align: left;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.luck-phase:hover { background: var(--surface-2); }
+.luck-phase.is-chosen { border-color: var(--ink-1); box-shadow: inset 0 0 0 1px var(--ink-1); }
+.luck-phase-name { font-size: var(--text-1); font-weight: 600; }
+.luck-phase-when,
+.luck-phase-what { font-size: var(--text-1); color: var(--ink-2); }
+.luck-subheading { margin: var(--space-6) 0 var(--space-3); }
+/* What waits for the other phase recedes into the secondary ink, and says so; it is
+   still there. */
+.luck-occurrence.is-resting .context-evidence-identity,
+.luck-relationship.is-resting .luck-relationship-name { color: var(--ink-2); font-weight: 400; }
+.luck-stage,
+.luck-roots { margin: var(--space-3) 0 0; font-size: var(--text-1); line-height: 1.5; }
+.luck-relationships { display: grid; gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.luck-relationship {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  column-gap: var(--space-2);
+  font-size: var(--text-1);
+  line-height: 1.45;
+}
+.luck-relationship .relationship-mark { align-self: center; }
+.luck-relationship-name { font-weight: 500; }
+.luck-relationship-chars,
+.luck-relationship-when,
+.luck-relationship-absorbs { grid-column: 2; color: var(--ink-2); }
+.luck-elements { display: grid; gap: var(--space-1); }
+.luck-element {
+  display: grid;
+  grid-template-columns: 6.5em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-1);
+}
+.luck-element-name { display: inline-flex; align-items: center; gap: var(--space-2); }
+.luck-element-cells { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.luck-element-cells i { width: 12px; height: 12px; border-radius: 3px; background: var(--ink-2); opacity: 0.45; }
+.luck-element-cells i.is-luck { background: var(--ink-1); opacity: 1; }
+.luck-element-count { font-variant-numeric: tabular-nums; }
+.luck-element-count b { font-weight: 600; }
 
 /* One grid for all four pillars. Each pillar spans eight shared rows (label,
    name, mark, stem arcs, stem, branch, hidden stems, branch arcs) as a
@@ -1357,14 +1623,14 @@ body {
   border-top: 1px solid currentColor;
   opacity: 0.7;
 }
-.relationship-chip[data-kind="branch_clash"] .relationship-mark { border-top-style: dashed; }
-.relationship-chip[data-kind="harmony_frame"] .relationship-mark,
-.relationship-chip[data-kind="half_frame"] .relationship-mark { border-top: 3px double currentColor; }
-.relationship-chip[data-kind="directional_combination"] .relationship-mark { border-top-width: 2px; }
-.relationship-chip[data-kind="punishment"] .relationship-mark,
-.relationship-chip[data-kind="half_punishment"] .relationship-mark,
-.relationship-chip[data-kind="self_punishment"] .relationship-mark { border-top: 2px dashed currentColor; }
-.relationship-chip[data-kind="harm"] .relationship-mark { border-top: 2px dotted currentColor; }
+:is(.relationship-chip, .luck-relationship)[data-kind="branch_clash"] .relationship-mark { border-top-style: dashed; }
+:is(.relationship-chip, .luck-relationship)[data-kind="harmony_frame"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship)[data-kind="half_frame"] .relationship-mark { border-top: 3px double currentColor; }
+:is(.relationship-chip, .luck-relationship)[data-kind="directional_combination"] .relationship-mark { border-top-width: 2px; }
+:is(.relationship-chip, .luck-relationship)[data-kind="punishment"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship)[data-kind="half_punishment"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship)[data-kind="self_punishment"] .relationship-mark { border-top: 2px dashed currentColor; }
+:is(.relationship-chip, .luck-relationship)[data-kind="harm"] .relationship-mark { border-top: 2px dotted currentColor; }
 
 .card.is-related {
   outline: 1px solid var(--ink-2);
@@ -1846,6 +2112,7 @@ kbd {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .luck-chip, .gender-option span,
   .relationship-chip, .reading-toggle,
   .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle,
   .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot, .toast { transition: none; }
@@ -2227,6 +2494,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .chart-tools,
   .context-controls,
   #relationships-topic,
+  .luck-ribbon,
   .chart-panel-bar,
   .toast,
   .card-hint,
@@ -2269,6 +2537,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   }
   .relationship-member,
   .context-evidence-row,
+  .luck-phase,
+  .luck-relationship,
   .role-occurrence,
   .role-group { break-inside: avoid; }
   /* A reading prints as it is open: its line, and its passage when that is open. */

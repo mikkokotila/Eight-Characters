@@ -18,14 +18,17 @@ The chart lives in the address's fragment, the part after `#`:
 - `latitude`, `longitude`, `timezone`: the picked place itself. The chart is
   calculated for these, since place names repeat.
 - `lang`: the chart's language, `fi` or `en`.
+- `gender`, only when one was given: `female` or `male`. The chart then has its
+  [luck pillars](Standard-Luck-Pillars.md).
 - `zi`, only when it is not the engine's default: the Zi-hour convention,
   `whole_zi_23`.
 - `display`, only when it is not Characters: `ten-gods` or `hidden-stems`.
 - `topic`, only when one is open: `season`, `roots`, `roles`, `roles/<role>`,
   `roles/stem/<pillar>`, `roles/<role>/stem/<pillar>` (a stem's roots reached
   from a role's page), `relationships`, `relationships/<id>` (the API's
-  relationship id), `pillar/<pillar>` (a pillar's exact changes), or, in an
-  English chart, `day-master` (the Day Master's page of
+  relationship id), `pillar/<pillar>` (a pillar's exact changes), `luck/before`
+  or `luck/<decade>/<stem|branch>` (a decade's page at a phase, in a chart with
+  a gender), or, in an English chart, `day-master` (the Day Master's page of
   [readings](Standard-Readings.md)). Which readings are open is a reader's own
   and not part of the link.
 

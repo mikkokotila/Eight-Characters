@@ -10,7 +10,9 @@ from fastapi.testclient import TestClient
 from starlette.routing import Mount
 
 from eight_characters import __version__
+from eight_characters.canon import load_canon
 from eight_characters.data import BRANCHES, STEMS
+from eight_characters.day_master_context import SEASON_GROUPS
 from eight_characters.engine import TERM_LABEL_BY_TARGET
 from eight_characters.main import BASE_DIR, app, templates
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
@@ -138,6 +140,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'relationships.js',
             'day-master-context.js',
             'roles.js',
+            'luck.js',
             'palette.js',
             'spotlight.js',
             'compare.js',
@@ -202,6 +205,52 @@ class TestApiIndexRoute(unittest.TestCase):
                 for label in TERM_LABEL_BY_TARGET.values()
             },
         )
+
+    def test_luck_view_names_what_the_engine_and_the_canon_name(self) -> None:
+        # The ribbon names each decade and groups the decades by their branch's
+        # direction from its own tables; the decade's page names the Day Master's stage
+        # from the page's dictionary. All must match the engine's and the canon's.
+        script = self.client.get('/static/luck.js').text
+        pinyin_block = re.search(r'const PINYIN = \{(.*?)\};', script, re.S)
+        direction_block = re.search(r'const DIRECTION = \{(.*?)\};', script, re.S)
+        if pinyin_block is None or direction_block is None:
+            self.fail('luck.js has no PINYIN or DIRECTION table')
+        pinyin = dict(re.findall(r"(\S): '([A-Za-z]+)'", pinyin_block.group(1)))
+        self.assertEqual(
+            pinyin,
+            {
+                char: info['pinyin']
+                for char, info in (*STEMS.items(), *BRANCHES.items())
+            },
+        )
+        directions = {
+            char: (direction, season)
+            for char, direction, season in re.findall(
+                r"(\S): \['(\w+)', '(\w+)'\]", direction_block.group(1)
+            )
+        }
+        # Wood's season travels east, fire's south, metal's west and water's north.
+        towards = {'wood': 'east', 'fire': 'south', 'metal': 'west', 'water': 'north'}
+        self.assertEqual(
+            directions,
+            {
+                char: (towards[element], season)
+                for chars, season, element in SEASON_GROUPS
+                for char in chars
+            },
+        )
+        source = self.client.get('/static/localization.js').text
+        fi_block, en_block = source.split('\n    en: {\n', 1)
+        for number, stage in load_canon()['stages'].items():
+            for lang, block in (('fi', fi_block), ('en', en_block)):
+                with self.subTest(lang=lang, stage=number):
+                    found = re.search(
+                        rf'\n\s+luck_stage_{number}: ([\'"])(.+?)\1,\n', block
+                    )
+                    if found is None:
+                        self.fail(f'no {lang} name for stage {number}')
+                    if lang == 'en':
+                        self.assertEqual(found.group(2), stage['name'])
 
     def test_stylesheet_takes_spacing_type_and_ink_from_its_tokens(self) -> None:
         # Values are defined once, as tokens on :root; everything else refers to them.
