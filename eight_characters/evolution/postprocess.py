@@ -11,14 +11,14 @@ from eight_characters.evolution.inference import (
     build_particle,
 )
 from eight_characters.evolution.mechanics import realized_flux
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.primitives import (
-    CLUSTER_ALPHA,
-    CLUSTER_BETA,
-    CLUSTER_GAMMA,
     DBSCAN_EPS,
     DBSCAN_MIN_SAMPLES,
     EPSILON,
-    OMEGA_MIN_R,
     season_element_from_month_branch,
 )
 from eight_characters.evolution.state import (
@@ -85,9 +85,12 @@ class PostprocessResult:
 
 def _omega_bounds(
     evaluations: Sequence[FamilyEvaluation],
+    *,
+    parameters: ModelParameters,
 ) -> tuple[tuple[float, float], ...]:
     return tuple(
-        (OMEGA_MIN_R, 1.0 + evaluation.proximity_weight) for evaluation in evaluations
+        (parameters.omega_min_r, 1.0 + evaluation.proximity_weight)
+        for evaluation in evaluations
     )
 
 
@@ -95,6 +98,8 @@ def _distance(
     particle_a: ParticleSnapshot,
     particle_b: ParticleSnapshot,
     omega_bounds: Sequence[tuple[float, float]],
+    *,
+    parameters: ModelParameters,
 ) -> float:
     switches_a = particle_a.latent_state.switches
     switches_b = particle_b.latent_state.switches
@@ -130,21 +135,25 @@ def _distance(
         )
 
     return (
-        CLUSTER_ALPHA * (d_h_switch + mode_gap) / float(RULE_COUNT + 1)
-        + CLUSTER_BETA * d_h_effective / 16.0
-        + CLUSTER_GAMMA * (cont_sum / float(RULE_COUNT))
+        parameters.cluster_alpha * (d_h_switch + mode_gap) / float(RULE_COUNT + 1)
+        + parameters.cluster_beta * d_h_effective / 16.0
+        + parameters.cluster_gamma * (cont_sum / float(RULE_COUNT))
     )
 
 
 def _distance_matrix(
     particles: Sequence[ParticleSnapshot],
     omega_bounds: Sequence[tuple[float, float]],
+    *,
+    parameters: ModelParameters,
 ) -> np.ndarray:
     size = len(particles)
     matrix = np.zeros((size, size), dtype=np.float64)
     for left in range(size):
         for right in range(left + 1, size):
-            value = _distance(particles[left], particles[right], omega_bounds)
+            value = _distance(
+                particles[left], particles[right], omega_bounds, parameters=parameters
+            )
             matrix[left, right] = value
             matrix[right, left] = value
     return matrix
@@ -202,11 +211,13 @@ def _dbscan_labels(
 
 def _active_edges(
     flux_matrix: Sequence[Sequence[float]],
+    *,
+    parameters: ModelParameters,
 ) -> tuple[float, list[tuple[int, int, float]]]:
     nonzero = [abs(value) for row in flux_matrix for value in row if value != 0.0]
     if not nonzero:
         return 0.0, []
-    threshold = 0.25 * max(nonzero)
+    threshold = parameters.active_edge_fraction_of_max_flux * max(nonzero)
     edges: list[tuple[int, int, float]] = []
     for source in range(len(flux_matrix)):
         for target in range(len(flux_matrix)):
@@ -219,13 +230,16 @@ def _active_edges(
 def _motifs_for_particle(
     observed_state: ObservedState,
     particle: ParticleSnapshot,
+    *,
+    parameters: ModelParameters,
 ) -> MotifInventory:
     flux = realized_flux(
         observed_state=observed_state,
         effective_elements=particle.effective_elements,
         dynamic_amplitudes=particle.dynamic_amplitudes,
+        parameters=parameters,
     )
-    _, edges = _active_edges(flux)
+    _, edges = _active_edges(flux, parameters=parameters)
     if not edges:
         absences = tuple(
             element_idx
@@ -318,7 +332,9 @@ def _motifs_for_particle(
         for idx in range(len(flux))
         if inbound[idx] > med
         and outbound[idx] > med
-        and 0.5 <= inbound[idx] / (outbound[idx] + EPSILON) <= 2.0
+        and parameters.pulse_balance_ratio_min
+        <= inbound[idx] / (outbound[idx] + EPSILON)
+        <= parameters.pulse_balance_ratio_max
     )
 
     cascades: list[tuple[int, ...]] = []
@@ -332,7 +348,8 @@ def _motifs_for_particle(
                 magnitudes[idx + 1] >= magnitudes[idx]
                 for idx in range(len(magnitudes) - 1)
             )
-            and magnitudes[-1] / (magnitudes[0] + EPSILON) >= 1.25
+            and magnitudes[-1] / (magnitudes[0] + EPSILON)
+            >= parameters.cascade_gain_min
         ):
             cascades.append(chain)
 
@@ -342,7 +359,11 @@ def _motifs_for_particle(
             particle.dynamic_amplitudes[idx] + EPSILON
         )
         b_values.append(score)
-    quartile = float(np.quantile(np.array(b_values, dtype=np.float64), 0.75))
+    quartile = float(
+        np.quantile(
+            np.array(b_values, dtype=np.float64), parameters.bottleneck_quantile
+        )
+    )
     bottlenecks = tuple(idx for idx, value in enumerate(b_values) if value >= quartile)
 
     return MotifInventory(
@@ -371,6 +392,8 @@ def _try_build(
     latent_state: LatentState,
     evaluations: Sequence[FamilyEvaluation],
     season_element: int,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot | None:
     try:
         return build_particle(
@@ -378,6 +401,7 @@ def _try_build(
             latent_state=latent_state,
             evaluations=evaluations,
             season_element_index=season_element,
+            parameters=parameters,
         )
     except ValueError:
         return None
@@ -389,6 +413,8 @@ def _discrete_relax(
     evaluations: Sequence[FamilyEvaluation],
     season_element: int,
     max_passes: int,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     current = particle
     for _ in range(max_passes):
@@ -406,7 +432,11 @@ def _discrete_relax(
                 mode=mode,
             )
             candidate = _try_build(
-                observed_state, candidate_latent, evaluations, season_element
+                observed_state,
+                candidate_latent,
+                evaluations,
+                season_element,
+                parameters=parameters,
             )
             if candidate is None:
                 continue
@@ -439,6 +469,7 @@ def _discrete_relax(
                     latent_state=candidate_latent,
                     evaluations=evaluations,
                     season_element=season_element,
+                    parameters=parameters,
                 )
                 if candidate is None:
                     continue
@@ -466,6 +497,8 @@ def _continuous_relax(
     delta: float,
     learning_rate: float,
     passes: int,
+    *,
+    parameters: ModelParameters,
 ) -> ParticleSnapshot:
     current = particle
     for _ in range(passes):
@@ -493,6 +526,7 @@ def _continuous_relax(
                 ),
                 evaluations=evaluations,
                 season_element=season_element,
+                parameters=parameters,
             )
             if particle_plus is None:
                 continue
@@ -508,6 +542,7 @@ def _continuous_relax(
                 ),
                 evaluations=evaluations,
                 season_element=season_element,
+                parameters=parameters,
             )
             if particle_minus is None:
                 continue
@@ -528,6 +563,7 @@ def _continuous_relax(
                 ),
                 evaluations=evaluations,
                 season_element=season_element,
+                parameters=parameters,
             )
             if candidate is None:
                 continue
@@ -539,6 +575,8 @@ def postprocess_inference(
     observed_state: ObservedState,
     inference_result: InferenceResult,
     config: PostprocessConfig | None = None,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> PostprocessResult:
     observed_state.validate()
     cfg = config or PostprocessConfig()
@@ -549,8 +587,8 @@ def postprocess_inference(
     if len(particles) != len(weights):
         raise ValueError('particles and weights length mismatch')
 
-    evaluations = evaluate_all_families(observed_state)
-    omega_bounds = _omega_bounds(evaluations)
+    evaluations = evaluate_all_families(observed_state, parameters=parameters)
+    omega_bounds = _omega_bounds(evaluations, parameters=parameters)
     season_element = season_element_from_month_branch(observed_state.branch_ids[1])
 
     relaxed_particles = [
@@ -562,6 +600,7 @@ def postprocess_inference(
                 evaluations=evaluations,
                 season_element=season_element,
                 max_passes=cfg.discrete_relax_max_passes,
+                parameters=parameters,
             ),
             evaluations=evaluations,
             season_element=season_element,
@@ -569,11 +608,14 @@ def postprocess_inference(
             delta=cfg.continuous_delta,
             learning_rate=cfg.continuous_learning_rate,
             passes=cfg.continuous_passes,
+            parameters=parameters,
         )
         for particle in particles
     ]
 
-    distance_matrix = _distance_matrix(relaxed_particles, omega_bounds)
+    distance_matrix = _distance_matrix(
+        relaxed_particles, omega_bounds, parameters=parameters
+    )
     labels = _dbscan_labels(
         distance_matrix=distance_matrix,
         eps=cfg.dbscan_eps,
@@ -596,7 +638,9 @@ def postprocess_inference(
             ),
         )
         map_particle = relaxed_particles[map_index]
-        motifs = _motifs_for_particle(observed_state, map_particle)
+        motifs = _motifs_for_particle(
+            observed_state, map_particle, parameters=parameters
+        )
 
         basins.append(
             BasinSummary(

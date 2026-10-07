@@ -15,36 +15,19 @@ from eight_characters.evolution.mechanics import (
     realized_flux,
     transport_capacity,
 )
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.primitives import (
-    DELTA_V_R,
     EPSILON,
-    LAMBDA_ACT,
-    LAMBDA_CLASH,
-    LAMBDA_CLIM,
-    LAMBDA_COR,
-    LAMBDA_CROSS,
-    LAMBDA_DOM,
-    LAMBDA_FRAME,
-    LAMBDA_INTER,
-    LAMBDA_INTRA,
-    LAMBDA_MODE,
-    LAMBDA_PUN,
-    LAMBDA_SCATTER,
-    LAMBDA_V,
-    OMEGA_SEASON,
-    TAU_FOLLOW,
-    TAU_R,
-    TAU_STD,
     authority_element,
-    domain_resonance,
     life_stage_anchor,
     one_hot_to_element,
     output_element,
-    partial_state_weight,
     resource_element,
     season_element_from_month_branch,
     season_score,
-    stage_amplitude,
     ten_god_distance,
     ten_god_group,
     ten_god_one_hot,
@@ -142,6 +125,8 @@ def _mode_diagnostics(
     observed_state: ObservedState,
     effective_elements: Sequence[Sequence[int]],
     season_element_index: int,
+    *,
+    parameters: ModelParameters,
 ) -> tuple[float, float, float, float, float, float, float, int]:
     day_master_element = one_hot_to_element(
         tuple(effective_elements[observed_state.day_master_index])
@@ -155,7 +140,7 @@ def _mode_diagnostics(
         weight = (
             observed_state.masks[entity_index]
             * observed_state.hierarchy_levels[entity_index]
-            * stage_amplitude(observed_state.vitality_stages[entity_index])
+            * parameters.stage_amplitude(observed_state.vitality_stages[entity_index])
         )
         z_denom += weight
         element_index = one_hot_to_element(tuple(effective_elements[entity_index]))
@@ -211,28 +196,33 @@ def _mode_energy(
     u_out: float,
     u_w: float,
     u_auth: float,
+    *,
+    parameters: ModelParameters,
 ) -> float:
     mode = latent_state.mode
     if mode == 'Standard':
-        return LAMBDA_MODE * max(0.0, max(score_str, score_weak) - TAU_STD) ** 2
+        return (
+            parameters.lambda_mode
+            * max(0.0, max(score_str, score_weak) - parameters.tau_std) ** 2
+        )
     if mode == 'FollowStrength':
-        return LAMBDA_MODE * (
-            max(0.0, TAU_FOLLOW - score_str) ** 2
+        return parameters.lambda_mode * (
+            max(0.0, parameters.tau_follow - score_str) ** 2
             + max(0.0, max(u_w, u_auth, u_out) - (u_self + u_res)) ** 2
         )
     if mode == 'FollowWealth':
-        return LAMBDA_MODE * (
-            max(0.0, TAU_FOLLOW - score_weak) ** 2
+        return parameters.lambda_mode * (
+            max(0.0, parameters.tau_follow - score_weak) ** 2
             + max(0.0, max(u_self + u_res, u_auth, u_out) - u_w) ** 2
         )
     if mode == 'FollowAuthority':
-        return LAMBDA_MODE * (
-            max(0.0, TAU_FOLLOW - score_weak) ** 2
+        return parameters.lambda_mode * (
+            max(0.0, parameters.tau_follow - score_weak) ** 2
             + max(0.0, max(u_self + u_res, u_w, u_out) - u_auth) ** 2
         )
     # FollowOutput
-    return LAMBDA_MODE * (
-        max(0.0, TAU_FOLLOW - score_weak) ** 2
+    return parameters.lambda_mode * (
+        max(0.0, parameters.tau_follow - score_weak) ** 2
         + max(0.0, max(u_self + u_res, u_w, u_auth) - u_out) ** 2
     )
 
@@ -256,6 +246,8 @@ def compute_energy_breakdown(
     family_evaluations: Sequence[FamilyEvaluation] | None = None,
     season_element_index: int | None = None,
     full_captures: Iterable[FullTransformationCapture] | None = None,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> EnergyBreakdown:
     observed_state.validate()
     latent_state.validate()
@@ -271,7 +263,7 @@ def compute_energy_breakdown(
     evaluations = (
         tuple(family_evaluations)
         if family_evaluations is not None
-        else evaluate_all_families(observed_state)
+        else evaluate_all_families(observed_state, parameters=parameters)
     )
     if len(evaluations) != len(FAMILY_CATALOG):
         raise ValueError(
@@ -314,6 +306,7 @@ def compute_energy_breakdown(
         observed_state=observed_state,
         effective_elements=effective_elements,
         dynamic_amplitudes=dynamic_amplitudes,
+        parameters=parameters,
     )
     e_chem_by_pillar = _evaluate_chem_by_pillar(observed_state, flux_matrix)
     retention = pillar_retention(observed_state=observed_state, flux_matrix=flux_matrix)
@@ -330,8 +323,8 @@ def compute_energy_breakdown(
         if switch <= 0:
             continue
         omega = latent_state.omegas[rule_idx - 1]
-        gap = max(0.0, TAU_R - evaluation.support)
-        e_act += LAMBDA_ACT * omega * omega * gap * gap
+        gap = max(0.0, parameters.tau_r - evaluation.support)
+        e_act += parameters.lambda_act * omega * omega * gap * gap
 
     # E_intra
     stem_by_pos = _stem_entity_index_by_position(observed_state)
@@ -347,9 +340,9 @@ def compute_energy_breakdown(
         stem_polarity = observed_state.polarities[stem_entity]
         branch_id = observed_state.branch_ids[pillar_position - 1]
         v_star = life_stage_anchor(stem_element, stem_polarity, branch_id)
-        anchor_amplitude = stage_amplitude(v_star)
+        anchor_amplitude = parameters.stage_amplitude(v_star)
         penalty = (
-            LAMBDA_V
+            parameters.lambda_v
             * m_stem
             * abs(dynamic_amplitudes[stem_entity] - anchor_amplitude) ** 2
         )
@@ -394,7 +387,7 @@ def compute_energy_breakdown(
                 sat_k[left - 1] - sat_k[right - 1]
             ) ** 2
             e_clim += q_km * climate_gap
-    e_clim *= LAMBDA_CLIM
+    e_clim *= parameters.lambda_clim
 
     # E_dom
     e_dom = 0.0
@@ -403,13 +396,15 @@ def compute_energy_breakdown(
             continue
         ten_god_index = tuple(effective_ten_gods[entity_index]).index(1)
         group_idx = ten_god_group(ten_god_index)
-        resonance = domain_resonance(observed_state.positions[entity_index], group_idx)
+        resonance = parameters.domain_resonance(
+            observed_state.positions[entity_index], group_idx
+        )
         e_dom += (
             observed_state.masks[entity_index]
             * observed_state.hierarchy_levels[entity_index]
             * resonance
         )
-    e_dom *= -LAMBDA_DOM
+    e_dom *= -parameters.lambda_dom
 
     # E_mode
     (
@@ -425,6 +420,7 @@ def compute_energy_breakdown(
         observed_state=observed_state,
         effective_elements=effective_elements,
         season_element_index=season_element_index,
+        parameters=parameters,
     )
     e_mode = _mode_energy(
         latent_state=latent_state,
@@ -435,6 +431,7 @@ def compute_energy_breakdown(
         u_out=u_out,
         u_w=u_w,
         u_auth=u_auth,
+        parameters=parameters,
     )
 
     # Precompute transport matrix for E_frame.
@@ -467,9 +464,9 @@ def compute_energy_breakdown(
         local_chem = sum(
             e_chem_by_pillar[position - 1] for position in evaluation.selected_positions
         )
-        e_clash += LAMBDA_CLASH * omega * omega * (
-            DELTA_V_R**2
-        ) + LAMBDA_SCATTER * omega * abs(min(0.0, local_chem))
+        e_clash += parameters.lambda_clash * omega * omega * (
+            parameters.delta_v_r**2
+        ) + parameters.lambda_scatter * omega * abs(min(0.0, local_chem))
 
     # E_frame
     e_frame = 0.0
@@ -481,7 +478,9 @@ def compute_energy_breakdown(
             continue
         omega = latent_state.omegas[rule_idx - 1]
         season_dot = 1.0 if spec.target_element_index == season_element_index else 0.0
-        lambda_dyn = LAMBDA_FRAME * (1.0 + OMEGA_SEASON * season_dot)
+        lambda_dyn = parameters.lambda_frame * (
+            1.0 + parameters.omega_season * season_dot
+        )
         evaluation = evaluations[rule_idx - 1]
         inner = 0.0
         for entity_index in evaluation.q_entity_indices:
@@ -508,7 +507,7 @@ def compute_energy_breakdown(
         retention_sum = sum(
             retention[position - 1] ** 2 for position in evaluation.selected_positions
         )
-        e_pun += LAMBDA_PUN * omega * omega * retention_sum
+        e_pun += parameters.lambda_pun * omega * omega * retention_sum
 
     # E_cor
     e_cor = 0.0
@@ -527,7 +526,7 @@ def compute_energy_breakdown(
             else 0.0
         )
         omega = latent_state.omegas[rule_idx - 1]
-        e_cor += LAMBDA_COR * omega * omega * active_indicator
+        e_cor += parameters.lambda_cor * omega * omega * active_indicator
 
     # E_cross
     center = active_mode_center(day_master_element, latent_state.mode)
@@ -537,7 +536,7 @@ def compute_energy_breakdown(
         spec = family_spec(rule_idx)
         if spec.target_element_index is None:
             continue
-        weight_c = partial_state_weight(latent_state.switches[rule_idx - 1])
+        weight_c = parameters.partial_state_weight(latent_state.switches[rule_idx - 1])
         if weight_c == 0.0:
             continue
         evaluation = evaluations[rule_idx - 1]
@@ -553,12 +552,12 @@ def compute_energy_breakdown(
             )
             inner += ten_god_distance(tg_base, tg_target)
         cross_sum += weight_c * inner
-    e_cross = LAMBDA_CROSS * cross_sum
+    e_cross = parameters.lambda_cross * cross_sum
 
     total = (
         e_act
-        + LAMBDA_INTRA * e_intra
-        + LAMBDA_INTER * e_inter
+        + parameters.lambda_intra * e_intra
+        + parameters.lambda_inter * e_inter
         + e_clim
         + e_dom
         + e_mode

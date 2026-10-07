@@ -2,6 +2,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import combinations, product
 
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.primitives import (
     BRANCH_CHEN,
     BRANCH_CHOU,
@@ -31,8 +35,6 @@ from eight_characters.evolution.primitives import (
     STEM_XIN,
     STEM_YI,
     one_hot_to_element,
-    proximity_weight_by_gap,
-    stage_amplitude,
     stem_id_from_element_polarity,
 )
 from eight_characters.evolution.state import (
@@ -385,13 +387,15 @@ def family_spec(rule_index: int) -> FamilySpec:
     return FAMILY_CATALOG[rule_index - 1]
 
 
-def _distance_weight(position_a: int, position_b: int) -> float:
+def _distance_weight(
+    position_a: int, position_b: int, *, parameters: ModelParameters
+) -> float:
     distance = abs(position_a - position_b)
     if distance < 1 or distance > 3:
         raise ValueError(
             f'invalid pillar distance {distance} for positions {position_a},{position_b}'
         )
-    return proximity_weight_by_gap(distance - 1)
+    return parameters.proximity_weight(distance - 1)
 
 
 def _pair_distance(pair: tuple[int, int]) -> int:
@@ -434,12 +438,14 @@ def _pair_positions_for_branches(
     ]
 
 
-def _mean_pairwise_proximity(positions: tuple[int, ...]) -> float:
+def _mean_pairwise_proximity(
+    positions: tuple[int, ...], *, parameters: ModelParameters
+) -> float:
     if len(positions) < 2:
         return 0.0
     weights: list[float] = []
     for pos_a, pos_b in combinations(positions, 2):
-        weights.append(_distance_weight(pos_a, pos_b))
+        weights.append(_distance_weight(pos_a, pos_b, parameters=parameters))
     return sum(weights) / len(weights)
 
 
@@ -511,19 +517,26 @@ def _support_from_q(
     proximity_weight: float,
     q_entity_indices: tuple[int, ...],
     observed_state: ObservedState,
+    *,
+    parameters: ModelParameters,
 ) -> float:
     if applicability == 0:
         return 0.0
     if not q_entity_indices:
         raise ValueError('Q_r cannot be empty when applicability is active')
     avg_vitality = sum(
-        stage_amplitude(observed_state.vitality_stages[entity_index])
+        parameters.stage_amplitude(observed_state.vitality_stages[entity_index])
         for entity_index in q_entity_indices
     ) / len(q_entity_indices)
     return float(applicability) * proximity_weight * avg_vitality
 
 
-def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEvaluation:
+def evaluate_family(
+    rule_index: int,
+    observed_state: ObservedState,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
+) -> FamilyEvaluation:
     observed_state.validate()
     spec = family_spec(rule_index)
     branch_ids = observed_state.branch_ids
@@ -550,13 +563,17 @@ def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEva
             candidates=candidates,
             day_position=observed_state.positions[observed_state.day_master_index],
         )
-        proximity = _distance_weight(selected_pair[0], selected_pair[1])
+        proximity = _distance_weight(
+            selected_pair[0], selected_pair[1], parameters=parameters
+        )
         q_indices = _q_indices_for_stem_positions(
             observed_state=observed_state,
             stem_entity_by_pos=stem_entity_by_pos,
             positions=selected_pair,
         )
-        support = _support_from_q(1, proximity, q_indices, observed_state)
+        support = _support_from_q(
+            1, proximity, q_indices, observed_state, parameters=parameters
+        )
         return FamilyEvaluation(
             rule_index, 1, selected_pair, proximity, q_indices, support, 2
         )
@@ -568,9 +585,13 @@ def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEva
             return FamilyEvaluation(rule_index, 0, (), 0.0, (), 0.0, 0)
 
         selected_pair = _select_nearest_pair(candidates=candidates, day_position=None)
-        proximity = _distance_weight(selected_pair[0], selected_pair[1])
+        proximity = _distance_weight(
+            selected_pair[0], selected_pair[1], parameters=parameters
+        )
         q_indices = _q_indices_for_positions(observed_state, selected_pair)
-        support = _support_from_q(1, proximity, q_indices, observed_state)
+        support = _support_from_q(
+            1, proximity, q_indices, observed_state, parameters=parameters
+        )
         return FamilyEvaluation(
             rule_index, 1, selected_pair, proximity, q_indices, support, 2
         )
@@ -590,9 +611,13 @@ def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEva
             for pair in combinations(positions, 2)
         ]
         selected_pair = _select_nearest_pair(candidates=candidates, day_position=None)
-        proximity = _distance_weight(selected_pair[0], selected_pair[1])
+        proximity = _distance_weight(
+            selected_pair[0], selected_pair[1], parameters=parameters
+        )
         q_indices = _q_indices_for_positions(observed_state, selected_pair)
-        support = _support_from_q(1, proximity, q_indices, observed_state)
+        support = _support_from_q(
+            1, proximity, q_indices, observed_state, parameters=parameters
+        )
         return FamilyEvaluation(
             rule_index, 1, selected_pair, proximity, q_indices, support, len(positions)
         )
@@ -608,9 +633,11 @@ def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEva
         {branch for branch in branch_ids if branch in member_set}
     )
     applicability = 1 if unique_members_present >= 2 else 0
-    proximity = _mean_pairwise_proximity(participating_positions)
+    proximity = _mean_pairwise_proximity(participating_positions, parameters=parameters)
     q_indices = _q_indices_for_positions(observed_state, participating_positions)
-    support = _support_from_q(applicability, proximity, q_indices, observed_state)
+    support = _support_from_q(
+        applicability, proximity, q_indices, observed_state, parameters=parameters
+    )
     selected_positions = participating_positions if applicability == 1 else ()
     return FamilyEvaluation(
         rule_index=rule_index,
@@ -625,17 +652,25 @@ def evaluate_family(rule_index: int, observed_state: ObservedState) -> FamilyEva
 
 def evaluate_all_families(
     observed_state: ObservedState,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> tuple[FamilyEvaluation, ...]:
     observed_state.validate()
     return tuple(
-        evaluate_family(rule_index=rule_index, observed_state=observed_state)
+        evaluate_family(
+            rule_index=rule_index, observed_state=observed_state, parameters=parameters
+        )
         for rule_index in range(1, len(FAMILY_CATALOG) + 1)
     )
 
 
 def applicability_mask(observed_state: ObservedState) -> tuple[int, ...]:
+    # Whether a rule applies depends on the chart alone, never on the parameters.
     return tuple(
-        evaluation.applicability for evaluation in evaluate_all_families(observed_state)
+        evaluation.applicability
+        for evaluation in evaluate_all_families(
+            observed_state, parameters=DEFAULT_MODEL_PARAMETERS
+        )
     )
 
 

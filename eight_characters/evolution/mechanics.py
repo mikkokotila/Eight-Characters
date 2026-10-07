@@ -1,14 +1,13 @@
 from collections.abc import Mapping, Sequence
 
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.primitives import (
-    DELTA_CLASH,
-    DELTA_PUN,
     EPSILON,
     moisture_contribution,
-    polarity_multiplier,
-    stage_amplitude,
     temperature_contribution,
-    wuxing_interaction,
 )
 from eight_characters.evolution.state import LatentState, ObservedState
 
@@ -50,6 +49,8 @@ def compute_dynamic_vitality_amplitudes(
     latent_state: LatentState,
     clash_participation: Mapping[tuple[int, int], float] | None = None,
     punishment_participation: Mapping[tuple[int, int], float] | None = None,
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> tuple[float, ...]:
     observed_state.validate()
     latent_state.validate()
@@ -63,7 +64,7 @@ def compute_dynamic_vitality_amplitudes(
             amplitudes.append(0.0)
             continue
 
-        base = stage_amplitude(observed_state.vitality_stages[entity_index])
+        base = parameters.stage_amplitude(observed_state.vitality_stages[entity_index])
         clash_damage = 0.0
         punishment_damage = 0.0
 
@@ -74,9 +75,9 @@ def compute_dynamic_vitality_amplitudes(
             pun_coeff = punishment_participation.get((rule_index, entity_index), 0.0)
 
             if switch_value == 1 and clash_coeff > 0.0:
-                clash_damage += omega * DELTA_CLASH * clash_coeff
+                clash_damage += omega * parameters.delta_clash * clash_coeff
             if switch_value > 0 and pun_coeff > 0.0:
-                punishment_damage += omega * DELTA_PUN * pun_coeff
+                punishment_damage += omega * parameters.delta_pun * pun_coeff
 
         amplitudes.append(_clip_unit_interval(base - clash_damage - punishment_damage))
 
@@ -119,6 +120,8 @@ def realized_flux(
     observed_state: ObservedState,
     effective_elements: Sequence[Sequence[int]],
     dynamic_amplitudes: Sequence[float],
+    *,
+    parameters: ModelParameters = DEFAULT_MODEL_PARAMETERS,
 ) -> tuple[tuple[float, ...], ...]:
     observed_state.validate()
     _validate_amplitudes(dynamic_amplitudes, len(observed_state.base_elements))
@@ -142,8 +145,8 @@ def realized_flux(
                 source_index=source_index,
                 target_index=target_index,
             )
-            interaction = wuxing_interaction(source_element, target_element)
-            polarity = polarity_multiplier(
+            interaction = parameters.wuxing_interaction(source_element, target_element)
+            polarity = parameters.polarity_multiplier(
                 observed_state.polarities[source_index],
                 observed_state.polarities[target_index],
             )

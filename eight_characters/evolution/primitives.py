@@ -244,6 +244,16 @@ CLUSTER_GAMMA = 0.1
 DBSCAN_EPS = 0.15
 DBSCAN_MIN_SAMPLES = 15
 
+# Motif detection in post-processing. An edge is active from this fraction of the
+# largest flux; a pulse takes in between these ratios of what it gives out; a cascade's
+# last step carries at least this gain over its first; a bottleneck's throughput per
+# unit of vitality reaches at least this quantile.
+ACTIVE_EDGE_FRACTION_OF_MAX_FLUX = 0.25
+PULSE_BALANCE_RATIO_MIN = 0.5
+PULSE_BALANCE_RATIO_MAX = 2.0
+CASCADE_GAIN_MIN = 1.25
+BOTTLENECK_QUANTILE = 0.75
+
 
 def _validate_element_index(element_index: int) -> None:
     if element_index < 0 or element_index >= ELEMENT_COUNT:
@@ -323,18 +333,46 @@ def authority_element(element_index: int) -> int:
     return _AUTHORITY_BY_ELEMENT[element_index]
 
 
+# Each table lookup below reads the model's own table; its `_in` form reads the table
+# it is given, as ModelParameters does for a run.
+
+
 def wuxing_interaction(source_element_index: int, target_element_index: int) -> float:
+    return wuxing_interaction_in(
+        WUXING_MATRIX, source_element_index, target_element_index
+    )
+
+
+def wuxing_interaction_in(
+    matrix: Sequence[Sequence[float]],
+    source_element_index: int,
+    target_element_index: int,
+) -> float:
     _validate_element_index(source_element_index)
     _validate_element_index(target_element_index)
-    return WUXING_MATRIX[source_element_index][target_element_index]
+    return matrix[source_element_index][target_element_index]
 
 
 def polarity_multiplier(source_polarity: int, target_polarity: int) -> float:
+    return polarity_multiplier_in(
+        SAME_POLARITY_MULTIPLIER,
+        DIFF_POLARITY_MULTIPLIER,
+        source_polarity,
+        target_polarity,
+    )
+
+
+def polarity_multiplier_in(
+    same: float,
+    different: float,
+    source_polarity: int,
+    target_polarity: int,
+) -> float:
     _validate_polarity(source_polarity)
     _validate_polarity(target_polarity)
     if source_polarity == target_polarity:
-        return SAME_POLARITY_MULTIPLIER
-    return DIFF_POLARITY_MULTIPLIER
+        return same
+    return different
 
 
 def _relationship_to_center(
@@ -432,29 +470,51 @@ def life_stage_anchor(
 
 
 def domain_resonance(position_1_based: int, ten_god_group_index: int) -> float:
+    return domain_resonance_in(
+        DOMAIN_RESONANCE_MATRIX, position_1_based, ten_god_group_index
+    )
+
+
+def domain_resonance_in(
+    matrix: Sequence[Sequence[float]],
+    position_1_based: int,
+    ten_god_group_index: int,
+) -> float:
     if position_1_based < 1 or position_1_based > 4:
         raise ValueError('position must be in [1..4]')
     if ten_god_group_index < 0 or ten_god_group_index > 4:
         raise ValueError('Ten-God group index must be in [0..4]')
-    return DOMAIN_RESONANCE_MATRIX[position_1_based - 1][ten_god_group_index]
+    return matrix[position_1_based - 1][ten_god_group_index]
 
 
 def stage_amplitude(vitality_stage_1_based: int) -> float:
+    return stage_amplitude_in(STAGE_AMPLITUDE_BY_STAGE, vitality_stage_1_based)
+
+
+def stage_amplitude_in(table: Sequence[float], vitality_stage_1_based: int) -> float:
     if vitality_stage_1_based < 1 or vitality_stage_1_based > 12:
         raise ValueError('vitality stage must be in [1..12]')
-    return STAGE_AMPLITUDE_BY_STAGE[vitality_stage_1_based - 1]
+    return table[vitality_stage_1_based - 1]
 
 
 def partial_state_weight(state_value: int) -> float:
+    return partial_state_weight_in(PARTIAL_STATE_WEIGHT_BY_S, state_value)
+
+
+def partial_state_weight_in(table: Sequence[float], state_value: int) -> float:
     if state_value < 0 or state_value > 3:
         raise ValueError('state value must be in [0..3]')
-    return PARTIAL_STATE_WEIGHT_BY_S[state_value]
+    return table[state_value]
 
 
 def proximity_weight_by_gap(gap: int) -> float:
+    return proximity_weight_by_gap_in(PROXIMITY_WEIGHT_BY_GAP, gap)
+
+
+def proximity_weight_by_gap_in(table: Sequence[float], gap: int) -> float:
     if gap < 0 or gap > 2:
         raise ValueError('gap must be one of {0,1,2}')
-    return PROXIMITY_WEIGHT_BY_GAP[gap]
+    return table[gap]
 
 
 def omega_max_for_proximity(proximity_weight: float) -> float:

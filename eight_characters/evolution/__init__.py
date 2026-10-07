@@ -33,6 +33,10 @@ from eight_characters.evolution.mechanics import (
     realized_flux,
     transport_capacity,
 )
+from eight_characters.evolution.parameters import (
+    DEFAULT_MODEL_PARAMETERS,
+    ModelParameters,
+)
 from eight_characters.evolution.pipeline import (
     BasinOutput,
     EvolutionInput,
@@ -115,6 +119,7 @@ from eight_characters.evolution.state import (
 )
 
 __all__ = [
+    'DEFAULT_MODEL_PARAMETERS',
     'DELTA_CLASH',
     'DELTA_PUN',
     'DELTA_V_R',
@@ -169,6 +174,7 @@ __all__ = [
     'InferenceConfig',
     'InferenceResult',
     'LatentState',
+    'ModelParameters',
     'MotifInventory',
     'ObservedState',
     'ParticleSnapshot',
