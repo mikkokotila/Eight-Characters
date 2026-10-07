@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.29.2
+
+Unused strings leave the page's translations. Nothing on the page changes.
+
+### Removed
+- **The old Support page's strings**, in Finnish and English: `context_support`, `context_companions`, `context_resources`, `context_support_meta`, `context_support_note`, `context_hidden` and `context_both`. Roles replaced that page, and nothing has read them since:
+  - no script, template, test or doc names them;
+  - no key the page builds at runtime can be one of them. The one `context_` key built from data takes a season's name, checked first to be one of the four seasons.
+
+### Changed
+- Version bumped to `0.29.2`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.29.1
 
 The installed package serves every file the app uses. Nothing changes where the app runs from its source tree, as on Render.
