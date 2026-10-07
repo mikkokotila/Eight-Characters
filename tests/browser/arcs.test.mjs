@@ -9,20 +9,56 @@ import {
 
 // Charts the API calculates for Chengdu, by what their arcs show.
 const CHARTS = [
-  ['no relationships', { date: '1990-01-01', time: '12:00' }],
+  ['no relationships', { date: '1990-01-15', time: '12:00' }],
   ['one stem combination across the chart', {}],
   ['a stem combination and a branch clash', { date: '1990-01-05', time: '12:00' }],
   ['a stem combination and two branch combinations', { date: '1990-01-07', time: '12:00' }],
   ['two harmony frames on shared branches', { date: '1990-01-08', time: '12:00' }],
   ['stem arcs four levels deep', { date: '1950-04-20', time: '19:17' }],
   ['branch arcs four levels deep', { date: '1950-05-25', time: '17:17' }],
-  ['seven relationships', { date: '2004-05-20', time: '11:17' }],
+  ['ten relationships', { date: '2004-05-20', time: '11:17' }],
+  ['a directional combination', { date: '1950-01-04', time: '12:00' }],
+  ['a self-punishment', { date: '1950-09-10', time: '20:00' }],
+  ['a half-frame', { date: '1951-01-14', time: '20:00' }],
+  ['two punishment triangles and a harm on one arc', { date: '1950-08-17', time: '12:00' }],
+  ['six feet on one card', { date: '1950-02-12', time: '12:00' }],
 ];
-const SEVEN = { date: '2004-05-20', time: '11:17' };
+const TEN = { date: '2004-05-20', time: '11:17' };
+const THREE_STRANDS = { date: '1950-08-17', time: '12:00' };
 const ORDER = ['hour', 'day', 'month', 'year'];
-const LINE = { stem_combination: 'solid', branch_combination: 'solid', branch_clash: 'dashed', harmony_frame: 'double' };
-// Feet that meet on one card stand 6px apart, so none is more than 6px off the middle.
-const FOOT = 6.5;
+// Each kind's line, and its width in pixels.
+const LINE = {
+  stem_combination: ['solid', 1], branch_combination: ['solid', 1], directional_combination: ['solid', 2],
+  branch_clash: ['dashed', 1], punishment: ['dashed', 2], half_punishment: ['dashed', 2], self_punishment: ['dashed', 2],
+  harm: ['dotted', 2], harmony_frame: ['double', 3], half_frame: ['double', 3],
+};
+// The shared families keep an arc each; a relationship of another family joins an arc
+// that already spans its columns, as a strand (relationships.js, arcLayout).
+const OWN_ARC = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
+// Feet that meet on one card stand 6px apart, the strands of one arc 3px. Over every
+// combination of four branches the widest set of feet spans 24px (寅寅巳申 on the day
+// card), so none is more than 12px off the middle.
+const FOOT = 12.5;
+
+// Each relationship's arc, as the page lays them out.
+function slotsOf(relationships) {
+  const slots = [];
+  const slotOf = new Map();
+  for (const relationship of relationships) {
+    const columns = relationship.members.map((member) => ORDER.indexOf(member.pillar));
+    const from = Math.min(...columns);
+    const to = Math.max(...columns);
+    let slot = OWN_ARC.includes(relationship.kind) ? null
+      : slots.find((other) => other.component === relationship.component && other.from === from && other.to === to);
+    if (!slot) {
+      slot = { component: relationship.component, from, to, strands: [] };
+      slots.push(slot);
+    }
+    slot.strands.push(relationship.id);
+    slotOf.set(relationship.id, slot);
+  }
+  return slotOf;
+}
 const INK = { rest: 'rgb(101, 95, 88)', chosen: 'rgb(42, 37, 32)', receded: 'rgba(42, 37, 32, 0.3)' };
 
 // Every arc as drawn, with the cards and the rows it is drawn in.
@@ -46,6 +82,7 @@ function drawn(page) {
           component: arc.parentElement.dataset.component,
           line: box(line),
           style: style.borderLeftStyle,
+          width: style.borderLeftWidth,
           color: style.borderLeftColor,
           rises: [...arc.querySelectorAll('.relationship-arc-rise')].map(box),
           foot: foot && box(foot),
@@ -83,7 +120,9 @@ function misdrawn(relationship, picture, state) {
   if (arc.component !== relationship.component) fail(`drawn with the ${arc.component}s`);
   if (Math.abs(arc.line.left - middle(cards[0])) > FOOT) fail(`starts at ${arc.line.left}, the ${members[0].pillar} card's middle is ${middle(cards[0])}`);
   if (Math.abs(arc.line.right - middle(cards.at(-1))) > FOOT) fail(`ends at ${arc.line.right}, the ${members.at(-1).pillar} card's middle is ${middle(cards.at(-1))}`);
-  if (arc.style !== LINE[relationship.kind]) fail(`a ${arc.style} line`);
+  const [style, width] = LINE[relationship.kind];
+  if (arc.style !== style) fail(`a ${arc.style} line`);
+  if (arc.width !== `${width}px`) fail(`a line ${arc.width} wide`);
   if (relationship.component === 'stem') {
     // Standing on the stems, within its row.
     if (Math.abs(arc.line.bottom - cards[0].top) > 0.5) fail(`its feet end at ${arc.line.bottom}, the stems' tops are at ${cards[0].top}`);
@@ -105,26 +144,30 @@ function misdrawn(relationship, picture, state) {
   return failures;
 }
 
-// The feet on each card: 6px apart, and as many either side of the card's middle.
+// The feet on each card: 6px apart, the strands of one arc 3px, and centred on the
+// card's middle.
 function unevenFeet(relationships, picture, state) {
+  const slotOf = slotsOf(relationships);
   const feet = {};
-  const add = (component, pillar, x) => { (feet[`${pillar} ${component}`] ??= []).push(x); };
+  const add = (component, pillar, x, slot) => { (feet[`${pillar} ${component}`] ??= []).push({ x, slot }); };
   for (const relationship of relationships) {
     const arc = picture.arcs.find((candidate) => candidate.id === relationship.id);
+    const slot = slotOf.get(relationship.id);
     const members = [...relationship.members].sort((a, b) => ORDER.indexOf(a.pillar) - ORDER.indexOf(b.pillar));
-    add(relationship.component, members[0].pillar, arc.line.left);
-    add(relationship.component, members.at(-1).pillar, arc.line.right);
-    if (members.length === 3) add(relationship.component, members[1].pillar, arc.foot.left);
+    add(relationship.component, members[0].pillar, arc.line.left, slot);
+    add(relationship.component, members.at(-1).pillar, arc.line.right, slot);
+    if (members.length === 3) add(relationship.component, members[1].pillar, arc.foot.left, slot);
   }
   const failures = [];
-  for (const [card, xs] of Object.entries(feet)) {
+  for (const [card, found] of Object.entries(feet)) {
     const box = picture.cards[card];
     const middle = (box.left + box.right) / 2;
-    const mean = xs.reduce((sum, x) => sum + x, 0) / xs.length;
-    if (Math.abs(mean - middle) > 0.5) failures.push(`${state}: the feet on the ${card} card centre on ${mean}, the card's middle is ${middle}`);
-    const sorted = [...xs].sort((a, b) => a - b);
-    sorted.slice(1).forEach((x, index) => {
-      if (Math.abs(x - sorted[index] - 6) > 0.5) failures.push(`${state}: feet ${x - sorted[index]}px apart on the ${card} card`);
+    const sorted = [...found].sort((a, b) => a.x - b.x);
+    const centre = (sorted[0].x + sorted.at(-1).x) / 2;
+    if (Math.abs(centre - middle) > 0.5) failures.push(`${state}: the feet on the ${card} card centre on ${centre}, the card's middle is ${middle}`);
+    sorted.slice(1).forEach((foot, index) => {
+      const gap = foot.slot === sorted[index].slot ? 3 : 6;
+      if (Math.abs(foot.x - sorted[index].x - gap) > 0.5) failures.push(`${state}: feet ${foot.x - sorted[index].x}px apart on the ${card} card, not ${gap}px`);
     });
   }
   return failures;
@@ -180,8 +223,23 @@ for (const profile of profiles) {
         assert.deepEqual(failures, []);
       });
 
+      check('relationships on the same columns share an arc, each strand inside the one before', async (page) => {
+        const payload = await openChart(page, THREE_STRANDS);
+        const ids = ['punishment:30:year-month-hour', 'punishment:30:year-day-hour', 'harm:41:year-hour'];
+        assert.deepEqual(ids.filter((id) => payload.interactions.some((relationship) => relationship.id === id)), ids);
+        const picture = await drawn(page);
+        const [outer, middle, inner] = ids.map((id) => picture.arcs.find((arc) => arc.id === id).line);
+        const depth = (line) => line.bottom - line.top;
+        for (const [wider, narrower] of [[outer, middle], [middle, inner]]) {
+          assert.ok(Math.abs(depth(wider) - depth(narrower) - 3) <= 0.5, `strands ${depth(wider)} and ${depth(narrower)} deep`);
+          assert.ok(Math.abs(narrower.left - wider.left - 3) <= 0.5, `inner strand starts ${narrower.left - wider.left}px in`);
+          assert.ok(Math.abs(wider.right - narrower.right - 3) <= 0.5, `inner strand ends ${wider.right - narrower.right}px in`);
+        }
+        await screenshot(page, `${profile.name}-arcs-three-strands`);
+      });
+
       check('a chosen relationship darkens its arc; the others recede until it is cleared', async (page) => {
-        const payload = await openChart(page, SEVEN);
+        const payload = await openChart(page, TEN);
         const inks = async () => Object.fromEntries((await drawn(page)).arcs.map((arc) => [arc.id, arc.color]));
         const everyArc = (color) => Object.fromEntries(payload.interactions.map((relationship) => [relationship.id, color]));
         assert.deepEqual(await inks(), everyArc(INK.rest));
@@ -196,7 +254,7 @@ for (const profile of profiles) {
       });
 
       check('opened hidden stems cover the feet that pass behind them, and the arcs keep their shape', async (page) => {
-        await openChart(page, SEVEN);
+        await openChart(page, TEN);
         const closed = await drawn(page);
         await showDisplay(page, 'hidden-stems');
         const open = await drawn(page);
@@ -244,12 +302,12 @@ for (const profile of profiles) {
       });
     }
 
-    check('the pillars stand in the same place with none to all seven of a chart\'s relationships', async (page) => {
-      // One chart, so that nothing else about it changes: its first n relationships, n from 0 to 7.
+    check('the pillars stand in the same place with none to all ten of a chart\'s relationships', async (page) => {
+      // One chart, so that nothing else about it changes: its first n relationships, n from 0 to 10.
       let first = null;
-      for (let shown = 0; shown <= 7; shown += 1) {
-        await openChart(page, SEVEN, (payload) => {
-          assert.equal(payload.interactions.length, 7);
+      for (let shown = 0; shown <= 10; shown += 1) {
+        await openChart(page, TEN, (payload) => {
+          assert.equal(payload.interactions.length, 10);
           payload.interactions = payload.interactions.slice(0, shown);
         });
         assert.equal(await page.locator('.relationship-arc').count(), shown);

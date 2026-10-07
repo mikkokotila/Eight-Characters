@@ -88,8 +88,11 @@ for (const profile of profiles) {
       await empty('fi hour pillar');
       await openRelationships(page);
       await empty('fi relationships');
-      await page.locator('.relationship-chip').click();
-      await empty('fi relationship');
+      // Each relationship's page, in Finnish, holds no reading either.
+      for (const chip of await page.locator('.relationship-chip').all()) {
+        await chip.click();
+        await empty(`fi relationship ${await chip.getAttribute('data-relationship')}`);
+      }
       for (const topic of ['season', 'roots', 'roles']) {
         await page.locator(`#context-controls button[data-context="${topic}"]`).click();
         await empty(`fi ${topic}`);
@@ -285,8 +288,11 @@ for (const profile of profiles) {
       const id = 'branch_clash:12:month-day';
       const chip = page.locator(`.relationship-chip[data-relationship="${id}"]`);
       assert.equal(await chip.locator('.canon-chip-line').textContent(), 'The career collides with the self.');
-      assert.deepEqual((await lines(page, '#relationship-about')).map((line) => [line.part, line.key]),
-        [['about-branch_clash', 'About clashes']]);
+      // Beside the clash: a half-frame, the Zi-Mao punishment and a harm, each family once.
+      assert.deepEqual((await lines(page, '#relationship-about')).map((line) => [line.part, line.key]), [
+        ['about-branch_clash', 'About clashes'], ['about-harmony_frame', 'About the three harmonies'],
+        ['about-punishment', 'About punishments'], ['about-harm', 'About harms'],
+      ]);
       // The commands name the relationship as the list does, without its reading.
       await page.keyboard.press('ControlOrMeta+k');
       await page.keyboard.type('clash');

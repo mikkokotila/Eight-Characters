@@ -184,7 +184,7 @@ for (const profile of profiles) {
         marks: { hour: 'changed 29 min 24 s ago', day: '', month: '', year: '' },
         yearStemTenGod: 'Indirect Resource',
         roots: 'No roots detected',
-        relationships: ['Day–Month · Branch clash', 'Hour–Month · Branch clash'],
+        relationships: ['Day–Month · Branch clash', 'Hour–Month · Branch clash', 'Day–Year · Half-frame', 'Hour–Year · Half-frame'],
       };
       const before = await reading(page);
       assert.deepEqual({ ...before, roles: undefined }, { ...geng, roles: undefined });
@@ -200,7 +200,7 @@ for (const profile of profiles) {
         marks: { hour: 'changed 29 min 24 s ago', day: 'changed 29 min 24 s ago', month: '', year: '' },
         yearStemTenGod: 'Direct Resource',
         roots: 'Root in one branch',
-        relationships: ['Hour–Day · Branch combination', 'Hour–Month · Branch clash'],
+        relationships: ['Hour–Day · Branch combination', 'Hour–Month · Branch clash', 'Hour–Year · Half-frame', 'Day–Month · Branch harm'],
         roles: undefined,
       });
       assert.notEqual(after.roles, before.roles);

@@ -13,13 +13,23 @@
     子: 'Rat', 丑: 'Ox', 寅: 'Tiger', 卯: 'Rabbit', 辰: 'Dragon', 巳: 'Snake',
     午: 'Horse', 未: 'Goat', 申: 'Monkey', 酉: 'Rooster', 戌: 'Dog', 亥: 'Pig',
   };
-  const KINDS = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
-  const ABOUT_KIND = {
-    stem_combination: 'About stem combinations',
-    branch_combination: 'About the six harmonies',
-    branch_clash: 'About clashes',
-    harmony_frame: 'About the three harmonies',
+  // Each kind of relationship by its family in the canon, whose introduction says what
+  // the kind is. The list's 'About' lines go by family, in the canon's sections' order;
+  // each keeps the name its first kind gave it.
+  const FAMILY_OF = {
+    stem_combination: 'stem_combinations', branch_combination: 'six_harmonies', branch_clash: 'clashes',
+    harmony_frame: 'three_harmonies', half_frame: 'three_harmonies', directional_combination: 'directional',
+    punishment: 'punishments', half_punishment: 'punishments', self_punishment: 'punishments', harm: 'harms',
   };
+  const ABOUT_FAMILY = [
+    ['stem_combinations', 'about-stem_combination', 'About stem combinations'],
+    ['six_harmonies', 'about-branch_combination', 'About the six harmonies'],
+    ['clashes', 'about-branch_clash', 'About clashes'],
+    ['three_harmonies', 'about-harmony_frame', 'About the three harmonies'],
+    ['directional', 'about-directional_combination', 'About the directional combinations'],
+    ['punishments', 'about-punishment', 'About punishments'],
+    ['harms', 'about-harm', 'About harms'],
+  ];
   // The chevron the branches use for their hidden stems.
   const CHEVRON = '<svg class="canon-line-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
   const NOTE = 'Readings quote the canon’s Taxonomy, after 三命通会. The chart chooses which apply; nothing in them assesses strength or predicts.';
@@ -143,14 +153,15 @@
       if (!r) fail(`relationship ${id}`);
       return `<span class="canon-chip-line">${marks(sentences((r.pairing || r.entry.paragraphs[0]).text)[0])}</span>`;
     };
-    // What each kind of relationship in the list is.
+    // What each family of relationship in the list is.
     const relationshipsAbout = () => {
       if (!reading) return '';
-      const kinds = KINDS.filter((kind) => Object.values(reading.relationships).some((r) => r.kind === kind));
-      return lines(kinds.map((kind) => line({
-        part: `about-${kind}`, key: ABOUT_KIND[kind],
-        paragraphs: Object.values(reading.relationships).find((r) => r.kind === kind).introduction,
-      })).join(''));
+      const found = Object.values(reading.relationships);
+      found.forEach((r) => { if (!Object.hasOwn(FAMILY_OF, r.kind)) fail(`the kind ${r.kind}`); });
+      return lines(ABOUT_FAMILY.filter(([family]) => found.some((r) => FAMILY_OF[r.kind] === family))
+        .map(([family, part, key]) => line({
+          part, key, paragraphs: found.find((r) => FAMILY_OF[r.kind] === family).introduction,
+        })).join(''));
     };
 
     const rolesAbout = () => (reading

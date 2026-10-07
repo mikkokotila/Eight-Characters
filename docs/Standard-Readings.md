@@ -82,11 +82,12 @@ The chevrons and links are left out.
 
 ## What the canon holds that no chart shows yet
 
-Of the canon's 579 paragraphs, 523 reach some chart's reading. The rest belong
-to the families Standard does not detect yet: punishments, harms and directional
-combinations. Some sentences in the passages that are read depend on what the
-app does not compute: Luck Pillars, strength, transformation. All of it is
-listed, with why, in
+Every one of the canon's paragraphs reaches some chart's reading. A half-frame
+reads its frame's opening, the points of its two branches and the paragraph on
+half-frames; a punishment reads the paragraphs for the form the chart holds, whole
+or half; a self-punishment reads its own branch. Some sentences in the passages
+that are read depend on what the app does not compute: Luck Pillars, strength,
+transformation. They are listed, with why, in
 [issue #39](https://github.com/mikkokotila/Eight-Characters/issues/39).
 
 ## For developers
@@ -103,7 +104,9 @@ listed, with why, in
   chart, under the policy `canon_taxonomy_v1`. Where it relies on the canon's
   exact words, it checks them when the app starts, and refuses to start if they
   changed. These are the six sentences that hold only for a Day Pillar, the
-  Zi–Wu season sentences, the stem combinations' labels and the stage table.
+  Zi–Wu season sentences, the stem combinations' labels, the punishments' and
+  self-punishments' labels, the frames' points and half-frame paragraphs, and the
+  stage table.
 - **The page.** `static/readings.js` builds the lines.
 
 See [the API](api.md#canon-readings-include_reading) and the
