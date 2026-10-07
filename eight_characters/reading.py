@@ -24,8 +24,13 @@ from eight_characters.canon import (
     Family,
     Paragraph,
 )
+from eight_characters.data import BRANCHES
 from eight_characters.day_master_context import SEASON_GROUPS, SeasonName
-from eight_characters.interactions import Interaction
+from eight_characters.interactions import (
+    CANON_SELF_PUNISHMENTS,
+    Interaction,
+    InteractionKind,
+)
 from eight_characters.life_stages import life_stage
 from eight_characters.ten_gods import TEN_GOD_NAMES, TenGodName
 
@@ -73,19 +78,66 @@ _PARTNER.update({b: a for a, b in list(_PARTNER.items())})
 _SEASON_BY_BRANCH: dict[str, SeasonName] = {
     char: name for chars, name, _ in SEASON_GROUPS for char in chars
 }
-RelationshipKind = Literal[
-    'stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'
+RelationshipKind = InteractionKind
+FamilyName = Literal[
+    'stem_combinations',
+    'six_harmonies',
+    'clashes',
+    'three_harmonies',
+    'directional',
+    'punishments',
+    'harms',
 ]
+_FAMILY_OF: dict[RelationshipKind, FamilyName] = {
+    'stem_combination': 'stem_combinations',
+    'branch_combination': 'six_harmonies',
+    'branch_clash': 'clashes',
+    'harmony_frame': 'three_harmonies',
+    'half_frame': 'three_harmonies',
+    'directional_combination': 'directional',
+    'punishment': 'punishments',
+    'half_punishment': 'punishments',
+    'self_punishment': 'punishments',
+    'harm': 'harms',
+}
+# The paragraphs that say which form of a punishment a chart holds, as the canon labels
+# them; the other forms' paragraphs are left out of its reading. Checked against the
+# canon when it loads.
+HALF_PUNISHMENT_LABELS: dict[str, str] = {
+    '寅巳申': 'When two of three are present (half-punishment)',
+    '丑未戌': 'When two of three are present',
+}
+ACROSS_PILLARS_LABEL = 'Across pillar positions'
+ACROSS_PILLARS_ENTRIES = ('寅巳申', '子卯')
+SELF_PUNISHMENT_ENTRY = '自刑'
+# A frame's paragraph on its half-frames opens with these words.
+HALF_FRAMES_OPENING = 'The half-frames:'
+_POINTS = ('Birth point', 'Peak point', 'Storage point')
 
 
 def _family(canon: Canon, kind: RelationshipKind) -> Family:
-    if kind == 'stem_combination':
-        return canon['stem_combinations']
-    if kind == 'branch_combination':
-        return canon['six_harmonies']
-    if kind == 'branch_clash':
-        return canon['clashes']
-    return canon['three_harmonies']
+    return canon[_FAMILY_OF[kind]]
+
+
+def _self_punishment_label(entry: Entry, branch: str) -> str:
+    found = [
+        p['label']
+        for p in entry['paragraphs']
+        if p['label'] is not None and p['label'].startswith(branch * 2 + ' ')
+    ]
+    if len(found) != 1:
+        raise CanonError(f'{entry["title"]}: expected one paragraph for {branch * 2}')
+    return found[0]
+
+
+def _point_labels(entry: Entry) -> dict[str, str]:
+    """A frame's member points by branch pinyin: 'Peak point (Zi)' under 'Zi'."""
+    points: dict[str, str] = {}
+    for paragraph in entry['paragraphs']:
+        label = paragraph['label']
+        if label is not None and label.startswith(_POINTS):
+            points[label.split('(')[1].rstrip(')')] = label
+    return points
 
 
 class StageReading(TypedDict):
@@ -225,6 +277,23 @@ def check_reading_canon(canon: Canon) -> None:
             raise CanonError(
                 f'the {pair} combination has labels {labels!r}, expected {expected!r}'
             )
+    punishments = canon['punishments']['entries']
+    for key, label in HALF_PUNISHMENT_LABELS.items():
+        _labelled(punishments[key], label)
+    for key in ACROSS_PILLARS_ENTRIES:
+        _labelled(punishments[key], ACROSS_PILLARS_LABEL)
+    for branch in CANON_SELF_PUNISHMENTS:
+        _self_punishment_label(punishments[SELF_PUNISHMENT_ENTRY], branch)
+    for members, entry in canon['three_harmonies']['entries'].items():
+        halves = [
+            p
+            for p in entry['paragraphs']
+            if p['label'] is None and p['text'].startswith(HALF_FRAMES_OPENING)
+        ]
+        if len(halves) != 1 or entry['paragraphs'][0]['label'] is not None:
+            raise CanonError(f'{entry["title"]}: its half-frames are not where read')
+        if set(_point_labels(entry)) != {BRANCHES[b]['pinyin'] for b in members}:
+            raise CanonError(f'{entry["title"]}: its points do not name its branches')
     table = canon['cycle']['table']
     for stem in STEM_CHARS:
         for branch, stage in table[stem].items():
@@ -261,6 +330,62 @@ def _pairing(members: Sequence[str]) -> str:
     return label
 
 
+def _entry_key(family: Family, kind: RelationshipKind, chars: Sequence[str]) -> str:
+    """The family's entry for a finding: a half reads its whole's entry."""
+    if kind == 'self_punishment':
+        return SELF_PUNISHMENT_ENTRY
+    found = set(chars)
+    if kind in ('half_frame', 'half_punishment'):
+        matching = [
+            key for key in family['entries'] if len(key) == 3 and found < set(key)
+        ]
+    else:
+        matching = [
+            key
+            for key in family['entries']
+            if len(key) == len(chars) and set(key) == found
+        ]
+    if len(matching) != 1:
+        raise CanonError(f'no single canon entry for {kind} {"".join(chars)}')
+    return matching[0]
+
+
+def _lead(
+    entry: Entry, kind: RelationshipKind, key: str, chars: Sequence[str]
+) -> list[Paragraph]:
+    """The entry's paragraphs for this form of the relationship, in the canon's order.
+
+    A stem combination's labelled paragraphs are read apart. A half-frame reads the
+    frame's opening, the points of its two branches and the paragraph on half-frames;
+    a punishment reads what applies to the form the chart holds, whole or half; a
+    self-punishment reads its own branch.
+    """
+    paragraphs = entry['paragraphs']
+    if kind == 'stem_combination':
+        return [p for p in paragraphs if p['label'] is None]
+    if kind == 'half_frame':
+        points = _point_labels(entry)
+        present = {points[BRANCHES[char]['pinyin']] for char in chars}
+        return [
+            p
+            for index, p in enumerate(paragraphs)
+            if index == 0
+            or p['label'] in present
+            or (p['label'] is None and p['text'].startswith(HALF_FRAMES_OPENING))
+        ]
+    if kind == 'punishment':
+        half = HALF_PUNISHMENT_LABELS.get(key)
+        return [p for p in paragraphs if half is None or p['label'] != half]
+    if kind == 'half_punishment':
+        return [
+            p for p in paragraphs if p['label'] in (None, HALF_PUNISHMENT_LABELS[key])
+        ]
+    if kind == 'self_punishment':
+        own = _self_punishment_label(entry, chars[0])
+        return [p for p in paragraphs if p['label'] in (None, own)]
+    return list(paragraphs)
+
+
 def _relationship(
     canon: Canon,
     interaction: Interaction,
@@ -270,18 +395,15 @@ def _relationship(
     kind = interaction['kind']
     family = _family(canon, kind)
     chars = [member['char'] for member in interaction['members']]
-    size = 3 if kind == 'harmony_frame' else 2
-    matching = [
-        key for key in family['entries'] if len(key) == size and set(key) == set(chars)
-    ]
-    if len(matching) != 1:
-        raise CanonError(
-            f'no single canon entry for the relationship {interaction["id"]}'
-        )
-    key = matching[0]
+    key = _entry_key(family, kind, chars)
     entry = family['entries'][key]
     member_pillars = [member['pillar'] for member in interaction['members']]
-    pairing = family['pairings'][_pairing(member_pillars)] if size == 2 else None
+    # Only the families the canon gives pairings for read one; a pair's is its pillars'.
+    pairing = (
+        family['pairings'][_pairing(member_pillars)]
+        if len(member_pillars) == 2 and family['pairings']
+        else None
+    )
     with_dm = neither = dynamic = None
     mechanics: list[Paragraph] = []
     if kind == 'stem_combination':
@@ -300,16 +422,14 @@ def _relationship(
     condition: Condition | None = (
         {'season': season, 'sentence': by_season[season]} if by_season else None
     )
-    lead: list[Paragraph] = [
-        p
-        for p in entry['paragraphs']
-        if kind != 'stem_combination' or p['label'] is None
-    ]
     return {
         'kind': kind,
         'introduction': family['introduction'],
         'pairing': pairing,
-        'entry': {'title': entry['title'], 'paragraphs': lead},
+        'entry': {
+            'title': entry['title'],
+            'paragraphs': _lead(entry, kind, key, chars),
+        },
         'with_day_master': with_dm,
         'neither_day_master': neither,
         'dynamic': dynamic,
