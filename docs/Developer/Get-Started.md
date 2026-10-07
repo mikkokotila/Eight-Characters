@@ -9,6 +9,7 @@ This guide is the practical entry point for running and working with
   (`requires-python = '>=3.11'`). On a newer Python, code that 3.11 cannot run
   passes locally and then fails in CI.
 - `pip`
+- Git (the account backup and its tests use it)
 - Optional: Docker
 
 ## Local Setup

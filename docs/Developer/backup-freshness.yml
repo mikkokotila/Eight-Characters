@@ -1,0 +1,33 @@
+# The backup repository's freshness check, as .github/workflows/backup-freshness.yml.
+# The repository's owner commits it, never the backup job, which leaves .github/ alone:
+# GitHub emails a scheduled workflow's failures to whoever last changed its schedule.
+name: backup-freshness
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: The backup committed within the last three hours
+        run: |
+          if [ ! -f manifest.json ]; then
+            echo "The backup has not started yet."
+            exit 0
+          fi
+          last=$(git log -1 --format=%ct)
+          age=$(( $(date +%s) - last ))
+          echo "Last commit $(git log -1 --format=%cI), ${age} s ago."
+          if [ "$age" -gt 10800 ]; then
+            echo "::error::No commit from the backup job in three hours: it has stopped on the server."
+            exit 1
+          fi
