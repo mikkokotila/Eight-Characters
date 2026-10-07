@@ -85,8 +85,9 @@ natal arcs' levels, every one ending on the luck pillar, the narrower lower. A t
 middle member stands under its arc. On a natal card their feet stand beyond the natal
 arcs' feet, so showing them moves no natal arc. In the branch phase a stem's
 relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs
-recede too, in the secondary line. A chart with a gender keeps the outer band whether
-the luck pillar shows or not.
+recede too, in the secondary line. A relationship chosen in the list, natal or the luck
+pillar's, stands in the ink, and every other arc recedes. A chart with a gender keeps
+the outer band whether the luck pillar shows or not.
 
 On a phone the luck pillar stands above the two-by-two chart, its stem beside its
 branch.
