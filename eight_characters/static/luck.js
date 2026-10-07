@@ -720,14 +720,27 @@
         ...luck.decades.map((decade) => ({ label: chipLabel(String(decade.sequence), now), topic: topicOf(opening(decade.sequence)) })),
       ];
     };
+    // A key's change can take focus from under the reader: a page redrawn, a button
+    // spent. Focus that was on the luck pillars and is lost then goes to the chosen
+    // period's chip, so the chart's keys go on acting; elsewhere it stays.
+    const keeping = (change) => (...args) => {
+      const active = document.activeElement;
+      const held = active !== null && [ribbon, detail, column].some((part) => part?.contains(active));
+      const result = change(...args);
+      const now = document.activeElement;
+      if (held && luck !== null && (now === null || now === document.body || !now.isConnected || now.disabled || now.closest('[inert]'))) {
+        ribbon.querySelector(`[data-luck="${keyOf(shown ? cursor : home())}"]`).focus({ preventScroll: true });
+      }
+      return result;
+    };
     return {
       render, close, select, stand, has, topic, standing, cardsActive, choices,
       shown: () => shown,
       setShown,
-      toggle: () => setShown(!shown),
-      step,
-      stepDecade,
-      toToday,
+      toggle: keeping(() => setShown(!shown)),
+      step: keeping(step),
+      stepDecade: keeping(stepDecade),
+      toToday: keeping(toToday),
     };
   };
 

@@ -718,6 +718,15 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar hidden.');
       await page.keyboard.press('Shift+L');
       assert.equal(await linkPart(page, 'luck'), '5/stem');
+      // N from the Today button spends it: focus goes to today's chip, and the keys go on.
+      await click(page, '[data-luck="4"]');
+      await page.locator('[data-luck-today]').focus();
+      await page.keyboard.press('n');
+      await settled(page);
+      assert.deepEqual([await linkPart(page, 'topic'), await focused(page)], ['luck/5/stem', 'chip 5']);
+      await page.keyboard.press(']');
+      assert.equal(await linkPart(page, 'luck'), '5/branch');
+      await page.keyboard.press('[');
       // L from the open page closes it with the luck pillar, and focus goes to the chip.
       await page.keyboard.press('n');
       await settled(page);
