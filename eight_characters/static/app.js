@@ -821,7 +821,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const luck = window.EC_LUCK.create({
     root: chartView, pillars: chartView.querySelector('#pillars'), translate: requiredTranslation, escape: esc, spot, locale,
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
-    onCards: (column, focused) => fitCards(column, focused),
+    onCards: (column, focused, redrawn) => fitCards(column, focused, redrawn),
   });
   const closePanel = () => {
     relationships.clear();
@@ -900,19 +900,21 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     syncDisplaySwitch();
   };
-  // Cards drawn anew (the luck pillar's, as its choice moves) show what every card
+  // Cards drawn anew (the luck pillar's, for another decade) show what every card
   // shows, at once. The tab stop stays on a card that can take it, and focus that was
-  // on the redrawn part comes back to it, or else to that card.
-  const fitCards = (scope, focused = null) => {
-    scope.querySelectorAll('.card').forEach((card) => {
-      card.classList.toggle('is-flipped', displayMode === 'ten-gods');
-      labelCard(card);
-      card.setAttribute('tabindex', '-1');
-    });
-    scope.querySelectorAll('.card.branch').forEach((branchCard) => {
-      const panel = hiddenStemsOf(branchCard);
-      if (showsHiddenStems(panel)) expandPanel(panel, branchCard, false);
-    });
+  // on the changed part comes back to it, or else to that card.
+  const fitCards = (scope, focused = null, redrawn = true) => {
+    if (redrawn) {
+      scope.querySelectorAll('.card').forEach((card) => {
+        card.classList.toggle('is-flipped', displayMode === 'ten-gods');
+        labelCard(card);
+        card.setAttribute('tabindex', '-1');
+      });
+      scope.querySelectorAll('.card.branch').forEach((branchCard) => {
+        const panel = hiddenStemsOf(branchCard);
+        if (showsHiddenStems(panel)) expandPanel(panel, branchCard, false);
+      });
+    }
     const keyed = cardAt(keyCard);
     if (!keyed || keyed.closest('[inert]')) setKeyCard(cardAt({ pillar: 'year', component: keyCard.component }));
     else setKeyCard(keyed);

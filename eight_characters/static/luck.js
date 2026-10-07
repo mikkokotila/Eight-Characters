@@ -41,8 +41,9 @@
   const EXPAND_HINT = `<svg class='branch-expand-hint' aria-hidden='true' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>`;
 
   // `pillars` is the chart's grid, where the luck pillar stands as its fifth column, and
-  // `onCards(column, focused)` is told whenever the column is drawn anew, with the part
-  // of it that had focus ('stem', 'branch', 'identity' or null).
+  // `onCards(column, focused, redrawn)` is told whenever the column changes, with the
+  // part of it that had focus ('stem', 'branch', 'identity' or null) and whether its
+  // cards were drawn anew.
   const create = ({ root, pillars, translate: t, escape: esc, spot, locale, beforeSelect, onCards }) => {
     const ribbon = root.querySelector('#luck-ribbon');
     const detail = root.querySelector('#luck-detail');
@@ -294,17 +295,11 @@
         <span class='hidden-stem-type'>${esc(t('qi_' + e.qi_type))}</span>
       </div>`;
     const columnState = () => (!shown ? 'off' : cursor === 'before' ? 'none' : 'on');
-    const cardsMarkup = (decade, state) => {
-      // Hidden, the stem's room says what brings it back.
-      const ghost = state === 'off' ? `<span class='luck-ghost'>${esc(t('luck_ghost_off'))}</span>` : '';
+    const cardsMarkup = (decade) => {
       const { stem, branch } = decade.cards;
-      const phase = state === 'on' ? cursor.phase : null;
-      const part = (component) => (phase === null ? ''
-        : component === phase ? 'leading' : phase === 'stem' ? 'acting' : 'resting');
       return `
-        <div class='card ${stem.element} stem' data-pillar='luck' data-char='${esc(stem.char)}' data-luck-part='${part('stem')}'
+        <div class='card ${stem.element} stem' data-pillar='luck' data-char='${esc(stem.char)}'
           role='group' tabindex='-1' aria-keyshortcuts='T' aria-labelledby='pillar-name-luck card-luck-stem-front'>
-          ${part('stem') === 'resting' ? `<span class='luck-set-aside'>${esc(t('luck_set_aside'))}</span>` : ''}${ghost}
           <div class='card-inner'>
             <div class='card-face card-front' id='card-luck-stem-front'>
               <div class='glyph' lang='zh-Hant'>${esc(stem.char)}</div>
@@ -316,7 +311,7 @@
             </div>
           </div>
         </div>
-        <div class='card ${branch.element} branch' data-pillar='luck' data-char='${esc(branch.char)}' data-luck-part='${part('branch')}'
+        <div class='card ${branch.element} branch' data-pillar='luck' data-char='${esc(branch.char)}'
           role='button' tabindex='-1' aria-expanded='false' aria-controls='hidden-stems-luck' aria-keyshortcuts='Enter Space T'
           aria-labelledby='pillar-name-luck card-luck-branch-front'>
           <div class='card-inner'>
@@ -357,10 +352,14 @@
         column.dataset.pillar = 'luck';
         pillars.append(column);
       }
+      // The cards are drawn for a decade, and kept as they are while it stays: hiding and
+      // showing the luck pillar leaves a card turned or a branch opened by hand as it was.
+      const redrawn = column.dataset.decade !== String(decade.sequence) || column.querySelector('.pillar-cards') === null;
       column.dataset.luckState = state;
+      column.dataset.decade = decade.sequence;
       column.inert = state === 'off';
-      column.innerHTML = `
-        <div class='pillar-header'>
+      if (redrawn) column.innerHTML = `<div class='pillar-header'></div><div class='pillar-cards'>${cardsMarkup(decade)}</div>`;
+      column.querySelector('.pillar-header').innerHTML = `
           <div class='pillar-label'>
             <span class='pillar-plain' id='pillar-name-luck'>${esc(t('pillar_luck'))}</span>
             <span class='pillar-poetic'>${esc(poetic)}</span>
@@ -370,12 +369,21 @@
             <span class='pillar-chars' lang='zh-Hant'${state === 'none' ? ' aria-hidden="true"' : ''}>${decade.chars}</span>
             <span class='pillar-pinyin'>${esc(state === 'none' ? t('luck_before') : names(decade.chars))}</span>
           </button>
-          <p class='pillar-mark luck-mark'>${esc(mark)}</p>
-        </div>
-        <div class='pillar-cards'>${cardsMarkup(decade, state)}</div>`;
-      // Before the first decade there are no cards to read: they only keep the room.
-      column.querySelectorAll('.pillar-cards .card').forEach((card) => { card.inert = state !== 'on'; });
-      onCards(column, focused);
+          <p class='pillar-mark luck-mark'>${esc(mark)}</p>`;
+      // In the stem phase the stem leads and the branch acts too; in the branch phase the
+      // branch leads and the stem is set aside. Hidden, the stem's room says what brings it
+      // back. Before the first decade there are no cards to read: they only keep the room.
+      const phase = state === 'on' ? cursor.phase : null;
+      column.querySelectorAll('.pillar-cards > .card').forEach((card) => {
+        const component = card.classList.contains('stem') ? 'stem' : 'branch';
+        const part = phase === null ? '' : component === phase ? 'leading' : phase === 'stem' ? 'acting' : 'resting';
+        card.dataset.luckPart = part;
+        card.inert = state !== 'on';
+        card.querySelectorAll(':scope > .luck-set-aside, :scope > .luck-ghost').forEach((note) => note.remove());
+        if (part === 'resting') card.insertAdjacentHTML('afterbegin', `<span class='luck-set-aside'>${esc(t('luck_set_aside'))}</span>`);
+        if (state === 'off' && component === 'stem') card.insertAdjacentHTML('afterbegin', `<span class='luck-ghost'>${esc(t('luck_ghost_off'))}</span>`);
+      });
+      onCards(column, focused, redrawn);
     };
     const removeColumn = () => {
       column?.remove();
@@ -572,7 +580,8 @@
       const from = shown ? cursor : home();
       const at = from === 'before' ? 0 : from.sequence;
       const to = Math.min(luck.decades.length, Math.max(0, at + by));
-      const next = to === 0 ? 'before' : opening(to);
+      // At either end, a decade's step stays where it is.
+      const next = to === at ? from : to === 0 ? 'before' : opening(to);
       if (!shown || !same(next, cursor)) go(next);
     };
     const toToday = () => {

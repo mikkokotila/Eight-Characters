@@ -1029,7 +1029,7 @@ body {
 }
 /* Hidden, or before the first decade, the cards keep their room unseen; hidden, so do
    the column's name and mark. */
-.pillar.is-luck:not([data-luck-state='on']) .card-inner,
+.pillar.is-luck:not([data-luck-state='on']) .card-face,
 .pillar.is-luck:not([data-luck-state='on']) .hidden-stems-panel,
 .pillar.is-luck[data-luck-state='off'] .pillar-header > * { visibility: hidden; }
 .pillar.is-luck:not([data-luck-state='on']) .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
@@ -2643,5 +2643,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .pillar:nth-child(2) { grid-column: 2; }
   .pillar:nth-child(3) { grid-column: 3; }
   .pillar:nth-child(4) { grid-column: 4; }
+  .pillar.is-luck { grid-column: 5; }
   .relationship-arcs { position: relative; inset: auto; }
 }

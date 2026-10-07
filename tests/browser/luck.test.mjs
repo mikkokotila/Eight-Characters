@@ -626,6 +626,9 @@ for (const profile of profiles) {
           await page.mouse.move(0, 0);
           await settled(page);
           const off = await boxes(page);
+          const seen = await page.locator('.pillar.is-luck .card-face, .pillar.is-luck .hidden-stem-item').evaluateAll((nodes) =>
+            nodes.filter((node) => node.checkVisibility({ checkVisibilityCSS: true })).length);
+          if (seen > 0) failures.push(`${display} ${width}px: ${seen} parts of the hidden luck pillar show`);
           await page.keyboard.press('l');
           await settled(page);
           const on = await boxes(page);
@@ -637,6 +640,22 @@ for (const profile of profiles) {
       assert.deepEqual(failures, []);
       await page.setViewportSize(profile.viewport);
       await showDisplay(page, 'characters');
+      // A branch opened by hand keeps its room as L hides and shows the luck pillar.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await click(page, '.card.branch[data-pillar="luck"]');
+      await page.mouse.move(0, 0);
+      await settled(page);
+      const opened = await boxes(page);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await boxes(page), opened);
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').getAttribute('aria-expanded'), 'true');
+      await page.keyboard.press('l');
+      await settled(page);
       // The switch does what L does.
       await click(page, '#luck-switch [data-luck-show="on"]');
       assert.deepEqual(await switched(), ['Natal false', 'With luck true']);
@@ -682,6 +701,16 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar hidden.');
       await page.keyboard.press('Shift+L');
       assert.equal(await linkPart(page, 'luck'), '5/stem');
+      // At the last decade a decade's step stays where it is, in either phase.
+      const ends = [];
+      for (const key of ['}', '}', '}', '}', '}', '}', ']', '}']) {
+        await page.keyboard.press(key);
+        ends.push(await linkPart(page, 'luck'));
+      }
+      assert.deepEqual(ends, ['6/stem', '7/stem', '8/stem', '9/stem', '10/stem', '10/stem', '10/branch', '10/branch']);
+      await page.keyboard.press('n');
+      await settled(page);
+      await page.locator('.card.stem[data-pillar="hour"]').focus();
       // ? lists them.
       await page.keyboard.press('?');
       assert.deepEqual(await page.locator('#keys-dialog .key-row-luck dd').evaluateAll((nodes) =>
@@ -804,6 +833,26 @@ for (const profile of profiles) {
         assert.ok(at['luck stem'].x > at['year stem'].x && at['luck stem'].y === at['year stem'].y && at['luck branch'].y === at['year branch'].y, JSON.stringify(at));
       }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    });
+
+    check('on paper a luck pillar shown stands fifth, and a hidden one leaves the chart its four columns', async (page) => {
+      await openSample(page);
+      await page.setViewportSize({ width: 1024, height: 900 });
+      await page.emulateMedia({ media: 'print' });
+      const placed = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#pillars .card.stem')]
+        .filter((card) => card.getClientRects().length > 0)
+        .map((card) => [card.dataset.pillar, Math.round(card.getBoundingClientRect().left)])));
+      const hidden = await placed();
+      assert.deepEqual(Object.keys(hidden), ['hour', 'day', 'month', 'year']);
+      await page.emulateMedia({ media: 'screen' });
+      await click(page, '#luck-switch [data-luck-show="on"]');
+      await page.emulateMedia({ media: 'print' });
+      const shown = await placed();
+      assert.deepEqual(Object.keys(shown), ['hour', 'day', 'month', 'year', 'luck']);
+      assert.ok(shown.luck > shown.year, JSON.stringify(shown));
+      const tops = await page.locator('#pillars .card.stem').evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))).size);
+      assert.equal(tops, 1);
+      await page.emulateMedia({ media: 'screen' });
     });
 
     check('the commands offer the years before the decades and each decade', async (page) => {
