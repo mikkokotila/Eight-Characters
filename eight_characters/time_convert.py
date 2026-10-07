@@ -2,6 +2,8 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from functools import cache
 from importlib import resources
+from math import isfinite
+from typing import Literal
 from zoneinfo import ZoneInfo
 
 from eight_characters.conventions import ConventionSettings
@@ -26,6 +28,9 @@ class NonexistentTimeError(TimeResolutionError):
     pass
 
 
+Gender = Literal['male', 'female']
+
+
 @dataclass(frozen=True)
 class BirthInput:
     year: int | None = None
@@ -41,6 +46,7 @@ class BirthInput:
     utc_timestamp: str | None = None
     birth_time_uncertainty_seconds: float | None = None
     conventions: ConventionSettings = field(default_factory=ConventionSettings)
+    gender: Gender | None = None
 
 
 @dataclass(frozen=True)
@@ -149,6 +155,13 @@ def _resolve_local_time(
 def normalize_birth_input(value: BirthInput) -> NormalizedTimeInput:
     policy = EnginePolicy()
     value.conventions.validate()
+    if value.gender is not None and value.gender not in ('male', 'female'):
+        raise ValueError('gender must be male or female.')
+    uncertainty = value.birth_time_uncertainty_seconds
+    if uncertainty is not None and (not isfinite(uncertainty) or uncertainty < 0.0):
+        raise ValueError(
+            'birth_time_uncertainty_seconds must be finite and nonnegative.'
+        )
 
     if value.latitude < -90.0 or value.latitude > 90.0:
         raise ValueError('Invalid latitude.')
@@ -278,3 +291,22 @@ def convert_utc_to_tt(utc_datetime: datetime) -> TTConversionResult:
         conversion_method='delta_t',
         leap_second_metadata=LEAP_SECOND_METADATA,
     )
+
+
+def utc_from_jd_tt(jd_tt: float) -> datetime:
+    """Invert this engine's UTC-to-TT conversion, including pre-1972 Delta T.
+
+    UTC cannot represent the inserted second of a leap second; an instant in that
+    second raises instead of returning a different instant.
+    """
+    if not isfinite(jd_tt):
+        raise ValueError('TT Julian date must be finite.')
+    tt = datetime(1970, 1, 1, tzinfo=UTC) + timedelta(days=jd_tt - 2440587.5)
+    instant = tt
+    for _ in range(8):
+        offset = convert_utc_to_tt(instant).tt_minus_utc_seconds
+        candidate = tt - timedelta(seconds=offset)
+        if abs(candidate - instant) <= timedelta(microseconds=1):
+            return candidate
+        instant = candidate
+    raise TimeResolutionError('TT instant cannot be represented in UTC.')

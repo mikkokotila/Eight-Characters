@@ -1,18 +1,6 @@
 # Changelog
 
-## 0.28.2
-
-Unused strings leave the page's translations. Nothing on the page changes.
-
-### Removed
-- **The old Support page's strings**, in Finnish and English: `context_support`, `context_companions`, `context_resources`, `context_support_meta`, `context_support_note`, `context_hidden` and `context_both`. Roles replaced that page, and nothing has read them since:
-  - no script, template, test or doc names them;
-  - no key the page builds at runtime can be one of them. The one `context_` key built from data takes a season's name, checked first to be one of the four seasons.
-
-### Changed
-- Version bumped to `0.28.2`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
-
-## 0.28.1
+## 0.29.1
 
 The installed package serves every file the app uses. Nothing changes where the app runs from its source tree, as on Render.
 
@@ -22,10 +10,28 @@ The installed package serves every file the app uses. Nothing changes where the 
   - The Docker image served them only because uvicorn puts its working directory, `/app`, first on `sys.path`, so the copied source tree shadows the installed package.
 
   `package-data` now lists the explorer's stylesheets, scripts, sample payloads, d3 and fonts.
-- **A test keeps it so** (`test_served_files_ship_in_the_package`): every file in a directory the app serves from (`/static`, `/explorer`) or renders templates from must match a `package-data` pattern, expanded the way setuptools expands it. On 0.28.0 it fails, naming the explorer's 16 files.
+- **A test keeps it so** (`test_served_files_ship_in_the_package`): every file in a directory the app serves from (`/static`, `/explorer`) or renders templates from must match a `package-data` pattern, expanded the way setuptools expands it. On 0.29.0 it fails, naming the explorer's 16 files.
 
 ### Changed
-- Version bumped to `0.28.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Version bumped to `0.29.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.29.0
+
+### Added
+- Backend ten-year luck pillars, opt-in through `include_luck_pillars` on
+  `POST /api/four_pillars`, with explicit `male`/`female` gender input and
+  1-12 actual cycles (default 10).
+- Direction from the Lichun-resolved year stem, progression from the natal
+  month pillar, and onset from the engine's own Jie instants in TT.
+- A documented continuous three-days-per-year convention, UTC calendar
+  boundaries, symbolic onset ages, pre-luck period and visible uncertainty.
+- Engine/API regression tests and independent package comparisons, included
+  in the core and API CI gates. No frontend integration.
+
+### Changed
+- Reject negative or non-finite birth-time uncertainty instead of calculating
+  with invalid uncertainty; reject finite values that overflow luck-age scaling.
+  Existing natal-only response sections are unchanged.
 
 ## 0.28.0
 

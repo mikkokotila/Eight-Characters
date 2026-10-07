@@ -69,6 +69,11 @@ MODULE_CONTRACTS: dict[str, ModuleContract] = {
         responsibility='Deterministic output serialization.',
         dependencies=(),
     ),
+    'luck_pillars': ModuleContract(
+        name='luck_pillars',
+        responsibility='Gender-based direction, Jie-based onset, and ten-year pillars.',
+        dependencies=('sexagenary', 'time_convert'),
+    ),
     'engine': ModuleContract(
         name='engine',
         responsibility='Main orchestration of full pipeline.',
@@ -80,6 +85,7 @@ MODULE_CONTRACTS: dict[str, ModuleContract] = {
             'solar_term_solver',
             'sexagenary',
             'output',
+            'luck_pillars',
         ),
     ),
     'geocoding': ModuleContract(
