@@ -281,14 +281,15 @@ def _clear_session_cookie(response: Response, accounts: Accounts) -> None:
 def current_session(
     request: Request, response: Response, accounts: AccountsDependency
 ) -> CurrentSession | None:
-    """The signed-in account, if any; a session in its second half is renewed."""
+    """The signed-in account, if any; a session in its second half is renewed. The
+    cookie of a session that ended is left to expire: an answer cannot know whether
+    the browser was given a newer session meanwhile, and removing the cookie by its
+    name would remove that one."""
     token = request.cookies.get(accounts.config.cookie_name)
     if token is None:
         return None
     current = accounts.sign_in.current(token)
-    if current is None:
-        _clear_session_cookie(response, accounts)
-    elif current.renewed:
+    if current is not None and current.renewed:
         _set_session_cookie(response, accounts, token, current.expires_at)
     return current
 

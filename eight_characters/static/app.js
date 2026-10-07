@@ -513,8 +513,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // A chart's record from the API, and the request it answers. Charts need an account:
   // signed out, the account dialog asks for one first, and a session that ended
   // meanwhile (signed out elsewhere, or unused for 30 days) asks once more. Signing in
-  // sets the page to the account's language, and the chart is asked for in it.
-  const askForPillars = async (request) => {
+  // sets the page to the account's language, and the chart is asked for in it. A
+  // refusal for a chart no longer wanted (`wanted` says) is not acted on: a newer
+  // chart may have signed in since, and that account must not be forgotten.
+  const askForPillars = async (request, wanted) => {
     // The canon speaks English: its readings come with an English chart only.
     const post = (asked) => fetch('/api/four_pillars', {
       method: 'POST',
@@ -527,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
       asked = { ...asked, lang: currentLanguage };
     }
     let response = await post(asked);
-    if (response.status === 401) {
+    if (response.status === 401 && wanted()) {
       account.forget();
       await account.signIn();
       asked = { ...asked, lang: currentLanguage };
@@ -542,7 +544,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const serial = ++drawing;
     let answer;
     try {
-      answer = await askForPillars(wanted);
+      answer = await askForPillars(wanted, () => serial === drawing);
     } catch (err) {
       // A sign-in given up, or a failed connection, for a chart no longer wanted.
       if (serial !== drawing) return false;

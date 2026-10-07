@@ -106,7 +106,9 @@ put on one.
 - **Who is signed in.** `GET /` writes the account (`{email, language, plan,
   created_at}`, or `null`) into `<script id="account-state">`, sent with
   `Cache-Control: private, no-cache` so that no shared cache keeps it. The page renews
-  a session in its second half too, and removes the cookie of one that ended.
+  a session in its second half too. No answer removes the cookie of a session that
+  ended, since the browser may have signed in meanwhile and a cookie is removed by its
+  name; it expires, and only signing out or deleting the account removes it.
 - **Signing in** (`static/account.js`). Creating a chart while signed out opens the
   account dialog: the address, and for a new account its language, chosen and never
   preset; Cloudflare Turnstile's widget, whose script loads only when the dialog first

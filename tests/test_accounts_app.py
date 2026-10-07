@@ -205,7 +205,9 @@ class TestTheStartPage(unittest.TestCase):
         renewed_for = int(SESSION_LIFETIME.total_seconds()) - 2
         self.assertIn(f'Max-Age={renewed_for}', cookie)
 
-    def test_a_page_with_an_ended_session_ends_its_cookie(self) -> None:
+    def test_a_page_with_an_ended_session_leaves_its_cookie(self) -> None:
+        # The browser may have been given a newer session meanwhile: removing the
+        # cookie by its name would remove that one.
         client = site_client()
         sign_in(client, self.accounts, 'deleted@example.com')
         user = self.accounts.store.user_by_email('deleted@example.com')
@@ -214,9 +216,10 @@ class TestTheStartPage(unittest.TestCase):
         self.accounts.store.delete_user(user.id)
         response = client.get('/')
         self.assertIsNone(self.account_state(response.text))
-        cookie = response.headers['set-cookie']
-        self.assertTrue(cookie.startswith(f'{SESSION_COOKIE}='), cookie)
-        self.assertIn('Max-Age=0', cookie)
+        self.assertNotIn('set-cookie', response.headers)
+        refused = client.post('/api/four_pillars', json={})
+        self.assertEqual(refused.status_code, 401)
+        self.assertNotIn('set-cookie', refused.headers)
 
 
 class TestStartingTheApp(unittest.TestCase):

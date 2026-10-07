@@ -319,6 +319,62 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-view').isVisible(), true);
     });
 
+    check('a chart refused after a newer one signed in leaves that sign-in alone', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'late' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en', address: `#chart?${link(BIRTH.date, BIRTH.time, 'en')}` });
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // A second chart, after the first in the history.
+      await page.locator('#new-chart-btn').click();
+      await page.locator('#date').fill(BIRTH.date);
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.waitForFunction(() => document.getElementById('chart-date').textContent.includes('12:00'));
+      await settled(page);
+      // The next chart asked for is held on its way. Its answer comes last: the
+      // server's refusal for this session, which ends meanwhile. (Continuing the held
+      // request instead would send the cookie the browser holds by then.)
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const asked = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route('**/api/four_pillars', async (route) => {
+        if (!holding) return route.continue();
+        holding = false;
+        sent();
+        await held;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      await asked;
+      // Signed out on every device, from another one; then back past the form to the
+      // first chart, which is refused, asks for a sign-in, and is drawn.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions')).status(), 204);
+      });
+      await page.goBack();
+      await page.goBack();
+      await dialogOpens(page);
+      await signInThroughDialog(page, account.email);
+      await page.waitForFunction(() => document.getElementById('chart-date').textContent.includes('16:30'));
+      await settled(page);
+      // The held chart's refusal arrives.
+      const late = page.waitForResponse((response) =>
+        new URL(response.url()).pathname === '/api/four_pillars' && response.status() === 401);
+      release();
+      await late;
+      // Time for the page to act on it, as it would have, by opening the dialog.
+      await page.waitForTimeout(500);
+      assert.equal(await dialogIsOpen(page), false);
+      assert.equal(await text(page, '#account-btn'), 'Account');
+      assert.match(await text(page, '#chart-date'), /^February 4, 1988 · 16:30 · Chengdu$/);
+      assert.equal(await page.locator('#chart-view').isVisible(), true);
+    });
+
     check('a chart link opened without an account asks for one, then shows its chart', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'link' });
       await visit(page, { lang: 'en', address: `#chart?${link(BIRTH.date, BIRTH.time, 'en')}&topic=season` });
