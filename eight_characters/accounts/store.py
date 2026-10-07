@@ -563,18 +563,21 @@ class AccountStore:
 
     # ── Sessions ──
 
-    def create_session(self, session: Session) -> None:
+    def create_session(self, session: Session) -> bool:
+        """Keeps a session for its account, in the same statement that finds the
+        account: False, and no session, if the account is gone."""
         with self._write() as connection:
-            connection.execute(
+            created = connection.execute(
                 'INSERT INTO sessions (token_hash, user_id, created_at, expires_at) '
-                'VALUES (?, ?, ?, ?)',
+                'SELECT ?, id, ?, ? FROM users WHERE id = ?',
                 (
                     session.token_hash,
-                    session.user_id,
                     session.created_at,
                     session.expires_at,
+                    session.user_id,
                 ),
-            )
+            ).rowcount
+        return created == 1
 
     def session(self, token_hash: str) -> Session | None:
         with _connection(self.path) as connection:

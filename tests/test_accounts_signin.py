@@ -3,8 +3,9 @@ import tempfile
 import unittest
 from datetime import timedelta
 from pathlib import Path
+from unittest.mock import patch
 
-from eight_characters.accounts.records import Language, RecordError
+from eight_characters.accounts.records import Language, RecordError, User
 from eight_characters.accounts.signin import (
     CODE_LIFETIME,
     SESSION_LIFETIME,
@@ -143,6 +144,22 @@ class TestRedeemingCodes(SignInTestCase):
             'reader@example.com', self.code_for('reader@example.com', 'sign_in', None)
         )
         self.assertEqual((signed.user, signed.created), (user, False))
+
+    def test_an_account_deleted_while_signing_in_gets_no_session(self) -> None:
+        user = self.store.create_user('reader@example.com', 'fi')
+        code = self.code_for('reader@example.com', 'sign_in', None)
+        found = self.store.user_by_email
+
+        def deleted_meanwhile(email: str) -> User | None:
+            account = found(email)
+            self.store.delete_user(user.id)
+            return account
+
+        with (
+            patch.object(self.store, 'user_by_email', deleted_meanwhile),
+            self.assertRaises(CodeRefused),
+        ):
+            self.sign_in.redeem_code('reader@example.com', code)
 
     def test_a_code_works_once(self) -> None:
         code = self.code_for()
