@@ -283,7 +283,7 @@ for (const profile of profiles) {
       });
       await openChart(page, { lang: 'en' });
       await page.locator('button[data-context="roots"]').click();
-      const toast = page.locator('#chart-view .toast[role="status"]');
+      const toast = page.locator('.toast[role="status"]');
       assert.equal(await toast.textContent(), '');
       await page.locator('#copy-link-btn').click();
       await page.waitForFunction(() => document.querySelector('.toast').classList.contains('is-shown'));

@@ -77,12 +77,12 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
 
 ### Tests
 - `tests/browser/luck.test.mjs`:
-  - the arcs: their levels, middle members and feet, the natal arcs unmoved, resting in the branch phase, pointing, and none while hidden;
+  - the arcs: their levels, middle members and feet, the natal arcs keeping their depth and their cards, resting in the branch phase, pointing, and none while hidden;
   - the topics: none of their words natal, the topics' row drawn as a chart's without a gender, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
 - `tests/test_api_interactions.py`: the luck arcs' layout over every combination, four natal branches with a luck branch (248,832) and four natal stems with a luck stem (100,000). Every one fits four levels and four strands, and both limits are reached: in Zi Hai Hai Hai (子亥亥亥) with a luck Chou (丑), a branch combination and three directional combinations span the same columns.
 - Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
-## 0.41.1
+## 0.41.3
 
 A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.
 
@@ -102,7 +102,26 @@ A chart with a gender opens natal exactly as a chart without one. The luck pilla
 ### Tests
 - `tests/browser/luck.test.mjs`: the sample chart natal is drawn as the same birth without a gender: every pillar, card, panel and arc in the same place from the pillars' corner, the pillars' size, the room between the topics and the pillars, and what stands there, in all three displays, at 1440, 1024, 900 and 700px and on phones (390 and 320px). L and the switch show the luck pillar and its ribbon and take them away, the chart drawn as it was; focus goes to the chart's cards. A birth 0.48 s from Jingzhe keeps its natal notice when natal, and the luck notice goes. The keys' hint stays over its card through L, L again and N (which opens the page beside the chart), and the pointer's hint never stands where no card is once the luck pillar's card is taken away. The other tests show the luck pillar before they use the ribbon; natal, [ and ] show it from the ends of the timeline.
 - `tests/browser/foundations.test.mjs`: the audits visit the chart natal with a gender, then with its luck pillar shown.
-- Version bumped to `0.41.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Version bumped to `0.41.3`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.41.1 was held for this change; 0.41.2 went to the accounts fixes in the meantime.)
+
+## 0.41.2
+
+Fixes to accounts (0.41.0), from a read of the whole change: the page's language reaches every chart, signing out forgets the chart, and a comparison asks for the sign-in its frames cannot.
+
+### Fixed
+- **A chart on screen kept its language when the account's was set in its menu.** The page's words changed, and so did the chart's language switch, which then could not ask for the language it showed; the chart's own words stayed in the other. The chart is now asked for again in the language.
+- **A chart on its way kept the language it was asked for** when the page's changed meanwhile (in the account's menu, or on the start page), and was drawn in it, under the page's words in the other. It is now asked for again in the page's language before it is drawn, as often as the language changes meanwhile.
+- **Going back to a chart's address after signing out showed the chart again**, from the page's memory, with no session. Signing out now forgets the chart: going back asks for it, and for a sign-in.
+- **The page's title** named no chart once the page's language changed with a chart on screen; it names the chart again.
+- **A comparison whose session ended elsewhere** asked for no sign-in when its sides were swapped or its language changed: its frames, which cannot ask, each said that charts need an account. The page now makes sure of the session first, as when a comparison opens, and asks for the sign-in itself; a check that fails says so. Meanwhile the comparison's language and sides take no clicks, so one change is made at a time.
+- **A comparison's language** reached a frame still asking for its first chart, or showing none, as a script error, whose message the frame showed instead of its chart; and a frame asking for its chart again lost a newer language, so the comparison named a language its chart was not in. A frame now takes the comparison's language as the page takes the account's: a chart on screen is asked for again in it, and one on its way before it is drawn. The comparison's address names its language at once, and a swap draws both charts in it, though a frame has not yet told its new link (one that shows no chart never does).
+- **A comparison's toasts did not show**: Copy link's (Comparison link copied) was part of the chart's view, which a comparison hides. The toast is now the page's, over any view.
+- **A deletion begun in the account's menu**, its address typed, stayed open when the page took another account (signed in to in another tab); it is now closed, and the address cleared.
+- **Signing out on every device after the account was deleted in another tab** answered `204` and removed the session cookie, as if it had signed out. It now answers `401`, as the account's other actions do then.
+- **[Your account](docs/Account.md)** says that accounts are also kept in an encrypted backup, which only the site's owner can read, and how long a deleted account stays in it.
+
+### Changed
+- Version bumped to `0.41.2`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.41.0
 

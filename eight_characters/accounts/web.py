@@ -541,7 +541,10 @@ def sign_out_everywhere(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
-    accounts.sign_in.sign_out_everywhere(user.id)
+    if accounts.sign_in.sign_out_everywhere(user.id) == 0:
+        # Not even this session was left: the account went meanwhile (deleted in
+        # another tab), as PATCH, export and delete answer then.
+        raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED)
     _clear_session_cookie(response, accounts)
 
 
