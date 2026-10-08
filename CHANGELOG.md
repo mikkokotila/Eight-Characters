@@ -7,7 +7,7 @@ Charts need an account; the start page does not. Creating a chart while signed o
 ### Added
 - **The account dialog**, on the start page (Sign in) and when a chart needs it.
   - A new account needs its language, Finnish or English, chosen and never preset. Its emails come in it, and signing in sets the page to it; the chart asked for is then drawn in it.
-  - An existing account signs in from the same dialog, without a language. Every answer reads the same whether the address has an account or not.
+  - An existing account signs in from the same dialog, without a language. Every answer reads the same whether the address has an account or not. A sign-in answered after the page took another tab's session meanwhile signs in as the account the browser holds, as the server says.
   - Cloudflare Turnstile checks for a person; its script loads only when the dialog first opens, so the start page loads nothing from another site. A script that does not load is said, and tried again.
   - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
 - **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty. As it opens (or, opened again while an action or this question is under way, once that one ends), it asks who the session belongs to, and its actions wait for the answer, so it never acts for an account another tab has left, and shows a language another tab set. An action answered after the page has learned of another session changes nothing, and says so.

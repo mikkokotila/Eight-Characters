@@ -8,9 +8,9 @@ import { readFile } from 'node:fs/promises';
 import {
   assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU,
 } from './chart-helpers.mjs';
-import { newAccount, newSession, asAccount, signInPage, turnstileAnswered } from './account-helpers.mjs';
+import { newAccount, newSession, asAccount, readCode, signInPage, turnstileAnswered } from './account-helpers.mjs';
 import {
-  BIRTH, link, visit, chartsAskedFor, askForChart, dialogIsOpen, dialogOpens, dialogCloses, text,
+  BIRTH, link, visit, chartsAskedFor, askForChart, dialogIsOpen, dialogOpens, dialogCloses, text, sendCode,
   signInThroughDialog,
 } from './account-page.mjs';
 
@@ -669,6 +669,65 @@ for (const profile of profiles) {
       assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'true');
       const stored = await asAccount(playwright, account, async (request) => (await request.get('/api/account')).json());
       assert.equal(stored.language, 'fi');
+    });
+
+    check("a sign-in answered after the page took another tab's session leaves that one", async (page) => {
+      const earlier = await newAccount(playwright, { language: 'fi', label: 'late-in-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'late-in-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The earlier session ends elsewhere. The next chart is refused, and the refusal
+      // held on its way.
+      await asAccount(playwright, earlier, async (request) => {
+        assert.equal((await request.delete('/api/account/session')).status(), 204);
+      });
+      const chart = await holdAnswer(page, '**/api/four_pillars', 'POST');
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      await chart.answered;
+      // The menu, opened meanwhile, finds the session ended and asks for a sign-in.
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('tili');
+      await page.keyboard.press('Enter');
+      await dialogOpens(page);
+      await page.locator('#account-start').waitFor({ state: 'visible' });
+      // The earlier account signs in again. The answer has set its cookie; its body is
+      // held on its way.
+      await page.evaluate(() => {
+        const fetched = window.fetch.bind(window);
+        window.__signInAnswered = new Promise((resolve) => { window.__signInAnswer = resolve; });
+        window.fetch = async (url, init) => {
+          const response = await fetched(url, init);
+          if (String(url) !== '/api/account/session' || !init || init.method !== 'POST') return response;
+          const released = new Promise((resolve) => { window.__releaseSignIn = resolve; });
+          const json = response.json.bind(response);
+          response.json = async () => { await released; return json(); };
+          window.__signInAnswer();
+          return response;
+        };
+      });
+      await sendCode(page, earlier.email);
+      await page.locator('#account-code').fill(await readCode(earlier.email));
+      await page.locator('#account-verify').click();
+      await page.evaluate(() => window.__signInAnswered);
+      // Another tab signs in to another account, which the refused chart's check,
+      // released now, takes: the page speaks its language.
+      await page.context().addCookies(later.cookies);
+      chart.release();
+      await page.waitForFunction(() => document.documentElement.lang === 'en');
+      // The sign-in's answer comes last. The page keeps the account the browser holds,
+      // and its language (taking the sign-in's would turn the page Finnish).
+      await page.evaluate(() => window.__releaseSignIn());
+      await dialogCloses(page);
+      await page.waitForTimeout(300);
+      assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('account');
+      await page.keyboard.press('Enter');
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
     });
 
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {

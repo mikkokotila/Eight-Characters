@@ -349,6 +349,7 @@
         return;
       }
       setBusy(verify, true, 'account_checking');
+      const session = held;
       try {
         const response = await call('POST', '/api/account/session', { email: asked.email, code: typed });
         if (response.status === 400) {
@@ -357,7 +358,21 @@
           return;
         }
         if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
-        signedIn(await response.json());
+        const value = await response.json();
+        if (session === held) {
+          signedIn(value);
+          return;
+        }
+        // The page took, or ended, a session while this answer was on its way: the
+        // browser may hold another tab's session now, set after this one. The server
+        // says whose it is, and the page signs in as that account.
+        const now = await call('GET', '/api/account');
+        if (now.status === 401) {
+          ended();
+          return;
+        }
+        if (!now.ok) throw new Error(t('account_server_error', { status: now.status }));
+        signedIn(await now.json());
       } catch (err) {
         console.error(err);
         setStatus(codeStatus, err.message);
