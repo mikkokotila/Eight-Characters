@@ -3,14 +3,8 @@ from datetime import datetime, timedelta
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
-from eight_characters.main import (
-    CityLookupServiceError,
-    LocationInput,
-    ResolvedCity,
-    app,
-)
+from eight_characters.main import CityLookupServiceError, LocationInput, ResolvedCity
+from tests.accounts_support import signed_in_client
 
 # The first geocoder results for 'Chengdu' (open-meteo, 2026-09-25): three places
 # with the same name, two of them in the same province.
@@ -48,7 +42,7 @@ CHENGDU_GEOCODER_RESULTS: list[dict[str, Any]] = [
 class TestApiFourPillarsEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def test_canonical_case_returns_expected_pillars(self) -> None:
         response = self.client.post(

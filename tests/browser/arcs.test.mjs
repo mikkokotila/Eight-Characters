@@ -250,6 +250,13 @@ for (const profile of profiles) {
         assert.deepEqual(await inks(), { ...everyArc(INK.receded), [chosen.id]: INK.chosen });
         await page.keyboard.press('Escape');
         await settled(page);
+        assert.equal(await page.locator('.relationship-chip').nth(2).getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('.relationship-arcs.has-selection, .relationship-arc.is-active').count(), 0);
+        assert.equal(await page.locator('.relationship-chip').nth(2).evaluate((node) => node === document.activeElement), true);
+        // Escape returns keyboard focus to the chip, whose spotlight can still light
+        // its arc. Moving focus outside the panel clears that independent spotlight.
+        await page.locator('#relationships-topic').focus();
+        await settled(page);
         assert.deepEqual(await inks(), everyArc(INK.rest));
       });
 
