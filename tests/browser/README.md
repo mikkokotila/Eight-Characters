@@ -16,8 +16,10 @@ at the end. Start the app with its account settings (see
   the network;
 - `EC_APP_ORIGIN` the same as `EC_BASE_URL` here, since the app refuses account
   requests from another origin;
-- `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` of at least 100: every suite, and most
-  account tests, ask for a code.
+- `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` of at least 1000: every suite, and most
+  account tests, ask for a code, all from one client within the hour. The account
+  sessions suite alone asks for some 120 over its two profiles, and a full run for a
+  few hundred.
 
 Then run from the repository root:
 
