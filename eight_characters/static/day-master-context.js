@@ -169,6 +169,13 @@
         <div class="relationship-element">${esc(luck.cards.branch.element_label)}</div>
         <div class="context-evidence-list">${luck.roots.map((e) => evidenceMarkup(e, { rootMatch: true })).join('')}</div>
       </div>`;
+    // The roots' label, on their topic and their page: the natal one, and while the luck
+    // branch roots the Day Master too, that root with it: "Roots in 3 branches" and "+ luck",
+    // or, with no natal root, "Root in the luck pillar's branch".
+    const rootsLabels = () => {
+      if (luck === null || luck.roots.length === 0) return [natal.rootsLabel, ''];
+      return natal.rootPillars.length === 0 ? [t('context_roots_luck_only'), ''] : [natal.rootsLabel, t('topic_luck_roots')];
+    };
     const rootsPage = () => {
       const withLuck = luck !== null && luck.roots.length > 0;
       const members = natal.rootPillars.length + (withLuck ? 1 : 0);
@@ -178,7 +185,7 @@
         : `<p class="relationship-empty">${esc(t('context_no_roots'))}</p>`;
       return {
         path: 'roots', title: t('context_roots'), evidence: [...natal.data.roots, ...(withLuck ? luck.roots : [])],
-        markup: makePage(t('context_roots'), natal.rootsLabel, content, natal.withReadings(t('context_roots_note'))),
+        markup: makePage(t('context_roots'), rootsLabels().filter(Boolean).join(' '), content, natal.withReadings(t('context_roots_note'))),
       };
     };
     // The roles the luck pillar brings in its phase, under the roles overview.
@@ -269,8 +276,8 @@
         };
       }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
-        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} data-label="${esc(pages[key].title + ' · ' + label)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}${
-          ['roots', 'roles'].includes(key) ? '<span class="topic-delta"></span>' : ''}</button>`).join('');
+        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} data-title="${esc(pages[key].title)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${
+          ['roots', 'roles'].includes(key) ? `<span class="topic-label">${esc(label)}</span><span class="topic-delta"></span>` : esc(label)}</button>`).join('');
       setLuck(luck);
     };
     // What the luck pillar's period adds to the Roots and Roles topics while it stands in
@@ -281,15 +288,17 @@
     const setLuck = (period) => {
       luck = period;
       if (natal === null) return;
-      const added = {
-        roots: luck !== null && luck.roots.length > 0 ? [t('topic_luck_roots'), '+1'] : null,
-        roles: luck !== null && luck.newRoles > 0 ? [t('topic_luck_roles', { count: luck.newRoles }), `+${luck.newRoles}`] : null,
+      const [rootsLabel, rootsWord] = rootsLabels();
+      const topics = {
+        roots: [rootsLabel, rootsWord, luck !== null && luck.roots.length > 0 ? '+1' : null],
+        roles: [t('roles_title'), luck !== null && luck.newRoles > 0 ? t('topic_luck_roles', { count: luck.newRoles }) : '',
+          luck !== null && luck.newRoles > 0 ? `+${luck.newRoles}` : null],
       };
-      Object.entries(added).forEach(([key, addition]) => {
+      Object.entries(topics).forEach(([key, [label, word, badge]]) => {
         const button = controls.querySelector(`button[data-context="${key}"]`);
-        const [word, badge] = addition ?? ['', null];
+        button.querySelector('.topic-label').textContent = label;
         button.querySelector('.topic-delta').textContent = word ? ` ${word}` : '';
-        button.setAttribute('aria-label', [button.dataset.label, word].filter(Boolean).join(' '));
+        button.setAttribute('aria-label', [`${button.dataset.title} · ${label}`, word].filter(Boolean).join(' '));
         if (badge === null) delete button.dataset.controlLuck;
         else button.dataset.controlLuck = badge;
       });

@@ -1208,6 +1208,30 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-luck-topics`);
     });
 
+    check('with no natal root, the luck branch\'s root names the Roots topic and its page', async (page) => {
+      // 15 April 1975, 12:00, Helsinki, female: Day Master 辛 Xin, whose Metal no natal branch
+      // holds. The fourth decade, 甲申 Jia Shen, roots it in Shen's 庚 Geng.
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, `/#chart?${new URLSearchParams({
+        date: '1975-04-15', time: '12:00', place: HELSINKI.display, city: HELSINKI.city,
+        latitude: String(HELSINKI.latitude), longitude: String(HELSINKI.longitude), timezone: HELSINKI.timezone,
+        lang: 'en', gender: 'female', luck: '4/stem',
+      })}`, { place: HELSINKI });
+      const roots = page.locator('button[data-context="roots"]');
+      const read = async () => [(await roots.textContent()).replace(/\s+/g, ' ').trim(), await roots.getAttribute('aria-label')];
+      assert.deepEqual(await read(), ['Root in the luck pillar’s branch', 'Roots · Root in the luck pillar’s branch']);
+      await click(page, 'button[data-context="roots"]');
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'Root in the luck pillar’s branch');
+      assert.deepEqual(await page.locator('#context-detail .relationship-member .relationship-identity').allTextContents(), ['Shen 申']);
+      // Natal, there is none, and the topic and its page say so.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await read(), ['No roots detected', 'Roots · No roots detected']);
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'No roots detected');
+      assert.equal(await page.locator('#context-detail .relationship-member').count(), 0);
+    });
+
     check('on paper a luck pillar shown stands fifth, and a natal chart has its four columns', async (page) => {
       await openSample(page);
       await page.setViewportSize({ width: 1024, height: 900 });
