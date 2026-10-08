@@ -217,6 +217,8 @@ class RelationshipReading(TypedDict):
 class RingStage(TypedDict):
     stage: int
     branch: str
+    # The branch's pinyin, which names its character wherever the ring shows it.
+    pinyin: str
     name: str
     chinese: str
 
@@ -616,6 +618,7 @@ def build_reading(
         {
             'stage': stage,
             'branch': branch,
+            'pinyin': BRANCHES[branch]['pinyin'],
             'name': canon['stages'][stage]['name'],
             'chinese': canon['stages'][stage]['chinese'],
         }

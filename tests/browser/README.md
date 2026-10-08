@@ -154,12 +154,19 @@ change. It checks:
 - that each line's words are the API's own, first sentence and passage;
 - that kinds of reading stay open from page to page;
 - the Day Master's page, its cycle and ring, and its link after a reload;
+- the ring's labels: every point's stage, its branch by pinyin and character, and
+  the pillars on it, one to a line, and the Day Master over its pinyin in the
+  centre, for the canon's example and for a chart with all four pillars on one
+  branch. For every Day Master, the ring is drawn with the four pillars on every
+  set of stages they can stand on together (13,650 rings), and no line's ink may
+  meet another line, the ring, a point or the figure's edge;
 - that links open their page at their line, one step in the history;
 - R and the arrow keys;
 - that a full panel keeps the page's margins;
 - relationship conditions, stem combinations with and without the Day Master,
   and frames;
-- the refusal of a reading that does not match its chart;
+- the refusal of a reading that does not match its chart, or whose ring lacks a
+  branch's pinyin or contradicts the chart's;
 - print.
 
 The foundations suite's font, glyph and contrast audits also visit the Day
