@@ -231,11 +231,20 @@ class TestUsers(StoreTestCase):
         self.assertEqual(self.store.set_language(user.id, 'fi'), user)
         self.assertEqual(self.store.backup_snapshot().changes, ())
 
-    def test_updated_at_never_goes_back_with_the_clock(self) -> None:
+    def test_each_change_moves_updated_at_on(self) -> None:
+        # Within one second, and with the clock gone back, each change still comes
+        # after the last, so that a page told of the account twice keeps the later.
         user = self.store.create_user('reader@example.com', 'fi')
+        self.assertEqual(
+            self.store.set_language(user.id, 'en').updated_at, '2026-10-07T12:00:01Z'
+        )
         self.clock.advance(-3600)
         self.assertEqual(
-            self.store.set_plan(user.id, 'basic').updated_at, user.created_at
+            self.store.set_plan(user.id, 'basic').updated_at, '2026-10-07T12:00:02Z'
+        )
+        self.clock.advance(3600 + 60)
+        self.assertEqual(
+            self.store.set_plan(user.id, 'pro').updated_at, '2026-10-07T12:01:00Z'
         )
 
     def test_changes_refuse_unknown_values_and_users(self) -> None:

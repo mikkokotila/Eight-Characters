@@ -83,7 +83,7 @@ so the database alone cannot be used to test guesses or take over a session.
 |---|---|---|
 | `POST /api/account/code` | sends a code, or word of no account | `202`; `400` malformed, `403` failed person check, `429` over the hourly limit (with `Retry-After`), `502` the email could not be sent, `503` Turnstile not answering |
 | `POST /api/account/session` | signs in with a code, creating the account if it was asked for | `200` and the account; `400` wrong or used code |
-| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at}`; `401` |
+| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at, updated_at}`; `401` |
 | `PATCH /api/account` | sets `language`; `email` names the account | `200`; `400`, `401`, `409` |
 | `DELETE /api/account/session` | signs this browser out | `204` |
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"email": …}` names it | `204`; `400`, `401`, `409` |
@@ -113,7 +113,7 @@ birth. Creating the chart asks for an account first.
 put on one.
 
 - **Who is signed in.** `GET /` writes the account (`{email, language, plan,
-  created_at}`, or `null`) into `<script id="account-state">`, sent with
+  created_at, updated_at}`, or `null`) into `<script id="account-state">`, sent with
   `Cache-Control: private, no-cache` so that no shared cache keeps it. The page extends
   a session in its second half too, on the server, and sends no cookie (see step 4).
 - **Signing in** (`static/account.js`). Creating a chart while signed out opens the
@@ -140,10 +140,12 @@ put on one.
   that carries it, of the cookie as it was sent; an answer that sets or removes it
   (signing in, signing out, deleting the account), of the cookie from when it comes.
   The page takes who is signed in from the newest of these, and an answer older than
-  what it has taken changes nothing, however late it comes. The newest answer is
-  taken whole, the account's language and plan with it; another account, signed in to
-  in another tab, is taken as a sign-in here, with its language, and a dialog asking
-  for a sign-in closes, signed in to it. So a sign-in whose answer sets its cookie
+  what it has taken changes nothing, however late it comes. Another account, signed in
+  to in another tab, is taken as a sign-in here, with its language, and a dialog asking
+  for a sign-in closes, signed in to it. Of one account, the page keeps the language
+  and plan of the later change: every change moves the account's `updated_at` past the
+  last (by a second, within one second or with the clock gone back), and every answer
+  carries it, since a check sent after a change may read the account before it. So a sign-in whose answer sets its cookie
   after a check found another tab's account signs the page in, and one overtaken by a
   newer answer (another tab's account, or the session ended since) closes signed in to
   that account, or asks for a sign-in again.
@@ -169,7 +171,8 @@ put on one.
   its moment too: if the page has learned nothing since, it is the session's (a
   language set there signs the page in to its account, even after an older check found
   the session ended), and if the page has learned since, it keeps that, and the action
-  does nothing more and says so (a language another tab set since stays). A sign-out or
+  does nothing more and says so. A language set is saved, and shown, unless a later
+  change of the account (another tab's) stands. A sign-out or
   deletion that went through still signs the page out, since its answer removed the
   cookie.
 

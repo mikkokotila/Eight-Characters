@@ -13,7 +13,7 @@ import sqlite3
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final
 
@@ -28,6 +28,7 @@ from eight_characters.accounts.records import (
     is_plan,
     new_id,
     normalize_email,
+    parse_timestamp,
     timestamp,
     user_path,
 )
@@ -540,7 +541,13 @@ class AccountStore:
             )
             if changed == current:
                 return current
-            changed = replace(changed, updated_at=max(self._now(), current.updated_at))
+            # Each change moves updated_at past the last, even within one second or with
+            # the clock gone back: of two answers about the account, a page keeps the
+            # later change's.
+            after = timestamp(
+                parse_timestamp(current.updated_at) + timedelta(seconds=1)
+            )
+            changed = replace(changed, updated_at=max(self._now(), after))
             connection.execute(
                 'UPDATE users SET language = ?, plan = ?, updated_at = ? WHERE id = ?',
                 (changed.language, changed.plan, changed.updated_at, changed.id),

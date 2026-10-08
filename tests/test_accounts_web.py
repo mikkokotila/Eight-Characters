@@ -247,6 +247,7 @@ class TestSigningIn(AccountApiTestCase):
             'language': 'fi',
             'plan': 'free',
             'created_at': '2026-10-07T12:00:00Z',
+            'updated_at': '2026-10-07T12:00:00Z',
         }
         self.assertEqual(reply.json(), expected)
         cookie = SimpleCookie(reply.headers['set-cookie'])['__Host-ec_session']

@@ -959,6 +959,49 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'en');
     });
 
+    check('a language saved after a newer check read the old one is kept', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'set-late-read' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // A comparison, then back to its second birth, so that coming forward checks the
+      // session again.
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      // Finnish is set in the menu, and the request held before it reaches the server.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
+      const patch = await holdRequest(page, '**/api/account', 'PATCH');
+      await page.locator('[data-account-lang="fi"]:not([disabled])').click();
+      await patch.sent;
+      // The comparison, come forward, checks the session: the newer question, answered
+      // while the account is still in English.
+      const checked = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/account'
+        && response.request().method() === 'GET');
+      await page.goForward();
+      assert.equal((await (await checked).json()).language, 'en');
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // Finnish reaches the server now, after that answer: the page keeps it, the later
+      // change, and says it is saved.
+      patch.release();
+      await page.locator('#account-status').filter({ hasText: 'Tallennettu.' }).waitFor();
+      assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.evaluate(() => document.documentElement.lang), 'fi');
+      const stored = await asAccount(playwright, account, async (request) => (await request.get('/api/account')).json());
+      assert.equal(stored.language, 'fi');
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);

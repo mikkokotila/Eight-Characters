@@ -139,6 +139,7 @@ class TestTheStartPage(unittest.TestCase):
                 'language': 'en',
                 'plan': 'free',
                 'created_at': user.created_at,
+                'updated_at': user.updated_at,
             },
         )
         self.assertNotIn(client.cookies[SESSION_COOKIE], response.text)
@@ -154,6 +155,7 @@ class TestTheStartPage(unittest.TestCase):
                 'language': 'en',
                 'plan': 'free',
                 'created_at': '2026-10-07T12:00:00Z',
+                'updated_at': '2026-10-07T12:00:00Z',
             },
             turnstile_site_key='key',
             app_version='0',

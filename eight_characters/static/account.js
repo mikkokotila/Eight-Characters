@@ -10,6 +10,9 @@
 (() => {
   const TURNSTILE_SCRIPT = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
   const LANGUAGES = ['fi', 'en'];
+  // When an account last changed, as the server writes it: the fixed form orders as
+  // text the way the moments do, and each change moves it on.
+  const CHANGED = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
   // What a refused request for a code means, by its status.
   const CODE_REFUSALS = {
     400: 'account_bad_email',
@@ -63,7 +66,8 @@
     // An account as the server describes it; anything else stops the page.
     const accountOf = (value) => {
       if (value === null || typeof value !== 'object' || typeof value.email !== 'string'
-        || !LANGUAGES.includes(value.language) || typeof value.plan !== 'string') {
+        || !LANGUAGES.includes(value.language) || typeof value.plan !== 'string'
+        || typeof value.updated_at !== 'string' || !CHANGED.test(value.updated_at)) {
         throw new Error(`Not an account: ${JSON.stringify(value)}`);
       }
       return value;
@@ -265,7 +269,7 @@
 
     // ── Signing in ──
     const signedIn = (value) => {
-      account = accountOf(value);
+      account = later(accountOf(value));
       // The account's language is the page's from now on, until the reader changes it.
       onLanguage(account.language);
       closeSignedIn();
@@ -410,18 +414,23 @@
       email.focus();
     });
 
+    // Of two descriptions of one account, the later change's (`updated_at` moves on with
+    // each); another account's is taken whole.
+    const later = (told) => (account === null || told.email !== account.email
+      || told.updated_at >= account.updated_at ? told : account);
     // The newest answer of whose the session is, from moment `at`, names `value`'s
-    // account, and the page takes it whole: an older answer, about the session as it was
+    // account, and the page takes it: an older answer, about the session as it was
     // before, changes nothing. Another account, signed in to in another tab (the tabs
     // share the session cookie), is taken as a sign-in here: the page takes its language,
-    // and a dialog asking for a sign-in closes, signed in to it. Of the same account, the
-    // page follows the language only when the reader has just set it (`follow`).
-    const take = (at, value, follow = false) => {
+    // and a dialog asking for a sign-in closes, signed in to it. Of the same account the
+    // page keeps the later change's language and plan, which a check read before a
+    // change of the reader's may not carry.
+    const take = (at, value) => {
       const told = accountOf(value);
       const another = account === null || told.email !== account.email;
       known = at;
-      account = told;
-      if (another || follow) onLanguage(account.language);
+      account = later(told);
+      if (another) onLanguage(account.language);
       if (another && dialog.open && step !== 'menu') closeSignedIn();
       else refresh();
     };
@@ -578,16 +587,16 @@
         if (!response.ok) throw refused(response);
         const value = accountOf(await response.json());
         // Set for the account named, in the session as it was sent. If the page has
-        // learned nothing since, that is the session, and the page takes the account with
-        // the language set (as a sign-in, if it held another or none). If it has, it
-        // keeps what it learned, and the language is saved only if it shows it too.
-        if (at > known) {
-          take(at, value, true);
-        } else if (account === null || account.email !== named || account.language !== value.language) {
-          return changed();
-        } else {
-          onLanguage(account.language);
-        }
+        // learned nothing since, that is the session, and the page takes the account (as
+        // a sign-in, if it held another or none). Of the account, the page keeps the later
+        // change: the language is saved if that is this one; if another, a tab's since,
+        // nothing was done.
+        if (at > known) take(at, value);
+        if (account === null || account.email !== named) return changed();
+        account = later(value);
+        if (account.updated_at !== value.updated_at) return changed();
+        onLanguage(account.language);
+        refresh();
         setStatus(status, t('account_saved'), false);
       });
     });

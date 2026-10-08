@@ -338,6 +338,7 @@ class AccountView(TypedDict):
     language: Language
     plan: str
     created_at: str
+    updated_at: str
 
 
 def account_view(user: User) -> AccountView:
@@ -347,6 +348,7 @@ def account_view(user: User) -> AccountView:
         'language': user.language,
         'plan': user.plan,
         'created_at': user.created_at,
+        'updated_at': user.updated_at,
     }
 
 
