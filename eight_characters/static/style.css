@@ -1364,8 +1364,11 @@ body {
 .life-link[data-kind='directional_combination'] { border-top-width: 2px; }
 .life-link:is([data-kind='punishment'], [data-kind='half_punishment'], [data-kind='self_punishment']) { border-top: 2px dashed var(--ink-2); }
 .life-link[data-kind='harm'] { border-top: 2px dotted var(--ink-2); }
-/* In the chosen decade, what rests until the other phase grows quiet. */
-:is(.life-mark, .life-link).is-quiet { opacity: 0.45; }
+/* In the chosen decade, what rests until the other phase grows quiet: a mark's words and
+   its kind's line in the secondary ink, which still reads at 4.5:1, its outline in the
+   faint line, and a joining line in the secondary line. */
+.life-mark.is-quiet { color: var(--ink-2); border-color: var(--line-1); box-shadow: none; }
+.life-link.is-quiet { border-top-color: var(--line-2); }
 /* Today, across the natal columns, to the Luck column's edge. */
 .life-today {
   position: relative;
