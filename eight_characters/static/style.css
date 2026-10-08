@@ -1022,13 +1022,12 @@ body {
   color: var(--ink-2);
 }
 
-/* ── The luck pillar: a fifth column beside the Year, in a chart with a gender
-   (luck.js). It keeps its place and its size whether it shows or not, so showing it
-   moves nothing: hidden, only what the decade adds is out of sight. ── */
+/* ── The luck pillar: a fifth column beside the Year, while it shows (luck.js). Hidden,
+   the chart is natal, with its four columns, as a chart without a gender. ── */
 .pillars.has-luck,
 .pillars.has-luck .relationship-arcs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .pillar.is-luck { position: relative; }
-/* Its lane: a quiet band behind the column, whether it shows or not. */
+/* Its lane: a quiet band behind the column. */
 .pillar.is-luck::before {
   content: '';
   position: absolute;
@@ -1038,26 +1037,11 @@ body {
   background: var(--surface-1);
   box-shadow: inset 0 0 0 1px var(--line-1);
 }
-/* Hidden, or before the first decade, the cards keep their room unseen; hidden, so do
-   the column's name and mark. */
-.pillar.is-luck:not([data-luck-state='on']) .card-face,
-.pillar.is-luck:not([data-luck-state='on']) .hidden-stems-panel,
-.pillar.is-luck[data-luck-state='off'] .pillar-header > * { visibility: hidden; }
-.pillar.is-luck:not([data-luck-state='on']) .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
+/* Before the first decade, the cards keep their room unseen. */
+.pillar.is-luck[data-luck-state='none'] .card-face,
+.pillar.is-luck[data-luck-state='none'] .hidden-stems-panel,
 .pillar.is-luck[data-luck-state='none'] .pillar-chars { visibility: hidden; }
-/* Hidden, the stem's room says what brings it back. */
-.luck-ghost {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  padding: var(--space-3);
-  font-size: var(--text-1);
-  text-align: center;
-  color: var(--ink-2);
-  pointer-events: none;
-}
+.pillar.is-luck[data-luck-state='none'] .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
 /* In the stem phase the stem leads and the branch acts too; in the branch phase the
    branch leads, and the stem is set aside. */
 .card[data-luck-part='leading']::after {
@@ -2742,10 +2726,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 
   .chart-container,
   .chart-container.has-panel { display: block; max-width: none; padding-bottom: 0; }
-  /* A hidden luck pillar is not printed, and leaves the chart its four columns. */
-  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']),
-  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']) .relationship-arcs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .pillar.is-luck[data-luck-state='off'] { display: none; }
   .pillars { break-inside: avoid; }
   .chart-bar,
   .chart-topics { break-after: avoid; }
