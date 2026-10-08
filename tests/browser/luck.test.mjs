@@ -1087,6 +1087,9 @@ for (const profile of profiles) {
           box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
         };
       }));
+      // Each topic's icon badge (controls.js), by topic.
+      const badges = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#context-controls button, #relationships-topic')]
+        .map((button) => [button.dataset.context ?? 'relationships', button.querySelector('.control-caption')?.dataset.caption ?? null])));
       // The same birth without a gender, then with one: natal, its topics are the same.
       await openSample(page, { gender: null });
       const plain = await topics();
@@ -1094,17 +1097,21 @@ for (const profile of profiles) {
       const natal = await topics();
       assert.deepEqual(natal.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
       assert.deepEqual(natal, plain);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
       await page.locator('.card.stem[data-pillar="year"]').focus();
       await page.keyboard.press('l');
       await settled(page);
       const shown = await topics();
-      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem combinations.
+      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem
+      // combinations; the badges say so too.
       assert.deepEqual(shown.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3 + 2)']);
+      assert.deepEqual(await badges(), { season: null, roots: '3+1', roles: '+2', relationships: '3+2' });
       assert.equal(await page.locator('button[data-context="roots"]').getAttribute('aria-label'), 'Roots · Roots in 3 branches + luck');
-      // Hidden again, the topics are natal again.
+      // Hidden again, the topics are natal again, badges too.
       await page.keyboard.press('l');
       await settled(page);
       assert.deepEqual(await topics(), natal);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
       await page.keyboard.press('l');
       await settled(page);
       // The Roots page adds the luck branch's root, and points at it.

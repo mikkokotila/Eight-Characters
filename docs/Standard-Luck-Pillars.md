@@ -107,8 +107,11 @@ topics, for its phase:
   natal ones do, with the luck pillar's card and arc; the canon has no readings for
   them yet.
 
-Natal, there are none of these: the topics read as a chart's without luck pillars. A
-luck relationship chosen that stops acting, as a stem's does in the branch phase, closes.
+The topics' icons say the same on their badges: Relationships 3+2, Roots 3+1 (the luck
+branch as one more root), Roles +2; the words are in their names, as a screen reader
+reads them. Natal, there are none of these: the topics read as a chart's without luck
+pillars. A luck relationship chosen that stops acting, as a stem's does in the branch
+phase, closes.
 
 ## A decade's page
 

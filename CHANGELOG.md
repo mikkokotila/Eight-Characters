@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.42.0
+## 0.43.0
 
 The luck pillar's relationships stand on the chart as arcs, and the topics take what it adds. This is the luck pillar design's fourth slice, in its second part. The life grid comes next.
 
@@ -16,7 +16,7 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
   - Roles reads "+ 2 new" for the roles new to the chart that act in the phase, and its page adds what the luck pillar brings, each marked when new.
   - Relationships reads "(3 + 2)", and its list adds the luck pillar's that act in the phase, under their own heading. They open as the natal ones do; the canon has no readings for them yet.
 
-  Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
+  Their icons' badges (0.42.0) say the same: Relationships 3+2, Roots 3+1 (the luck branch one more root), Roles +2. The words are in their names, as screen readers read them. Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
 - **Finnish, provisional until confirmed:** + onni (Roots), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
 
 ### Changed
@@ -27,9 +27,9 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
   - the arcs: their levels, middle members and feet, the natal arcs keeping their depth and their cards, resting in the branch phase, pointing, and none while hidden;
   - the topics: none of their words natal, the topics' row drawn as a chart's without a gender, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
 - `tests/test_api_interactions.py`: the luck arcs' layout over every combination, four natal branches with a luck branch (248,832) and four natal stems with a luck stem (100,000). Every one fits four levels and four strands, and both limits are reached: in Zi Hai Hai Hai (子亥亥亥) with a luck Chou (丑), a branch combination and three directional combinations span the same columns.
-- Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Version bumped to `0.43.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
-## 0.41.3
+## 0.42.1
 
 A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.
 
@@ -49,7 +49,32 @@ A chart with a gender opens natal exactly as a chart without one. The luck pilla
 ### Tests
 - `tests/browser/luck.test.mjs`: the sample chart natal is drawn as the same birth without a gender: every pillar, card, panel and arc in the same place from the pillars' corner, the pillars' size, the room between the topics and the pillars, and what stands there, in all three displays, at 1440, 1024, 900 and 700px and on phones (390 and 320px). L and the switch show the luck pillar and its ribbon and take them away, the chart drawn as it was; focus goes to the chart's cards. A birth 0.48 s from Jingzhe keeps its natal notice when natal, and the luck notice goes. The keys' hint stays over its card through L, L again and N (which opens the page beside the chart), and the pointer's hint never stands where no card is once the luck pillar's card is taken away. The other tests show the luck pillar before they use the ribbon; natal, [ and ] show it from the ends of the timeline.
 - `tests/browser/foundations.test.mjs`: the audits visit the chart natal with a gender, then with its luck pillar shown.
-- Version bumped to `0.41.3`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.41.1 was held for this change; 0.41.2 went to the accounts fixes in the meantime.)
+- Version bumped to `0.42.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.41.3 was held for this change; main reached 0.42.0 in the meantime.)
+
+## 0.41.3
+
+The Day Master's ring names every character with its pinyin, and every pillar on it in full. Nothing else on the page changes.
+
+### Fixed
+- **Characters alone on the ring.** The twelve branches inside the ring and the Day Master in its centre showed their characters alone, such as 子 and 壬. Each point of the ring now reads away from the ring, one line under another: its stage, its branch by pinyin and character ("Zi 子"), and the pillars on it. The Day Master stands in the centre, its character over its pinyin. The pinyin has no tone marks.
+- **Pillar names cut off at the ring's sides.** Where pillars shared a branch, their names stood on one line, such as "YEAR · MONTH · HOUR", and at the sides of the ring that line ran out of the figure. Drawn for every Day Master with the four pillars on every set of stages they can stand on together, 5,010 of the 13,650 rings cut a name off.
+  - Each pillar now takes its own line.
+  - The labels down each side of the ring move apart as far as they need to. In none of the 13,650 rings, in Chromium or WebKit, does a line's ink meet another line, the ring, a point or the figure's edge.
+  - The figure is as tall as its labels need: 292 to 360 units, where it was 280. It keeps its width, so the type keeps its size, on phones and on paper too.
+
+### Added
+- **API:** each entry of `reading.day_master.cycle.ring` carries its branch's `pinyin`.
+- The page refuses a reading whose ring lacks a branch's pinyin, or names one of the chart's branches by another pinyin than the chart does: "The chart's reading is incomplete: the ring."
+
+### Tests
+- `tests/browser/reading.test.mjs`:
+  - the ring of the canon's example, point by point, and of a chart with all four pillars on the Rat;
+  - for each of the ten Day Masters, the ring with the four pillars on each of the 1,365 sets of stages they can stand on together: every character with its own pinyin, and no line's ink meeting another line, the ring, a point or the figure's edge;
+  - the refusal of a ring without a branch's pinyin, or with another pinyin than the chart's.
+
+  On 0.40.0, these fail.
+- `tests/test_api_reading.py`: every Day Master's ring names its twelve branches by their pinyin, without diacritics, and the canon's example's ring runs from the Birth on the Monkey.
+- Version bumped to `0.41.3`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.41.2
 

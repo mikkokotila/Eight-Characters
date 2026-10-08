@@ -269,24 +269,29 @@
         };
       }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
-        <button type="button" class="reading-toggle context-toggle" data-context="${key}" data-label="${esc(pages[key].title + ' · ' + label)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}${
+        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} data-label="${esc(pages[key].title + ' · ' + label)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}${
           ['roots', 'roles'].includes(key) ? '<span class="topic-delta"></span>' : ''}</button>`).join('');
       setLuck(luck);
     };
     // What the luck pillar's period adds to the Roots and Roles topics while it stands in
-    // the chart: a word on each button, and its part of their pages. Natal (null), there is
-    // none, and the topics read as a chart's without luck pillars.
+    // the chart: a word on each button, the same on its icon's badge (controls.js: the luck
+    // branch as one more root, +1; the roles new to the chart, +2), and its part of their
+    // pages. Natal (null), there is none, and the topics read as a chart's without luck
+    // pillars.
     const setLuck = (period) => {
       luck = period;
       if (natal === null) return;
-      const words = {
-        roots: luck !== null && luck.roots.length > 0 ? t('topic_luck_roots') : '',
-        roles: luck !== null && luck.newRoles > 0 ? t('topic_luck_roles', { count: luck.newRoles }) : '',
+      const added = {
+        roots: luck !== null && luck.roots.length > 0 ? [t('topic_luck_roots'), '+1'] : null,
+        roles: luck !== null && luck.newRoles > 0 ? [t('topic_luck_roles', { count: luck.newRoles }), `+${luck.newRoles}`] : null,
       };
-      Object.entries(words).forEach(([key, word]) => {
+      Object.entries(added).forEach(([key, addition]) => {
         const button = controls.querySelector(`button[data-context="${key}"]`);
+        const [word, badge] = addition ?? ['', null];
         button.querySelector('.topic-delta').textContent = word ? ` ${word}` : '';
         button.setAttribute('aria-label', [button.dataset.label, word].filter(Boolean).join(' '));
+        if (badge === null) delete button.dataset.controlLuck;
+        else button.dataset.controlLuck = badge;
       });
       // A topic open shows the luck pillar's part as it comes and goes. Pages are built
       // when shown: while a new chart is drawn, this one's are not yet its own.

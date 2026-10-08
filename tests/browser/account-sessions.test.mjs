@@ -885,6 +885,9 @@ for (const profile of profiles) {
       await page.locator('#account-who').filter({ hasText: account.email }).waitFor();
       // The session ends elsewhere, and the refused chart's check of the session, sent
       // now, is refused too and held on its way.
+      // The menu names its cached account before its session check finishes. Wait for
+      // that check so its answer cannot consume the refusal held below.
+      await page.locator('[data-account-lang="fi"]:not([disabled])').waitFor({ state: 'visible' });
       await asAccount(playwright, account, async (request) => {
         assert.equal((await request.delete('/api/account/session')).status(), 204);
       });
