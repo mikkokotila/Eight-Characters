@@ -2542,9 +2542,14 @@ kbd {
 .canon-ring { display: block; width: 100%; max-width: 340px; margin: 0 auto var(--space-4); }
 .canon-ring text { font-family: var(--font-sans); font-size: var(--text-1); fill: var(--ink-2); }
 .canon-ring .canon-ring-stage.is-on { fill: var(--ink-1); font-weight: 700; }
-.canon-ring .canon-ring-branch { font-family: var(--font-glyph); }
+/* A character always comes with its pinyin: a branch's on one line, the Day Master's
+   beneath it. */
+.canon-ring .canon-ring-char { font-family: var(--font-glyph); }
+.canon-ring .canon-ring-branch.is-on { fill: var(--ink-1); font-weight: 700; }
 .canon-ring .canon-ring-pillar { font-weight: 500; letter-spacing: var(--tracking-2); fill: var(--ink-1); }
-.canon-ring .canon-ring-center { font-family: var(--font-glyph); font-size: var(--text-5); fill: var(--ink-1); }
+.canon-ring .canon-ring-center { fill: var(--ink-1); }
+.canon-ring .canon-ring-center .canon-ring-char { font-size: var(--text-5); }
+.canon-ring .canon-ring-center .canon-ring-pinyin { font-size: var(--text-2); font-weight: 500; }
 .canon-ring-track { fill: none; stroke: var(--line-2); }
 .canon-ring-off { fill: var(--ink-2); }
 .canon-ring-on { fill: var(--ink-1); }

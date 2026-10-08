@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.41.3
+
+The Day Master's ring names every character with its pinyin, and every pillar on it in full. Nothing else on the page changes.
+
+### Fixed
+- **Characters alone on the ring.** The twelve branches inside the ring and the Day Master in its centre showed their characters alone, such as 子 and 壬. Each point of the ring now reads away from the ring, one line under another: its stage, its branch by pinyin and character ("Zi 子"), and the pillars on it. The Day Master stands in the centre, its character over its pinyin. The pinyin has no tone marks.
+- **Pillar names cut off at the ring's sides.** Where pillars shared a branch, their names stood on one line, such as "YEAR · MONTH · HOUR", and at the sides of the ring that line ran out of the figure. Drawn for every Day Master with the four pillars on every set of stages they can stand on together, 5,010 of the 13,650 rings cut a name off.
+  - Each pillar now takes its own line.
+  - The labels down each side of the ring move apart as far as they need to. In none of the 13,650 rings, in Chromium or WebKit, does a line's ink meet another line, the ring, a point or the figure's edge.
+  - The figure is as tall as its labels need: 292 to 360 units, where it was 280. It keeps its width, so the type keeps its size, on phones and on paper too.
+
+### Added
+- **API:** each entry of `reading.day_master.cycle.ring` carries its branch's `pinyin`.
+- The page refuses a reading whose ring lacks a branch's pinyin, or names one of the chart's branches by another pinyin than the chart does: "The chart's reading is incomplete: the ring."
+
+### Tests
+- `tests/browser/reading.test.mjs`:
+  - the ring of the canon's example, point by point, and of a chart with all four pillars on the Rat;
+  - for each of the ten Day Masters, the ring with the four pillars on each of the 1,365 sets of stages they can stand on together: every character with its own pinyin, and no line's ink meeting another line, the ring, a point or the figure's edge;
+  - the refusal of a ring without a branch's pinyin, or with another pinyin than the chart's.
+
+  On 0.40.0, these fail.
+- `tests/test_api_reading.py`: every Day Master's ring names its twelve branches by their pinyin, without diacritics, and the canon's example's ring runs from the Birth on the Monkey.
+- Version bumped to `0.41.3`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.41.2
 
 Fixes to accounts (0.41.0), from a read of the whole change: the page's language reaches every chart, signing out forgets the chart, and a comparison asks for the sign-in its frames cannot.
