@@ -330,6 +330,68 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
     });
 
+    check('Pillars only folds the natal columns away and lists the life path, and a link keeps it', async (page) => {
+      await openSample(page);
+      const only = () => page.locator('#life').evaluate((node) => node.classList.contains('is-only'));
+      assert.equal(await only(), false);
+      assert.deepEqual(await page.locator('#life-view [data-life-view]').evaluateAll((buttons) =>
+        buttons.map((button) => `${button.textContent} ${button.getAttribute('aria-pressed')}`)), ['With the chart true', 'Pillars only false']);
+      await click(page, '#life-view [data-life-view="pillars"]');
+      assert.equal(await only(), true);
+      assert.equal(await linkPart(page, 'life'), 'pillars');
+      // The head, the marks and today's line fold away; every phase is a line of the list.
+      assert.equal(await page.locator('#life-head').isVisible(), false);
+      assert.equal(await page.locator('#life .life-mark, #life .life-bar, #life .life-link, #life .life-today')
+        .evaluateAll((nodes) => nodes.filter((node) => node.getClientRects().length > 0).length), 0);
+      // A line's name, then its role, years and what else it lists, where shown.
+      const list = (path) => page.locator(`#life [data-life="${path}"]`).evaluate((button) => {
+        const shown = (selector) => {
+          const node = button.querySelector(selector);
+          return node.getClientRects().length > 0 ? node.innerText.replace(/\s+/g, ' ').trim() : null;
+        };
+        return [button.querySelector('.life-phase-name').firstChild.textContent, shown('.life-phase-role'),
+          shown('.life-phase-years'), shown('.life-phase-more')];
+      });
+      if (profile.name === 'desktop') {
+        assert.deepEqual(await list('before'), ['Before', 'No luck pillar', '1975–1983 · age 0–8', 'The chart reads as natal']);
+        assert.deepEqual(await list('5/stem'), ['Ji', 'Direct Officer · new', '2023–2028 · age 48', 'Yin Earth']);
+        assert.deepEqual(await list('5/branch'), ['Chou', 'Direct Officer · new', '2028–2033 · age 53', 'Day Master: Decline · Roots: Gui 癸']);
+        // Each line runs across the page.
+        const widths = await page.evaluate(() => {
+          const row = document.querySelector('#life [data-life="5/stem"]').getBoundingClientRect();
+          const grid = document.querySelector('#life-body').getBoundingClientRect();
+          return Math.abs(row.width - grid.width) <= 1;
+        });
+        assert.equal(widths, true);
+      } else {
+        assert.deepEqual(await list('5/branch'), ['Chou', 'Direct Officer · new', null, null]);
+      }
+      // A line chooses its phase as a row does.
+      await click(page, '#life [data-life="5/branch"]');
+      assert.equal(await linkPart(page, 'topic'), 'luck/5/branch');
+      assert.equal(await linkPart(page, 'life'), 'pillars');
+      // A link names the view; without a gender it names no life at all.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, sampleLink({ life: 'pillars' }), { place: HELSINKI });
+      assert.equal(await only(), true);
+      assert.equal(await page.locator('#life-view [data-life-view="pillars"]').getAttribute('aria-pressed'), 'true');
+      await click(page, '#life-view [data-life-view="grid"]');
+      assert.equal(await only(), false);
+      assert.equal(await linkPart(page, 'life'), null);
+      for (const address of [sampleLink({ life: 'list' }), sampleLink({ life: 'grid' })]) {
+        await page.goto('about:blank');
+        await openLink(page, address, { place: HELSINKI, success: false });
+        assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “life” is missing or not valid.', address);
+      }
+      const parts = Object.fromEntries(new URLSearchParams(sampleLink({ life: 'pillars' }).split('?')[1]));
+      delete parts.gender;
+      await page.goto('about:blank');
+      await openLink(page, `/#chart?${new URLSearchParams(parts)}`, { place: HELSINKI, success: false });
+      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “life” is missing or not valid.');
+      await screenshot(page, `${profile.name}-life-pillars`);
+    });
+
     check('on paper the grid follows the chart, its head where it stands', async (page) => {
       await openSample(page);
       await page.emulateMedia({ media: 'print' });

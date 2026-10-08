@@ -5,11 +5,13 @@
 // relationship the luck pillar forms with it, for as long as it acts: a stem's for its
 // decade's stem phase, a branch's for the whole decade. A compact copy of the chart heads
 // the grid and stays in sight while the grid scrolls by, with the chosen pair in its Luck
-// column and a ring on each character the chosen phase's relationships touch.
+// column and a ring on each character the chosen phase's relationships touch. Pillars
+// only folds the natal columns away, and the Luck column becomes the life path, a list.
 (() => {
   const NATAL = ['hour', 'day', 'month', 'year'];
   const MEMBER_ORDER = [...NATAL, 'luck'];
   const PHASES = ['stem', 'branch'];
+  const VIEWS = ['grid', 'pillars'];
 
   // `onChoose(path)` is told when a row is pressed, with its period as the address names
   // it: before, or <sequence>/<phase>.
@@ -18,12 +20,15 @@
     const meta = root.querySelector('#life-meta');
     const head = root.querySelector('#life-head');
     const body = root.querySelector('#life-body');
-    if (!section || !meta || !head || !body || !onChoose) throw new Error('Life grid view is incomplete.');
+    const switcher = root.querySelector('#life-view');
+    if (!section || !meta || !head || !body || !switcher || !onChoose) throw new Error('Life grid view is incomplete.');
     // What the grid draws: the luck pillars as luck.js reads them, the natal pillars as
     // the chart draws them, and how luck.js names years and characters.
     let life = null;
     // The line across the natal columns where today falls, moved to its row.
     let todayLine = null;
+    // The grid with the chart's columns, or the pillars only: the reader's, from chart to chart.
+    let view = 'grid';
 
     const pathOf = (choice) => (choice === 'before' ? 'before' : `${choice.sequence}/${choice.phase}`);
     const decadeOf = (sequence) => life.decades.find((decade) => decade.sequence === sequence);
@@ -130,14 +135,21 @@
       const card = decade.cards[phase];
       const brings = phase === 'stem' ? decade.visible : decade.hidden[0];
       const span = decade.phases[PHASES.indexOf(phase)];
+      const age = phase === 'stem' ? decade.startAge : decade.startAge + 5;
       return `<button type="button" class="life-phase" data-life="${decade.sequence}/${phase}" data-part="${phase}"
           tabindex="-1" aria-controls="luck-detail" aria-expanded="false">
           <span class="life-tile ${esc(card.element)}" lang="zh-Hant">${esc(card.char)}</span>
           <span class="life-phase-name">${esc(life.names(card.char))}<span class="life-now">${esc(t('luck_today'))}</span></span>
           <span class="life-phase-role">${esc(t('ten_god_' + brings.ten_god))}${brings.new_to_chart ? `<span class="life-new"> · ${esc(t('life_new'))}</span>` : ''}</span>
-          <span class="life-phase-years">${life.year(span.start)}<span class="life-phase-to">–${life.year(span.end)}</span></span>
+          <span class="life-phase-years">${life.year(span.start)}<span class="life-phase-to">–${life.year(span.end)}</span><span class="life-phase-age"> · ${esc(t('life_age', { age }))}</span></span>
+          <span class="life-phase-more">${esc(phase === 'stem' ? `${brings.polarity} ${t('element_' + brings.element)}` : branchMore(decade))}</span>
         </button>`;
     };
+    // What the life path lists for a branch: the Day Master's stage on it, and its roots.
+    const branchMore = (decade) => [
+      t('life_stage', { stage: t('luck_stage_' + decade.stage) }),
+      decade.roots.length ? t('life_roots', { roots: decade.roots.map((r) => `${r.pinyin} ${r.char}`).join(', ') }) : t('life_roots_none'),
+    ].join(' · ');
     const beforeMarkup = () => `<div class="life-row is-before" data-life-row="before" style="--row: 1; --need: 1">
         <div class="life-block" aria-hidden="true"><span class="life-half" data-life-half="before"></span></div>
         <div class="life-rail">
@@ -145,7 +157,8 @@
             <span class="life-tile"></span>
             <span class="life-phase-name">${esc(t('luck_before'))}<span class="life-now">${esc(t('luck_today'))}</span></span>
             <span class="life-phase-role">${esc(t('life_before_none'))}</span>
-            <span class="life-phase-years">${life.year(life.before.start)}<span class="life-phase-to">–${life.year(life.before.end)}</span></span>
+            <span class="life-phase-years">${life.year(life.before.start)}<span class="life-phase-to">–${life.year(life.before.end)}</span><span class="life-phase-age"> · ${esc(t('life_age', { age: `0–${life.startAge}` }))}</span></span>
+            <span class="life-phase-more">${esc(t('life_before_natal'))}</span>
           </button>
         </div>
       </div>`;
@@ -239,6 +252,20 @@
       syncHead(cursor, shown);
     };
 
+    // The grid with the chart's columns, or the pillars only.
+    const setView = (next) => {
+      if (!VIEWS.includes(next)) throw new Error(t('luck_error'));
+      view = next;
+      section.classList.toggle('is-only', view === 'pillars');
+      switcher.querySelectorAll('[data-life-view]').forEach((button) => {
+        button.setAttribute('aria-pressed', String(button.dataset.lifeView === view));
+      });
+    };
+    switcher.addEventListener('click', (event) => {
+      const button = event.target.closest('[data-life-view]');
+      if (button) setView(button.dataset.lifeView);
+    });
+
     // The rows: one tab stop, the arrows between them, Home and End to either end.
     body.addEventListener('click', (event) => {
       const button = event.target.closest('[data-life]');
@@ -278,13 +305,14 @@
       });
       drawHead();
       drawBody();
+      setView(view);
       section.classList.remove('hidden');
     };
     // The row of a period, for focus to come back to.
     const rowOf = (choice) => body.querySelector(`[data-life="${pathOf(choice)}"]`);
     // Whether a node is in the grid, as focus is when a key opens a page from it.
     const holds = (node) => node !== null && section.contains(node);
-    return { render, sync, rowOf, holds };
+    return { render, sync, rowOf, holds, setView, view: () => view };
   };
 
   window.EC_LIFE = { create };

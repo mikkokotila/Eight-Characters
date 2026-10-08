@@ -305,6 +305,9 @@ sample and clock as the luck pillars suite:
 - **Today, L and the head.** Today stands in its row. L moves nothing in the grid. The
   head stays at the top while the grid scrolls, and the grid reads in Finnish without
   running past the page's edge.
+- **Pillars only.** The switch folds the natal columns away and lists the life path,
+  each phase's role, years, age, element or Day Master stage and roots; a line chooses
+  as a row does. The link names the view, and refuses it without a gender.
 - **Paper.** The grid prints after the chart, its head where it stands.
 
 The explorer parameters suite checks the explorer's parameter pane (PR #7):

@@ -146,8 +146,16 @@
          life, five years to a row (life.js). -->
     <section id="life" class="life hidden" aria-labelledby="life-title">
       <div class="life-bar">
-        <h2 id="life-title" class="life-title" data-i18n="life_title">Elämä</h2>
-        <p id="life-meta" class="life-meta"></p>
+        <div class="life-heading">
+          <h2 id="life-title" class="life-title" data-i18n="life_title">Elämä</h2>
+          <p id="life-meta" class="life-meta"></p>
+        </div>
+        <!-- The grid with the chart's columns, or the pillars alone as a list. -->
+        <div class="segmented" id="life-view" role="group" aria-labelledby="life-view-label">
+          <span id="life-view-label" class="sr-only" data-i18n="life_view_label">Elämän näkymä</span>
+          <button type="button" data-life-view="grid" aria-pressed="true" data-i18n="life_view_grid">Kartan kanssa</button>
+          <button type="button" data-life-view="pillars" aria-pressed="false" data-i18n="life_view_pillars">Vain pilarit</button>
+        </div>
       </div>
       <div id="life-head" class="life-head" aria-hidden="true"></div>
       <div id="life-body" class="life-body"></div>

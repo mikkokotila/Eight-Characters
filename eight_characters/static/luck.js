@@ -883,6 +883,9 @@
       render, close, select, stand, has, topic, standing, cardsActive, choices,
       // The control the open page gives focus back to, or null while none is open.
       opener: () => (luck !== null && open ? opener() : null),
+      // The life grid's view, 'grid' or 'pillars', as the address names it.
+      lifeView: () => life.view(),
+      setLifeView: (view) => life.setView(view),
       shown: () => shown,
       setShown,
       toggle: keeping(() => setShown(!shown)),

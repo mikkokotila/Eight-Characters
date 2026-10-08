@@ -142,6 +142,14 @@ On a phone the grid keeps its five narrow columns: the head stands each stem ove
 branch, the marks are drawn as lines only, and each row gives its character's tile, name
 and the year it starts.
 
+**Pillars only**, the switch beside the grid's title, folds the natal columns away: the
+Luck column becomes the life path, a list across the page, still grouped by direction.
+Each phase is a line: its tile and name, the role it brings, its years and the age it
+starts at, and then a stem's element or a branch's Day Master stage and roots. A line
+chooses its phase as a row does. **With the chart** brings the columns back. The view
+stays from chart to chart, and the link names it (`life=pillars`). On a phone each line
+gives its tile, its name and its role.
+
 ## A decade's page
 
 The page shows:
