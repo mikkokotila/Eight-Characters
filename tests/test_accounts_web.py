@@ -453,6 +453,18 @@ class TestTheAccount(AccountApiTestCase):
                 reply = self.client.request(verb, path, json=body)
                 self.assertEqual(reply.status_code, 401)
 
+    def test_signing_out_everywhere_after_the_account_went_answers_as_signed_out(
+        self,
+    ) -> None:
+        # Deleted in another tab between finding the session and ending them all: not
+        # even this session is left to end.
+        with patch.object(self.accounts.store, 'delete_sessions', return_value=0):
+            reply = self.client.request(
+                'DELETE', '/api/account/sessions', json=self.this()
+            )
+        self.assertEqual(reply.status_code, 401)
+        self.assertNotIn('set-cookie', reply.headers)
+
     def test_deleting_needs_the_address_typed_again(self) -> None:
         this = self.this()
         for typed in ('other@example.com', 'not an address'):
