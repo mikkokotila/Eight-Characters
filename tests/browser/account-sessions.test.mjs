@@ -24,8 +24,9 @@ const switchInAnotherTab = async (page, from, to) => {
   await page.context().addCookies(to.cookies);
 };
 
-// Holds the first GET of `pattern` after the server has answered it: `answered`
-// resolves when it has, and `release` lets the answer reach the page.
+// Holds the first `method` request (GET unless named) of `pattern` after the server
+// has answered it: `answered` resolves when it has, and `release` lets the answer
+// reach the page.
 const holdAnswer = async (page, pattern, method = 'GET') => {
   let release;
   const held = new Promise((resolve) => { release = resolve; });
@@ -621,7 +622,7 @@ for (const profile of profiles) {
       await dialogOpens(page);
       release();
       await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
-      assert.equal(await page.locator('#account-notice').isVisible(), false);
+      assert.equal(await text(page, '#account-btn'), 'Account');
     });
 
     check("a chart's late refusal leaves a new session of the same account", async (page) => {
@@ -1173,6 +1174,61 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#account-menu').isVisible(), true);
       assert.equal(await page.locator('#account-code-step').isVisible(), false);
       assert.equal(await page.locator('#account-export').isEnabled(), true);
+    });
+
+    check('a language saved while another account is held is kept when that account comes back', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'back-later-a' });
+      const other = await newAccount(playwright, { language: 'en', label: 'back-later-b' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // A comparison, then back to its second birth, so that coming forward checks the
+      // session again.
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      // Finnish is set in the menu, and the request held before it reaches the server.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
+      const patch = await holdRequest(page, '**/api/account', 'PATCH');
+      await page.locator('[data-account-lang="fi"]:not([disabled])').click();
+      await patch.sent;
+      // Another tab signs in to another account, which the comparison, come forward, takes.
+      await page.context().addCookies(other.cookies);
+      await page.goForward();
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${other.email}` }).waitFor();
+      // Another tab signs in to the first account again. The comparison, come forward
+      // again, asks: the server answers while the account is still in English, and the
+      // answer is held on its way.
+      const renewed = await newSession(playwright, account);
+      await page.context().addCookies(renewed.cookies);
+      const check = await holdAnswer(page, '**/api/account');
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.goForward();
+      await check.answered;
+      // Finnish reaches the server now, and its answer comes while the page holds the
+      // other account; the check's answer, read before it, brings the first back.
+      patch.release();
+      await page.locator('#account-status').filter({ hasText: 'The account changed meanwhile: nothing was done.' }).waitFor();
+      check.release();
+      await page.locator('#account-who').filter({ hasText: account.email }).waitFor();
+      // The page keeps the later change it saw of that account: Finnish, which the page
+      // takes with it.
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      const stored = await asAccount(playwright, renewed, async (request) => (await request.get('/api/account')).json());
+      assert.equal(stored.language, 'fi');
     });
 
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {

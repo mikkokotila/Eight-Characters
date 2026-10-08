@@ -78,6 +78,9 @@
     };
 
     let account = state === null ? null : accountOf(state);
+    // The latest change the page has seen of each account, by its key: the one it holds,
+    // and any it held or was told of, so that taking one back keeps a change it saw.
+    const changes = new Map(account === null ? [] : [[account.key, account]]);
     // When the page learned who is signed in. It learns it from answers, each from a
     // moment, in the order the page sees them: a request that carries the session cookie
     // tells of the cookie the browser held as it was sent, and an answer that sets or
@@ -427,16 +430,20 @@
     // Whether an answer names the account the page holds: by its key, since an account
     // made again with the address is another.
     const same = (told) => account !== null && told.key === account.key;
-    // Of two descriptions of one account, the later change's (`updated_at` moves on with
-    // each); another account's is taken whole.
-    const later = (told) => (same(told) && told.updated_at < account.updated_at ? account : told);
+    // Of what the page has seen of `told`'s account, the later change (`updated_at` moves
+    // on with each), which it keeps.
+    const later = (told) => {
+      const seen = changes.get(told.key);
+      const chosen = seen !== undefined && seen.updated_at > told.updated_at ? seen : told;
+      changes.set(told.key, chosen);
+      return chosen;
+    };
     // An answer older than what the page knows of whose the session is still tells of the
-    // account it names: if that is the account the page holds, a later change of it is
-    // kept.
+    // account it names: a later change of it is kept, and shown if the page holds it.
     const merge = (value) => {
-      const told = accountOf(value);
-      if (!same(told) || told.updated_at <= account.updated_at) return;
-      account = told;
+      const chosen = later(accountOf(value));
+      if (!same(chosen) || chosen.updated_at <= account.updated_at) return;
+      account = chosen;
       refresh();
     };
     // The newest answer of whose the session is, from moment `at`, names `value`'s
@@ -612,11 +619,13 @@
         // Set for the account named, in the session as it was sent. If the page has
         // learned nothing since, that is the session, and the page takes the account (as
         // a sign-in, if it held another or none). Of the account, the page keeps the later
-        // change: the language is saved if that is this one; if another, a tab's since,
-        // nothing was done.
+        // change, even while it holds another, for when it takes this one back: the
+        // language is saved if that is this one; if another, a tab's since, nothing was
+        // done.
         if (at > known) take(at, value);
+        const chosen = later(value);
         if (!same(value)) return changed();
-        account = later(value);
+        account = chosen;
         if (account.updated_at !== value.updated_at) return changed();
         onLanguage(account.language);
         refresh();
