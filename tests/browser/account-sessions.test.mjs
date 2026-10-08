@@ -1002,6 +1002,78 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'fi');
     });
 
+    check('a menu check answered after a newer one keeps the later change it read', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'menu-read-late' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // A comparison, then back to its second birth, so that coming forward checks the
+      // session again.
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      // The menu opens, and its question of whose the session is is held before it
+      // reaches the server.
+      const menu = await holdRequest(page, '**/api/account', 'GET');
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await menu.sent;
+      // The comparison, come forward, asks too, the newer question, and finds English.
+      await page.goForward();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // Another tab sets Finnish; the menu's question reaches the server after that.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
+      });
+      menu.release();
+      // Its answer, the older question's, is the later change: the menu shows Finnish.
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      assert.equal(await page.locator('[data-account-lang="en"]').getAttribute('aria-pressed'), 'false');
+    });
+
+    check('an account made again with its address in another tab shows its own language', async (page) => {
+      const first = await newAccount(playwright, { language: 'en', label: 'made-again' });
+      await signInPage(page, first);
+      await visit(page, { lang: 'en' });
+      // Another tab changes the account's language seven times within moments: each
+      // change moves its updated_at a second on, ahead of the clock. The menu shows the
+      // last, Finnish.
+      await asAccount(playwright, first, async (request) => {
+        for (const language of ['fi', 'en', 'fi', 'en', 'fi', 'en', 'fi']) {
+          assert.equal((await request.patch('/api/account', { data: { language, email: first.email } })).status(), 200);
+        }
+      });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      // Another tab deletes the account, makes it again with the address, in English, and
+      // signs in to it.
+      await asAccount(playwright, first, async (request) => {
+        assert.equal((await request.delete('/api/account', { data: { email: first.email } })).status(), 204);
+      });
+      const again = await newAccount(playwright, { language: 'en', email: first.email });
+      await page.context().addCookies(again.cookies);
+      // The menu, opened again, shows the account made again, in its own language.
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="en"]').getAttribute('aria-pressed') === 'true');
+      assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'false');
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);

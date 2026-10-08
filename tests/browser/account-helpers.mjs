@@ -54,9 +54,9 @@ const apiContext = (playwright, cookies = []) => playwright.request.newContext({
   baseURL, extraHTTPHeaders: { Origin: origin }, storageState: { cookies, origins: [] },
 });
 
-// A new account, signed in through the API: its address and its session's cookie.
-async function newAccount(playwright, { language = 'en', label = 'reader' } = {}) {
-  const email = newAddress(label);
+// A new account, signed in through the API: its address and its session's cookie. The
+// address is a new one, unless `email` names it (an account made again with it).
+async function newAccount(playwright, { language = 'en', label = 'reader', email = newAddress(label) } = {}) {
   const request = await apiContext(playwright);
   try {
     const asked = await request.post('/api/account/code', {

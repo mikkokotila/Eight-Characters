@@ -83,7 +83,7 @@ so the database alone cannot be used to test guesses or take over a session.
 |---|---|---|
 | `POST /api/account/code` | sends a code, or word of no account | `202`; `400` malformed, `403` failed person check, `429` over the hourly limit (with `Retry-After`), `502` the email could not be sent, `503` Turnstile not answering |
 | `POST /api/account/session` | signs in with a code, creating the account if it was asked for | `200` and the account; `400` wrong or used code |
-| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at, updated_at}`; `401` |
+| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at, updated_at, key}`; `401` |
 | `PATCH /api/account` | sets `language`; `email` names the account | `200`; `400`, `401`, `409` |
 | `DELETE /api/account/session` | signs this browser out | `204` |
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"email": …}` names it | `204`; `400`, `401`, `409` |
@@ -113,7 +113,7 @@ birth. Creating the chart asks for an account first.
 put on one.
 
 - **Who is signed in.** `GET /` writes the account (`{email, language, plan,
-  created_at, updated_at}`, or `null`) into `<script id="account-state">`, sent with
+  created_at, updated_at, key}`, or `null`) into `<script id="account-state">`, sent with
   `Cache-Control: private, no-cache` so that no shared cache keeps it. The page extends
   a session in its second half too, on the server, and sends no cookie (see step 4).
 - **Signing in** (`static/account.js`). Creating a chart while signed out opens the
@@ -143,9 +143,11 @@ put on one.
   what it has taken changes nothing, however late it comes. Another account, signed in
   to in another tab, is taken as a sign-in here, with its language, and a dialog asking
   for a sign-in closes, signed in to it. Of one account, the page keeps the language
-  and plan of the later change: every change moves the account's `updated_at` past the
-  last (by a second, within one second or with the clock gone back), and every answer
-  carries it, since a check sent after a change may read the account before it. So a sign-in whose answer sets its cookie
+  and plan of the later change, from any answer, the newest or not: every change moves
+  the account's `updated_at` past the last (by a second, within one second or with the
+  clock gone back), and every answer carries it, since a check sent after a change may
+  read the account before it. An account is told apart by its `key`, a hash of its id,
+  which the page is never told: an account made again with an address is another. So a sign-in whose answer sets its cookie
   after a check found another tab's account signs the page in, and one overtaken by a
   newer answer (another tab's account, or the session ended since) closes signed in to
   that account, or asks for a sign-in again.

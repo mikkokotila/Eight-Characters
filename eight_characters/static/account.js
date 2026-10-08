@@ -13,6 +13,9 @@
   // When an account last changed, as the server writes it: the fixed form orders as
   // text the way the moments do, and each change moves it on.
   const CHANGED = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/;
+  // An account's key: the same for its whole life, and another for an account made again
+  // with the same address.
+  const KEY = /^[0-9a-f]{64}$/;
   // What a refused request for a code means, by its status.
   const CODE_REFUSALS = {
     400: 'account_bad_email',
@@ -67,7 +70,8 @@
     const accountOf = (value) => {
       if (value === null || typeof value !== 'object' || typeof value.email !== 'string'
         || !LANGUAGES.includes(value.language) || typeof value.plan !== 'string'
-        || typeof value.updated_at !== 'string' || !CHANGED.test(value.updated_at)) {
+        || typeof value.updated_at !== 'string' || !CHANGED.test(value.updated_at)
+        || typeof value.key !== 'string' || !KEY.test(value.key)) {
         throw new Error(`Not an account: ${JSON.stringify(value)}`);
       }
       return value;
@@ -414,10 +418,21 @@
       email.focus();
     });
 
+    // Whether an answer names the account the page holds: by its key, since an account
+    // made again with the address is another.
+    const same = (told) => account !== null && told.key === account.key;
     // Of two descriptions of one account, the later change's (`updated_at` moves on with
     // each); another account's is taken whole.
-    const later = (told) => (account === null || told.email !== account.email
-      || told.updated_at >= account.updated_at ? told : account);
+    const later = (told) => (same(told) && told.updated_at < account.updated_at ? account : told);
+    // An answer older than what the page knows of whose the session is still tells of the
+    // account it names: if that is the account the page holds, a later change of it is
+    // kept.
+    const merge = (value) => {
+      const told = accountOf(value);
+      if (!same(told) || told.updated_at <= account.updated_at) return;
+      account = told;
+      refresh();
+    };
     // The newest answer of whose the session is, from moment `at`, names `value`'s
     // account, and the page takes it: an older answer, about the session as it was
     // before, changes nothing. Another account, signed in to in another tab (the tabs
@@ -427,7 +442,7 @@
     // change of the reader's may not carry.
     const take = (at, value) => {
       const told = accountOf(value);
-      const another = account === null || told.email !== account.email;
+      const another = !same(told);
       known = at;
       account = later(told);
       if (another) onLanguage(account.language);
@@ -443,8 +458,7 @@
     const refusedNow = async (letGo, { wanted = () => true } = {}) => {
       const at = moment();
       const response = await call('GET', '/api/account');
-      const late = () => !wanted() || at < known;
-      if (late()) return account !== null;
+      if (!wanted() || (at < known && !response.ok)) return account !== null;
       if (response.status === 401) {
         known = at;
         letGo();
@@ -452,7 +466,11 @@
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (late()) return account !== null;
+      if (!wanted()) return account !== null;
+      if (at < known) {
+        merge(value);
+        return account !== null;
+      }
       take(at, value);
       return true;
     };
@@ -549,7 +567,7 @@
       let answered = false;
       try {
         const response = await call('GET', '/api/account');
-        if (at < known) {
+        if (at < known && !response.ok) {
           answered = true;
           return;
         }
@@ -561,8 +579,8 @@
         if (!response.ok) throw refused(response);
         const value = await response.json();
         answered = true;
-        if (at < known) return;
-        take(at, value);
+        if (at < known) merge(value);
+        else take(at, value);
       } catch (err) {
         console.error(err);
         setStatus(status, err.message);
@@ -592,7 +610,7 @@
         // change: the language is saved if that is this one; if another, a tab's since,
         // nothing was done.
         if (at > known) take(at, value);
-        if (account === null || account.email !== named) return changed();
+        if (!same(value)) return changed();
         account = later(value);
         if (account.updated_at !== value.updated_at) return changed();
         onLanguage(account.language);
@@ -704,11 +722,15 @@
       if (!account) return false;
       const at = moment();
       const response = await call('GET', '/api/account');
-      if (!wanted() || at < known) return false;
+      if (!wanted() || (at < known && !response.ok)) return false;
       if (response.status === 401) return refusedNow(forget, { wanted });
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (!wanted() || at < known) return false;
+      if (!wanted()) return false;
+      if (at < known) {
+        merge(value);
+        return false;
+      }
       take(at, value);
       return true;
     };

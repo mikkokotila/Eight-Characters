@@ -1,3 +1,4 @@
+import hashlib
 import json
 import shutil
 import sqlite3
@@ -249,6 +250,9 @@ class TestSigningIn(AccountApiTestCase):
             'created_at': '2026-10-07T12:00:00Z',
             'updated_at': '2026-10-07T12:00:00Z',
         }
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        expected['key'] = hashlib.sha256(user.id.encode()).hexdigest()
         self.assertEqual(reply.json(), expected)
         cookie = SimpleCookie(reply.headers['set-cookie'])['__Host-ec_session']
         self.assertEqual(cookie['path'], '/')

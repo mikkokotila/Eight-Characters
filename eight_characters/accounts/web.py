@@ -6,6 +6,7 @@ of what is wrong. Requests that change an account must come from the site's own
 origin, and the session lives in an HttpOnly cookie the page's scripts cannot read.
 """
 
+import hashlib
 import logging
 import os
 import re
@@ -339,6 +340,7 @@ class AccountView(TypedDict):
     plan: str
     created_at: str
     updated_at: str
+    key: str
 
 
 def account_view(user: User) -> AccountView:
@@ -349,6 +351,9 @@ def account_view(user: User) -> AccountView:
         'plan': user.plan,
         'created_at': user.created_at,
         'updated_at': user.updated_at,
+        # The same for the account's whole life, and another for an account made again
+        # with its address: a hash of its id, which the page is never told.
+        'key': hashlib.sha256(user.id.encode()).hexdigest(),
     }
 
 

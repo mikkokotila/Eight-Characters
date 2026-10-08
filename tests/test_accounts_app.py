@@ -1,6 +1,7 @@
 """The app's use of accounts: which requests need one, what the start page is told of
 the signed-in account, and the settings checked when the app starts."""
 
+import hashlib
 import json
 import os
 import re
@@ -140,6 +141,7 @@ class TestTheStartPage(unittest.TestCase):
                 'plan': 'free',
                 'created_at': user.created_at,
                 'updated_at': user.updated_at,
+                'key': hashlib.sha256(user.id.encode()).hexdigest(),
             },
         )
         self.assertNotIn(client.cookies[SESSION_COOKIE], response.text)
@@ -156,6 +158,7 @@ class TestTheStartPage(unittest.TestCase):
                 'plan': 'free',
                 'created_at': '2026-10-07T12:00:00Z',
                 'updated_at': '2026-10-07T12:00:00Z',
+                'key': '0' * 64,
             },
             turnstile_site_key='key',
             app_version='0',
