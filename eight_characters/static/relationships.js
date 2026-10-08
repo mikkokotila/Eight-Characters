@@ -105,8 +105,10 @@
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
-    // The luck pillar's relationships that act in its phase, while it stands in the chart.
+    // The luck pillar's relationships that act in its phase, while it stands in the chart,
+    // and its decade, whose reading reads them.
     let luckEntries = [];
+    let luckSequence = null;
     const allEntries = () => [...entries, ...luckEntries];
     const isLuck = (relationship) => relationship.members.some((member) => member.pillar === 'luck');
     let selected = null;
@@ -196,9 +198,9 @@
       const displayMembers = [...relationship.members].sort(
         (a, b) => MEMBER_ORDER.indexOf(a.pillar) - MEMBER_ORDER.indexOf(b.pillar)
       );
-      // The canon reads the natal relationships; the luck pillar's have no reading yet.
-      const reading = isLuck(relationship) ? '' : canon.relationship(relationship.id);
-      const note = [t(noteKey), isLuck(relationship) ? '' : canon.note()].filter(Boolean).join(' ');
+      // The canon reads a luck pillar's relationship as its entry reads, without pairing.
+      const reading = isLuck(relationship) ? canon.luckRelationship(luckSequence, relationship.id) : canon.relationship(relationship.id);
+      const note = [t(noteKey), canon.note()].filter(Boolean).join(' ');
       // What the canon says of it sits under its finding, before its members.
       detail.innerHTML = `
         <div class="relationship-detail-heading">
@@ -320,7 +322,7 @@
             ...relationship.members.map((member) => `${relationship.component}:${member.pillar}`), `arc:${relationship.id}`])}
           aria-expanded="${selected === relationship.id}" aria-controls="relationship-detail">
           <span class="relationship-mark" aria-hidden="true"></span>
-          <span>${esc(labelFor(relationship))}</span>${isLuck(relationship) ? '' : canon.chipLine(relationship.id)}
+          <span>${esc(labelFor(relationship))}</span>${isLuck(relationship) ? canon.luckLine(luckSequence, relationship.id) : canon.chipLine(relationship.id)}
         </button>`;
     const drawList = () => {
       // Focus on a chip stays on it as the list is drawn again, or on the list's topic.
@@ -340,6 +342,7 @@
     // ones are. A luck relationship chosen that no longer acts closes.
     const setLuck = (period) => {
       luckEntries = period !== null && period.shown ? period.relationships : [];
+      luckSequence = period === null ? null : period.sequence;
       if (period !== null) {
         chartByPillar.luck = { stem: period.cards.stem, branch: period.cards.branch };
         tenGods.luck = { stem: period.visible, branch: period.cards.branch.char, hidden_stems: period.hidden };

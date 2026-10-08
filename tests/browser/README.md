@@ -284,6 +284,11 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   a decade the chart lacks, to an unknown gender, or to a page other than the luck
   pillar's, says why. Finnish works, and a change of language keeps the luck pillar
   shown. The commands offer each decade.
+- **Readings.** In English a decade's page reads its stem's role, its branch, and the
+  Day Master there and its stage; each of its relationships has the canon's line, and
+  its page reads its entry, without pairing. A decade that brings what the canon waits
+  for quotes the sentence: 戊子 Wu Zi brings the Peak the natal Birth and Storage only
+  cradle. A Finnish chart has no readings.
 - **Refusal.** Luck pillars that do not hold together stop the chart with a message.
 
 The life grid suite checks the grid under a chart asked for with a gender, on the same

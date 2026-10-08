@@ -578,9 +578,12 @@ document.addEventListener('DOMContentLoaded', () => {
     populateTenGods(tenGodsData);
     if (!pillarsData.hidden_stems) throw new Error(t('context_error'));
     populateHiddenStems(pillarsData.hidden_stems);
-    // Read before the pages that quote it are built.
+    // Read before the pages that quote it are built. An English chart with a gender reads
+    // its luck pillars too.
     if (withReading && !pillarsData.reading) throw new Error(t('chart_error'));
-    canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
+    if (Boolean(pillarsData.luck_reading) !== (withReading && Boolean(request.gender))) throw new Error(t('luck_error'));
+    canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf,
+      pillarsData.luck_reading ?? null);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
     // A chart asked for with a gender has its luck pillars, their context and their
     // cards; one without has none of them. The topics take the luck pillar's period
@@ -590,7 +593,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
-      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge, natal: chartData.pillars }, request.location.timezone);
+      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge, natal: chartData.pillars, canon: canonReadings },
+      request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     showRelationshipsTopic();
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);

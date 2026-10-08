@@ -891,6 +891,10 @@ body {
 .luck-relationship-chars,
 .luck-relationship-when,
 .luck-relationship-absorbs { grid-column: 2; color: var(--ink-2); }
+/* In an English chart, the canon's sentence about the relationship's form, under its name. */
+.luck-relationship .canon-chip-line { grid-column: 2; padding-left: 0; }
+/* What the canon waits for that the luck pillar brings: after its relationships. */
+.luck-settles { margin: var(--space-3) 0 0; font-size: var(--text-1); line-height: 1.5; }
 .luck-elements { display: grid; gap: var(--space-1); }
 .luck-element {
   display: grid;
