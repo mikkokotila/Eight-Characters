@@ -247,10 +247,22 @@ for (const profile of profiles) {
       await page.keyboard.press('Escape');
       await settled(page);
       assert.equal(await focused(page), 'row 2/stem');
-      // From the ribbon, as before.
+      // From the ribbon, as before, even when its chip takes over a page the grid opened.
       await click(page, '#luck-ribbon [data-luck="6"]');
       await click(page, '#chart-panel [data-close-panel]');
       assert.equal(await focused(page), 'chip 6');
+      await click(page, '#life [data-life="3/stem"]');
+      await click(page, '#luck-ribbon [data-luck="7"]');
+      await click(page, '#chart-panel [data-close-panel]');
+      assert.equal(await focused(page), 'chip 7');
+      // N from a row opens today's page, and Escape gives focus back to today's row.
+      await page.locator('#life [data-life="2/stem"]').focus();
+      await page.keyboard.press('n');
+      await settled(page);
+      assert.equal(await linkPart(page, 'topic'), 'luck/5/stem');
+      await page.keyboard.press('Escape');
+      await settled(page);
+      assert.equal(await focused(page), 'row 5/stem');
     });
 
     check('the rows take one tab stop, the arrows move between them, and the chart\'s keys act from them', async (page) => {

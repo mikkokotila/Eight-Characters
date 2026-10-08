@@ -643,8 +643,7 @@
           close();
           return;
         }
-        go(choice, { page: true });
-        fromLife = true;
+        go(choice, { page: true, fromGrid: true });
       },
     });
     // Where focus goes back to as the page closes: the row it was opened from, or the chip.
@@ -668,12 +667,12 @@
         }
       }
     };
-    // Choosing a period shows it in the chart; `page` opens its page too.
-    const go = (choice, { page = false } = {}) => {
-      if (page && !open) {
-        beforeSelect();
-        fromLife = life.holds(document.activeElement);
-      }
+    // Choosing a period shows it in the chart; `page` opens its page too. A control that
+    // opens the page says whether it stands in the life grid (`fromGrid`), for focus to
+    // come back to it there; the page's own phases leave that as it is.
+    const go = (choice, { page = false, fromGrid } = {}) => {
+      if (page && !open) beforeSelect();
+      if (fromGrid !== undefined) fromLife = fromGrid;
       cursor = choice;
       shown = true;
       if (page) open = true;
@@ -713,7 +712,7 @@
     // its page.
     const choosePeriod = (key) => {
       if (open && keyOf(cursor) === key) { close(); return; }
-      go(key === 'before' ? 'before' : opening(Number(key)), { page: true });
+      go(key === 'before' ? 'before' : opening(Number(key)), { page: true, fromGrid: false });
     };
     // A step goes from the choice shown, else from today; before the birth, or past the
     // last decade, from just beyond that end. The page, when open, follows.
@@ -736,7 +735,7 @@
     const toToday = () => {
       const now = today();
       if (now === null) return false;
-      go(now, { page: true });
+      go(now, { page: true, fromGrid: life.holds(document.activeElement) });
       return true;
     };
 
@@ -779,7 +778,7 @@
       const identity = event.target.closest('[data-luck-identity]');
       if (!identity) return;
       if (open) close();
-      else go(cursor, { page: true });
+      else go(cursor, { page: true, fromGrid: false });
       column.querySelector('[data-luck-identity]').focus();
     });
     detail.addEventListener('click', (event) => {
@@ -839,7 +838,7 @@
       if (luck === null) return false;
       const choice = choiceOf(path);
       if (choice === null) return false;
-      go(choice, { page: true });
+      go(choice, { page: true, fromGrid: false });
       return true;
     };
     // A link's luck pillar: the period standing in the chart; whether this chart has it.
