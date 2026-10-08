@@ -727,16 +727,22 @@ for (const profile of profiles) {
       // The pointer rests clear of the cards: a card that comes under it takes the hint.
       await page.mouse.move(0, 0);
       // Where the hint stands from the top middle of the card with focus, in whole pixels
-      // (+ 0 makes a -0 a 0), or null hidden.
-      const hint = () => page.evaluate(() => {
+      // (+ 0 makes a -0 a 0), or null hidden. Read after two frames: a focus that scrolls
+      // the page is followed by its scroll event in the next one (WebKit on a phone).
+      const hint = () => page.evaluate(async () => {
+        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
         const node = document.querySelector('.card-hint');
         if (node.classList.contains('hidden')) return null;
         const card = document.activeElement.getBoundingClientRect();
         return [parseFloat(node.style.left) - (card.left + card.width / 2), parseFloat(node.style.top) - card.top]
           .map((offset) => Math.round(offset) + 0);
       });
-      await page.locator('.card.stem[data-pillar="year"]').focus();
-      await page.keyboard.press('ArrowLeft');
+      // Into the cards with Tab, and on to the Month's stem with the arrows: keyboard focus,
+      // which the hint is for (keyboard.test.mjs). WebKit shows none for a script's focus.
+      await page.locator('.pillar-identity[data-pillar="hour"]').focus();
+      await page.keyboard.press(TAB);
+      await page.keyboard.press('ArrowRight');
+      await page.keyboard.press('ArrowRight');
       assert.equal(await focused(page), 'month stem');
       assert.deepEqual(await hint(), [0, 0]);
       // L makes room for the luck pillar and its ribbon, and gives the room back.
