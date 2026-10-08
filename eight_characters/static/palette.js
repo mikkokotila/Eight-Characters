@@ -21,7 +21,7 @@
       list.innerHTML = found.map((command, index) => `
         <li role="option" id="palette-option-${index}" class="palette-option" data-index="${index}"
           aria-selected="${index === active}">
-          <span class="palette-label">${esc(command.label)}</span>
+          <span class="palette-label">${command.icon ? window.EC_ICONS.markup(command.icon) : ''}${esc(command.label)}</span>
           <span class="palette-group">${esc(command.group)}</span>
         </li>`).join('');
       empty.classList.toggle('hidden', found.length > 0);

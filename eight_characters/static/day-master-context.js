@@ -237,7 +237,7 @@
         };
       }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
-        <button type="button" class="reading-toggle context-toggle" data-context="${key}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}</button>`).join('');
+        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}</button>`).join('');
     };
     return { render, clear };
   };

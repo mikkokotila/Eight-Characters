@@ -625,6 +625,7 @@ document.addEventListener('DOMContentLoaded', () => {
       { relationshipLabel: relationships.labelOf }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
+    relationshipsTopic.dataset.controlCount = String(pillarsData.interactions.length);
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
@@ -1776,12 +1777,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // What the chart offers now, named as its controls name it.
   const chartCommands = () => {
     const commands = [];
-    const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
+    const add = (group, label, run, icon = 'chevron-right') => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run, icon });
     const topics = requiredTranslation('palette_topics');
     chartView.querySelectorAll('#day-master-context button[data-context]').forEach((button) => {
-      add(topics, button.textContent, () => goToTopic(button.dataset.context));
+      add(topics, button.textContent, () => goToTopic(button.dataset.context), window.EC_CONTROLS.icon(button));
     });
-    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
+    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'), 'waypoints');
     // A relationship by its name, as the list names it: in English a chip also reads the
     // canon's first sentence for it.
     relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {
@@ -1794,37 +1795,37 @@ document.addEventListener('DOMContentLoaded', () => {
     chartView.querySelectorAll('.pillar-identity').forEach((button) => {
       add(requiredTranslation('palette_pillars'),
         `${requiredTranslation('pillar_' + button.dataset.pillar)} · ${button.textContent}`,
-        () => goToTopic(`pillar/${button.dataset.pillar}`));
+        () => goToTopic(`pillar/${button.dataset.pillar}`), 'chevron-down');
     });
     // A chart with luck pillars: the period before them and each decade, as the ribbon
     // names them.
     luck.choices().forEach(({ label, topic }) => {
-      add(requiredTranslation('luck_ribbon_label'), label, () => goToTopic(topic));
+      add(requiredTranslation('luck_ribbon_label'), label, () => goToTopic(topic), 'calendar-range');
     });
     displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
-      add(requiredTranslation('display_label'), button.textContent, () => button.click());
+      add(requiredTranslation('display_label'), button.textContent, () => button.click(), window.EC_CONTROLS.icon(button));
     });
     if (luck.has()) {
       chartView.querySelectorAll('#luck-switch button[aria-pressed="false"]').forEach((button) => {
-        add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click());
+        add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click(), window.EC_CONTROLS.icon(button));
       });
     }
     // Embedded, the comparison's page holds the language, the view and the chart's
     // other actions.
     if (!embedded) {
       chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
-        add(requiredTranslation('language_label'), button.textContent, () => button.click());
+        add(requiredTranslation('language_label'), button.textContent, () => button.click(), null);
       });
       const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
-      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
+      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click(), 'workflow');
     }
     const chart = requiredTranslation('palette_chart');
     (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn, compareBtn])
-      .forEach((button) => add(chart, button.textContent, () => button.click()));
+      .forEach((button) => add(chart, button.textContent, () => button.click(), window.EC_CONTROLS.icon(button)));
     // The page's own print, whose stylesheet prints the chart and its open topic.
-    add(chart, requiredTranslation('print'), () => window.print());
-    if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
-    add(chart, requiredTranslation('keys_title'), openKeys);
+    add(chart, requiredTranslation('print'), () => window.print(), 'printer');
+    if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus, 'x');
+    add(chart, requiredTranslation('keys_title'), openKeys, 'keyboard');
     if (!embedded) add(chart, requiredTranslation(account.signedIn() ? 'account_title' : 'account_sign_in'), account.open);
     return commands;
   };

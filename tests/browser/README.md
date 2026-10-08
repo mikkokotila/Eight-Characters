@@ -1,5 +1,10 @@
 # Browser regression tests
 
+The classic controls suite covers preserved action names and command text, local
+icons on rerendered panels, chart evidence counts, luck and Zi-hour selections,
+localized keyboard descriptions, cancelled 500 ms hovers, hoverable tooltips,
+touch hold versus tap, Escape, reduced motion, dark mode and 320px layouts.
+
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend
 build step, or alter the running app. The server address, its mail folder, the module
