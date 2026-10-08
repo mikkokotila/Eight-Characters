@@ -1320,13 +1320,21 @@ body {
 }
 .life-cell::before { left: 25%; }
 .life-cell::after { left: 75%; }
+/* A relationship's run: its line for as long as it acts, in its kind's line, as the
+   joining lines draw it (on a phone, where the marks are not drawn, the only sign of its
+   kind). Several on one character stand side by side, a spread apart. */
 .life-run {
   position: absolute;
   top: var(--space-2);
   height: calc(var(--to) * var(--height) - 2 * var(--space-2));
-  border-left: 2px solid var(--line-2);
-  transform: translateX(-1px);
+  border-left: 1px solid var(--ink-2);
+  transform: translateX(calc(-50% + var(--run) * var(--arc-spread)));
 }
+.life-run[data-kind='branch_clash'] { border-left-style: dashed; }
+.life-run:is([data-kind='harmony_frame'], [data-kind='half_frame']) { border-left: 3px double var(--ink-2); }
+.life-run[data-kind='directional_combination'] { border-left-width: 2px; }
+.life-run:is([data-kind='punishment'], [data-kind='half_punishment'], [data-kind='self_punishment']) { border-left: 2px dashed var(--ink-2); }
+.life-run[data-kind='harm'] { border-left: 2px dotted var(--ink-2); }
 :is(.life-run, .life-mark)[data-lane='stem'] { left: 25%; }
 :is(.life-run, .life-mark)[data-lane='branch'] { left: 75%; }
 .life-mark {
@@ -1366,9 +1374,10 @@ body {
 .life-link[data-kind='harm'] { border-top: 2px dotted var(--ink-2); }
 /* In the chosen decade, what rests until the other phase grows quiet: a mark's words and
    its kind's line in the secondary ink, which still reads at 4.5:1, its outline in the
-   faint line, and a joining line in the secondary line. */
+   faint line, and its joining line and its runs in the secondary line. */
 .life-mark.is-quiet { color: var(--ink-2); border-color: var(--line-1); box-shadow: none; }
 .life-link.is-quiet { border-top-color: var(--line-2); }
+.life-run.is-quiet { border-left-color: var(--line-2); }
 /* Today, across the natal columns, to the Luck column's edge. */
 .life-today {
   position: relative;
