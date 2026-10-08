@@ -128,7 +128,7 @@ class TestApiLuckReading(unittest.TestCase):
         }
         self.assertNotIn('luck_reading', self.four_pillars(natal))
 
-    def test_a_luck_pillar_reads_its_stem_and_its_branch_from_the_day_masters_seat(self):
+    def test_a_luck_pillar_reads_its_stem_and_branch_from_the_day_masters_seat(self):
         # 己丑 Ji Chou, the fifth: its 己 is the Direct Officer of the Day Master 壬 Ren,
         # and 壬 stands at its sixth stage, Decline, on 丑 Chou.
         fifth = self.four_pillars(SAMPLE_REQUEST)['luck_reading']['decades'][4]
@@ -142,7 +142,9 @@ class TestApiLuckReading(unittest.TestCase):
                 'core': plain(role['core']),
             },
         )
-        self.assertEqual(fifth['branch']['about'], plain(self.canon['branches']['丑']['core']))
+        self.assertEqual(
+            fifth['branch']['about'], plain(self.canon['branches']['丑']['core'])
+        )
         self.assertEqual(
             fifth['branch']['meets'],
             plain([self.canon['stems_on_branches']['壬']['branches']['丑']]),
@@ -181,7 +183,10 @@ class TestApiLuckReading(unittest.TestCase):
         for read in fifth['relationships'].values():
             self.assertIsNone(read['pairing'])
             self.assertIsNone(read['with_day_master'])
-            self.assertEqual(read['neither_day_master']['label'], 'When neither Stem is the Day Master')
+            self.assertEqual(
+                read['neither_day_master']['label'],
+                'When neither Stem is the Day Master',
+            )
             unlabelled = [p for p in entry['paragraphs'] if p['label'] is None]
             self.assertEqual(read['entry']['paragraphs'], unlabelled)
             # Without a pairing, the list's line is the entry's own first sentence.
@@ -205,7 +210,10 @@ class TestApiLuckReading(unittest.TestCase):
                 {
                     'source': 'cradle',
                     'natal': None,
-                    'by': ['harmony_frame:18:month-day-luck', 'harmony_frame:18:month-hour-luck'],
+                    'by': [
+                        'harmony_frame:18:month-day-luck',
+                        'harmony_frame:18:month-hour-luck',
+                    ],
                     'sentence': SETTLE_SENTENCES['cradle'],
                 }
             ],
@@ -213,7 +221,11 @@ class TestApiLuckReading(unittest.TestCase):
         # A natal chart that holds the Peak already cradles nothing.
         held = {**SAMPLE, 'year': ('甲', '子')}
         self.assertEqual(
-            [s for s in luck_reading(held, ('戊', '子'))['decades'][0]['settles'] if s['source'] == 'cradle'],
+            [
+                s
+                for s in luck_reading(held, ('戊', '子'))['decades'][0]['settles']
+                if s['source'] == 'cradle'
+            ],
             [],
         )
 
@@ -250,8 +262,9 @@ class TestApiLuckReading(unittest.TestCase):
             settles,
         )
         # Only a luck stem that is one of the two settles it.
+        luck_pillars = payload['luck_pillars']['pillars']
         for later in payload['luck_reading']['decades'][1:]:
-            stem = payload['luck_pillars']['pillars'][later['sequence'] - 1]['stem']['chinese']
+            stem = luck_pillars[later['sequence'] - 1]['stem']['chinese']
             settled = [s for s in later['settles'] if s['source'] == 'year_hour_stems']
             self.assertEqual(bool(settled), stem in ('丁', '壬'), stem)
 
@@ -324,11 +337,16 @@ class TestApiLuckReading(unittest.TestCase):
             read = luck_reading(pillars, *sixty)
             for d, (stem, branch) in zip(read['decades'], sixty, strict=True):
                 stage = life_stage(day_master, branch)
-                self.assertEqual(d['branch']['stage']['stage'], stage, (day_master, stem, branch))
                 self.assertEqual(
-                    d['branch']['stage']['paragraphs'], plain(self.canon['stages'][stage]['core'])
+                    d['branch']['stage']['stage'], stage, (day_master, stem, branch)
                 )
-                self.assertEqual(d['branch']['about'], plain(self.canon['branches'][branch]['core']))
+                self.assertEqual(
+                    d['branch']['stage']['paragraphs'],
+                    plain(self.canon['stages'][stage]['core']),
+                )
+                self.assertEqual(
+                    d['branch']['about'], plain(self.canon['branches'][branch]['core'])
+                )
                 for r in d['relationships'].values():
                     self.assertIsNone(r['pairing'])
                     self.assertTrue(r['line'])
@@ -345,7 +363,8 @@ class TestApiLuckReading(unittest.TestCase):
         with self.assertRaisesRegex(CanonError, 'waits for a luck pillar'):
             check_reading_canon(canon)
         canon = copy.deepcopy(self.canon)
-        canon['three_harmonies']['introduction'][1]['text'] = canon['three_harmonies']['introduction'][1]['text'].replace('cradle (拱)', 'cradle')
+        paragraph = canon['three_harmonies']['introduction'][1]
+        paragraph['text'] = paragraph['text'].replace('cradle (拱)', 'cradle')
         with self.assertRaisesRegex(CanonError, r'waits for a luck pillar \(cradle\)'):
             check_reading_canon(canon)
 

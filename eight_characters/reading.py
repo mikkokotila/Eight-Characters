@@ -628,7 +628,9 @@ def _relationship(
     # The canon's pairings are the natal positions', so a luck pillar's pair reads none.
     pairing = (
         family['pairings'][_pairing(member_pillars)]
-        if len(member_pillars) == 2 and family['pairings'] and LUCK not in member_pillars
+        if len(member_pillars) == 2
+        and family['pairings']
+        and LUCK not in member_pillars
         else None
     )
     with_dm = neither = dynamic = None
@@ -843,8 +845,7 @@ def _settles(
         other['id']
         for other in luck
         if other['kind'] == 'harmony_frame'
-        and _luck_char(other)
-        == peaks[frozenset(m['char'] for m in other['members'])]
+        and _luck_char(other) == peaks[frozenset(m['char'] for m in other['members'])]
         and _luck_char(other) not in natal_branches
     ]
     if cradled:
@@ -890,7 +891,9 @@ def build_luck_reading(
             or decade['occurrences'][0]['ten_god'] != god
             or decade['day_master_stage'] != stage
         ):
-            raise ValueError(f'Luck pillar {pillar["sequence"]} and its context disagree.')
+            raise ValueError(
+                f'Luck pillar {pillar["sequence"]} and its context disagree.'
+            )
         # The Day Master on the luck branch, as on any branch but the Day's own.
         text = grounds['branches'][branch]
         only = DAY_PILLAR_ONLY.get(day_master + branch)
