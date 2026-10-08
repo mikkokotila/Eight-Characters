@@ -42,6 +42,10 @@ const pairIn = (url) => {
 // From a chart: Compare, and the second birth (openChart answers the place's search).
 async function compareWithSecond(page, lang = 'en') {
   await openChart(page, { lang });
+  await askForSecond(page);
+}
+// On a chart: Compare, and the second birth.
+async function askForSecond(page) {
   await page.locator('#compare-btn').click();
   await page.locator('#compare-note').waitFor({ state: 'visible' });
   await page.locator('#date').fill(SECOND.date);
@@ -131,6 +135,11 @@ for (const profile of profiles) {
       await before.frame.locator('button[data-context="roots"]').click();
       await page.waitForFunction(() => location.hash.includes('topic%3Droots'));
       await page.locator('#compare-swap').click();
+      // The session is made sure of first; then the charts change sides.
+      await page.waitForFunction((date) => {
+        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
+        return new URLSearchParams(pair.get('a')).get('date') === date;
+      }, SECOND.date);
       if (profile.name === 'mobile') {
         // The chart shown stays the one shown: it is now on the other side.
         assert.equal(await page.locator('#compare-sides button[data-compare-side="b"]').getAttribute('aria-pressed'), 'true');
@@ -175,6 +184,86 @@ for (const profile of profiles) {
         assert.equal(await frame.locator('html').getAttribute('lang'), 'fi');
         assert.match(await frame.locator('#chart-solar-time').textContent(), /^Todellinen aurinkoaika/);
       }
+    });
+
+    check('the comparison\'s language, set while a chart is still on its way, is that chart\'s too', async (page) => {
+      await openChart(page, { lang: 'en' });
+      // The second chart's first answer is held, before openChart's route asks the API.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let reached;
+      const holding = new Promise((resolve) => { reached = resolve; });
+      const asked = [];
+      await page.route('**/api/four_pillars', async (route) => {
+        const body = route.request().postDataJSON();
+        if (body.date === SECOND.date) {
+          asked.push(body.lang);
+          if (asked.length === 1) {
+            reached();
+            await held;
+          }
+        }
+        return route.fallback();
+      });
+      await askForSecond(page);
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await side(page, 'a');
+      await holding;
+      await page.locator('#compare-language button[data-compare-lang="fi"]').click();
+      await page.waitForFunction(() =>
+        new URLSearchParams(new URLSearchParams(location.hash.slice('#compare?'.length)).get('a')).get('lang') === 'fi');
+      // The second chart's answer, in English, comes after: it is asked for again in Finnish.
+      release();
+      await page.waitForFunction(() => {
+        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
+        return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
+      });
+      assert.deepEqual(asked, ['en', 'fi']);
+      if (profile.name === 'mobile') await page.locator('#compare-sides button[data-compare-side="b"]').click();
+      const { frame } = await side(page, 'b');
+      assert.equal(await frame.locator('html').getAttribute('lang'), 'fi');
+      assert.match(await frame.locator('#chart-solar-time').textContent(), /^Todellinen aurinkoaika/);
+    });
+
+    check('while the session is made sure of, the comparison takes no other change: one is made at a time', async (page) => {
+      await compareWithSecond(page);
+      await bothDrawn(page);
+      // The page's check of the session, before the frames ask again, is held.
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let reached;
+      const holding = new Promise((resolve) => { reached = resolve; });
+      let checks = 0;
+      await page.route((url) => url.pathname === '/api/account', async (route) => {
+        if (route.request().method() === 'GET' && route.request().frame() === page.mainFrame()) {
+          checks += 1;
+          reached();
+          await held;
+        }
+        return route.fallback();
+      });
+      await page.locator('#compare-swap').click();
+      await holding;
+      assert.equal(await page.locator('#compare-view').getAttribute('aria-busy'), 'true');
+      // Meanwhile neither the sides nor the language take a click.
+      await page.locator('#compare-swap').click();
+      await page.locator('#compare-language button[data-compare-lang="fi"]').click();
+      release();
+      await page.waitForFunction(() => !document.getElementById('compare-view').hasAttribute('aria-busy'));
+      await bothDrawn(page);
+      // The sides changed once, in the language they were in.
+      const pair = pairIn(page.url());
+      assert.deepEqual([pair.a.get('date'), pair.b.get('date')], [SECOND.date, '1988-02-04']);
+      assert.deepEqual([pair.a.get('lang'), pair.b.get('lang')], ['en', 'en']);
+      assert.equal(await page.locator('#compare-language button[data-compare-lang="en"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(checks, 1);
+      // Then it takes a change again.
+      await page.locator('#compare-language button[data-compare-lang="fi"]').click();
+      await page.waitForFunction(() => {
+        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
+        return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
+      });
+      await bothDrawn(page);
     });
 
     check('a comparison link that names no pair says why, and Copy link copies the pair', async (page) => {

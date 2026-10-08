@@ -286,6 +286,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!resolvedLocation && !locationStatus.textContent) {
       setLocationStatus('', '');
     }
+    // The page's title names the chart on screen, which its own words above replaced.
+    if (shown !== null && !chartView.classList.contains('hidden')) {
+      document.title = t('chart_page_title', { chart: shown.heading });
+    }
     account.refresh();
   };
 
@@ -551,6 +555,13 @@ document.addEventListener('DOMContentLoaded', () => {
       asked = { ...asked, lang: currentLanguage };
     }
     let response = await post(asked);
+    // The page's language, set while the chart was on its way (in the account's menu,
+    // say, or by the comparison around this chart), is the chart's: it is asked for again
+    // in it.
+    if (response.ok && wanted() && asked.lang !== currentLanguage) {
+      asked = { ...asked, lang: currentLanguage };
+      response = await post(asked);
+    }
     if (response.status === 401 && wanted()) {
       // Refused, perhaps for a session another tab has replaced since: a sign-in is
       // asked for only if the browser holds none now, and the chart is still wanted.
@@ -716,7 +727,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!(await showChart({ ...shown.request, ...changes }, shown.place))) return;
       if (standing !== null && !luck.stand(standing)) throw new Error(t('luck_error'));
       addressChart('replaceState');
-      chartView.querySelector(focusSelector).focus();
+      if (focusSelector) chartView.querySelector(focusSelector).focus();
     } catch (err) {
       console.error(err);
       leaveChart();
@@ -822,6 +833,19 @@ document.addEventListener('DOMContentLoaded', () => {
     return t(key, vars);
   };
 
+  // The page's language set from outside its own switches: by the account, or, in a
+  // comparison's frame, by the comparison. The page's words follow, and so does a chart
+  // on screen, asked for again in it; a chart on its way takes it as it comes
+  // (askForPillars).
+  const takeLanguage = (lang) => {
+    currentLanguage = i18n.setLanguage(lang);
+    applyLanguage();
+    if (shown !== null && !chartView.classList.contains('hidden') && !pending
+      && chartView.getAttribute('aria-busy') !== 'true' && shown.request.lang !== currentLanguage) {
+      reshow({ lang: currentLanguage });
+    }
+  };
+
   // ── The account (account.js): charts need one, the start page does not ──
   const accountState = document.getElementById('account-state');
   if (!accountState) throw new Error('The page names no account state.');
@@ -833,14 +857,13 @@ document.addEventListener('DOMContentLoaded', () => {
     language: () => currentLanguage,
     embedded,
     // Signing in, or choosing the account's language, sets the page's.
-    onLanguage: (lang) => {
-      currentLanguage = i18n.setLanguage(lang);
-      applyLanguage();
-    },
+    onLanguage: takeLanguage,
     // Signed out, the page starts again, empty, as New chart leaves it.
     onSignedOut: () => {
-      // Whatever was on its way is abandoned: the page starts again, empty.
+      // Whatever was on its way is abandoned: the page starts again, empty. The chart it
+      // showed is forgotten, so going back to its address asks for it, and a sign-in.
       arrivals += 1;
+      shown = null;
       chartView.removeAttribute('aria-busy');
       setPending(false);
       compare.hide();
@@ -1494,6 +1517,25 @@ document.addEventListener('DOMContentLoaded', () => {
     },
     onClose: goToChart,
     toast: (text, isError) => showToast(text, isError),
+    // Before the frames ask for their charts again (in another language, or with the
+    // sides swapped), the page makes sure of the session, as before it first showed
+    // them: the frames cannot ask for a sign-in themselves. Answers with the page's
+    // language, which a sign-in here may have set, or null if the comparison is left
+    // or no session is had.
+    ready: async () => {
+      const arrival = arrivals;
+      try {
+        const holds = await account.stillSignedIn(() => arrival === arrivals);
+        if (arrival !== arrivals) return null;
+        if (!holds) await account.signIn();
+        return arrival === arrivals ? currentLanguage : null;
+      } catch (err) {
+        if (arrival !== arrivals) return null;
+        console.error(err);
+        showToast(err.message, true);
+        return null;
+      }
+    },
   });
 
   const sameChart = (link) => {
@@ -1670,13 +1712,16 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   };
   window.addEventListener('popstate', followAddress);
-  // The comparison asks both its charts for its language.
+  // The comparison sets both its charts' language, as the account sets the page's: a
+  // chart on its way takes it too, and a frame that shows no chart (its form, saying
+  // why) asks for none.
   if (embedded) {
     window.addEventListener('message', (event) => {
       if (event.origin !== location.origin || event.source !== window.parent || event.data?.type !== 'ec-language') return;
-      const button = chartLanguage.querySelector(`button[data-chart-lang="${event.data.lang}"]`);
-      if (!button) throw new Error(`Unknown language: ${event.data.lang}`);
-      button.click();
+      if (!chartLanguage.querySelector(`button[data-chart-lang="${event.data.lang}"]`)) {
+        throw new Error(`Unknown language: ${event.data.lang}`);
+      }
+      takeLanguage(event.data.lang);
     });
   }
 
