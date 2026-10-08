@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.41.2
+
+Fixes to accounts (0.41.0), from a read of the whole change: the page's language reaches every chart, signing out forgets the chart, and a comparison asks for the sign-in its frames cannot.
+
+### Fixed
+- **A chart on screen kept its language when the account's was set in its menu.** The page's words changed, and so did the chart's language switch, which then could not ask for the language it showed; the chart's own words stayed in the other. The chart is now asked for again in the language.
+- **A chart on its way kept the language it was asked for** when the page's changed meanwhile (in the account's menu, or on the start page), and was drawn in it, under the page's words in the other. It is now asked for again in the page's language when its answer comes.
+- **Going back to a chart's address after signing out showed the chart again**, from the page's memory, with no session. Signing out now forgets the chart: going back asks for it, and for a sign-in.
+- **The page's title** named no chart once the page's language changed with a chart on screen; it names the chart again.
+- **A comparison whose session ended elsewhere** asked for no sign-in when its sides were swapped or its language changed: its frames, which cannot ask, each said that charts need an account. The page now makes sure of the session first, as when a comparison opens, and asks for the sign-in itself. Meanwhile the comparison's language and sides take no clicks, so one change is made at a time.
+- **A comparison's language** reached a frame still asking for its first chart, or showing none, as a script error, whose message the frame showed instead of its chart; and a frame asking for its chart again lost a newer language, so the comparison named a language its chart was not in. A frame now takes the comparison's language as the page takes the account's: a chart on screen is asked for again in it, and one on its way when its answer comes.
+- **A deletion begun in the account's menu**, its address typed, stayed open when the page took another account (signed in to in another tab); it is now closed, and the address cleared.
+- **Signing out on every device after the account was deleted in another tab** answered `204` and removed the session cookie, as if it had signed out. It now answers `401`, as the account's other actions do then.
+- **[Your account](docs/Account.md)** says that accounts are also kept in an encrypted backup, which only the site's owner can read, and how long a deleted account stays in it.
+
+### Changed
+- Version bumped to `0.41.2`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.41.0
 
 Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
