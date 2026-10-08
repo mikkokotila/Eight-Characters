@@ -163,8 +163,10 @@ for (const profile of profiles) {
       assert.deepEqual(await openDialogs(page), ['keys-dialog']);
       const dialog = page.getByRole('dialog', { name: 'Keys' });
       // In English, R reads the focused card; a Finnish chart has no readings, and no R.
-      assert.equal(await dialog.locator('.key-row').filter({ visible: true }).count(), 8);
-      assert.deepEqual(await dialog.locator('dd').allTextContents(), ['Between pillars', 'Between stem and branch',
+      // A chart without a gender has no luck pillars, and no luck keys.
+      const rows = dialog.locator('.key-row').filter({ visible: true });
+      assert.equal(await rows.count(), 8);
+      assert.deepEqual(await rows.locator('dd').allTextContents(), ['Between pillars', 'Between stem and branch',
         "A branch's hidden stems", 'Read what the focused card means', 'A card to its Ten Gods and back',
         'Closes what is open', 'Commands', 'These keys']);
       assert.equal(await dialog.locator('.key-arrow .sr-only').first().textContent(), 'Left arrow');
