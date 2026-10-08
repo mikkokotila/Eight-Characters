@@ -135,7 +135,7 @@ for (const profile of profiles) {
       await settled(page);
       // Signed out on every device, from another one.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       await page.locator('#chart-language button[data-chart-lang="fi"]').click();
       await dialogOpens(page);
@@ -185,7 +185,7 @@ for (const profile of profiles) {
       // Signed out on every device, from another one; then back past the form to the
       // first chart, which is refused, asks for a sign-in, and is drawn.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       await page.goBack();
       await page.goBack();
@@ -217,7 +217,7 @@ for (const profile of profiles) {
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       // Signed out on every device, from another one, while the second birth is typed.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -270,7 +270,7 @@ for (const profile of profiles) {
       // Signed out on every device, from another one; then back to the second birth, and
       // another one compared, which asks for a sign-in and shows its frames.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       await page.goBack();
       await compareWith('1991-01-01', '08:00');
@@ -512,7 +512,7 @@ for (const profile of profiles) {
       await dialogCloses(page);
       // Another tab sets the account's language to Finnish.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', key: account.key } })).status(), 200);
       });
       await page.locator('#account-btn').click();
       await dialogOpens(page);
@@ -662,7 +662,7 @@ for (const profile of profiles) {
       // The session ends elsewhere: the next chart is refused, and the page's check of
       // the session that follows is refused too, and held on its way.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       const check = await holdAnswer(page, '**/api/account');
       await page.locator('#chart-language button[data-chart-lang="fi"]').click();
@@ -941,7 +941,7 @@ for (const profile of profiles) {
       // English, and the comparison, come forward again, takes it.
       const renewed = await newSession(playwright, account);
       await asAccount(playwright, renewed, async (request) => {
-        assert.equal((await request.patch('/api/account', { data: { language: 'en', email: account.email } })).status(), 200);
+        assert.equal((await request.patch('/api/account', { data: { language: 'en', key: account.key } })).status(), 200);
       });
       await page.context().addCookies(renewed.cookies);
       await page.goBack();
@@ -1032,7 +1032,7 @@ for (const profile of profiles) {
       await page.locator('#compare-view').waitFor({ state: 'visible' });
       // Another tab sets Finnish; the menu's question reaches the server after that.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', key: account.key } })).status(), 200);
       });
       menu.release();
       // Its answer, the older question's, is the later change: the menu shows Finnish.
@@ -1050,7 +1050,7 @@ for (const profile of profiles) {
       // last, Finnish.
       await asAccount(playwright, first, async (request) => {
         for (const language of ['fi', 'en', 'fi', 'en', 'fi', 'en', 'fi']) {
-          assert.equal((await request.patch('/api/account', { data: { language, email: first.email } })).status(), 200);
+          assert.equal((await request.patch('/api/account', { data: { language, key: first.key } })).status(), 200);
         }
       });
       await page.locator('#account-btn').click();
@@ -1062,7 +1062,7 @@ for (const profile of profiles) {
       // Another tab deletes the account, makes it again with the address, in English, and
       // signs in to it.
       await asAccount(playwright, first, async (request) => {
-        assert.equal((await request.delete('/api/account', { data: { email: first.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account', { data: { email: first.email, key: first.key } })).status(), 204);
       });
       const again = await newAccount(playwright, { language: 'en', email: first.email });
       await page.context().addCookies(again.cookies);
@@ -1095,7 +1095,7 @@ for (const profile of profiles) {
       // Another tab sets Finnish. The refused chart's check of the session reads it, and
       // its answer is held on its way.
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', key: account.key } })).status(), 200);
       });
       const check = await holdAnswer(page, '**/api/account');
       releaseChart();
@@ -1109,6 +1109,30 @@ for (const profile of profiles) {
       await page.waitForFunction(() =>
         document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
       assert.equal(await dialogIsOpen(page), false);
+    });
+
+    check('Download my data for an account made again in another tab does nothing, and says so', async (page) => {
+      const first = await newAccount(playwright, { language: 'fi', label: 'export-again' });
+      await signInPage(page, first);
+      await visit(page, { lang: 'en' });
+      let downloads = 0;
+      page.on('download', () => { downloads += 1; });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: first.email }).waitFor();
+      // Another tab deletes the account and makes it again with the address, in English,
+      // while this menu stays open on the first, in Finnish.
+      await asAccount(playwright, first, async (request) => {
+        assert.equal((await request.delete('/api/account', { data: { email: first.email, key: first.key } })).status(), 204);
+      });
+      const again = await newAccount(playwright, { language: 'en', email: first.email });
+      await page.context().addCookies(again.cookies);
+      await page.locator('#account-export').click();
+      await page.locator('#account-status').filter({ hasText: 'The account changed meanwhile: nothing was done.' }).waitFor();
+      // The menu asks whose the session is, and shows the account made again, in English.
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="en"]').getAttribute('aria-pressed') === 'true');
+      assert.equal(downloads, 0);
     });
 
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
@@ -1134,7 +1158,7 @@ for (const profile of profiles) {
       await dialogOpens(page);
       await page.locator('#account-who').filter({ hasText: `Signed in as ${account.email}` }).waitFor();
       await asAccount(playwright, account, async (request) => {
-        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
       await page.goForward();
       await page.locator('#account-notice').filter({ hasText: 'Your session ended. Sign in again.' }).waitFor();

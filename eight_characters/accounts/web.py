@@ -343,6 +343,15 @@ class AccountView(TypedDict):
     key: str
 
 
+_KEY: Final = re.compile('[0-9a-f]{64}')
+
+
+def account_key(user: User) -> str:
+    """The account's key: the same for its whole life, and another for an account
+    made again with its address. A hash of its id, which the page is never told."""
+    return hashlib.sha256(user.id.encode()).hexdigest()
+
+
 def account_view(user: User) -> AccountView:
     """What the page is told of an account: never its id or a session."""
     return {
@@ -351,9 +360,7 @@ def account_view(user: User) -> AccountView:
         'plan': user.plan,
         'created_at': user.created_at,
         'updated_at': user.updated_at,
-        # The same for the account's whole life, and another for an account made again
-        # with its address: a hash of its id, which the page is never told.
-        'key': hashlib.sha256(user.id.encode()).hexdigest(),
+        'key': account_key(user),
     }
 
 
@@ -380,17 +387,18 @@ class LanguageRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     language: Literal['fi', 'en']
-    # The account the page names (see AccountRequest).
-    email: str
+    # The account the page names, by its key (see AccountRequest).
+    key: str
 
 
 class AccountRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
-    # The account the page names. Tabs share the session cookie, so another tab may
-    # have signed in to another account since the page learned it; the action is
-    # then refused (409) and changes nothing.
-    email: str
+    # The account the page names, by its key. Tabs share the session cookie, so another
+    # tab may have signed in to another account since the page learned it, or deleted
+    # it and made it again with its address; the action is then refused (409) and
+    # changes nothing.
+    key: str
 
 
 class DeleteRequest(BaseModel):
@@ -398,21 +406,20 @@ class DeleteRequest(BaseModel):
 
     # The account's address, typed again to confirm.
     email: str
+    # The account the page names, by its key (see AccountRequest).
+    key: str
 
 
 router = APIRouter(prefix='/api/account')
 
 
-def _named(user: User, email: str) -> None:
-    """An action is for the account the page names: if the session belongs to
-    another one now, nothing is done."""
-    try:
-        named = normalize_email(email)
-    except RecordError as exc:
-        raise HTTPException(
-            status_code=400, detail='The account named is not an email address.'
-        ) from exc
-    if named != user.email:
+def _named(user: User, key: str) -> None:
+    """An action is for the account the page names, by its key: if the session
+    belongs to another one now, or to an account made again with the address,
+    nothing is done."""
+    if _KEY.fullmatch(key) is None:
+        raise HTTPException(status_code=400, detail='The account named is not a key.')
+    if key != account_key(user):
         raise HTTPException(status_code=409, detail=ACCOUNT_CHANGED)
 
 
@@ -504,7 +511,7 @@ def update_account(
     language of its emails."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
-    _named(user, payload.email)
+    _named(user, payload.key)
     try:
         return account_view(accounts.store.set_language(user.id, payload.language))
     except UnknownUser as exc:
@@ -533,7 +540,7 @@ def sign_out_everywhere(
 ) -> None:
     _same_origin(request, accounts)
     user = _signed_in(current).user
-    _named(user, payload.email)
+    _named(user, payload.key)
     accounts.sign_in.sign_out_everywhere(user.id)
     _clear_session_cookie(response, accounts)
 
@@ -552,7 +559,7 @@ def export_account(
     log."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
-    _named(user, payload.email)
+    _named(user, payload.key)
     accounts.sign_in.sweep()
     try:
         data = accounts.store.account_data(user.id)
@@ -574,6 +581,7 @@ def delete_account(
     run."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.key)
     try:
         typed = normalize_email(payload.email)
     except RecordError as exc:

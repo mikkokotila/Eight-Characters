@@ -65,9 +65,10 @@ async function newAccount(playwright, { language = 'en', label = 'reader', email
     assert.equal(asked.status(), 202, `Asking for a code: ${await asked.text()}`);
     const signed = await request.post('/api/account/session', { data: { email, code: await readCode(email) } });
     assert.equal(signed.status(), 200, `Signing in: ${await signed.text()}`);
+    const { key } = await signed.json();
     const { cookies } = await request.storageState();
     assert.equal(cookies.length, 1, 'Signing in sets one cookie, the session.');
-    return { email, cookies };
+    return { email, key, cookies };
   } finally {
     await request.dispose();
   }
@@ -85,8 +86,9 @@ async function newSession(playwright, account) {
       data: { email: account.email, code: await readCode(account.email) },
     });
     assert.equal(signed.status(), 200, `Signing in: ${await signed.text()}`);
+    const { key } = await signed.json();
     const { cookies } = await request.storageState();
-    return { email: account.email, cookies };
+    return { email: account.email, key, cookies };
   } finally {
     await request.dispose();
   }
@@ -104,7 +106,7 @@ async function asAccount(playwright, account, run) {
 
 async function deleteAccount(playwright, account) {
   await asAccount(playwright, account, async (request) => {
-    const deleted = await request.delete('/api/account', { data: { email: account.email } });
+    const deleted = await request.delete('/api/account', { data: { email: account.email, key: account.key } });
     assert.equal(deleted.status(), 204, `Deleting the test account: ${await deleted.text()}`);
   });
 }

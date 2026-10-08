@@ -83,8 +83,9 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
   ended signs the page in to that session, one answered after newer checks keeps the
   language they found, and one saved after a newer check read the old one is kept; a
   menu check answered late keeps a later change it read, a chart left while its check
-  reads a later language keeps it, and an account made again with its address in
-  another tab shows its own language.
+  reads a later language keeps it, an account made again with its address in
+  another tab shows its own language, and Download my data for such an account does
+  nothing, and says so.
 
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in

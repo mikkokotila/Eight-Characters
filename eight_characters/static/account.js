@@ -596,10 +596,9 @@
       const choice = event.target.closest('button[data-account-lang]');
       if (!choice || choice.getAttribute('aria-pressed') === 'true') return;
       act(choice, async () => {
-        const named = account.email;
         const at = moment();
         const response = await call('PATCH', '/api/account', {
-          language: choice.dataset.accountLang, email: named,
+          language: choice.dataset.accountLang, key: account.key,
         });
         if (response.status === 409) return elsewhere(at);
         if (response.status === 401) return refusedHere(at);
@@ -621,10 +620,9 @@
     });
 
     exportButton.addEventListener('click', () => act(exportButton, async () => {
-      const named = account.email;
       const { key } = account;
       const at = moment();
-      const response = await call('POST', '/api/account/export', { email: named });
+      const response = await call('POST', '/api/account/export', { key });
       if (response.status === 409) return elsewhere(at);
       if (response.status === 401) return refusedHere(at);
       if (!response.ok) throw refused(response);
@@ -661,7 +659,7 @@
     // if it has taken another session meanwhile.
     signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async () => {
       const at = moment();
-      const response = await call('DELETE', '/api/account/sessions', { email: account.email });
+      const response = await call('DELETE', '/api/account/sessions', { key: account.key });
       if (response.ok) return signedOut('account_signed_out_everywhere');
       if (response.status === 409) return elsewhere(at);
       if (response.status === 401) return refusedHere(at);
@@ -686,11 +684,9 @@
         }
         setStatus(deleteStatus, '');
         const at = moment();
-        const response = await call('DELETE', '/api/account', { email: typed });
+        const response = await call('DELETE', '/api/account', { email: typed, key: account.key });
         if (response.ok) return signedOut('account_deleted');
-        // The address typed is the one the menu names (checked above): refused, it is
-        // not the session's account, which another tab has signed in to since.
-        if (response.status === 400) return elsewhere(at);
+        if (response.status === 409) return elsewhere(at);
         if (response.status === 401) return refusedHere(at);
         throw refused(response);
       });

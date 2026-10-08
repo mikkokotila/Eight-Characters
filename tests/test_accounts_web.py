@@ -18,6 +18,7 @@ from eight_characters.accounts.store import AccountStore, StoreError, UnknownUse
 from eight_characters.accounts.web import (
     Accounts,
     ConfigError,
+    account_key,
     get_accounts,
     load_config,
 )
@@ -305,29 +306,31 @@ class TestSigningIn(AccountApiTestCase):
         self.assertEqual(client.get('/api/account').status_code, 200)
 
 
-# The account the page names in its requests: the one signed in in TestTheAccount.
-THIS = {'email': 'reader@example.com'}
-
-
 class TestTheAccount(AccountApiTestCase):
     def setUp(self) -> None:
         super().setUp()
         self.assertEqual(self.sign_in().status_code, 200)
 
+    def this(self) -> dict[str, str]:
+        """The account the page names in its requests, by its key: the one signed in."""
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        return {'key': account_key(user)}
+
     def test_its_language_changes(self) -> None:
-        reply = self.client.patch('/api/account', json={**THIS, 'language': 'en'})
+        reply = self.client.patch('/api/account', json={**self.this(), 'language': 'en'})
         self.assertEqual((reply.status_code, reply.json()['language']), (200, 'en'))
-        unknown = self.client.patch('/api/account', json={**THIS, 'language': 'sv'})
+        unknown = self.client.patch('/api/account', json={**self.this(), 'language': 'sv'})
         self.assertEqual(unknown.status_code, 400)
         forged = self.client.patch(
-            '/api/account', json={**THIS, 'language': 'fi'}, headers=ELSEWHERE
+            '/api/account', json={**self.this(), 'language': 'fi'}, headers=ELSEWHERE
         )
         self.assertEqual(forged.status_code, 403)
 
     def test_an_action_for_another_account_does_nothing(self) -> None:
         # Another tab signed in to another account since the page learned this one:
         # the session cookie, which tabs share, is the other account's now.
-        other = {'email': 'other@example.com'}
+        other = {'key': '0' * 64}
         changed = {'detail': 'This browser is signed in to another account now.'}
         requests = (
             ('PATCH', '/api/account', {**other, 'language': 'en'}),
@@ -341,9 +344,32 @@ class TestTheAccount(AccountApiTestCase):
         account = self.client.get('/api/account')
         self.assertEqual((account.status_code, account.json()['language']), (200, 'fi'))
         malformed = self.client.request(
-            'POST', '/api/account/export', json={'email': 'not an address'}
+            'POST', '/api/account/export', json={'key': 'not a key'}
         )
         self.assertEqual(malformed.status_code, 400)
+
+    def test_an_action_for_an_account_made_again_does_nothing(self) -> None:
+        # Another tab deleted the account and made it again with its address: the
+        # session is the new account's, and an action for the one the page names
+        # (by its key) changes nothing.
+        named = self.this()
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        self.accounts.store.delete_user(user.id)
+        self.assertEqual(self.sign_in().status_code, 200)
+        self.assertNotEqual(self.this(), named)
+        changed = {'detail': 'This browser is signed in to another account now.'}
+        requests = (
+            ('PATCH', '/api/account', {**named, 'language': 'en'}),
+            ('POST', '/api/account/export', named),
+            ('DELETE', '/api/account/sessions', named),
+            ('DELETE', '/api/account', {**named, 'email': 'reader@example.com'}),
+        )
+        for verb, path, body in requests:
+            with self.subTest(f'{verb} {path}'):
+                reply = self.client.request(verb, path, json=body)
+                self.assertEqual((reply.status_code, reply.json()), (409, changed))
+        self.assertEqual(self.client.get('/api/account').status_code, 200)
 
     def test_signing_out(self) -> None:
         reply = self.client.delete('/api/account/session')
@@ -354,13 +380,15 @@ class TestTheAccount(AccountApiTestCase):
     def test_signing_out_everywhere(self) -> None:
         other = self.new_client()
         self.assertEqual(self.sign_in(other, purpose='sign_in').status_code, 200)
-        everywhere = self.client.request('DELETE', '/api/account/sessions', json=THIS)
+        everywhere = self.client.request(
+            'DELETE', '/api/account/sessions', json=self.this()
+        )
         self.assertEqual(everywhere.status_code, 204)
         self.assertEqual(other.get('/api/account').status_code, 401)
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
     def test_its_data_downloads(self) -> None:
-        reply = self.client.post('/api/account/export', json=THIS)
+        reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(reply.status_code, 200)
         disposition = reply.headers['content-disposition']
         self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
@@ -386,7 +414,7 @@ class TestTheAccount(AccountApiTestCase):
 
     def test_an_export_holds_no_request_older_than_the_hour(self) -> None:
         self.clock.advance(timedelta(hours=1, seconds=1).total_seconds())
-        reply = self.client.post('/api/account/export', json=THIS)
+        reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(json.loads(reply.content)['code_requests'], [])
         # Dropped, not only left out of the file.
         connection = sqlite3.connect(self.accounts.store.path)
@@ -398,7 +426,7 @@ class TestTheAccount(AccountApiTestCase):
 
     def test_an_export_in_a_sessions_second_half_sets_no_cookie(self) -> None:
         self.clock.advance(timedelta(days=16).total_seconds())
-        reply = self.client.post('/api/account/export', json=THIS)
+        reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(reply.status_code, 200)
         self.assertNotIn('set-cookie', reply.headers)
         disposition = reply.headers['content-disposition']
@@ -406,10 +434,11 @@ class TestTheAccount(AccountApiTestCase):
 
     def test_an_account_deleted_meanwhile_answers_as_signed_out(self) -> None:
         gone = UnknownUser('gone')
-        confirm = {'email': 'reader@example.com'}
+        this = self.this()
+        confirm = {**this, 'email': 'reader@example.com'}
         requests: dict[str, tuple[str, str, dict[str, str] | None]] = {
-            'set_language': ('PATCH', '/api/account', {**THIS, 'language': 'en'}),
-            'account_data': ('POST', '/api/account/export', THIS),
+            'set_language': ('PATCH', '/api/account', {**this, 'language': 'en'}),
+            'account_data': ('POST', '/api/account/export', this),
             'delete_user': ('DELETE', '/api/account', confirm),
         }
         for method, (verb, path, body) in requests.items():
@@ -421,13 +450,14 @@ class TestTheAccount(AccountApiTestCase):
                 self.assertEqual(reply.status_code, 401)
 
     def test_deleting_needs_the_address_typed_again(self) -> None:
+        this = self.this()
         for typed in ('other@example.com', 'not an address'):
             with self.subTest(typed):
-                body = {'email': typed}
+                body = {**this, 'email': typed}
                 reply = self.client.request('DELETE', '/api/account', json=body)
                 self.assertEqual(reply.status_code, 400)
         self.assertIsNotNone(self.accounts.store.user_by_email('reader@example.com'))
-        confirm = {'email': ' Reader@Example.com '}
+        confirm = {**this, 'email': ' Reader@Example.com '}
         reply = self.client.request('DELETE', '/api/account', json=confirm)
         self.assertEqual(reply.status_code, 204)
         self.assertIsNone(self.accounts.store.user_by_email('reader@example.com'))

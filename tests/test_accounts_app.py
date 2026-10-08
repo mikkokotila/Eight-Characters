@@ -22,6 +22,7 @@ from eight_characters.accounts.store import AccountStore, Session, StoreError
 from eight_characters.accounts.web import (
     SIGN_IN_REQUIRED,
     ConfigError,
+    account_key,
     accounts_from_environment,
     require_account,
 )
@@ -90,8 +91,10 @@ class TestWhatNeedsAnAccount(unittest.TestCase):
         client = site_client()
         sign_in(client, self.accounts, 'ended@example.com')
         token = client.cookies[SESSION_COOKIE]
+        user = self.accounts.store.user_by_email('ended@example.com')
+        assert user is not None
         everywhere = client.request(
-            'DELETE', '/api/account/sessions', json={'email': 'ended@example.com'}
+            'DELETE', '/api/account/sessions', json={'key': account_key(user)}
         )
         self.assertEqual(everywhere.status_code, 204)
         stale = TestClient(app, base_url=TEST_ORIGIN, cookies={SESSION_COOKIE: token})
