@@ -661,10 +661,15 @@ class TestSquashHistory(BackupTestCase):
 class TestRestore(BackupTestCase):
     def setUp(self) -> None:
         super().setUp()
-        self.users = [
-            self.store.create_user('first@example.com', 'fi'),
-            self.store.create_user('Second@Example.org', 'en'),
-        ]
+        # Keep the formerly colliding shard occupied in every restore regression.
+        with patch(
+            'eight_characters.accounts.store.new_id',
+            side_effect=['ff' + '0' * 30, '00' + '1' * 30],
+        ):
+            self.users = [
+                self.store.create_user('first@example.com', 'fi'),
+                self.store.create_user('Second@Example.org', 'en'),
+            ]
         self.store.set_plan(self.users[0].id, 'pro')
         self.backup()
         self.clone = self.fresh_clone()
@@ -721,9 +726,13 @@ class TestRestore(BackupTestCase):
         elif change == 'add a stray file':
             (self.clone / 'users' / user.id[:2] / user.id / 'notes.txt').write_text('x')
         elif change == 'add a link':
-            (self.clone / 'users' / 'ff').symlink_to(
-                self.directory, target_is_directory=True
+            users = self.clone / 'users'
+            unused = next(
+                users / f'{shard:02x}'
+                for shard in range(256)
+                if not (users / f'{shard:02x}').exists()
             )
+            unused.symlink_to(self.directory, target_is_directory=True)
         git(self.clone, 'add', '--all')
         git(self.clone, 'commit', '--quiet', '--message', change)
 
