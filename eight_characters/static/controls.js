@@ -129,18 +129,19 @@
     tip.id = 'control-tooltip'; tip.className = 'control-tooltip'; tip.setAttribute('role', 'tooltip'); tip.setAttribute('popover', 'manual');
     const heading = document.createElement('strong'); const purpose = document.createElement('span'); tip.append(heading, purpose); document.body.append(tip);
     let active = null; let pending = null; let hoverTimer = null; let exitTimer = null; let fadeTimer = null;
-    let keyboard = false; let dismissed = null; let touch = null; let suppressedClick = null;
+    let keyboard = false; let escapeKeyDown = false; let dismissed = null; let touch = null; let suppressedClick = null; let hoveringTip = false;
     const trigger = (target) => target instanceof Element ? target.closest(selectors) : null;
     const cancelHover = () => { clearTimeout(hoverTimer); hoverTimer = null; pending = null; };
     const describe = (node, add) => {
-      const ids = new Set((node.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean));
+      const target = node.matches('.gender-option') ? node.querySelector('input') : node;
+      const ids = new Set((target.getAttribute('aria-describedby') ?? '').split(/\s+/).filter(Boolean));
       if (add) ids.add(tip.id); else ids.delete(tip.id);
-      if (ids.size) node.setAttribute('aria-describedby', [...ids].join(' ')); else node.removeAttribute('aria-describedby');
+      if (ids.size) target.setAttribute('aria-describedby', [...ids].join(' ')); else target.removeAttribute('aria-describedby');
     };
     const hide = () => {
       cancelHover(); clearTimeout(exitTimer); clearTimeout(fadeTimer);
       if (active) describe(active, false);
-      active = null; tip.classList.remove('is-visible');
+      active = null; hoveringTip = false; tip.classList.remove('is-visible');
       fadeTimer = setTimeout(() => { if (tip.matches(':popover-open')) tip.hidePopover(); }, 90);
     };
     const position = () => {
@@ -149,7 +150,9 @@
       if (!active.checkVisibility() || rect.bottom < 0 || rect.top > innerHeight || rect.right < 0 || rect.left > innerWidth) { hide(); return; }
       const bounds = tip.getBoundingClientRect();
       const x = Math.max(8, Math.min(rect.left + (rect.width - bounds.width) / 2, innerWidth - bounds.width - 8));
-      const above = rect.top - bounds.height - 8;
+      const cardHint = active.matches('.card.branch') ? document.querySelector('.card-hint:not(.hidden)') : null;
+      const edge = cardHint?.checkVisibility() ? cardHint.getBoundingClientRect().top : rect.top;
+      const above = edge - bounds.height - 8;
       tip.style.left = `${x}px`; tip.style.top = `${above >= 8 ? above : Math.min(innerHeight - bounds.height - 8, rect.bottom + 8)}px`;
     };
     const show = (node) => {
@@ -164,7 +167,9 @@
       requestAnimationFrame(() => { if (active === node) tip.classList.add('is-visible'); });
     };
     const schedule = (node) => {
-      if (active === node || pending === node || node === dismissed || node.matches(':disabled')) return;
+      if (active === node) { clearTimeout(exitTimer); return; }
+      if (pending === node || node === dismissed || node.matches(':disabled')) return;
+      if (active) hide();
       cancelHover(); clearTimeout(exitTimer);
       pending = node;
       hoverTimer = setTimeout(() => show(node), 500);
@@ -186,25 +191,33 @@
     const observe = () => observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-expanded', 'aria-pressed', 'data-control-count'] });
     observe();
     new MutationObserver(() => refresh()).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
+    // Static tooltip text never blocks the controls below it. Pointer coordinates
+    // keep its content hoverable even though its surface passes clicks through.
+    const overTip = (event) => {
+      if (!active || !tip.classList.contains('is-visible')) return false;
+      const box = tip.getBoundingClientRect();
+      return event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
+    };
     document.addEventListener('pointerover', event => {
       if (event.pointerType === 'touch') return;
-      if (tip.contains(event.target)) { clearTimeout(exitTimer); return; }
+      if (overTip(event)) { hoveringTip = true; cancelHover(); clearTimeout(exitTimer); return; }
       const node = trigger(event.target);
       if (node && !node.contains(event.relatedTarget)) schedule(node);
     });
     document.addEventListener('pointerout', event => {
       if (event.pointerType === 'touch') return;
       const node = trigger(event.target);
-      if (node?.contains(event.relatedTarget) || tip.contains(event.relatedTarget)) return;
+      if (node?.contains(event.relatedTarget) || overTip(event)) return;
       if (pending === node) cancelHover();
-      if (active === node || tip.contains(event.target)) exitTimer = setTimeout(() => {
+      if (active === node) exitTimer = setTimeout(() => {
         if (!(keyboard && active?.contains(document.activeElement))) hide();
       }, 100);
       if (dismissed === node) dismissed = null;
     });
     document.addEventListener('focusin', event => {
       const node = trigger(event.target);
-      if (node && keyboard) show(node); else if (active && active !== node) hide();
+      if (node && escapeKeyDown) dismissed = node;
+      else if (node && keyboard) show(node); else if (active && active !== node) hide();
     });
     document.addEventListener('focusout', event => {
       if (active?.contains(event.target) && !active.contains(event.relatedTarget)) hide();
@@ -212,8 +225,9 @@
     });
     document.addEventListener('keydown', event => {
       keyboard = true;
-      if (event.key === 'Escape') { dismissed = active ?? pending; hide(); }
+      if (event.key === 'Escape') { escapeKeyDown = true; dismissed = active ?? pending; hide(); }
     }, true);
+    document.addEventListener('keyup', event => { if (event.key === 'Escape') escapeKeyDown = false; }, true);
     document.addEventListener('pointerdown', event => {
       keyboard = false; dismissed = null;
       const node = trigger(event.target);
@@ -224,6 +238,15 @@
     }, true);
     document.addEventListener('pointermove', event => {
       if (touch && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > 10) { cancelHover(); if (touch.shown) hide(); touch = null; }
+      if (event.pointerType === 'touch') return;
+      const inside = overTip(event);
+      if (inside) { cancelHover(); clearTimeout(exitTimer); }
+      else if (hoveringTip) {
+        const node = trigger(event.target);
+        if (node) schedule(node);
+        else exitTimer = setTimeout(() => { if (!(keyboard && active?.contains(document.activeElement))) hide(); }, 100);
+      }
+      hoveringTip = inside;
     });
     document.addEventListener('pointerup', () => {
       if (!touch) return;
@@ -235,7 +258,7 @@
     document.addEventListener('click', event => {
       if (suppressedClick && performance.now() < suppressedClick.until && suppressedClick.node.contains(event.target)) {
         event.preventDefault(); event.stopImmediatePropagation(); suppressedClick = null;
-      } else if (active && !tip.contains(event.target)) hide();
+      } else if (!tip.contains(event.target)) hide();
     }, true);
     document.addEventListener('contextmenu', event => { if (touch?.shown || active && info(active).only && event.pointerType === 'touch') event.preventDefault(); });
     document.addEventListener('scroll', () => { if (touch) { cancelHover(); touch = null; } position(); }, true);

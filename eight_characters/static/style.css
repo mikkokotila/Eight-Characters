@@ -216,6 +216,7 @@
 .canon-line-chevron, .branch-expand-hint { stroke-width: 1.5; }
 .control-tooltip {
   position: fixed;
+  pointer-events: none;
   inset: auto;
   margin: 0;
   max-width: min(280px, calc(100vw - var(--space-4)));
@@ -241,7 +242,7 @@
   .luck-step.has-control-icon { min-width: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .control-tooltip { transition: none; transform: none; }
+  .control-tooltip, .control-tooltip.is-visible { transition: none; transform: none; }
 }
 @media print { .control-tooltip { display: none; } }
 
@@ -2882,4 +2883,16 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .chart-topics .context-toggle.icon-control,
   .panel-close.icon-control,
   .luck-today.icon-control { min-width: 44px; min-height: 44px; }
+}
+@media print {
+  .control-icon, .control-caption { display: none !important; }
+  .zi-switch-options .control-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
 }

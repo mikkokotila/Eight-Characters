@@ -4,6 +4,18 @@ The classic controls suite covers preserved action names and command text, local
 icons on rerendered panels, chart evidence counts, luck and Zi-hour selections,
 localized keyboard descriptions, cancelled 500 ms hovers, hoverable tooltips,
 touch hold versus tap, Escape, reduced motion, dark mode and 320px layouts.
+It also verifies that printing keeps the selected Zi convention as readable text.
+Gender help describes the radio input, a tooltip stays open on return to its trigger,
+and branch help leaves the card's existing turn instructions unobscured.
+Tooltip text remains hoverable while passing clicks through to underlying controls,
+and activating a control cancels pending hover help. The runner emits TAP diagnostics;
+`--suite foundations --name 'text meets WCAG'` isolates its contrast checks.
+
+`EC_NODE` names the Node executable for `python tests/run_checks.py syntax` and
+`python tests/run_checks.py browser --browser chromium`. The browser runner uses
+the same settings below, selects the engine explicitly, and can run the controls
+alone with `--suite controls` or the other regressions with `--exclude controls`.
+`python tests/run_checks.py types` runs Pyright with the current Python environment.
 
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend

@@ -37,7 +37,7 @@
 };
   const markup = (name, extraClass = '') => {
     if (!Object.hasOwn(paths, name)) throw new Error(`Unknown control icon: ${name}.`);
-    return `<svg class="control-icon ${extraClass}" data-control-icon="${name}" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${paths[name]}</svg>`;
+    return `<svg class="control-icon ${extraClass}" data-control-icon="${name}" aria-hidden="true" focusable="false" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${paths[name].replace(/>\s+</g, '><')}</svg>`;
   };
   window.EC_ICONS = { markup };
 })();
