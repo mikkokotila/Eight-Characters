@@ -168,6 +168,11 @@ The page shows:
 
   The phase shown is pressed, and the other opens with a click. Today's phase is marked
   "now".
+- **Readings**, in an English chart: what the canon says of its stem's role, of its
+  branch, and of the Day Master on its branch and its stage there, a line each, which
+  opens to its passage. The canon has no passages for the luck position; these are its
+  passages for the stem and the branch, from the Day Master's seat (see
+  [Readings](Standard-Readings.md)).
 - **What it brings.** The luck stem, and the hidden stems of the luck branch. Each has
   its Ten God, read from the natal Day Master, and is marked "new to this chart" when no
   natal stem has that Ten God. The stem acts in the stem phase only: in the branch
@@ -180,7 +185,9 @@ The page shows:
   both. A relationship that completes a natal half into a whole names the half it takes
   in for the decade. Resting the pointer on a line, or clicking it, rings the cards it
   names, the natal ones and the luck pillar's, as the panel's other lines do (see
-  [Relationships](Standard-Relationships.md)).
+  [Relationships](Standard-Relationships.md)). In an English chart each has the
+  canon's line about its form, and where the luck pillar brings what one of the
+  canon's sentences waits for, the page quotes it after them.
 - **Elements.** Each element's count with the luck pillar: the natal chart's eight
   characters, and the luck pillar's that act in the phase, which makes ten in the stem
   phase and nine in the branch phase. Counts are tallies, not strength.

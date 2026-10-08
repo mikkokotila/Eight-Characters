@@ -32,7 +32,9 @@
   ];
   // The chevron the branches use for their hidden stems.
   const CHEVRON = '<svg class="canon-line-chevron" aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>';
-  const NOTE = 'Readings quote the canon’s Taxonomy, after 三命通会. The chart chooses which apply; nothing in them assesses strength or predicts.';
+  const NOTE = 'Readings quote the canon’s Taxonomy, after San Ming Tong Hui 三命通会. The chart chooses which apply; nothing in them assesses strength or predicts.';
+  // The canon reads no luck position: a luck pillar reads as its stem and its branch do.
+  const LUCK_NOTE = 'The canon has no passages for the luck position. These are its passages for this stem and this branch, read from the Day Master’s seat.';
 
   const create = ({ root, escape: esc, spot, roleName, go }) => {
     const panel = root.querySelector('#chart-panel');
@@ -40,6 +42,8 @@
       throw new Error('Readings view is incomplete.');
     }
     let reading = null;
+    // The luck pillars' readings, decade by decade (luck_reading), or null.
+    let luckReading = null;
     let chart = {};
     let serial = 0;
     // The kinds of reading that are open: they stay open on the next page that has them.
@@ -92,6 +96,8 @@
     let relationshipLabel = null;
     const role = (name) => roleName(name);
     const element = () => ELEMENT[chart.day.stem.element];
+    // The Day Master on a pillar's branch, each named with its character: 'Ren 壬 on Chen 辰'.
+    const onBranch = (name) => `${chart.day.stem.pinyin} ${chart.day.stem.char} on ${chart[name].branch.pinyin} ${chart[name].branch.char}`;
 
     // ── What each page reads ──
     const pillar = (name) => {
@@ -115,7 +121,7 @@
         line({ part: 'ground', key: `The ground · ${ANIMAL[r.branch]}`, paragraphs: r.ground, tokens: [`branch:${name}`],
           links: (chart.gods[name]?.hidden_stems || []).map((h) => link(`${h.char} ${role(h.ten_god)}`, `roles/${h.ten_god}`, [`hidden:${name}:${h.char}`])) }),
         line({ part: 'ground-about', key: `About the ${ANIMAL[r.branch]}`, paragraphs: r.ground_about, tokens: [`branch:${name}`] }),
-        line({ part: 'meets', key: name === 'day' ? `Your seat · ${r.stem} on ${r.branch}` : `Your ${el} on this ground · ${reading.day_master.stem} on ${r.branch}`,
+        line({ part: 'meets', key: name === 'day' ? `Your seat · ${onBranch(name)}` : `Your ${el} on this ground · ${onBranch(name)}`,
           paragraphs: r.meets, tokens: [`branch:${name}`] }),
         line({ part: 'stage', key: `Your ${el}’s stage here · ${r.stage.name} ${r.stage.chinese}`, paragraphs: r.stage.paragraphs, tokens: [`branch:${name}`],
           links: [link('The whole cycle', 'day-master#dm-cycle')] }),
@@ -131,6 +137,9 @@
       if (!reading) return '';
       const r = reading.relationships[id];
       if (!r) fail(`relationship ${id}`);
+      return relationshipMarkup(id, r);
+    };
+    const relationshipMarkup = (id, r) => {
       const condition = r.condition
         ? `<p class="canon-condition">In this chart: born in the ${esc(chart.month.branch.pinyin)} month, in ${esc(r.condition.season)}. The entry reads <q>${marks(r.condition.sentence)}</q></p>`
         : '';
@@ -186,7 +195,7 @@
     const rootGround = (pillarName) => {
       if (!reading) return '';
       const r = reading.pillars[pillarName];
-      return lines(line({ part: 'meets', key: pillarName === 'day' ? `Your seat · ${r.stem} on ${r.branch}` : `Your ${element()} on this ground · ${reading.day_master.stem} on ${r.branch}`,
+      return lines(line({ part: 'meets', key: pillarName === 'day' ? `Your seat · ${onBranch(pillarName)}` : `Your ${element()} on this ground · ${onBranch(pillarName)}`,
         paragraphs: r.meets, tokens: [`branch:${pillarName}`] }));
     };
     const season = () => {
@@ -282,7 +291,7 @@
         line({ part: 'dm-core', key: `What your ${el} is`, paragraphs: dm.core, tokens: ['stem:day'] }),
         line({ part: 'dm-grounds', key: `How your ${el} meets any ground`, paragraphs: dm.grounds, tokens: ['stem:day'] }),
         ...DISPLAY.map((name) => line({
-          part: `dm-lens-${name}`, key: `${PLAIN[name]} · ${reading.pillars[name].stem}${reading.pillars[name].branch}`,
+          part: `dm-lens-${name}`, key: `${PLAIN[name]} · ${chart[name].stem.pinyin} ${chart[name].branch.pinyin} ${reading.pillars[name].stem}${reading.pillars[name].branch}`,
           paragraphs: reading.pillars[name].lens, tokens: [`stem:${name}`, `branch:${name}`],
           links: [link(`The ${PLAIN[name]} pillar`, `pillar/${name}#lens`, [`stem:${name}`, `branch:${name}`])],
         })),
@@ -295,6 +304,55 @@
         line({ part: 'about-lens', key: 'About these readings', paragraphs: dm.introduction }),
       ].join(''));
     };
+
+    // ── The luck pillars (luck_reading) ──
+    // A decade's reading: its stem's role, its branch, the Day Master on it and its stage
+    // there, from the Day Master's seat. `branch` is the luck branch, char and pinyin.
+    const luckDecade = (sequence) => {
+      const decade = luckReading.decades.find((d) => d.sequence === sequence);
+      if (!decade) fail(`luck pillar ${sequence}`);
+      return decade;
+    };
+    const luckPage = (sequence, branch) => {
+      if (!luckReading) return '';
+      const d = luckDecade(sequence);
+      const el = element();
+      const dm = chart.day.stem;
+      return lines([
+        line({ part: 'luck-stem', key: `Its stem · ${role(d.stem.ten_god)}`, paragraphs: d.stem.core, tokens: ['stem:luck'] }),
+        line({ part: 'luck-ground-about', key: `About the ${ANIMAL[branch.char]}`, paragraphs: d.branch.about, tokens: ['branch:luck'] }),
+        line({ part: 'luck-meets', key: `Your ${el} on this ground · ${dm.pinyin} ${dm.char} on ${branch.pinyin} ${branch.char}`,
+          paragraphs: d.branch.meets, tokens: ['branch:luck'] }),
+        line({ part: 'luck-stage', key: `Your ${el}’s stage here · ${d.branch.stage.name} ${d.branch.stage.chinese}`,
+          paragraphs: d.branch.stage.paragraphs, tokens: ['branch:luck'] }),
+      ].join(''));
+    };
+    // What the canon waits for that this luck pillar brings: what waits in the natal chart,
+    // and the canon's sentence. `labelOf` names a relationship, natal or the luck pillar's.
+    const luckSettles = (sequence, labelOf) => {
+      if (!luckReading) return '';
+      return luckDecade(sequence).settles.map((s) => {
+        const tokens = [...(s.natal === null ? [] : [`arc:${s.natal}`]), ...s.by.map((id) => `arc:${id}`)];
+        const what = s.natal === null
+          ? `This luck pillar brings the Peak the natal Birth and Storage wait for: ${s.by.map(labelOf).join(', ')}.`
+          : `This luck pillar brings what the natal ${labelOf(s.natal)} waits for.`;
+        return `<p class="canon-condition luck-settles" data-settles="${esc(s.source)}"${spot.attr(tokens)}>${esc(what)} The canon reads <q>${marks(s.sentence)}</q></p>`;
+      }).join('');
+    };
+    // A relationship the luck pillar forms, read as its entry reads: no pairing, which the
+    // canon gives for the natal positions only.
+    const luckRelationshipOf = (sequence, id) => {
+      const r = luckDecade(sequence).relationships[id];
+      if (!r) fail(`luck relationship ${id}`);
+      return r;
+    };
+    const luckLine = (sequence, id) => {
+      if (!luckReading) return '';
+      const r = luckRelationshipOf(sequence, id);
+      if (typeof r.line !== 'string' || !r.line) fail(`the line of ${id}`);
+      return `<span class="canon-chip-line">${marks(r.line)}</span>`;
+    };
+    const luckRelationship = (sequence, id) => (luckReading ? relationshipMarkup(id, luckRelationshipOf(sequence, id)) : '');
 
     // ── Opening, following, arriving ──
     const toggle = (button, force) => {
@@ -349,16 +407,27 @@
       });
       if (data.day_master.stem !== chartData.pillars[1].stem.char) fail('the Day Master');
     };
-    // `data` is the API's reading, or null where none was asked for (Finnish).
-    const render = (data, chartData, gods, labelFor) => {
+    // `data` is the API's reading, or null where none was asked for (Finnish); `luck` is
+    // its luck pillars' reading, or null for a chart without them.
+    const render = (data, chartData, gods, labelFor, luck = null) => {
       reading = null;
+      luckReading = null;
       chart = {};
       relationshipLabel = labelFor;
-      if (data === null) return;
+      if (data === null) {
+        if (luck !== null) fail('its luck pillars, without the chart\'s own');
+        return;
+      }
       validate(data, chartData, gods);
       reading = data;
       chart = Object.fromEntries(DISPLAY.map((name, index) => [name, chartData.pillars[index]]));
       chart.gods = gods;
+      if (luck === null) return;
+      if (luck.policy !== 'canon_taxonomy_v1' || luck.language !== 'en' || !Array.isArray(luck.decades)
+        || !luck.decades.every((d, index) => d.sequence === index + 1 && d.stem && d.branch && d.relationships && Array.isArray(d.settles))) {
+        fail('its luck pillars');
+      }
+      luckReading = luck;
     };
 
     return {
@@ -370,6 +439,11 @@
       pillar,
       relationship,
       chipLine,
+      luckPage,
+      luckNote: () => (luckReading ? LUCK_NOTE : ''),
+      luckSettles,
+      luckLine,
+      luckRelationship,
       relationshipsAbout,
       rolesAbout,
       roleCore,

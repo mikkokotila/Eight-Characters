@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.45.0
+
+The luck pillar's readings: what the canon says of each decade, and the canon's sentences it settles. This is the luck pillar design's sixth and last slice.
+
+### Added
+- **API: `luck_reading`**, with `include_reading` and `include_luck_context`, in English. The canon has no passages for the luck position, so each luck pillar reads as the canon's passages for its stem and its branch from the Day Master's seat:
+  - its stem's role (the Ten God's core passage);
+  - its branch itself, the Day Master on it (its Day-Pillar sentence left out), and the Day Master's stage there;
+  - its relationships, read as the natal ones are, without pairing: the canon's pairings are the natal positions';
+  - `settles`: the canon's sentences that wait for a luck pillar, where this one brings what they wait for. A natal Year–Hour stem combination becomes real when the luck stem is one of its stems; a natal Year–Hour branch relationship counts when the luck branch is one of its ends; a natal half-frame activates when the luck branch is its missing branch; and a Birth and Storage held without their Peak are no longer only a cradle when the luck branch is the Peak. The sentences are checked against the canon, word for word, when the API starts.
+- **A decade's page reads the canon**, in an English chart: its stem's role, its branch, and the Day Master there and its stage, a line each under the phases. Each of its relationships has the canon's line about its form, there and in the relationships list, and its page reads its entry. Where the decade brings what the canon waits for, the page quotes the sentence after its relationships.
+
+### Fixed
+- Readings name a stem or branch by its pinyin and its character, never by the character alone: "Your Water on this ground · Ren 壬 on Mao 卯", "Your seat · Ren 壬 on Zi 子", and the Day Master page's lens keys such as "Hour · Ren Shen 壬申". The readings' note names its source as San Ming Tong Hui 三命通会.
+
+### Tests
+- `tests/test_api_luck_reading.py`:
+  - when the luck reading comes;
+  - a luck pillar's stem, branch and stage, and the Day-Pillar sentences left out;
+  - its relationships without pairing, and with the Day Master;
+  - each of the four sentences a luck pillar settles, and when it does not;
+  - every one of the sixty pillars as the luck pillar of every Day Master;
+  - a canon without a sentence it waits on, refused.
+- `tests/browser/luck.test.mjs`: an English decade's page reads its stem and branch, its relationships' lines and the cradle 戊子 Wu Zi completes; a luck relationship's page reads its entry; a Finnish chart has none.
+- `tests/browser/reading.test.mjs` follows the readings' keys, which now pair the pinyin with the characters.
+- Version bumped to `0.45.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.44.0
 
 The life grid: while the luck pillar shows, the chart's five columns run on under it through the whole life, or, with Pillars only, the decades alone as a list. This is the luck pillar design's fifth slice. The luck pillar's readings come next.

@@ -536,6 +536,8 @@
       .map((m) => t('pillar_' + m.pillar)).join('–');
     // One character reads as the other pages read it: its name, then the character.
     const named = (pinyin, char) => `${esc(pinyin)} <span lang="zh-Hant">${esc(char)}</span>`;
+    // A relationship of the luck pillar's as the lists name it: its places, then its kind.
+    const nameOf = (relationship) => `${memberLabel(relationship)} · ${t('relationship_' + relationship.kind)}`;
     const memberChars = (relationship) => [...relationship.members]
       .sort((a, b) => DISPLAY_ORDER.indexOf(a.pillar) - DISPLAY_ORDER.indexOf(b.pillar))
       .map((m) => named(m.pinyin, m.char)).join(' – ');
@@ -567,7 +569,8 @@
         .map((a) => t('luck_absorbs', { relationship: luck.chart.relationshipLabel(a.id) }));
       return `<li class="luck-relationship${acts ? '' : ' is-resting'}" data-relationship="${esc(relationship.id)}" data-kind="${esc(relationship.kind)}"${spot.attr(tokens(relationship))}>
         <span class="relationship-mark" aria-hidden="true"></span>
-        <span class="luck-relationship-name">${esc(`${memberLabel(relationship)} · ${t('relationship_' + relationship.kind)}`)}</span>
+        <span class="luck-relationship-name">${esc(nameOf(relationship))}</span>
+        ${luck.chart.canon.luckLine(decade.sequence, relationship.id)}
         <span class="luck-relationship-chars">${memberChars(relationship)}</span>
         <span class="luck-relationship-when">${esc(acts ? when : t('luck_resting', { when }))}</span>
         ${takesIn.map((line) => `<span class="luck-relationship-absorbs">${esc(line)}</span>`).join('')}
@@ -587,6 +590,11 @@
       }).join('')}</div>`;
     };
 
+    // A relationship named in a decade's readings: the luck pillar's, or a natal one.
+    const labelIn = (decade) => (id) => {
+      const own = decade.interactions.find((r) => r.id === id);
+      return own ? nameOf(own) : luck.chart.relationshipLabel(id);
+    };
     // What a screen reader hears for a choice: names, not characters.
     const spoken = (choice) => (choice === 'before' ? t('luck_title_before')
       : `${names(decadeOf(choice).chars)}, ${t('luck_phase_' + choice.phase)}`);
@@ -641,6 +649,7 @@
         }))}</p>
         ${nominalMarkup()}
         <div class="luck-phases" role="group" aria-label="${esc(t('luck_phases'))}">${decade.phases.map(phaseRow).join('')}</div>
+        ${luck.chart.canon.luckPage(decade.sequence, { char: decade.branch, pinyin: PINYIN[decade.branch] })}
         <h4 class="panel-subheading luck-subheading">${esc(t('luck_brings'))}</h4>
         <div class="context-evidence-list">${[decade.visible, ...decade.hidden].map((e) => occurrenceMarkup(e, phase)).join('')}</div>
         <p class="luck-stage">${esc(t('luck_stage', { branch: `${PINYIN[decade.branch]} ${decade.branch}`, stage: t('luck_stage_' + decade.stage), n: decade.stage }))}</p>
@@ -650,9 +659,10 @@
         ${decade.interactions.length
           ? `<ul class="luck-relationships">${decade.interactions.map((r) => relationshipMarkup(decade, r, phase)).join('')}</ul>`
           : `<p class="relationship-note">${esc(t('luck_none'))}</p>`}
+        ${luck.chart.canon.luckSettles(decade.sequence, labelIn(decade))}
         <h4 id="luck-elements-heading" class="panel-subheading luck-subheading">${esc(t('luck_elements', { count: CHARACTERS[phase] }))}</h4>
         ${elementsMarkup(decade, phase)}
-        <p class="relationship-note">${esc(t('luck_note'))}</p>`;
+        <p class="relationship-note">${esc([t('luck_note'), luck.chart.canon.note(), luck.chart.canon.luckNote()].filter(Boolean).join(' '))}</p>`;
     };
 
     // ── The life grid (life.js) ──
@@ -825,8 +835,9 @@
     });
 
     // `cards` is the API's luck_chart, `chart.relationshipLabel` names a natal
-    // relationship by its id, as the list does, and `chart.feetEdge` says where the natal
-    // arcs' feet stand on a card. Without luck pillars the ribbon and the
+    // relationship by its id, as the list does, `chart.feetEdge` says where the natal
+    // arcs' feet stand on a card, and `chart.canon` reads the decades in an English chart
+    // (readings.js). Without luck pillars the ribbon and the
     // fifth pillar are gone.
     const render = (pillarsData, context, cards, chart, timezone) => {
       open = false;

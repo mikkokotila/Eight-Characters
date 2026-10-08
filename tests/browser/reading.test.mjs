@@ -202,7 +202,7 @@ for (const profile of profiles) {
       assert.deepEqual(hour.map((line) => line.part), PILLAR_PARTS);
       assert.deepEqual(hour.map((line) => line.key), [
         'Your Water in the Hour', 'Who stands here · Rob Wealth', 'Rob Wealth’s own stage here · Birth 长生',
-        'The ground · Rabbit', 'About the Rabbit', 'Your Water on this ground · 壬 on 卯',
+        'The ground · Rabbit', 'About the Rabbit', 'Your Water on this ground · Ren 壬 on Mao 卯',
         'Your Water’s stage here · Death 死', 'About these readings',
       ]);
       assert.deepEqual(hour.filter((line) => line.open || line.shown), []);
@@ -234,7 +234,7 @@ for (const profile of profiles) {
       assert.deepEqual(day.filter((line) => line.open).map((line) => line.part),
         ['lens', 'ground', 'ground-about', 'meets', 'stage', 'about-pillar']);
       assert.equal(day.find((line) => line.part === 'stem').key, 'Who stands here · the Day Master');
-      assert.equal(day.find((line) => line.part === 'meets').key, 'Your seat · 壬 on 子');
+      assert.equal(day.find((line) => line.part === 'meets').key, 'Your seat · Ren 壬 on Zi 子');
       assert.equal(await readOf(page, '#pillar-detail', 'meets'), words(reading.pillars.day.meets));
     });
 

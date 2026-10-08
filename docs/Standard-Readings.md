@@ -62,6 +62,24 @@ points at the cards it reads, as the panel's other lines do.
   role is, and what it means on each stem where it stands.
 - **The season:** the month's branch, in the Month and in itself.
 - **Roots:** the Day Master on each root's branch.
+- **A decade's page**, in a chart with a gender. The canon has no passages for the
+  luck position, so the luck pillar reads as its stem and its branch do, from the Day
+  Master's seat:
+  - its stem's role;
+  - its branch itself;
+  - the Day Master on its branch, and its stage there.
+
+  Each of its relationships has its line, as in the list, and its page reads its
+  entry; the canon's pillar pairings are the natal positions', so none is read. Where
+  the luck pillar brings what one of the canon's sentences waits for, the page says
+  so after its relationships: "This luck pillar brings what the natal Hour–Year ·
+  Stem combination waits for. The canon reads …". Four sentences wait for a luck
+  pillar:
+  - a Year–Hour stem combination's, which becomes real when one of its stems
+    arrives;
+  - a Year–Hour branch relationship's, which counts when the same branch arrives;
+  - a half-frame's, which activates when its missing branch arrives;
+  - a Birth and Storage's, which only cradle their Peak until it arrives.
 
 A reading's links open the page they name at the line they name, open, in one
 step of the history, as the commands do.
@@ -98,8 +116,9 @@ API for no reading, and every page is as it was before readings. The language
 switch asks for the chart again, with or without its reading.
 
 The app writes pinyin without diacritics, and so does the canon: a test refuses
-any. The canon's arrow, in the stem combinations' titles, is drawn, as the app's
-other arrows are.
+any. A reading names a stem or branch by its pinyin and its character, as in
+"Ren 壬 on Chou 丑", never by the character alone. The canon's arrow, in the stem
+combinations' titles, is drawn, as the app's other arrows are.
 
 ## On paper
 
@@ -112,8 +131,9 @@ Every one of the canon's paragraphs reaches some chart's reading. A half-frame
 reads its frame's opening, the points of its two branches and the paragraph on
 half-frames; a punishment reads the paragraphs for the form the chart holds, whole
 or half; a self-punishment reads its own branch. Some sentences in the passages
-that are read depend on what the app does not compute: Luck Pillars, strength,
-transformation. They are listed, with why, in
+that are read depend on what the app does not compute: annual pillars, strength,
+transformation. The sentences that wait for a Luck Pillar are read on the decade's
+page that brings what they wait for. They are listed, with why, in
 [issue #39](https://github.com/mikkokotila/Eight-Characters/issues/39).
 
 ## For developers

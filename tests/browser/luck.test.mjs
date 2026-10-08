@@ -1097,7 +1097,8 @@ for (const profile of profiles) {
       await click(page, '#relationships-topic');
       assert.equal(await page.locator('.relationship-luck-heading').textContent(), 'With the luck pillar');
       const luckChips = page.locator('.relationship-luck-heading ~ .relationship-chip');
-      assert.deepEqual((await luckChips.allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
+      // Each named as the natal ones are; in English the canon's line follows (luck readings).
+      assert.deepEqual(await luckChips.evaluateAll((chips) => chips.map((chip) => chip.querySelector('.relationship-mark + span').textContent.trim())),
         ['Month–Luck · Stem combination', 'Hour–Luck · Stem combination']);
       // Each arc's ink as it reads: in the ink, or receded. No line in the panel points.
       const inks = async () => {
@@ -1167,6 +1168,53 @@ for (const profile of profiles) {
         ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
       });
       await screenshot(page, `${profile.name}-luck-topics`);
+    });
+
+    check('in English a decade reads its stem and branch from the Day Master\'s seat, and what it settles', async (page) => {
+      const payload = await openSample(page);
+      await showLuck(page);
+      const read = payload.luck_reading.decades;
+      const keys = () => page.locator('#luck-detail .canon-line').evaluateAll((lines) => lines.map((line) => [
+        line.dataset.canonPart, line.querySelector('.canon-line-key').textContent.trim()]));
+      // 己丑 Ji Chou: its 己 Ji is the Day Master's Direct Officer; 壬 Ren stands in Decline on 丑 Chou.
+      await click(page, '#luck-ribbon [data-luck="5"]');
+      assert.deepEqual(await keys(), [
+        ['luck-stem', 'Its stem · Direct Officer'],
+        ['luck-ground-about', 'About the Ox'],
+        ['luck-meets', 'Your Water on this ground · Ren 壬 on Chou 丑'],
+        ['luck-stage', 'Your Water’s stage here · Decline 衰'],
+      ]);
+      // Each line opens to the rest of its passage.
+      const stem = page.locator('#luck-detail .canon-line[data-canon-part="luck-stem"]');
+      await stem.locator('.canon-line-toggle').click();
+      assert.equal(await stem.locator('.canon-line-toggle').getAttribute('aria-expanded'), 'true');
+      assert.equal(await stem.locator('.canon-line-passage').isVisible(), true);
+      // Its relationships carry the canon's sentence about their form; the page says what it reads.
+      assert.deepEqual(await page.locator('#luck-detail .luck-relationship .canon-chip-line').allTextContents(),
+        ['stem_combination:1:month-luck', 'stem_combination:1:hour-luck'].map((id) => read[4].relationships[id].line));
+      assert.match(await page.locator('#luck-detail .relationship-note').last().textContent(), /The canon has no passages for the luck position\./);
+      assert.equal(await page.locator('#luck-detail .luck-settles').count(), 0);
+      // 戊子 Wu Zi brings the Peak of 申子辰 that the natal Shen and the two Chen only cradle.
+      await click(page, '#luck-ribbon [data-luck="4"]');
+      const settles = page.locator('#luck-detail .luck-settles');
+      assert.equal(await settles.count(), 1);
+      assert.equal(await settles.getAttribute('data-settles'), 'cradle');
+      assert.equal((await settles.textContent()).replace(/\s+/g, ' ').trim(),
+        `This luck pillar brings the Peak the natal Birth and Storage wait for: Day–Month–Luck · Three-harmony frame, Hour–Month–Luck · Three-harmony frame. The canon reads ${read[3].settles[0].sentence}`);
+      // A luck relationship opened from the list reads as its entry reads, with no pairing.
+      await click(page, '#relationships-topic');
+      await page.locator('.relationship-chip[data-relationship="punishment:34:year-luck"]').click();
+      await settled(page);
+      assert.deepEqual(await page.locator('#relationship-detail .canon-line').evaluateAll((lines) => lines.map((line) => line.dataset.canonPart)), ['entry']);
+      assert.equal(await page.locator('.relationship-chip[data-relationship="punishment:34:year-luck"] .canon-chip-line').textContent(),
+        read[3].relationships['punishment:34:year-luck'].line);
+      // A Finnish chart has no readings, natal or the luck pillar's.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      const fi = await openLink(page, sampleLink({ lang: 'fi', luck: '4/branch', topic: 'luck/4/branch' }), { place: HELSINKI });
+      assert.equal('luck_reading' in fi, false);
+      assert.equal(await page.locator('#luck-detail .canon-line, #luck-detail .canon-chip-line, #luck-detail .luck-settles').count(), 0);
+      await screenshot(page, `${profile.name}-luck-readings`);
     });
 
     check('with no natal root, the luck branch\'s root names the Roots topic and its page', async (page) => {
