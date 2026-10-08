@@ -12,12 +12,12 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
   - In the branch phase a stem's relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs recede for its own.
   - A relationship on the decade's page rings its arc. One chosen in the list, natal or the luck pillar's, stands in the ink, and every other arc recedes.
 - **The topics with luck.** While the luck pillar shows, its period adds to the topics, for its phase:
-  - Roots reads "+ luck" when the luck branch roots the Day Master, and its page adds the luck branch with its roots.
+  - Roots reads "+ luck" when the luck branch roots the Day Master, and its page adds the luck branch with its roots. With no natal root, the topic and its page read "Root in the luck pillar's branch".
   - Roles reads "+ 2 new" for the roles new to the chart that act in the phase, and its page adds what the luck pillar brings, each marked when new.
   - Relationships reads "(3 + 2)", and its list adds the luck pillar's that act in the phase, under their own heading. They open as the natal ones do; the canon has no readings for them yet.
 
   Their icons' badges (0.42.0) say the same: Relationships 3+2, Roots 3+1 (the luck branch one more root), Roles +2. The words are in their names, as screen readers read them. Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
-- **Finnish, provisional until confirmed:** + onni (Roots), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
+- **Finnish, provisional until confirmed:** + onni (Roots), Juuri onnenpilarin haarassa (Roots, with no natal root), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
 
 ### Changed
 - While the luck pillar shows, the arcs' rows are 74px instead of 40px, to hold its arcs beyond the natal ones; natal, they stay 40px.
