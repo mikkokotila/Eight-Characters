@@ -7,8 +7,8 @@
 // north.
 //
 // One choice drives it all: the ribbon, the fifth pillar, the page and the keys show
-// and move the same period. The luck pillar is shown or hidden as a whole (L); hidden,
-// its column keeps its place and its size, so showing it moves nothing on the chart.
+// and move the same period. The luck pillar is shown or hidden as a whole (L). Hidden,
+// the chart is natal, as a chart without luck pillars: no ribbon and no fifth column.
 (() => {
   const STEMS = '甲乙丙丁戊己庚辛壬癸';
   const BRANCHES = '子丑寅卯辰巳午未申酉戌亥';
@@ -43,13 +43,18 @@
   // `pillars` is the chart's grid, where the luck pillar stands as its fifth column, and
   // `onCards(column, focused, redrawn)` is told whenever the column changes, with the
   // part of it that had focus ('stem', 'branch', 'identity' or null) and whether its
-  // cards were drawn anew.
-  const create = ({ root, pillars, translate: t, escape: esc, spot, locale, beforeSelect, onCards, onPeriod }) => {
+  // cards were drawn anew; a column taken away is null. `onShown(shown)` is told when
+  // the luck pillar is shown or hidden, `keyCard()` is the chart's card that has the tab
+  // stop, and `onPeriod(period)` is given what the period standing in the chart adds to
+  // the topics (periodInfo), or null.
+  const create = ({ root, pillars, translate: t, escape: esc, spot, locale, beforeSelect, onCards, onShown, keyCard, onPeriod }) => {
     const ribbon = root.querySelector('#luck-ribbon');
     const detail = root.querySelector('#luck-detail');
     const status = root.querySelector('#luck-status');
     const switcher = root.querySelector('#luck-switch');
-    if (!ribbon || !detail || !status || !switcher || !pillars || !spot || !onCards || !onPeriod) throw new Error('Luck pillar view is incomplete.');
+    if (!ribbon || !detail || !status || !switcher || !pillars || !spot || !onCards || !onShown || !keyCard || !onPeriod) {
+      throw new Error('Luck pillar view is incomplete.');
+    }
     let luck = null;
     // The period chosen ('before' or a decade's phase), whether the luck pillar stands in
     // the chart, and whether the period's page is open. An open page shows the period
@@ -61,6 +66,12 @@
     // Whether the open page was opened from the life grid: closing it gives focus back to
     // the chosen period's row there, not to its chip far above.
     let fromLife = false;
+    // The chart is told whenever the luck pillar comes or goes.
+    const show = (on) => {
+      if (on === shown) return;
+      shown = on;
+      onShown(on);
+    };
 
     const fail = () => { throw new Error(t('luck_error')); };
     const require = (condition) => { if (!condition) fail(); };
@@ -223,32 +234,35 @@
     // The track has its width once the chart is shown, and a new one with the page's.
     new ResizeObserver(reveal).observe(ribbon);
 
-    // What is chosen and what is today, on the ribbon. Its chips stay the same elements,
-    // so focus and a reader's place stay on them. The chips take one tab stop, as the
-    // cards do, and arrows move between them: the chosen period's chip has it while the
-    // luck pillar shows, else today's, else the chip at the end today lies beyond.
+    // What is chosen and what is today, on the ribbon. The ribbon shows with the luck
+    // pillar: natal, the chart is as a chart without luck pillars. Its chips stay the
+    // same elements, so focus and a reader's place stay on them. The chips take one tab
+    // stop, as the cards do, and arrows move between them: the chosen period's chip has it.
     const syncRibbon = () => {
+      switcher.querySelectorAll('[data-luck-show]').forEach((button) => {
+        button.setAttribute('aria-pressed', String((button.dataset.luckShow === 'on') === shown));
+      });
+      ribbon.classList.toggle('hidden', !shown);
+      // The life grid shows with the luck pillar, as the ribbon does.
       const now = today();
-      const stop = keyOf(shown ? cursor : home());
+      life.sync({ cursor, shown, open, now });
+      if (!shown) return;
+      const stop = keyOf(cursor);
       ribbon.querySelectorAll('.luck-chip').forEach((chip) => {
         const key = chip.dataset.luck;
-        const on = shown && keyOf(cursor) === key;
+        const on = key === stop;
         const isToday = now !== null && keyOf(now) === key;
         chip.classList.toggle('is-selected', on);
         chip.classList.toggle('is-today', isToday);
         chip.setAttribute('aria-expanded', String(open && on));
         chip.setAttribute('aria-label', chipLabel(key, now));
-        chip.tabIndex = key === stop ? 0 : -1;
+        chip.tabIndex = on ? 0 : -1;
         chip.querySelectorAll('.luck-chip-phases i').forEach((bar) => {
           bar.classList.toggle('is-chosen', on && cursor.phase === bar.dataset.phase);
           bar.toggleAttribute('data-today', isToday && now.phase === bar.dataset.phase);
         });
       });
       ribbon.querySelector('[data-luck-today]').disabled = now === null || (open && same(now, cursor));
-      life.sync({ cursor, shown, open, now, stop: shown ? cursor : home() });
-      switcher.querySelectorAll('[data-luck-show]').forEach((button) => {
-        button.setAttribute('aria-pressed', String((button.dataset.luckShow === 'on') === shown));
-      });
       reveal();
     };
 
@@ -282,15 +296,15 @@
         </div>
         <button type="button" class="luck-step" data-luck-step="1" aria-label="${esc(t('luck_next'))}">${CHEVRON('9 6 15 12 9 18')}</button>
         <button type="button" class="luck-today" data-luck-today>${esc(t('luck_today'))}</button>`;
-      ribbon.classList.remove('hidden');
     };
 
     // ── The fifth pillar ──
     // Its cards are drawn as the natal cards are (app.js renderChart), from luck_chart,
     // with the Ten Gods and hidden stems of the luck context. In the stem phase the stem
     // leads and the branch acts too; in the branch phase the branch leads and the stem is
-    // set aside. Hidden, or before the first decade, the column keeps the first decade's
-    // or the chosen decade's cards laid out unseen, so nothing on the chart moves.
+    // set aside. Before the first decade, the column keeps the first decade's cards laid
+    // out unseen, so choosing a period moves nothing on the chart. Hidden, the luck
+    // pillar has no column: the chart is natal, as a chart without luck pillars.
     const lines = (codes) => codes.map((code) => `<div class='${code}'></div>`).join('');
     const hiddenItem = (e, label) => `
       <div class='hidden-stem-item' data-hidden-stem='${esc(e.char)}'>
@@ -298,7 +312,8 @@
         <span class='hidden-stem-label'>${esc(label)}</span>
         <span class='hidden-stem-type'>${esc(t('qi_' + e.qi_type))}</span>
       </div>`;
-    const columnState = () => (!shown ? 'off' : cursor === 'before' ? 'none' : 'on');
+    // Shown, the column holds a decade's phase ('on'), or the years before the first ('none').
+    const columnState = () => (cursor === 'before' ? 'none' : 'on');
     const cardsMarkup = (decade) => {
       const { stem, branch } = decade.cards;
       return `
@@ -336,32 +351,50 @@
           <div class='hidden-stems-list'>${decade.hidden.map((e) => hiddenItem(e, `${e.polarity} ${t('element_' + e.element)}`)).join('')}</div>
         </div>`;
     };
+    // Without luck pillars, or hidden, the chart has no fifth column and no luck arcs, its
+    // grid is the natal four's, and the topics have nothing of the luck pillar's. Focus
+    // that was in the column goes to the chart's cards.
+    const removeColumn = (focused) => {
+      pillars.querySelectorAll('.luck-arcs').forEach((band) => band.remove());
+      pillars.classList.remove('has-luck', 'is-luck-shown');
+      if (column !== null) {
+        column.remove();
+        column = null;
+        onCards(null, focused, false);
+      }
+      onPeriod(null);
+    };
     const drawColumn = () => {
-      const state = columnState();
-      const decade = state === 'on' || (state === 'off' && cursor !== 'before') ? decadeOf(cursor) : luck.decades[0];
-      const mark = state === 'on'
-        ? t(`luck_mark_${cursor.phase}`, { year: year(cursor.phase === 'stem' ? decade.phases[0].end : decade.end) })
-        : state === 'none' ? t('luck_mark_before', { age: luck.startAge.years }) : '';
-      const poetic = state === 'none'
-        ? `${year(luck.before.start)}–${year(luck.before.end)}`
-        : t('luck_column_poetic', { n: decade.sequence, count: luck.decades.length, from: year(decade.start), to: year(decade.end) });
       // The part of the column that had focus, for focus to come back to it when redrawn.
       const active = document.activeElement;
       const focused = column?.contains(active)
         ? (active.matches('.card') ? (active.classList.contains('stem') ? 'stem' : 'branch') : 'identity')
         : null;
+      if (!shown) {
+        removeColumn(focused);
+        return;
+      }
+      const state = columnState();
+      const decade = state === 'on' ? decadeOf(cursor) : luck.decades[0];
+      const mark = state === 'on'
+        ? t(`luck_mark_${cursor.phase}`, { year: year(cursor.phase === 'stem' ? decade.phases[0].end : decade.end) })
+        : t('luck_mark_before', { age: luck.startAge.years });
+      const poetic = state === 'none'
+        ? `${year(luck.before.start)}–${year(luck.before.end)}`
+        : t('luck_column_poetic', { n: decade.sequence, count: luck.decades.length, from: year(decade.start), to: year(decade.end) });
       if (column === null || !column.isConnected) {
         column = document.createElement('div');
         column.className = 'pillar is-luck';
         column.dataset.pillar = 'luck';
         pillars.append(column);
       }
-      // The cards are drawn for a decade, and kept as they are while it stays: hiding and
-      // showing the luck pillar leaves a card turned or a branch opened by hand as it was.
+      pillars.classList.add('has-luck');
+      // The cards are drawn for a decade, and kept as they are while it stays: choosing
+      // its other phase leaves a card turned or a branch opened by hand as it was. Shown
+      // again after it was hidden, the column is drawn anew, in the chart's display.
       const redrawn = column.dataset.decade !== String(decade.sequence) || column.querySelector('.pillar-cards') === null;
       column.dataset.luckState = state;
       column.dataset.decade = decade.sequence;
-      column.inert = state === 'off';
       if (redrawn) column.innerHTML = `<div class='pillar-header'></div><div class='pillar-cards'>${cardsMarkup(decade)}</div>`;
       column.querySelector('.pillar-header').innerHTML = `
           <div class='pillar-label'>
@@ -375,33 +408,31 @@
           </button>
           <p class='pillar-mark luck-mark'>${esc(mark)}</p>`;
       // In the stem phase the stem leads and the branch acts too; in the branch phase the
-      // branch leads and the stem is set aside. Hidden, the stem's room says what brings it
-      // back. Before the first decade there are no cards to read: they only keep the room.
+      // branch leads and the stem is set aside. Before the first decade there are no cards
+      // to read: they only keep the room.
       const phase = state === 'on' ? cursor.phase : null;
       column.querySelectorAll('.pillar-cards > .card').forEach((card) => {
         const component = card.classList.contains('stem') ? 'stem' : 'branch';
         const part = phase === null ? '' : component === phase ? 'leading' : phase === 'stem' ? 'acting' : 'resting';
         card.dataset.luckPart = part;
         card.inert = state !== 'on';
-        card.querySelectorAll(':scope > .luck-set-aside, :scope > .luck-ghost').forEach((note) => note.remove());
+        card.querySelectorAll(':scope > .luck-set-aside').forEach((note) => note.remove());
         if (part === 'resting') card.insertAdjacentHTML('afterbegin', `<span class='luck-set-aside'>${esc(t('luck_set_aside'))}</span>`);
-        if (state === 'off' && component === 'stem') card.insertAdjacentHTML('afterbegin', `<span class='luck-ghost'>${esc(t('luck_ghost_off'))}</span>`);
       });
       onCards(column, focused, redrawn);
       drawArcs();
       onPeriod(periodInfo());
     };
-    // The period chosen, for the topics, whether or not it stands in the chart now: the
-    // roots on its branch, what acts in its phase (occurrences and relationships), how
-    // many of its roles are new to the chart, and the luck pillar's cards. Null before
-    // the first decade.
+    // The period standing in the chart, for the topics: the roots on its branch, what acts
+    // in its phase (occurrences and relationships), how many of its roles are new to the
+    // chart, and the luck pillar's cards. Null before the first decade, and while the
+    // luck pillar is hidden.
     const periodInfo = () => {
-      if (luck === null || cursor === 'before') return null;
+      if (luck === null || !shown || cursor === 'before') return null;
       const decade = decadeOf(cursor);
       const acts = (record) => record.phases.includes(cursor.phase);
       const occurrences = [decade.visible, ...decade.hidden].filter(acts);
       return {
-        shown,
         phase: cursor.phase,
         sequence: decade.sequence,
         cards: decade.cards,
@@ -413,20 +444,13 @@
         relationships: decade.interactions.filter(acts),
       };
     };
-    const removeColumn = () => {
-      column?.remove();
-      column = null;
-      pillars.querySelectorAll('.luck-arcs').forEach((band) => band.remove());
-      pillars.classList.remove('has-luck', 'is-luck-shown');
-    };
-
     // ── The luck pillar's arcs ──
     // Its relationships, drawn as the natal ones are (relationships.js), in the outer
     // band: above the stems' arcs and below the branches'. Every one ends on the luck
     // pillar, so the narrower stands lower. A relationship of the families the canon
     // adds joins an arc over the same columns as a strand. On a natal card their feet
-    // stand beyond the natal arcs' feet, so showing them moves no natal foot. A stem's
-    // relationship rests in the branch phase, and its arc recedes.
+    // stand beyond the natal arcs' feet, so no natal foot moves on its card. A stem's
+    // relationship rests in the branch phase, and its arc recedes. Hidden, there are none.
     const OWN_ARC = ['stem_combination', 'branch_combination', 'branch_clash', 'harmony_frame'];
     // The outer band holds four levels, an arc at most four strands: a luck pillar's
     // relationships with four natal pillars never need more (tests/test_api_interactions.py
@@ -490,7 +514,7 @@
     };
     const drawArcs = () => {
       pillars.querySelectorAll('.luck-arcs').forEach((band) => band.remove());
-      const on = columnState() === 'on';
+      const on = shown && columnState() === 'on';
       pillars.classList.toggle('is-luck-shown', on);
       if (!on) return;
       const decade = decadeOf(cursor);
@@ -684,7 +708,7 @@
       if (page && !open) beforeSelect();
       if (fromGrid !== undefined) fromLife = fromGrid;
       cursor = choice;
-      shown = true;
+      show(true);
       if (page) open = true;
       sync();
       status.textContent = t('luck_selected', { title: spoken(choice) });
@@ -703,13 +727,17 @@
       drawColumn();
       if (pageFocus) opener().focus({ preventScroll: true });
     };
-    // Shows or hides the luck pillar. Hiding it closes its page.
+    // Shows or hides the luck pillar. Hiding it closes its page and takes the ribbon, the
+    // fifth column and the life grid away: focus that was on any of them goes to the
+    // chart's cards.
     const setShown = (on) => {
       if (luck === null || on === shown) return;
+      const held = [ribbon, detail].some((part) => part.contains(document.activeElement)) || life.holds(document.activeElement);
       if (!on) close();
-      shown = on;
+      show(on);
       syncRibbon();
       drawColumn();
+      if (held && !on) keyCard().focus({ preventScroll: true });
       status.textContent = t(on ? 'luck_shown' : 'luck_hidden');
     };
 
@@ -820,21 +848,20 @@
       if (!pillarsData && !context && !cards) {
         luck = null;
         cursor = null;
-        shown = false;
+        show(false);
         ribbon.innerHTML = '';
         ribbon.classList.add('hidden');
         switcher.classList.add('hidden');
         life.render(null);
-        removeColumn();
-        onPeriod(null);
+        removeColumn(null);
         return;
       }
       require(typeof timezone === 'string' && timezone);
       luck = { ...read(pillarsData, context, cards, chart), timezone };
-      // A chart opens natal: the luck pillar waits, hidden, at today's phase.
-      shown = false;
+      // A chart opens natal, as a chart without luck pillars: the luck pillar waits,
+      // hidden, at today's phase.
+      show(false);
       cursor = home();
-      pillars.classList.add('has-luck');
       switcher.classList.remove('hidden');
       drawRibbon();
       life.render({
@@ -865,7 +892,7 @@
     // The period standing in the chart, as the address names it, or null.
     const standing = () => (luck !== null && shown ? pathOf(cursor) : null);
     // The fifth pillar's cards take part in the chart's keys only while they show a decade.
-    const cardsActive = () => luck !== null && columnState() === 'on';
+    const cardsActive = () => luck !== null && shown && columnState() === 'on';
     // What the ribbon offers, for the commands: each choice as its chip names it, and the
     // topic its chip opens.
     const choices = () => {
@@ -878,14 +905,15 @@
     };
     // A key's change can take focus from under the reader: a page redrawn, a button
     // spent. Focus that was on the luck pillars and is lost then goes to the chosen
-    // period's chip, so the chart's keys go on acting; elsewhere it stays.
+    // period's chip, or, the luck pillar hidden, to the chart's cards, so the chart's keys
+    // go on acting; elsewhere it stays.
     const keeping = (change) => (...args) => {
       const active = document.activeElement;
-      const held = active !== null && [ribbon, detail, column].some((part) => part?.contains(active));
+      const held = active !== null && ([ribbon, detail, column].some((part) => part?.contains(active)) || life.holds(active));
       const result = change(...args);
       const now = document.activeElement;
       if (held && luck !== null && (now === null || now === document.body || !now.isConnected || now.disabled || now.closest('[inert]'))) {
-        ribbon.querySelector(`[data-luck="${keyOf(shown ? cursor : home())}"]`).focus({ preventScroll: true });
+        (shown ? ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`) : keyCard()).focus({ preventScroll: true });
       }
       return result;
     };

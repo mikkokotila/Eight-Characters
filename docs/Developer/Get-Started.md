@@ -22,11 +22,15 @@ pip install -e .
 
 ## Run the API
 
+The app needs its account settings and database to start, even on a laptop: see
+[Accounts, on a laptop](Accounts.md#on-a-laptop). Then:
+
 ```bash
 uvicorn eight_characters.main:app --reload
 ```
 
-Open `http://127.0.0.1:8000`.
+Open `http://127.0.0.1:8000`. Charts need an account; codes arrive as files in the
+mail folder the settings name.
 
 ## Run Tests
 

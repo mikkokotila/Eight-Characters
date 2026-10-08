@@ -6,6 +6,17 @@
 - Local default: `http://127.0.0.1:8000`
 - Content type: `application/json`
 
+## Accounts
+
+Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
+`POST /api/hidden_stems` and `POST /api/evolution_explorer` answer `401`
+(`{"detail": "Sign in to continue."}`) without one, before the request is validated. The
+place search and `GET /api/evolution_controls` need none.
+
+A session is the cookie the page gets when signing in (`__Host-ec_session` over HTTPS,
+`ec_session` on a laptop's plain HTTP). Signing in, and the account itself, are
+`/api/account`, described in [Accounts](Developer/Accounts.md#the-api).
+
 ## Endpoints
 
 ### `POST /api/four_pillars`
@@ -654,12 +665,17 @@ All non-2xx API responses use this shape:
 Common status codes:
 
 - `400` invalid input, request schema validation errors, invalid stem/branch characters, unresolved city, DST ambiguity without `fold`, nonexistent local time, or convention validation errors
+- `401` no signed-in account, for the requests that need one
 - `500` unexpected internal errors
 
 ## Example curl
 
+With the session cookie of a browser signed in to the page (here a laptop's, over
+plain HTTP):
+
 ```bash
 curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
+  -b "ec_session=$SESSION" \
   -H 'Content-Type: application/json' \
   -d '{
     "date": "1988-02-04",

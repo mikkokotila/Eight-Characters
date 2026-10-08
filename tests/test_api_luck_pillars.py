@@ -1,16 +1,15 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
 from eight_characters.data import build_branch_data, build_stem_data
-from eight_characters.main import LocationInput, ResolvedCity, app
+from eight_characters.main import LocationInput, ResolvedCity
+from tests.accounts_support import signed_in_client
 
 
 class TestApiLuckPillars(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
         cls.base = {
             'date': '1988-02-04',
             'time': '16:30:00',

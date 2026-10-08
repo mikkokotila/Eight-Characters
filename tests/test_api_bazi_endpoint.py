@@ -1,14 +1,8 @@
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
-from eight_characters.main import (
-    CityLookupServiceError,
-    LocationInput,
-    ResolvedCity,
-    app,
-)
+from eight_characters.main import CityLookupServiceError, LocationInput, ResolvedCity
+from tests.accounts_support import signed_in_client
 
 
 class TestApiBaziCompatibility(unittest.TestCase):
@@ -16,7 +10,7 @@ class TestApiBaziCompatibility(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def test_bazi_endpoint_removed(self) -> None:
         response = self.client.post(

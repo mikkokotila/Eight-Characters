@@ -26,8 +26,8 @@ The chart lives in the address's fragment, the part after `#`:
 - `luck`, only while a luck pillar stands in the chart: `before`, or
   `<decade>/<stem|branch>` such as `5/stem` (see
   [Luck pillars](Standard-Luck-Pillars.md)). It needs `gender`.
-- `life`, only while the life grid shows the pillars alone: `pillars`. It needs
-  `gender`.
+- `life`, only while the life grid's view is the pillars alone: `pillars`. It needs
+  `gender`. The grid itself shows while the luck pillar does.
 - `topic`, only when one is open: `season`, `roots`, `roles`, `roles/<role>`,
   `roles/stem/<pillar>`, `roles/<role>/stem/<pillar>` (a stem's roots reached
   from a role's page), `relationships`, `relationships/<id>` (the API's

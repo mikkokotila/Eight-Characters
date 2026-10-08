@@ -1,5 +1,7 @@
 import csv
 import json
+from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import datetime
 from functools import lru_cache
@@ -7,7 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import httpx
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -17,6 +19,13 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
+from eight_characters.accounts.web import (
+    AccountsDependency,
+    SessionDependency,
+    account_view,
+    accounts_from_environment,
+    require_account,
+)
 from eight_characters.accounts.web import router as account_router
 from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
@@ -96,8 +105,20 @@ ELEMENT_INDEX_BY_NAME: dict[str, int] = {
 }
 QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
-app = FastAPI(title='Eight Characters')
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
+    # The account settings are read before the first request: a missing or malformed
+    # one stops the app at start, naming what is wrong.
+    accounts_from_environment()
+    yield
+
+
+app = FastAPI(title='Eight Characters', lifespan=lifespan)
 app.include_router(account_router)
+# Charts need an account. The start page, place search and the explorer's sample
+# and settings stay open.
+ACCOUNT_REQUIRED = [Depends(require_account)]
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
 
@@ -915,8 +936,12 @@ def _explorer_run(settings: EvolutionRunSettings | None) -> ExplorerRun:
 
 
 @app.get('/', response_class=HTMLResponse)
-async def index(request: Request):
-    """Serve the single-page application."""
+async def index(
+    request: Request,
+    accounts: AccountsDependency,
+    current: SessionDependency,
+):
+    """Serve the single-page application, naming the signed-in account, if any."""
     stem_options = [
         {
             'char': ch,
@@ -936,18 +961,24 @@ async def index(request: Request):
         }
         for ch, b in BRANCHES.items()
     ]
-    return templates.TemplateResponse(
+    page = templates.TemplateResponse(
         request,
         'index.html',
         {
             'stem_options': stem_options,
             'branch_options': branch_options,
             'app_version': __version__,
+            'turnstile_site_key': accounts.config.turnstile_site_key,
+            'account': None if current is None else account_view(current.user),
             # The engine accepts any local date within its supported years.
             'birth_date_min': f'{MIN_SUPPORTED_YEAR:04d}-01-01',
             'birth_date_max': f'{MAX_SUPPORTED_YEAR:04d}-12-31',
         },
     )
+    # The page names who is signed in: no shared cache may keep it, and the browser
+    # asks again before showing it anew.
+    page.headers['Cache-Control'] = 'private, no-cache'
+    return page
 
 
 @app.get('/favicon.ico', include_in_schema=False)
@@ -970,7 +1001,7 @@ async def explorer_page(request: Request):
 app.mount('/explorer', StaticFiles(directory=EXPLORER_DIR), name='explorer')
 
 
-@app.post('/api/chart')
+@app.post('/api/chart', dependencies=ACCOUNT_REQUIRED)
 async def create_chart(payload: ChartRequest) -> ChartPayload:
     """Return structured chart data for rendering."""
     # Validate characters
@@ -1007,7 +1038,7 @@ async def create_chart(payload: ChartRequest) -> ChartPayload:
     return chart
 
 
-@app.post('/api/four_pillars')
+@app.post('/api/four_pillars', dependencies=ACCOUNT_REQUIRED)
 async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
     """Calculate true solar time and four pillars from date/time with either location or city/country."""
     try:
@@ -1128,7 +1159,7 @@ async def evolution_controls() -> dict[str, Any]:
     return catalogue()
 
 
-@app.post('/api/evolution_explorer')
+@app.post('/api/evolution_explorer', dependencies=ACCOUNT_REQUIRED)
 async def evolution_explorer(payload: EvolutionExplorerRequest) -> dict[str, Any]:
     """Build explorer graph data from date/time and city/location input."""
     try:
@@ -1267,7 +1298,7 @@ async def location_suggest(
     return {'suggestions': suggestions}
 
 
-@app.post('/api/hidden_stems')
+@app.post('/api/hidden_stems', dependencies=ACCOUNT_REQUIRED)
 async def hidden_stems(
     payload: HiddenStemsRequest,
 ) -> dict[str, dict[str, dict[str, Any]]]:

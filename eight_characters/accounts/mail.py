@@ -156,13 +156,20 @@ class DirectoryTransport:
     def send(self, message: EmailMessage) -> None:
         # Named by when it was sent, so the folder lists messages in order.
         final = self._directory / f'{time.time_ns():020d}-{secrets.token_hex(4)}.eml'
-        descriptor, name = tempfile.mkstemp(
-            dir=self._directory, prefix='.', suffix='.tmp'
-        )
+        try:
+            descriptor, name = tempfile.mkstemp(
+                dir=self._directory, prefix='.', suffix='.tmp'
+            )
+        except OSError as exc:
+            # A full or unwritable folder is a message not sent, like a refused one.
+            raise MailError(f'Writing to {self._directory} failed: {exc}') from exc
         try:
             with os.fdopen(descriptor, 'wb') as handle:
                 handle.write(bytes(message))
             os.replace(name, final)
+        except OSError as exc:
+            Path(name).unlink(missing_ok=True)
+            raise MailError(f'Writing to {self._directory} failed: {exc}') from exc
         except BaseException:
             Path(name).unlink(missing_ok=True)
             raise

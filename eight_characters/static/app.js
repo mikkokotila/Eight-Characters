@@ -135,7 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const ZI_CONVENTIONS = ['split_midnight', 'whole_zi_23'];
   // Reads the flags, checking them against the pillars; inconsistent flags stop the chart.
   // Luck pillars count their start from a jie too, within an allowance of their own: a
-  // birth that close to one has a nominal luck timeline, and the chart says so.
+  // birth that close to one has a nominal luck timeline, and the chart says so while its
+  // luck pillar shows. Each notice is { text, luck }.
   const readFlags = (flags, fourPillars, request, luckPillars) => {
     const fail = () => { throw new Error(requiredTranslation('flags_error')); };
     if (!flags || typeof flags.zi_hour_window !== 'boolean' || typeof flags.solar_term_ambiguous !== 'boolean'
@@ -164,8 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
       && Math.abs(nearest.seconds - flags.model_uncertainty_seconds) > 0.001) fail();
     if (flags.solar_term_ambiguous) {
       const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(flags.model_uncertainty_seconds);
-      notices.push(requiredTranslation(
-        nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }));
+      notices.push({ text: requiredTranslation(
+        nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }), luck: false });
     }
     if (luckPillars) {
       const uncertainty = luckPillars.uncertainty;
@@ -176,16 +177,24 @@ document.addEventListener('DOMContentLoaded', () => {
         && Math.abs(nearest.seconds - allowance) > 0.05) fail();
       if (uncertainty.boundary_ambiguous) {
         const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(allowance);
-        notices.push(requiredTranslation(
-          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }));
+        notices.push({ text: requiredTranslation(
+          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }), luck: true });
       }
     }
-    if (flags.high_latitude_warning) notices.push(requiredTranslation('notice_high_latitude'));
+    if (flags.high_latitude_warning) notices.push({ text: requiredTranslation('notice_high_latitude'), luck: false });
     return { zi, notices };
   };
+  // The chart's notices; a luck pillar's only while it shows, so that a natal chart reads
+  // as a chart without luck pillars.
+  let chartNoticeList = [];
+  const renderNotices = () => {
+    const shown = chartNoticeList.filter((notice) => !notice.luck || luck.shown());
+    chartNotices.innerHTML = shown.map((notice) => `<li>${esc(notice.text)}</li>`).join('');
+    chartNotices.classList.toggle('hidden', shown.length === 0);
+  };
   const renderFlags = ({ zi, notices }) => {
-    chartNotices.innerHTML = notices.map((notice) => `<li>${esc(notice)}</li>`).join('');
-    chartNotices.classList.toggle('hidden', notices.length === 0);
+    chartNoticeList = notices;
+    renderNotices();
     ziSwitch.classList.toggle('hidden', zi === null);
     ziSwitch.innerHTML = zi === null ? '' : `
       <p class="zi-switch-note" id="zi-switch-note">${esc(requiredTranslation('zi_switch_note'))}</p>
@@ -286,6 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!resolvedLocation && !locationStatus.textContent) {
       setLocationStatus('', '');
     }
+    account.refresh();
   };
 
   // The field is a combobox: focus stays in it and the active option is announced from it.
@@ -531,21 +541,55 @@ document.addEventListener('DOMContentLoaded', () => {
     form.querySelector(`input[name="gender"][value="${gender ?? ''}"]`).checked = true;
   };
 
-  // Requests a chart and draws it, and says whether it did: a later request supersedes
-  // it. Anything missing or inconsistent throws before the chart view is shown.
-  const showChart = async (request, place) => {
-    const serial = ++drawing;
+  // A chart's record from the API, and the request it answers. Charts need an account:
+  // signed out, the account dialog asks for one first, and a session that ended
+  // meanwhile (signed out elsewhere, or unused for 30 days) asks once more. Signing in
+  // sets the page to the account's language, and the chart is asked for in it. A
+  // refusal for a chart no longer wanted (`wanted` says) is not acted on: a newer
+  // chart may have signed in since, and that account must not be forgotten.
+  const askForPillars = async (request, wanted) => {
     // The canon speaks English: its readings come with an English chart only.
-    const withReading = request.lang === 'en';
-    const pillarsRes = await fetch('/api/four_pillars', {
+    const post = (asked) => fetch('/api/four_pillars', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request, include_reading: withReading }),
+      body: JSON.stringify({ ...asked, include_reading: asked.lang === 'en' }),
     });
+    let asked = request;
+    if (!account.signedIn()) {
+      await account.signIn();
+      asked = { ...asked, lang: currentLanguage };
+    }
+    let response = await post(asked);
+    if (response.status === 401 && wanted()) {
+      // Refused, perhaps for a session another tab has replaced since: a sign-in is
+      // asked for only if the browser holds none now, and the chart is still wanted.
+      const holds = await account.recheck(wanted);
+      if (!wanted()) return { asked, response };
+      if (!holds) await account.signIn();
+      asked = { ...asked, lang: currentLanguage };
+      response = await post(asked);
+    }
+    return { asked, response };
+  };
+
+  // Requests a chart and draws it, and says whether it did: a later request supersedes
+  // it. Anything missing or inconsistent throws before the chart view is shown.
+  const showChart = async (wanted, place) => {
+    const serial = ++drawing;
+    let answer;
+    try {
+      answer = await askForPillars(wanted, () => serial === drawing);
+    } catch (err) {
+      // A sign-in given up, or a failed connection, for a chart no longer wanted.
+      if (serial !== drawing) return false;
+      throw err;
+    }
+    const { asked: request, response: pillarsRes } = answer;
+    const withReading = request.lang === 'en';
     const pillarsData = await pillarsRes.json();
     if (serial !== drawing) return false;
     if (!pillarsRes.ok) {
-      throw new Error(pillarsData.detail || t('pillars_error'));
+      throw new Error(pillarsRes.status === 401 ? t('account_needed') : pillarsData.detail || t('pillars_error'));
     }
 
     const chartData = pillarsData.chart;
@@ -794,6 +838,39 @@ document.addEventListener('DOMContentLoaded', () => {
     return t(key, vars);
   };
 
+  // ── The account (account.js): charts need one, the start page does not ──
+  const accountState = document.getElementById('account-state');
+  if (!accountState) throw new Error('The page names no account state.');
+  const account = window.EC_ACCOUNT.create({
+    dialog: document.getElementById('account-dialog'),
+    button: document.getElementById('account-btn'),
+    state: JSON.parse(accountState.textContent),
+    translate: requiredTranslation,
+    language: () => currentLanguage,
+    embedded,
+    // Signing in, or choosing the account's language, sets the page's.
+    onLanguage: (lang) => {
+      currentLanguage = i18n.setLanguage(lang);
+      applyLanguage();
+    },
+    // Signed out, the page starts again, empty, as New chart leaves it.
+    onSignedOut: () => {
+      // Whatever was on its way is abandoned: the page starts again, empty.
+      arrivals += 1;
+      chartView.removeAttribute('aria-busy');
+      setPending(false);
+      compare.hide();
+      askForChart();
+      leaveChart();
+      addressForm('replaceState');
+      form.reset();
+      clearResolvedLocation();
+      setFieldError(dateInput, dateStatus, '');
+      setFieldError(timeInput, timeStatus, '');
+      setFormError('');
+    },
+  });
+
   // One topic is open at a time, in the panel: a relationship (or their list), the
   // Day Master context, or a pillar's changes.
   const setRelationshipsOpen = (open) => {
@@ -824,12 +901,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // The luck pillars: the ribbon of decades, the chosen period as the chart's fifth
   // pillar, and its page (luck.js). Its cards, drawn anew as the choice moves, show what
-  // every card shows.
+  // every card shows. Hidden, the chart is natal, notices too, and focus that was on the
+  // luck pillars goes to the chart's cards.
   const luck = window.EC_LUCK.create({
     root: chartView, pillars: chartView.querySelector('#pillars'), translate: requiredTranslation, escape: esc, spot, locale,
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
     onCards: (column, focused, redrawn) => fitCards(column, focused, redrawn),
-    // What the luck pillar's period adds to the topics: Roots, Roles and Relationships.
+    onShown: renderNotices,
+    keyCard: () => cardAt(keyCard),
+    // What the luck pillar's period adds to the topics while it shows: Roots, Roles and
+    // Relationships. Natal (null), nothing.
     onPeriod: (period) => {
       luckPeriod = period;
       dayMasterContext.setLuck(period);
@@ -837,16 +918,15 @@ document.addEventListener('DOMContentLoaded', () => {
       showRelationshipsTopic();
     },
   });
-  // The relationships topic names their count, and the luck pillar's that act in its
-  // phase beside it, kept in place (unseen) while the luck pillar is hidden.
+  // The relationships topic names their count, and, while the luck pillar shows, the
+  // luck pillar's that act in its phase beside it.
   let natalRelationships = 0;
   let luckPeriod = null;
   const showRelationshipsTopic = () => {
     const [before, after] = requiredTranslation('relationships_topic', { count: natalRelationships, luck: '\u0001' }).split('\u0001');
     const count = luckPeriod === null ? 0 : luckPeriod.relationships.length;
     const word = count > 0 ? requiredTranslation('topic_luck_relationships', { count }) : '';
-    relationshipsTopic.innerHTML = `${esc(before)}${luckPeriod === null ? ''
-      : `<span class="topic-delta${luckPeriod.shown ? '' : ' is-hidden'}">${esc(word)}</span>`}${esc(after)}`;
+    relationshipsTopic.innerHTML = `${esc(before)}${word === '' ? '' : `<span class="topic-delta">${esc(word)}</span>`}${esc(after)}`;
   };
   const closePanel = () => {
     relationships.clear();
@@ -928,7 +1008,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // Cards drawn anew (the luck pillar's, for another decade) show what every card
   // shows, at once. The tab stop stays on a card that can take it, and focus that was
-  // on the changed part comes back to it, or else to that card.
+  // on the changed part comes back to it, or else to that card. A scope of null is a
+  // column taken away (the luck pillar's, hidden).
   const fitCards = (scope, focused = null, redrawn = true) => {
     if (redrawn) {
       scope.querySelectorAll('.card').forEach((card) => {
@@ -946,7 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
     else setKeyCard(keyed);
     syncDisplaySwitch();
     if (focused === null) return;
-    const target = focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
+    const target = scope === null ? null
+      : focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
     (target && !target.closest('[inert]') ? target : cardAt(keyCard)).focus({ preventScroll: true });
   };
   displaySwitch.addEventListener('click', (event) => {
@@ -1537,6 +1619,39 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       askForChart();
+      // The frames cannot ask for a sign-in themselves, so the page makes sure of the
+      // session first, with the server: one that ended since the page was served asks
+      // here, before the frames ask for their charts. Signing in here, or another tab's
+      // account taken by the check, sets the page to the account's language.
+      const languageBefore = currentLanguage;
+      let signedInHere = false;
+      try {
+        const holds = await account.stillSignedIn(() => arrival === arrivals);
+        if (arrival !== arrivals) return;
+        if (!holds) {
+          await account.signIn();
+          signedInHere = true;
+        }
+      } catch (err) {
+        if (arrival !== arrivals) return;
+        console.error(err);
+        setFormError(err.message);
+        addressForm('replaceState');
+        return;
+      }
+      if (arrival !== arrivals) return;
+      if (signedInHere || currentLanguage !== languageBefore) {
+        // The account's language, set by signing in or by the account taken, is both
+        // charts'.
+        const inLanguage = (params) => {
+          const next = new URLSearchParams(params);
+          next.set('lang', currentLanguage);
+          return next.toString();
+        };
+        pair = { a: { params: inLanguage(pair.a.params) }, b: { params: inLanguage(pair.b.params) } };
+        history.replaceState(null, '',
+          `${formAddress()}${COMPARE_ROUTE}${new URLSearchParams({ a: pair.a.params, b: pair.b.params })}`);
+      }
       inputView.classList.add('hidden');
       compare.show(pair.a.params, pair.b.params, currentLanguage);
       return;
@@ -1709,17 +1824,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const commands = [];
     const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
     const topics = requiredTranslation('palette_topics');
-    // A topic as it reads on screen: a word the luck pillar would add, kept unseen while
-    // it is hidden, is not part of it.
-    const shownText = (node) => {
-      const copy = node.cloneNode(true);
-      copy.querySelectorAll('.topic-delta.is-hidden').forEach((delta) => delta.remove());
-      return copy.textContent;
-    };
     chartView.querySelectorAll('#day-master-context button[data-context]').forEach((button) => {
-      add(topics, shownText(button), () => goToTopic(button.dataset.context));
+      add(topics, button.textContent, () => goToTopic(button.dataset.context));
     });
-    add(topics, shownText(relationshipsTopic), () => goToTopic('relationships'));
+    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
     // A relationship by its name, as the list names it: in English a chip also reads the
     // canon's first sentence for it.
     relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {
@@ -1763,11 +1871,13 @@ document.addEventListener('DOMContentLoaded', () => {
     add(chart, requiredTranslation('print'), () => window.print());
     if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
     add(chart, requiredTranslation('keys_title'), openKeys);
+    if (!embedded) add(chart, requiredTranslation(account.signedIn() ? 'account_title' : 'account_sign_in'), account.open);
     return commands;
   };
 
   document.addEventListener('keydown', (event) => {
-    if (event.defaultPrevented || chartView.classList.contains('hidden') || keysDialog.open || paletteDialog.open) return;
+    if (event.defaultPrevented || chartView.classList.contains('hidden') || keysDialog.open || paletteDialog.open
+      || account.isOpen()) return;
     if (event.key.toLowerCase() === 'k' && (event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey) {
       event.preventDefault();
       palette.open(chartCommands());

@@ -38,4 +38,10 @@ async function click(page, selector) {
   await settled(page);
 }
 
-export { SAMPLE, TODAY, DECADES, sampleLink, TAB, openSample, linkPart, click };
+// The switch's With luck: the luck pillar shows, at the period chosen, with its ribbon
+// and its life grid. A chart with a gender opens natal, without them.
+async function showLuck(page) {
+  await click(page, '#luck-switch [data-luck-show="on"]');
+}
+
+export { SAMPLE, TODAY, DECADES, sampleLink, TAB, openSample, linkPart, click, showLuck };

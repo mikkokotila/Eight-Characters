@@ -4,7 +4,7 @@
 // them again.
 import {
   assert, describe, it, engineName, profiles, openChart, openLink, fillChart, settled, showDisplay,
-  withPage, HELSINKI,
+  withPage, signIn, HELSINKI,
 } from './chart-helpers.mjs';
 
 // The canonical chart's link, as the app writes it.
@@ -66,6 +66,7 @@ for (const profile of profiles) {
     async function inNewTab(page, run) {
       const { name, ...options } = profile;
       const tab = await page.context().browser().newPage({ ...options, locale: 'fi-FI' });
+      await signIn(tab);
       const errors = [];
       tab.on('pageerror', (error) => errors.push(error.message));
       try { await run(tab); assert.deepEqual(errors, [], 'Uncaught browser errors in the new tab'); }

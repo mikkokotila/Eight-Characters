@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from typing import Any
 
-from fastapi.testclient import TestClient
 from lunar_python import Solar
 from lunar_python.util import LunarUtil
 
@@ -17,9 +16,9 @@ from eight_characters.main import (
     MAPPINGS_DIR,
     HiddenStemsRequest,
     _build_ten_gods_result,
-    app,
 )
 from eight_characters.ten_gods import DAY_MASTER, TEN_GOD_NAMES, parse_ten_gods_mapping
+from tests.accounts_support import signed_in_client
 
 TEN_GODS_MAPPING_PATH = MAPPINGS_DIR / 'ten-gods.csv'
 
@@ -100,7 +99,7 @@ class TestTenGodsMapping(unittest.TestCase):
                     )
 
     def test_hidden_stems_match_lunar_python_reference(self) -> None:
-        client = TestClient(app)
+        client = signed_in_client(type(self))
         for pillar_texts in (
             ('甲子', '乙丑', '丙寅', '丁卯'),
             ('戊辰', '己巳', '庚午', '辛未'),
@@ -224,7 +223,7 @@ class TestTenGodsMappingValidation(unittest.TestCase):
 class TestFourPillarsTenGods(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def _four_pillars(self, **flags: bool) -> dict[str, Any]:
         response = self.client.post(

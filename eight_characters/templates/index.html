@@ -18,9 +18,13 @@
 <div id="input-view" class="input-container">
 
   <div class="input-header">
-    <div class="language-switch">
-      <button type="button" class="lang-btn" data-lang="fi">FI</button>
-      <button type="button" class="lang-btn" data-lang="en">EN</button>
+    <div class="page-tools">
+      <div class="language-switch">
+        <button type="button" class="lang-btn" data-lang="fi">FI</button>
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+      </div>
+      <!-- Sign in, or the signed-in account: account.js sets which it says. -->
+      <button type="button" id="account-btn" class="bar-action account-btn" aria-haspopup="dialog" data-i18n="account_sign_in">Kirjaudu</button>
     </div>
     <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
     <h1 class="title" data-i18n="title">Kahdeksan merkkiä</h1>
@@ -288,6 +292,85 @@
   <div id="compare-charts" class="compare-charts" data-shown="a"></div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════
+     THE ACCOUNT — charts need one; the start page does not
+     ═══════════════════════════════════════════════════ -->
+<!-- Signing in, or creating an account, with a code sent by email; and, signed in, the
+     account itself. Cloudflare Turnstile checks that a person asks for the code. -->
+<dialog id="account-dialog" class="chart-dialog account-dialog" aria-labelledby="account-title" data-site-key="{{ turnstile_site_key }}">
+  <div class="chart-dialog-bar">
+    <h2 id="account-title" class="chart-dialog-title"></h2>
+    <button type="button" class="panel-close" data-close-dialog data-i18n="panel_close">Sulje</button>
+  </div>
+
+  <form id="account-start" class="account-step" novalidate>
+    <p id="account-notice" class="account-notice hidden" role="status"></p>
+    <p id="account-lead" class="account-lead"></p>
+    <div class="account-field">
+      <label for="account-email" data-i18n="account_email">Sähköposti</label>
+      <input type="email" id="account-email" name="email" autocomplete="email" spellcheck="false" aria-describedby="account-email-status" required>
+      <p id="account-email-status" class="field-status" aria-live="polite"></p>
+    </div>
+    <!-- A new account's language: chosen, never preset. -->
+    <fieldset id="account-language" class="account-field account-languages" aria-describedby="account-language-note account-language-status">
+      <legend data-i18n="account_language">Tilin kieli</legend>
+      <div class="account-language-options">
+        <label lang="fi"><input type="radio" name="account-language" value="fi"> Suomi</label>
+        <label lang="en"><input type="radio" name="account-language" value="en"> English</label>
+      </div>
+      <p id="account-language-note" class="account-note" data-i18n="account_language_note"></p>
+      <p id="account-language-status" class="field-status" aria-live="polite"></p>
+    </fieldset>
+    <div id="account-check" class="account-check"></div>
+    <p id="account-start-error" class="form-error hidden" role="alert"></p>
+    <button type="submit" id="account-send" class="submit-btn" data-i18n="account_send">Lähetä koodi</button>
+    <button type="button" id="account-mode" class="account-switch"></button>
+    <p class="account-note" data-i18n="account_privacy"></p>
+  </form>
+
+  <form id="account-code-step" class="account-step hidden" novalidate>
+    <p id="account-sent" class="account-lead" aria-live="polite"></p>
+    <div class="account-field">
+      <label for="account-code" data-i18n="account_code">Koodi</label>
+      <input type="text" id="account-code" name="code" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" aria-describedby="account-code-status" required>
+      <p id="account-code-status" class="field-status" aria-live="polite"></p>
+    </div>
+    <button type="submit" id="account-verify" class="submit-btn" data-i18n="account_continue">Jatka</button>
+    <button type="button" id="account-restart" class="account-switch" data-i18n="account_new_code">Pyydä uusi koodi</button>
+  </form>
+
+  <section id="account-menu" class="account-step hidden" aria-labelledby="account-title">
+    <p id="account-who" class="account-lead"></p>
+    <p id="account-plan" class="account-note"></p>
+    <div class="account-field">
+      <span id="account-language-label" class="account-label" data-i18n="account_language">Tilin kieli</span>
+      <div class="segmented" id="account-language-switch" role="group" aria-labelledby="account-language-label" aria-describedby="account-language-menu-note">
+        <button type="button" lang="fi" data-account-lang="fi" aria-pressed="false">Suomi</button>
+        <button type="button" lang="en" data-account-lang="en" aria-pressed="false">English</button>
+      </div>
+      <p id="account-language-menu-note" class="account-note" data-i18n="account_language_note"></p>
+    </div>
+    <div class="account-actions">
+      <button type="button" id="account-export" class="bar-action" data-i18n="account_export">Lataa tietoni</button>
+      <button type="button" id="account-sign-out" class="bar-action" data-i18n="account_sign_out">Kirjaudu ulos</button>
+      <button type="button" id="account-sign-out-everywhere" class="bar-action" data-i18n="account_sign_out_everywhere">Kirjaudu ulos kaikilta laitteilta</button>
+      <button type="button" id="account-delete-open" class="bar-action" aria-expanded="false" aria-controls="account-delete" data-i18n="account_delete">Poista tili</button>
+    </div>
+    <form id="account-delete" class="account-delete hidden" novalidate>
+      <p class="account-note" data-i18n="account_delete_note"></p>
+      <div class="account-field">
+        <label for="account-delete-email" data-i18n="account_delete_email">Tilin sähköpostiosoite</label>
+        <input type="email" id="account-delete-email" name="email" autocomplete="off" spellcheck="false" aria-describedby="account-delete-status">
+        <p id="account-delete-status" class="field-status" aria-live="polite"></p>
+      </div>
+      <button type="submit" id="account-delete-confirm" class="bar-action is-danger" data-i18n="account_delete_confirm">Poista tili pysyvästi</button>
+    </form>
+    <p id="account-status" class="account-status" role="status"></p>
+  </section>
+</dialog>
+<!-- The signed-in account, or null. -->
+<script id="account-state" type="application/json">{{ account | tojson }}</script>
+
 <script src="/static/localization.js?v={{ app_version }}"></script>
 <script src="/static/spotlight.js?v={{ app_version }}"></script>
 <script src="/static/readings.js?v={{ app_version }}"></script>
@@ -299,6 +382,7 @@
 <script src="/static/luck.js?v={{ app_version }}"></script>
 <script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/compare.js?v={{ app_version }}"></script>
+<script src="/static/account.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>
