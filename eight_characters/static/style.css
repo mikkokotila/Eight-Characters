@@ -2647,6 +2647,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
+/* While the session is made sure of, before the charts are asked for again. */
+.compare-container[aria-busy='true'] :is(#compare-language button, #compare-swap) { cursor: progress; }
 .compare-charts {
   flex: 1;
   min-height: 0;
