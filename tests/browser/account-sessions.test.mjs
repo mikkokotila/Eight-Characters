@@ -47,6 +47,79 @@ const holdAnswer = async (page, pattern, method = 'GET') => {
   return { answered, release };
 };
 
+// Holds the page's first `method` request to `pattern` before it reaches the server:
+// `sent` resolves when the page has made it, and `release` sends it on.
+const holdRequest = async (page, pattern, method) => {
+  let release;
+  const held = new Promise((resolve) => { release = resolve; });
+  let made;
+  const sent = new Promise((resolve) => { made = resolve; });
+  let holding = true;
+  const hold = async (route) => {
+    if (!holding || route.request().method() !== method) return route.continue();
+    holding = false;
+    await page.unroute(pattern, hold);
+    made();
+    await held;
+    return route.continue();
+  };
+  await page.route(pattern, hold);
+  return { sent, release };
+};
+
+// Holds the account in the page's next sign-in answer: the answer reaches the page, and
+// with it the session cookie it sets, but its body waits until `release`. Later
+// sign-ins are not held. `answered` resolves once the answer has reached the page;
+// `checked(n)`, once the answers to n of the page's questions of who the session is
+// have reached it, from now on.
+const holdSignInBody = async (page) => {
+  await page.evaluate(() => {
+    const fetched = window.fetch.bind(window);
+    let holding = true;
+    window.__checks = 0;
+    window.__signInAnswered = new Promise((resolve) => { window.__signInAnswer = resolve; });
+    window.fetch = async (url, init) => {
+      const response = await fetched(url, init);
+      const method = init?.method ?? 'GET';
+      if (String(url) === '/api/account' && method === 'GET') window.__checks += 1;
+      if (!holding || String(url) !== '/api/account/session' || method !== 'POST') return response;
+      holding = false;
+      const released = new Promise((resolve) => { window.__releaseSignIn = resolve; });
+      const json = response.json.bind(response);
+      response.json = async () => { await released; return json(); };
+      window.__signInAnswer();
+      return response;
+    };
+  });
+  return {
+    answered: () => page.evaluate(() => window.__signInAnswered),
+    release: () => page.evaluate(() => window.__releaseSignIn()),
+    checked: (count) => page.waitForFunction((n) => window.__checks >= n, count),
+  };
+};
+
+// From a chart on screen, signed in to `first`: that session ends elsewhere, the next
+// chart is refused, and the refusal is held on its way (`chart.release` lets it go).
+// The account's menu, opened meanwhile, finds the session ended and asks for a sign-in.
+const refusedWhileSigningIn = async (page, first) => {
+  await visit(page, { lang: 'en' });
+  await askForChart(page);
+  await page.locator('#chart-view').waitFor({ state: 'visible' });
+  await settled(page);
+  await asAccount(playwright, first, async (request) => {
+    assert.equal((await request.delete('/api/account/session')).status(), 204);
+  });
+  const chart = await holdAnswer(page, '**/api/four_pillars', 'POST');
+  await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+  await chart.answered;
+  await page.keyboard.press('ControlOrMeta+k');
+  await page.locator('#palette-input').fill('tili');
+  await page.keyboard.press('Enter');
+  await dialogOpens(page);
+  await page.locator('#account-start').waitFor({ state: 'visible' });
+  return chart;
+};
+
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / account sessions`, { concurrency: false }, () => {
     // Every page here starts without the suite's session; each test signs in as it says.
@@ -675,43 +748,14 @@ for (const profile of profiles) {
       const earlier = await newAccount(playwright, { language: 'fi', label: 'late-in-a' });
       const later = await newAccount(playwright, { language: 'en', label: 'late-in-b' });
       await signInPage(page, earlier);
-      await visit(page, { lang: 'en' });
-      await askForChart(page);
-      await page.locator('#chart-view').waitFor({ state: 'visible' });
-      await settled(page);
-      // The earlier session ends elsewhere. The next chart is refused, and the refusal
-      // held on its way.
-      await asAccount(playwright, earlier, async (request) => {
-        assert.equal((await request.delete('/api/account/session')).status(), 204);
-      });
-      const chart = await holdAnswer(page, '**/api/four_pillars', 'POST');
-      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
-      await chart.answered;
-      // The menu, opened meanwhile, finds the session ended and asks for a sign-in.
-      await page.keyboard.press('ControlOrMeta+k');
-      await page.locator('#palette-input').fill('tili');
-      await page.keyboard.press('Enter');
-      await dialogOpens(page);
-      await page.locator('#account-start').waitFor({ state: 'visible' });
+      const chart = await refusedWhileSigningIn(page, earlier);
       // The earlier account signs in again. The answer has set its cookie; its body is
       // held on its way.
-      await page.evaluate(() => {
-        const fetched = window.fetch.bind(window);
-        window.__signInAnswered = new Promise((resolve) => { window.__signInAnswer = resolve; });
-        window.fetch = async (url, init) => {
-          const response = await fetched(url, init);
-          if (String(url) !== '/api/account/session' || !init || init.method !== 'POST') return response;
-          const released = new Promise((resolve) => { window.__releaseSignIn = resolve; });
-          const json = response.json.bind(response);
-          response.json = async () => { await released; return json(); };
-          window.__signInAnswer();
-          return response;
-        };
-      });
+      const signIn = await holdSignInBody(page);
       await sendCode(page, earlier.email);
       await page.locator('#account-code').fill(await readCode(earlier.email));
       await page.locator('#account-verify').click();
-      await page.evaluate(() => window.__signInAnswered);
+      await signIn.answered();
       // Another tab signs in to another account, which the refused chart's check,
       // released now, takes: the page speaks its language.
       await page.context().addCookies(later.cookies);
@@ -719,7 +763,7 @@ for (const profile of profiles) {
       await page.waitForFunction(() => document.documentElement.lang === 'en');
       // The sign-in's answer comes last. The page keeps the account the browser holds,
       // and its language (taking the sign-in's would turn the page Finnish).
-      await page.evaluate(() => window.__releaseSignIn());
+      await signIn.release();
       await dialogCloses(page);
       await page.waitForTimeout(300);
       assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
@@ -728,6 +772,80 @@ for (const profile of profiles) {
       await page.keyboard.press('Enter');
       await dialogOpens(page);
       await page.locator('#account-who').filter({ hasText: `Signed in as ${later.email}` }).waitFor();
+    });
+
+    check("a sign-in that sets its cookie after the page took another tab's session signs the page in", async (page) => {
+      const first = await newAccount(playwright, { language: 'en', label: 'set-late-a' });
+      const signing = await newAccount(playwright, { language: 'fi', label: 'set-late-b' });
+      const other = await newAccount(playwright, { language: 'en', label: 'set-late-c' });
+      await signInPage(page, first);
+      const chart = await refusedWhileSigningIn(page, first);
+      // Another account signs in here, and its request is held before it reaches the
+      // server, so its answer sets its cookie last.
+      const signIn = await holdRequest(page, '**/api/account/session', 'POST');
+      await sendCode(page, signing.email);
+      await page.locator('#account-code').fill(await readCode(signing.email));
+      await page.locator('#account-verify').click();
+      await signIn.sent;
+      // Another tab signs in to a third account, which the refused chart's check,
+      // released now, takes: the page speaks its language.
+      await page.context().addCookies(other.cookies);
+      chart.release();
+      await page.waitForFunction(() => document.documentElement.lang === 'en');
+      // The sign-in goes through now. The browser holds its session: the page is signed
+      // in to its account, and speaks its language.
+      signIn.release();
+      await dialogCloses(page);
+      await page.waitForFunction(() => document.documentElement.lang === 'fi');
+      assert.equal(await text(page, '#account-btn'), 'Tili');
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('tili');
+      await page.keyboard.press('Enter');
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: signing.email }).waitFor();
+    });
+
+    check('a sign-in whose session ends before its account arrives asks for a sign-in again', async (page) => {
+      const first = await newAccount(playwright, { language: 'en', label: 'end-late-a' });
+      const signing = await newAccount(playwright, { language: 'en', label: 'end-late-b' });
+      await signInPage(page, first);
+      const asked = chartsAskedFor(page);
+      const chart = await refusedWhileSigningIn(page, first);
+      // Another account signs in. The answer has set its cookie; its body is held on its
+      // way.
+      const signIn = await holdSignInBody(page);
+      await sendCode(page, signing.email);
+      await page.locator('#account-code').fill(await readCode(signing.email));
+      await page.locator('#account-verify').click();
+      await signIn.answered();
+      // Another tab signs out of that session, which the refused chart's check, released
+      // now, finds ended.
+      const cookies = await page.context().cookies();
+      await asAccount(playwright, { cookies }, async (request) => {
+        assert.equal((await request.delete('/api/account/session')).status(), 204);
+      });
+      await page.context().clearCookies();
+      const check = page.waitForResponse((response) => new URL(response.url()).pathname === '/api/account'
+        && response.request().method() === 'GET');
+      chart.release();
+      assert.equal((await check).status(), 401);
+      await signIn.checked(1);
+      // The sign-in's account comes last. The browser holds no session: the dialog asks
+      // for a sign-in again, and no chart is asked for without one.
+      const charts = asked.length;
+      await signIn.release();
+      await page.locator('#account-start').waitFor({ state: 'visible' });
+      assert.equal(await text(page, '#account-notice'), 'Istuntosi päättyi. Kirjaudu uudelleen.');
+      assert.equal(await text(page, '#account-btn'), 'Kirjaudu');
+      await page.waitForTimeout(300);
+      assert.equal(await dialogIsOpen(page), true);
+      assert.equal(asked.length, charts);
+      // Signed in again, the chart is drawn.
+      await signInThroughDialog(page, signing.email);
+      await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy'));
+      await settled(page);
+      assert.equal(await page.locator('#chart-view').isVisible(), true);
+      assert.equal(asked.length, charts + 1);
     });
 
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {

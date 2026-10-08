@@ -70,10 +70,15 @@
     };
 
     let account = state === null ? null : accountOf(state);
-    // Which session the page holds: it moves on with every sign-in, sign-out and
-    // session found ended, so an answer about an earlier one is told apart and
-    // changes nothing.
-    let held = 0;
+    // When the page learned who is signed in. It learns it from answers, each from a
+    // moment, in the order the page sees them: a request that carries the session cookie
+    // tells of the cookie the browser held as it was sent, and an answer that sets or
+    // removes the cookie, of the cookie from when it comes. The page's account is what
+    // the newest answer said, from moment `known` (the page as served is moment 0): an
+    // answer from before it changes nothing, however late it comes.
+    let moments = 0;
+    let known = 0;
+    const moment = () => ++moments;
     // 'create' or 'sign_in'; 'start', 'code' or 'menu'.
     let mode = 'create';
     let step = 'start';
@@ -261,7 +266,6 @@
     // ── Signing in ──
     const signedIn = (value) => {
       account = accountOf(value);
-      held += 1;
       // The account's language is the page's from now on, until the reader changes it.
       onLanguage(account.language);
       closeSignedIn();
@@ -354,7 +358,6 @@
         return;
       }
       setBusy(verify, true, 'account_checking');
-      const session = held;
       try {
         const response = await call('POST', '/api/account/session', { email: asked.email, code: typed });
         if (response.status === 400) {
@@ -363,13 +366,18 @@
           return;
         }
         if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
+        // The answer has set the session cookie: from now, the browser holds this
+        // session, and an answer about the cookie before it changes nothing.
+        const at = moment();
+        known = at;
         const value = await response.json();
-        // The page took, or ended, a session while this answer was on its way. One it
-        // holds now (another tab's, found after this answer set its cookie) is the
-        // newer: the dialog closes signed in to it, and nothing more is asked, which
-        // could itself be overtaken. Holding none, the browser's session is this one.
-        if (session !== held && account !== null) {
-          closeSignedIn();
+        // The page learned of a newer session while the account was on its way: the one
+        // the browser held after this answer set its cookie. The dialog closes signed in
+        // to it, or, if there was none (signed out elsewhere since), asks for a sign-in
+        // again.
+        if (at < known) {
+          if (account !== null) closeSignedIn();
+          else askAgain();
           return;
         }
         signedIn(value);
@@ -380,6 +388,17 @@
         setBusy(verify, false, 'account_continue');
       }
     });
+
+    // A sign-in overtaken by the end of its session (signed out elsewhere): the dialog
+    // asks for a sign-in again, and says why.
+    const askAgain = () => {
+      asked = null;
+      step = 'start';
+      code.value = '';
+      refresh();
+      showCheck();
+      email.focus();
+    };
 
     // A new code, for this address or another.
     restart.addEventListener('click', () => {
@@ -400,7 +419,6 @@
       const told = accountOf(value);
       if (account !== null && told.email === account.email) return;
       account = told;
-      held += 1;
       onLanguage(account.language);
       refresh();
     };
@@ -419,21 +437,25 @@
     // A request was refused for want of a session, perhaps one sent before another tab
     // signed in. Before the page lets its session go, it asks whether the browser holds
     // one now: if so, the page takes it (`take`) and answers true; if not, `letGo` ends
-    // it here, and the answer is false. An answer no longer wanted (`wanted`), or about
-    // a session the page no longer holds, changes nothing. `take` is `identify`, which
-    // keeps what the page knows of the same account, unless no change of the page's own
-    // can be under way (the menu's question and actions), when it is `learn`.
+    // it here, and the answer is false. An answer no longer wanted (`wanted`), or older
+    // than what the page has learned since, changes nothing, and the page answers with
+    // what it knows. `take` is `identify`, which keeps what the page knows of the same
+    // account, unless no change of the page's own can be under way (the menu's question
+    // and actions), when it is `learn`.
     const refusedNow = async (letGo, { wanted = () => true, take = identify } = {}) => {
-      const session = held;
+      const at = moment();
       const response = await call('GET', '/api/account');
-      if (!wanted() || session !== held) return account !== null;
+      const late = () => !wanted() || at < known;
+      if (late()) return account !== null;
       if (response.status === 401) {
+        known = at;
         letGo();
         return false;
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (!wanted() || session !== held) return account !== null;
+      if (late()) return account !== null;
+      known = at;
       take(value);
       return true;
     };
@@ -443,7 +465,6 @@
     // dialog asks for a sign-in instead.
     const ended = () => {
       account = null;
-      held += 1;
       mode = 'sign_in';
       step = 'start';
       noticeKey = 'account_session_ended';
@@ -451,10 +472,11 @@
       showCheck();
       email.focus();
     };
-    // Signed out on purpose: nothing of the account stays on screen.
+    // Signed out on purpose: nothing of the account stays on screen. The answer removed
+    // the session cookie: from now, the browser holds none.
     const signedOut = (key) => {
+      known = moment();
       account = null;
-      held += 1;
       mode = 'sign_in';
       step = 'start';
       noticeKey = key;
@@ -465,23 +487,15 @@
       email.focus();
     };
     // A menu action: one at a time, and what went wrong said under the menu. It is for
-    // the session the page holds as it starts; `still` says whether the page still
-    // holds it as the answer comes. If not (signed in to another account in another
-    // tab, or found ended), the answer was about the earlier session: it changes
-    // nothing, and the menu says so.
+    // the account the menu names as it starts, which it names to the server too, and
+    // its answer is about the session cookie the browser held as it was sent.
     const act = async (control, run) => {
       if (busy) return;
       busy = true;
       control.disabled = true;
       setStatus(status, '');
-      const session = held;
-      const still = () => {
-        if (session === held) return true;
-        setStatus(status, t('account_changed'));
-        return false;
-      };
       try {
-        await run(still);
+        await run();
       } catch (err) {
         console.error(err);
         setStatus(status, err.message);
@@ -499,16 +513,34 @@
       if (dialog.open && step === 'menu') confirmSession();
     };
     const refused = (response) => new Error(t('account_server_error', { status: response.status }));
-    // The session belongs to another account than the menu names (another tab signed
-    // in to it): nothing was done. The menu says so, and asks who the session is.
-    const elsewhere = () => {
-      setStatus(status, t('account_changed'));
-      confirmSession();
+    // Nothing was done for the account the menu named, and the menu says so.
+    const changed = () => setStatus(status, t('account_changed'));
+    // An action sent at moment `at` went through for the account it named (`named`):
+    // whether the page still names that account. If it does, the answer is what the page
+    // knows, unless it has learned since. If not (it has taken another tab's account, or
+    // found the session ended), nothing more is done, and the menu says so; and if the
+    // answer is the newer, the menu asks who the session is.
+    const still = (at, named) => {
+      if (account === null || account.email !== named) {
+        changed();
+        if (at > known) confirmSession();
+        return false;
+      }
+      if (at > known) known = at;
+      return true;
     };
-    // Refused for want of a session: if the browser holds one after all (another tab
-    // signed in), nothing was done, and the menu says so.
-    const refusedHere = async () => {
-      if (await refusedNow(ended, { take: learn })) setStatus(status, t('account_changed'));
+    // The session belonged to another account than the action named (another tab signed
+    // in to it): nothing was done. The menu says so, and, unless the page has learned
+    // since, asks who the session is.
+    const elsewhere = (at) => {
+      changed();
+      if (at > known) confirmSession();
+    };
+    // Refused for want of a session. Unless the page has learned since, it asks whether
+    // the browser holds one after all (another tab signed in): if so, nothing was done,
+    // and the menu says so, as it does if the page has learned since.
+    const refusedHere = async (at) => {
+      if (at < known || await refusedNow(ended, { take: learn })) changed();
     };
     // The menu's actions, which wait while the page asks who the session belongs to.
     const actions = () => [
@@ -525,30 +557,32 @@
         return;
       }
       busy = true;
-      const session = held;
+      const at = moment();
       actions().forEach((control) => { control.disabled = true; });
-      let known = false;
+      let answered = false;
       try {
         const response = await call('GET', '/api/account');
-        if (session !== held) {
-          known = true;
+        if (at < known) {
+          answered = true;
           return;
         }
         if (response.status === 401) {
-          known = true;
+          answered = true;
           await refusedNow(ended, { take: learn });
           return;
         }
         if (!response.ok) throw refused(response);
         const value = await response.json();
-        known = true;
-        if (session === held) learn(value);
+        answered = true;
+        if (at < known) return;
+        known = at;
+        learn(value);
       } catch (err) {
         console.error(err);
         setStatus(status, err.message);
       } finally {
         busy = false;
-        if (known) actions().forEach((control) => { control.disabled = false; });
+        if (answered) actions().forEach((control) => { control.disabled = false; });
         askedMeanwhile();
       }
     };
@@ -556,16 +590,17 @@
     languageSwitch.addEventListener('click', (event) => {
       const choice = event.target.closest('button[data-account-lang]');
       if (!choice || choice.getAttribute('aria-pressed') === 'true') return;
-      act(choice, async (still) => {
+      act(choice, async () => {
+        const named = account.email;
+        const at = moment();
         const response = await call('PATCH', '/api/account', {
-          language: choice.dataset.accountLang, email: account.email,
+          language: choice.dataset.accountLang, email: named,
         });
-        if (!still()) return;
-        if (response.status === 409) return elsewhere();
-        if (response.status === 401) return refusedHere();
+        if (response.status === 409) return elsewhere(at);
+        if (response.status === 401) return refusedHere(at);
         if (!response.ok) throw refused(response);
         const value = await response.json();
-        if (!still()) return;
+        if (!still(at, named)) return;
         account = accountOf(value);
         onLanguage(account.language);
         refresh();
@@ -573,14 +608,15 @@
       });
     });
 
-    exportButton.addEventListener('click', () => act(exportButton, async (still) => {
-      const response = await call('POST', '/api/account/export', { email: account.email });
-      if (!still()) return;
-      if (response.status === 409) return elsewhere();
-      if (response.status === 401) return refusedHere();
+    exportButton.addEventListener('click', () => act(exportButton, async () => {
+      const named = account.email;
+      const at = moment();
+      const response = await call('POST', '/api/account/export', { email: named });
+      if (response.status === 409) return elsewhere(at);
+      if (response.status === 401) return refusedHere(at);
       if (!response.ok) throw refused(response);
       const file = await response.blob();
-      if (!still()) return;
+      if (!still(at, named)) return;
       const url = URL.createObjectURL(file);
       // Inside the dialog: while it is open, the rest of the page is inert.
       const link = document.createElement('a');
@@ -604,12 +640,12 @@
     // A sign-out or a deletion that went through removed the browser's session cookie
     // with its answer, whichever account it held by then: the page is signed out, even
     // if it has taken another session meanwhile.
-    signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async (still) => {
+    signOutEverywhereButton.addEventListener('click', () => act(signOutEverywhereButton, async () => {
+      const at = moment();
       const response = await call('DELETE', '/api/account/sessions', { email: account.email });
       if (response.ok) return signedOut('account_signed_out_everywhere');
-      if (!still()) return;
-      if (response.status === 409) return elsewhere();
-      if (response.status === 401) return refusedHere();
+      if (response.status === 409) return elsewhere(at);
+      if (response.status === 401) return refusedHere(at);
       throw refused(response);
     }));
 
@@ -622,7 +658,7 @@
 
     deleteForm.addEventListener('submit', (event) => {
       event.preventDefault();
-      act(deleteConfirm, async (still) => {
+      act(deleteConfirm, async () => {
         const typed = deleteEmail.value.trim();
         if (typed.toLowerCase() !== account.email) {
           setStatus(deleteStatus, t('account_delete_mismatch'));
@@ -630,13 +666,13 @@
           return;
         }
         setStatus(deleteStatus, '');
+        const at = moment();
         const response = await call('DELETE', '/api/account', { email: typed });
         if (response.ok) return signedOut('account_deleted');
-        if (!still()) return;
         // The address typed is the one the menu names (checked above): refused, it is
         // not the session's account, which another tab has signed in to since.
-        if (response.status === 400) return elsewhere();
-        if (response.status === 401) return refusedHere();
+        if (response.status === 400) return elsewhere(at);
+        if (response.status === 401) return refusedHere(at);
         throw refused(response);
       });
     });
@@ -661,27 +697,27 @@
     };
     // Whether the session still holds, as the server says: one that ended since the page
     // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
-    // no longer wanted (`wanted` says), or about a session the page no longer holds,
+    // no longer wanted (`wanted` says), or older than what the page has learned since,
     // changes nothing, so a sign-in made meanwhile stays; the caller goes no further.
     // Of the account itself, only who it is is taken from the answer (identify): the
     // page knows the rest from the start page and its own changes, which an answer
     // asked for before one of them would undo.
     const stillSignedIn = async (wanted) => {
       if (!account) return false;
-      const session = held;
+      const at = moment();
       const response = await call('GET', '/api/account');
-      if (!wanted() || session !== held) return false;
+      if (!wanted() || at < known) return false;
       if (response.status === 401) return refusedNow(forget, { wanted });
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (!wanted() || session !== held) return false;
+      if (!wanted() || at < known) return false;
+      known = at;
       identify(value);
       return true;
     };
     // The server answered that no one is signed in: the session ended meanwhile.
     const forget = () => {
       account = null;
-      held += 1;
       mode = 'sign_in';
       if (step === 'menu') step = 'start';
       noticeKey = 'account_session_ended';

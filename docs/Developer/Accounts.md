@@ -135,13 +135,22 @@ put on one.
   more (`GET /api/account`), takes a session the browser holds after all, and asks for
   the chart again; only a second refusal signs the page out. Of the same account, this
   check takes only who it is, and a chart left meanwhile asks for nothing.
+- **The newest answer decides who is signed in.** Tabs share the session cookie, and
+  answers come in any order. Each answer tells of the cookie at a moment: a request
+  that carries it, of the cookie as it was sent; an answer that sets or removes it
+  (signing in, signing out, deleting the account), of the cookie from when it comes.
+  The page takes who is signed in from the newest of these, and an answer older than
+  what it has taken changes nothing, however late it comes. So a sign-in whose answer
+  sets its cookie after a check found another tab's account signs the page in, and
+  one overtaken by a newer answer (another tab's account, or the session ended since)
+  closes signed in to that account, or asks for a sign-in again.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
   cannot ask themselves. Of the account, the check takes only who it is: another
   account, signed in to in another tab, is taken as a sign-in here, with its language;
   the same account keeps what the page knows of it (a language set in the dialog
   meanwhile stays). The answer to a check for a comparison no longer
-  wanted, or about a session the page no longer holds, changes nothing, and signing
+  wanted, or older than what the page has learned since, changes nothing, and signing
   out abandons a comparison on its way. **The explorer**, given a birth, links to the start page to sign
   in.
 - **Signed in, the dialog is the account:** its address and plan, its language,
@@ -153,10 +162,10 @@ put on one.
   whole (a language another tab set shows): an account signed in to in another tab is
   taken as a sign-in here, and a session ended elsewhere asks for a sign-in. Its
   actions name the account (see the API above): one refused with `409` changed
-  nothing, and the menu says so and asks again. An action whose answer comes after the
-  page has learned of another session changes nothing either, and says so; a sign-out
-  or deletion that went through still signs the page out, since its answer removed
-  the cookie.
+  nothing, and the menu says so and asks again. An action answered after the page has
+  taken another account, or found the session ended, does nothing more, and says so; a
+  sign-out or deletion that went through still signs the page out, since its answer
+  removed the cookie.
 
 ## Settings
 
