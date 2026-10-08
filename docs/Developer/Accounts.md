@@ -69,10 +69,11 @@ it; the first code redeemed for a new address creates its account.
    Spaces and hyphens in what is typed are ignored.
 4. The server sets the session cookie: `__Host-ec_session` over HTTPS (`ec_session` on a
    laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 400 days, the longest
-   browsers keep one. The session it names ends on the server after 30 days without
-   use; one used in its second half is extended to 30 days again, there. Only signing
-   in sets the cookie, and only signing out or deleting the account removes it: an
-   answer that arrives late cannot undo a sign-in or a sign-out made meanwhile.
+   browsers keep one. The session it names ends on the server 30 days after it was
+   made or last extended; one used in its second half is extended to 30 days again,
+   there. Only signing in sets the cookie, and only signing out or deleting the account
+   removes it (by its name, whichever session it holds by then): a renewal or a refusal
+   that arrives late changes no cookie.
 
 Codes and session tokens are stored only as HMAC-SHA256 hashes under `EC_SECRET_KEY`,
 so the database alone cannot be used to test guesses or take over a session.
@@ -107,7 +108,7 @@ birth. Creating the chart asks for an account first.
 
 | Request | Needs an account |
 |---|---|
-| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is read |
+| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is validated |
 | `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls` | no |
 
 `tests/test_accounts_app.py` holds both lists, so a new request fails it until it is
@@ -126,7 +127,7 @@ put on one.
   the chart is asked for in it. The page's own language switches change only the page,
   as before. The account's language, which its emails use, is set in the account
   dialog, and the page follows it.
-- **A session that ended** (signed out elsewhere, the account deleted, or unused for
+- **A session that ended** (signed out elsewhere, the account deleted, or past its
   30 days) answers a chart with `401`: the dialog asks once more, and the chart is asked
   for again after signing in. Closing the dialog leaves the form, which says that
   charts need an account, with the birth kept. A `401` that arrives for a chart no
@@ -149,7 +150,7 @@ put on one.
   the account's `updated_at` past the last (by a second, within one second or with the
   clock gone back), and every answer carries it, since a check sent after a change may
   read the account before it. An account is told apart by its `key`, a hash of its id,
-  which the page is never told: an account made again with an address is another. So a sign-in whose answer sets its cookie
+  which no account answer carries: an account made again with an address is another. So a sign-in whose answer sets its cookie
   after a check found another tab's account signs the page in, and one overtaken by a
   newer answer (another tab's account, or the session ended since) closes signed in to
   that account, or asks for a sign-in again.
@@ -189,7 +190,7 @@ or a database it cannot open, stops it with the reason.
 
 | Variable | Production | On a laptop |
 |---|---|---|
-| `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://localhost:8000` |
+| `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://127.0.0.1:8000` |
 | `EC_DATABASE_PATH` | `/data/accounts.sqlite3` | any path, made with `init` |
 | `EC_SECRET_KEY` | 32 bytes or more, random | the same |
 | `EC_MAIL_FROM` | `BaZi <kirjaudu@nektari.fi>` | any address |

@@ -305,8 +305,10 @@ for (const profile of profiles) {
       assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, `${JSON.stringify(box)} in ${JSON.stringify(viewport)}`);
       assert.ok(box.y >= 0 && box.y + box.height <= viewport.height, `${JSON.stringify(box)} in ${JSON.stringify(viewport)}`);
       assert.equal(await page.locator('#account-dialog').evaluate((dialog) => dialog.scrollWidth <= dialog.clientWidth), true);
+      // Its last note scrolls into sight within the screen.
       await page.locator('#account-start .account-note').last().scrollIntoViewIfNeeded();
-      assert.equal(await page.locator('#account-start .account-note').last().isVisible(), true);
+      const note = await page.locator('#account-start .account-note').last().boundingBox();
+      assert.ok(note.y >= 0 && note.y + note.height <= viewport.height, `${JSON.stringify(note)} in ${JSON.stringify(viewport)}`);
     });
   });
 }

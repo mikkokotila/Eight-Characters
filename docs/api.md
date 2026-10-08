@@ -10,7 +10,7 @@
 
 Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
 `POST /api/hidden_stems` and `POST /api/evolution_explorer` answer `401`
-(`{"detail": "Sign in to continue."}`) without one, before reading the request. The
+(`{"detail": "Sign in to continue."}`) without one, before the request is validated. The
 place search and `GET /api/evolution_controls` need none.
 
 A session is the cookie the page gets when signing in (`__Host-ec_session` over HTTPS,

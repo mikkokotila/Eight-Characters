@@ -61,8 +61,8 @@ SIGN_IN_REQUIRED: Final = 'Sign in to continue.'
 ACCOUNT_CHANGED: Final = 'This browser is signed in to another account now.'
 # How long the browser keeps the session cookie: the longest browsers keep one
 # (RFC 6265bis caps Max-Age at 400 days). Only signing in sets it. The session it
-# names ends on the server after 30 days without use, and is extended there while
-# in use.
+# names ends on the server 30 days after it was made or last extended, and is
+# extended there when used in its second half.
 SESSION_COOKIE_LIFETIME: Final = timedelta(days=400)
 _HEADER_NAME = re.compile(r'[A-Za-z0-9-]+')
 _LOCAL_HOSTS: Final = frozenset({'localhost', '127.0.0.1', '::1'})
@@ -348,7 +348,7 @@ _KEY: Final = re.compile('[0-9a-f]{64}')
 
 def account_key(user: User) -> str:
     """The account's key: the same for its whole life, and another for an account
-    made again with its address. A hash of its id, which the page is never told."""
+    made again with its address. A hash of its id, which no account answer carries."""
     return hashlib.sha256(user.id.encode()).hexdigest()
 
 

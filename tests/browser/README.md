@@ -9,7 +9,8 @@ the run.
 Charts need an account. Each suite signs in to an account of its own through the app's
 API, as the page does (`account-helpers.mjs`), reads the code from the folder the app
 writes its emails to, gives every page it opens that session, and deletes the account
-at the end. Start the app with its account settings (see
+at the end. The account suites open their pages signed out instead, and make the
+accounts their tests need, on `example.com` addresses. Start the app with its account settings (see
 [Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
 - `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
 - Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
@@ -18,8 +19,8 @@ at the end. Start the app with its account settings (see
   requests from another origin;
 - `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` of at least 1000: every suite, and most
   account tests, ask for a code, all from one client within the hour. The account
-  sessions suite alone asks for some 120 over its two profiles, and a full run for a
-  few hundred.
+  sessions suite alone asks for some 125 over its two profiles, and one engine's full
+  run for some 175.
 
 Then run from the repository root:
 
@@ -43,8 +44,10 @@ changing typography, spacing, or responsive layout.
 
 The tests calculate charts and explorer graphs through the real API. They stub
 only location suggestions, whose fixed test coordinates the page sends as the
-chart's `location`, so no test depends on the geocoder, and, in the account suites,
-Cloudflare's Turnstile widget. Malformed-response tests intentionally modify the real
+chart's `location`, so no test depends on the geocoder, and, in the account suites and
+the foundations audit of the dialog, Cloudflare's Turnstile widget. The account
+sessions suite also answers some requests itself, a refusal or an answer held on its
+way, to play the late answers it checks. Malformed-response tests intentionally modify the real
 response to verify visible errors. No real birth records or saved user data are used,
 and every account is made for the run, on `example.com` addresses.
 
@@ -87,12 +90,14 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
   menu check answered late keeps a later change it read, a chart left while its check
   reads a later language keeps it, an account made again with its address in
   another tab shows its own language, Download my data for such an account does
-  nothing, and says so, and a code answered after the page took another tab's session
-  leaves the account's menu.
+  nothing, and says so, a code answered after the page took another tab's session
+  leaves the account's menu, and a language saved while another account is held is
+  kept when that account comes back.
 
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
-one browser (the 64th, a phone's 32nd, never loaded).
+one browser (the 64th, a phone's 32nd, never loaded). The account sessions suite opens
+62, so a test more on each profile needs another file first.
 
 The foundations suite also audits the account dialog's fonts and contrast, signed in
 and signed out, in both languages and both themes.
