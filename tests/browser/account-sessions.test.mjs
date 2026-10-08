@@ -1148,11 +1148,14 @@ for (const profile of profiles) {
       await page.locator('#account-send').click();
       await asked.answered;
       // Another tab signs in to another account, which the refused chart's check, released
-      // now, takes: the dialog closes, signed in. The menu is opened again and names it.
+      // now, takes: the dialog closes, signed in. The menu, opened again from the chart's
+      // commands, names it.
       await page.context().addCookies(other.cookies);
       chart.release();
       await dialogCloses(page);
-      await page.locator('#account-btn').click();
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('account');
+      await page.keyboard.press('Enter');
       await dialogOpens(page);
       await page.locator('#account-who').filter({ hasText: other.email }).waitFor();
       // The code's answer comes last: the menu stays, with its actions.
