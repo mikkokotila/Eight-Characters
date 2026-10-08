@@ -80,8 +80,39 @@ Master) or hidden stems. A long press turns one, and a click opens the branch's 
 stems, as on the natal cards. Its name opens the decade's page. Hidden and shown again,
 the column is drawn anew, in the chart's display.
 
+The relationships it forms with the natal pillars stand as arcs, drawn as the natal arcs
+are: a stem's above the stems, a branch's below the branches, each in its kind's line
+(see [Relationships](Standard-Relationships.md)). They ride an outer band beyond the
+natal arcs' levels, every one ending on the luck pillar, the narrower lower. A triple's
+middle member stands under its arc. On a natal card their feet stand beyond the natal
+arcs' feet, so no natal arc's foot moves on its card. In the branch phase a stem's
+relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs
+recede too, in the secondary line. A relationship chosen in the list, natal or the luck
+pillar's, stands in the ink, and every other arc recedes. The outer band is there only
+while the luck pillar shows: natal, the arcs' rows are a chart's without a gender.
+
 On a phone the luck pillar stands above the two-by-two chart, its stem beside its
 branch.
+
+## The topics with luck
+
+While the luck pillar stands in the chart, the period it shows adds to the chart's
+topics, for its phase:
+- **Roots** reads "+ luck" when the luck branch roots the Day Master. The Roots page
+  then adds the luck branch, with its roots, beside the natal root branches. A chart with
+  no natal root reads "Root in the luck pillar's branch", on the topic and its page.
+- **Roles** reads "+ 2 new" for the roles new to the chart that act in the phase. The
+  Roles page adds what the luck pillar brings, each marked when new.
+- **Relationships** adds the luck pillar's that act in the phase to its count, as in
+  "Relationships (3 + 2)". The list adds them under their own heading. They open as the
+  natal ones do, with the luck pillar's card and arc; the canon has no readings for
+  them yet.
+
+The topics' icons say the same on their badges: Relationships 3+2, Roots 3+1 (the luck
+branch as one more root), Roles +2; the words are in their names, as a screen reader
+reads them. Natal, there are none of these: the topics read as a chart's without luck
+pillars. A luck relationship chosen that stops acting, as a stem's does in the branch
+phase, closes.
 
 ## A decade's page
 

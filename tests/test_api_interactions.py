@@ -343,6 +343,72 @@ class TestRelationshipArcLevels(unittest.TestCase):
         )
 
 
+# The luck pillar's arcs (static/luck.js, arcsFor) ride an outer band: the luck pillar
+# is a fifth column after the natal four, every one of its arcs ends on it, and the
+# layout is the natal arcs' with that column added. They overlap one another, so each
+# arc stands at its own level, the narrower lower; the band holds four levels and an arc
+# four strands.
+NATAL_PILLARS = ('hour', 'day', 'month', 'year')
+LUCK_COLUMNS = {**DISPLAY_COLUMNS, 'luck': 4}
+LUCK_ARC_LEVELS = 4
+LUCK_ARC_STRANDS = 4
+
+
+def luck_arc_slots(interactions):
+    slots = []
+    for interaction in interactions:
+        columns = sorted(
+            LUCK_COLUMNS[member['pillar']] for member in interaction['members']
+        )
+        span = (columns[0], columns[-1])
+        if interaction['kind'] not in SHARED_KINDS:
+            host = next((slot for slot in slots if slot['span'] == span), None)
+            if host is not None:
+                host['strands'].append(interaction)
+                continue
+        slots.append({'span': span, 'strands': [interaction]})
+    return slots
+
+
+class TestLuckArcLayout(unittest.TestCase):
+    def test_every_luck_pillar_with_four_natal_pillars_fits_the_outer_band(self):
+        for component, chars in (
+            ('stem', '甲乙丙丁戊己庚辛壬癸'),
+            ('branch', '子丑寅卯辰巳午未申酉戌亥'),
+        ):
+            most_slots = 0
+            most_strands = 0
+            for combination in itertools.product(chars, repeat=5):
+                natal, luck = combination[:4], combination[4]
+                if component == 'stem':
+                    natal_pillars = dict(zip(NATAL_PILLARS, ((c, '子') for c in natal)))
+                    luck_pillar = (luck, '子')
+                else:
+                    natal_pillars = dict(zip(NATAL_PILLARS, (('甲', c) for c in natal)))
+                    luck_pillar = ('甲', luck)
+                found = detect_luck_interactions(natal_pillars, luck_pillar)
+                slots = luck_arc_slots(
+                    [i for i in found['interactions'] if i['component'] == component]
+                )
+                # Every arc ends on the luck pillar.
+                self.assertTrue(all(slot['span'][1] == 4 for slot in slots))
+                most_slots = max(most_slots, len(slots))
+                most_strands = max(
+                    most_strands, *(len(slot['strands']) for slot in slots), 0
+                )
+            with self.subTest(component=component):
+                self.assertEqual(most_slots, LUCK_ARC_LEVELS)
+                self.assertLessEqual(most_strands, LUCK_ARC_STRANDS)
+        # Reached: a branch combination with three directional combinations.
+        found = detect_luck_interactions(
+            dict(zip(NATAL_PILLARS, (('甲', c) for c in '子亥亥亥'))), ('甲', '丑')
+        )
+        self.assertEqual(
+            [len(slot['strands']) for slot in luck_arc_slots(found['interactions'])],
+            [LUCK_ARC_STRANDS],
+        )
+
+
 # The canon's families beyond the shared catalog, written out from canon/Taxonomy.md
 # here rather than taken from the runtime tables.
 CANON_REFERENCE = {

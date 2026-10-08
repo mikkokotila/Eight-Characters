@@ -21,6 +21,9 @@
     return value.replace(/\{(\w+)\}/g, (_, token) => String(vars[token] ?? ''));
   };
   const labelOf = (node) => (node.querySelector('.control-label')?.textContent ?? node.textContent).trim();
+  // While the luck pillar shows, a topic's badge adds what it brings (luck.js, through
+  // app.js and day-master-context.js): Relationships 3+2, Roots 3+1, Roles +2.
+  const withLuck = (node, count) => (node.dataset.controlLuck ? `${count ?? ''}${node.dataset.controlLuck}` : null);
   const firstWords = (label) => label.split(' · ')[0].trim().split(/\s+/).slice(0, 2).join(' ');
   const fixed = {
     'copy-link-btn': ['link-2', 'link'], 'copy-text-btn': ['clipboard-list', 'copy'],
@@ -43,15 +46,15 @@
     } else if (node.matches('#chart-language button, #compare-language button, .lang-btn')) {
       key = (node.dataset.chartLang ?? node.dataset.compareLang ?? node.dataset.lang) === 'fi' ? 'finnish' : 'english';
     } else if (node.id === 'relationships-topic') {
-      icon = 'waypoints'; key = 'relationships'; only = true; count = node.dataset.controlCount;
+      icon = 'waypoints'; key = 'relationships'; only = true; count = node.dataset.controlCount; caption = withLuck(node, count);
       label = text('relationships');
     } else if (node.matches('[data-context]')) {
       const context = node.dataset.context;
       [icon, key] = { season: ['sun-snow', 'season'], roots: ['sprout', 'roots'], roles: ['users-round', 'roles'], 'day-master': ['chevron-down', 'master'] }[context];
       if (context === 'roots') {
-        count = node.dataset.controlCount; only = Number(count) > 0;
+        count = node.dataset.controlCount; only = Number(count) > 0; caption = withLuck(node, count);
         label = text('context_roots');
-      } else if (context === 'roles') only = true;
+      } else if (context === 'roles') { only = true; caption = withLuck(node, null); }
       else if (context === 'day-master') label = text('ten_god_day_master');
     } else if (node.matches('.panel-close')) { icon = 'x'; key = 'close'; only = true; }
     else if (node.matches('.pillar-identity, .luck-identity')) {
@@ -117,7 +120,7 @@
         if (!badge) { badge = document.createElement('span'); badge.className = 'control-caption'; badge.setAttribute('aria-hidden', 'true'); node.append(badge); }
         const value = spec.caption ?? spec.count;
         if (badge.dataset.caption !== value) badge.dataset.caption = value;
-      }
+      } else node.querySelector('.control-caption')?.remove();
     }
     // The page's original text stays in the DOM, including its full accessible name.
     node.dataset.controlTip = spec.key;
@@ -188,7 +191,7 @@
         observer.disconnect(); refresh(); observe();
       }
     });
-    const observe = () => observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-expanded', 'aria-pressed', 'data-control-count'] });
+    const observe = () => observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: ['aria-expanded', 'aria-pressed', 'data-control-count', 'data-control-luck'] });
     observe();
     new MutationObserver(() => refresh()).observe(document.documentElement, { attributes: true, attributeFilter: ['lang'] });
     // Static tooltip text never blocks the controls below it. Pointer coordinates

@@ -20,6 +20,10 @@
     let selected = null;
     let pages = {};
     let chart = {};
+    // The luck pillar's period (luck.js): its roots and the roles it brings, which the
+    // Roots and Roles topics add while it stands in the chart.
+    let luck = null;
+    let natal = null;
     const require = (condition) => {
       if (!condition) throw new Error(t('context_error'));
     };
@@ -87,10 +91,11 @@
     // One stem: its element's swatch, the stem, a hidden stem's qi position, and then
     // its role, which a role's own page leaves out, and how a root matches. It points at
     // its card on the chart, and at its row there when hidden stems show.
-    const evidenceMarkup = (e, { role = true, rootMatch = false } = {}) => {
+    const evidenceMarkup = (e, { role = true, rootMatch = false, also = [] } = {}) => {
       const about = [
         ...(role ? [t('ten_god_' + e.ten_god)] : []),
         ...(rootMatch ? [t('context_match_' + e.match)] : []),
+        ...also,
       ];
       return `
       <div class="context-evidence-row" data-evidence-pillar="${esc(e.pillar)}" data-evidence-char="${esc(e.char)}"${spot.attr([spot.of(e)])}>
@@ -156,8 +161,47 @@
       // Mark exact rows on both surfaces; never open or flip cards automatically.
       rows.forEach((row) => row.classList.add('is-context-evidence'));
     };
+    // The luck pillar's roots, as a member beside the natal root branches.
+    const luckRootsMarkup = () => `
+      <div class="relationship-member"${spot.attr(['branch:luck'])}>
+        <div class="relationship-position">${esc(t('pillar_luck'))}</div>
+        <div class="relationship-identity">${esc(luck.cards.branch.pinyin)} ${esc(luck.cards.branch.char)}</div>
+        <div class="relationship-element">${esc(luck.cards.branch.element_label)}</div>
+        <div class="context-evidence-list">${luck.roots.map((e) => evidenceMarkup(e, { rootMatch: true })).join('')}</div>
+      </div>`;
+    // The roots' label, on their topic and their page: the natal one, and while the luck
+    // branch roots the Day Master too, that root with it: "Roots in 3 branches" and "+ luck",
+    // or, with no natal root, "Root in the luck pillar's branch".
+    const rootsLabels = () => {
+      if (luck === null || luck.roots.length === 0) return [natal.rootsLabel, ''];
+      return natal.rootPillars.length === 0 ? [t('context_roots_luck_only'), ''] : [natal.rootsLabel, t('topic_luck_roots')];
+    };
+    const rootsPage = () => {
+      const withLuck = luck !== null && luck.roots.length > 0;
+      const members = natal.rootPillars.length + (withLuck ? 1 : 0);
+      const content = members > 0
+        ? `<div class="relationship-members" style="--member-count: ${members}">${natal.rootPillars.map((pillar) =>
+          branchMarkup(pillar, natal.data.roots.filter((e) => e.pillar === pillar), true, canon.rootGround(pillar))).join('')}${withLuck ? luckRootsMarkup() : ''}</div>`
+        : `<p class="relationship-empty">${esc(t('context_no_roots'))}</p>`;
+      return {
+        path: 'roots', title: t('context_roots'), evidence: [...natal.data.roots, ...(withLuck ? luck.roots : [])],
+        markup: makePage(t('context_roots'), rootsLabels().filter(Boolean).join(' '), content, natal.withReadings(t('context_roots_note'))),
+      };
+    };
+    // The roles the luck pillar brings in its phase, under the roles overview.
+    const withLuckRoles = (page) => {
+      if (page.path !== 'roles' || luck === null || luck.occurrences.length === 0) return page;
+      return {
+        ...page,
+        evidence: [...page.evidence, ...luck.occurrences],
+        markup: `${page.markup}
+          <h4 class="panel-subheading">${esc(t('roles_luck_heading'))}</h4>
+          <div class="context-evidence-list">${luck.occurrences.map((e) => evidenceMarkup(e, { also: e.new_to_chart ? [t('luck_new')] : [] })).join('')}</div>`,
+      };
+    };
     // The page shown names itself on the detail, for the chart's address.
-    const showPage = (page) => {
+    const showPage = (shownPage) => {
+      const page = withLuckRoles(shownPage);
       require(typeof page.path === 'string');
       page.evidence.forEach(highlight);
       if (page.reference) sourcesFor(page.reference).card.classList.add('is-context-reference');
@@ -178,7 +222,7 @@
       beforeSelect();
       selected = key;
       button.setAttribute('aria-expanded', 'true');
-      showPage(pages[key]);
+      showPage(key === 'roots' ? rootsPage() : pages[key]);
     });
     const clearAndReturnFocus = () => {
       const button = summary.querySelector('button[data-context][aria-expanded="true"]');
@@ -213,20 +257,15 @@
         roots: rootsLabel,
         roles: t('roles_title'),
       };
-      const rootsContent = rootPillars.length
-        ? `<div class="relationship-members" style="--member-count: ${rootPillars.length}">${rootPillars.map((pillar) => branchMarkup(pillar, data.roots.filter((e) => e.pillar === pillar), true, canon.rootGround(pillar))).join('')}</div>`
-        : `<p class="relationship-empty">${esc(t('context_no_roots'))}</p>`;
       const withReadings = (note) => [note, canon.note()].filter(Boolean).join(' ');
+      natal = { data, rootPillars, rootsLabel, withReadings };
       pages = {
         season: {
           path: 'season', title: t('context_season'), evidence: season.hidden_stems,
           markup: makePage(t('context_season'), t('context_season_group', { season: t('context_' + season.name), element: t('element_' + season.element) }),
             `<div class="relationship-members" style="--member-count: 1">${branchMarkup('month', season.hidden_stems, false, canon.season())}</div>`, withReadings(t('context_season_note'))),
         },
-        roots: {
-          path: 'roots', title: t('context_roots'), evidence: data.roots,
-          markup: makePage(t('context_roots'), rootsLabel, rootsContent, withReadings(t('context_roots_note'))),
-        },
+        roots: rootsPage(),
         roles: roles.render(roleProfile, chartData, gods),
       };
       // The Day Master's own page, which only the canon's readings fill.
@@ -237,9 +276,43 @@
         };
       }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
-        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}</button>`).join('');
+        <button type="button" class="reading-toggle context-toggle" data-context="${key}"${key === 'roots' ? ` data-control-count="${rootPillars.length}"` : ''} data-title="${esc(pages[key].title)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${
+          ['roots', 'roles'].includes(key) ? `<span class="topic-label">${esc(label)}</span><span class="topic-delta"></span>` : esc(label)}</button>`).join('');
+      setLuck(luck);
     };
-    return { render, clear };
+    // What the luck pillar's period adds to the Roots and Roles topics while it stands in
+    // the chart: a word on each button, the same on its icon's badge (controls.js: the luck
+    // branch as one more root, +1; the roles new to the chart, +2), and its part of their
+    // pages. Natal (null), there is none, and the topics read as a chart's without luck
+    // pillars.
+    const setLuck = (period) => {
+      luck = period;
+      if (natal === null) return;
+      const [rootsLabel, rootsWord] = rootsLabels();
+      const topics = {
+        roots: [rootsLabel, rootsWord, luck !== null && luck.roots.length > 0 ? '+1' : null],
+        roles: [t('roles_title'), luck !== null && luck.newRoles > 0 ? t('topic_luck_roles', { count: luck.newRoles }) : '',
+          luck !== null && luck.newRoles > 0 ? `+${luck.newRoles}` : null],
+      };
+      Object.entries(topics).forEach(([key, [label, word, badge]]) => {
+        const button = controls.querySelector(`button[data-context="${key}"]`);
+        button.querySelector('.topic-label').textContent = label;
+        button.querySelector('.topic-delta').textContent = word ? ` ${word}` : '';
+        button.setAttribute('aria-label', [`${button.dataset.title} · ${label}`, word].filter(Boolean).join(' '));
+        if (badge === null) delete button.dataset.controlLuck;
+        else button.dataset.controlLuck = badge;
+      });
+      // A topic open shows the luck pillar's part as it comes and goes. Pages are built
+      // when shown: while a new chart is drawn, this one's are not yet its own.
+      if (selected === 'roots') {
+        clearHighlights();
+        showPage(rootsPage());
+      } else if (selected === 'roles' && detail.dataset.topic === 'roles') {
+        clearHighlights();
+        showPage(pages.roles);
+      }
+    };
+    return { render, clear, setLuck };
   };
   window.EC_DAY_MASTER_CONTEXT = { create };
 })();

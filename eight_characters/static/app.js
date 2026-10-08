@@ -636,14 +636,16 @@ document.addEventListener('DOMContentLoaded', () => {
     canonReadings.render(withReading ? pillarsData.reading : null, chartData, tenGodsData, relationships.labelOf);
     relationships.render(pillarsData.interactions, chartData, tenGodsData);
     // A chart asked for with a gender has its luck pillars, their context and their
-    // cards; one without has none of them.
+    // cards; one without has none of them. The topics take the luck pillar's period
+    // only once their own pages are this chart's.
+    natalRelationships = pillarsData.interactions.length;
+    dayMasterContext.clear();
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
-      { relationshipLabel: relationships.labelOf }, request.location.timezone);
+      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
-    relationshipsTopic.textContent = requiredTranslation('relationships_topic', { count: pillarsData.interactions.length });
-    relationshipsTopic.dataset.controlCount = String(pillarsData.interactions.length);
+    showRelationshipsTopic();
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
@@ -924,7 +926,29 @@ document.addEventListener('DOMContentLoaded', () => {
     onCards: (column, focused, redrawn) => fitCards(column, focused, redrawn),
     onShown: renderNotices,
     keyCard: () => cardAt(keyCard),
+    // What the luck pillar's period adds to the topics while it shows: Roots, Roles and
+    // Relationships. Natal (null), nothing.
+    onPeriod: (period) => {
+      luckPeriod = period;
+      dayMasterContext.setLuck(period);
+      relationships.setLuck(period);
+      showRelationshipsTopic();
+    },
   });
+  // The relationships topic names their count, and, while the luck pillar shows, the
+  // luck pillar's that act in its phase beside it. Its icon's badge (controls.js) counts
+  // them the same way, as 3, or 3+2.
+  let natalRelationships = 0;
+  let luckPeriod = null;
+  const showRelationshipsTopic = () => {
+    const [before, after] = requiredTranslation('relationships_topic', { count: natalRelationships, luck: '\u0001' }).split('\u0001');
+    const count = luckPeriod === null ? 0 : luckPeriod.relationships.length;
+    const word = count > 0 ? requiredTranslation('topic_luck_relationships', { count }) : '';
+    relationshipsTopic.innerHTML = `${esc(before)}${word === '' ? '' : `<span class="topic-delta">${esc(word)}</span>`}${esc(after)}`;
+    relationshipsTopic.dataset.controlCount = String(natalRelationships);
+    if (count > 0) relationshipsTopic.dataset.controlLuck = `+${count}`;
+    else delete relationshipsTopic.dataset.controlLuck;
+  };
   const closePanel = () => {
     relationships.clear();
     dayMasterContext.clear();
@@ -1136,14 +1160,19 @@ document.addEventListener('DOMContentLoaded', () => {
     hintedCard = null;
     cardHint.classList.add('hidden');
   };
-  // The chart moves under the hint as the page scrolls, as the luck pillar comes or goes
-  // (fitCards), and as the panel opens or closes beside it (syncPanel). A card taken away,
-  // the luck pillar's as it is hidden, takes its hint with it.
+  // The chart moves under the hint as the page scrolls; as the luck pillar comes or goes
+  // (fitCards); as what stands above the cards changes its size, the header, the topics
+  // (whose badges controls.js draws a moment later) or the ribbon; and as the panel opens
+  // or closes beside the chart (syncPanel). A card taken away, the luck pillar's as it is
+  // hidden, takes its hint with it.
   const followCardHint = () => {
     if (hintedCard === null) return;
     if (hintedCard.isConnected) placeCardHint();
     else hideCardHint();
   };
+  const aboveCards = new ResizeObserver(followCardHint);
+  ['.chart-bar', '#day-master-context', '#luck-ribbon'].forEach((selector) => aboveCards.observe(chartView.querySelector(selector)));
+  aboveCards.observe(pillarsContainer);
   pillarsContainer.addEventListener('pointerover', (event) => {
     const card = event.target.closest('.card');
     if (!card || event.pointerType !== 'mouse' || activePress) return;

@@ -362,6 +362,16 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   two-by-two chart.
 - **Keys.** [ ] { } N and L act only while the chart has focus; ? lists them, and a
   chart without a gender has none.
+- **Arcs.** The luck pillar's relationships stand in the outer band, from the middle of
+  their first card to the middle of the luck card. The narrower stands lower, and a
+  frame's middle member stands under it. Their feet stand beyond the natal arcs'
+  feet, and the natal arcs keep their depth and their cards. A stem's arc rests in the
+  branch phase. A line on the decade's page rings its arc, and a hidden luck pillar
+  draws none.
+- **Topics.** Roots, Roles and Relationships carry what the period adds while the luck
+  pillar shows; natal, they read and stand as the chart's without a gender. The pages add
+  the luck branch's roots, the roles it brings, and its relationships, which open with its
+  card and arc and close when they stop acting. A link opens one.
 - **Asking.** The gender is optional, in both languages. A chart without one asks for
   no luck pillars, shows no ribbon, and its link names no gender.
 - **The ribbon.** Each decade by its characters, names, years and starting age, and the

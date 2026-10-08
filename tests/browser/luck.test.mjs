@@ -301,10 +301,11 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal((await column(page)).state, 'on');
       assert.deepEqual(await geometry(page), before);
-      // A relationship points at its cards: the natal one and the luck pillar's.
+      // A relationship points at its cards, the natal one and the luck pillar's, and its arc.
       await page.locator('.luck-relationship').first().click();
-      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
-        nodes.map((node) => `${node.classList.contains('stem') ? 'stem' : 'branch'}:${node.dataset.pillar}`)), ['stem:month', 'stem:luck']);
+      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) => nodes.map((node) => (node.matches('.card')
+        ? `${node.classList.contains('stem') ? 'stem' : 'branch'}:${node.dataset.pillar}` : `arc:${node.dataset.relationshipId}`))),
+      ['stem:month', 'stem:luck', 'arc:stem_combination:1:month-luck']);
       await screenshot(page, `${profile.name}-luck-decade`);
     });
 
@@ -572,7 +573,7 @@ for (const profile of profiles) {
       });
       // A frame points at both its natal branches and the luck pillar's.
       await page.locator('.luck-relationship').first().click();
-      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
+      assert.deepEqual(await page.locator('#pillars .card.is-spotlit').evaluateAll((nodes) =>
         nodes.map((node) => node.dataset.pillar).sort()), ['day', 'luck', 'month']);
       // Edit keeps the birth with its gender; a new chart starts without one.
       await page.locator('#back-btn').click();
@@ -724,7 +725,8 @@ for (const profile of profiles) {
       });
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar shown.');
-      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck', ['luck-ribbon']]);
+      // Shown, the natal arcs recede for the luck pillar's (is-luck-shown).
+      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck is-luck-shown', ['luck-ribbon']]);
       assert.equal(await focused(page), 'year stem');
       // L again hides them, and the chart is drawn as it was.
       await page.keyboard.press('l');
@@ -999,6 +1001,237 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     });
 
+    check('the luck pillar\'s relationships stand as arcs in an outer band, their feet beyond the natal arcs\'', async (page) => {
+      await openSample(page);
+      // A natal arc: its relationship, its depth, and whether it spans from the middle of
+      // its first card to the middle of its last (phones draw none).
+      const natal = () => page.locator('#pillars .relationship-arcs .relationship-arc').evaluateAll((arcs) => arcs.map((arc) => {
+        const box = arc.getBoundingClientRect();
+        const component = arc.closest('.relationship-arcs').dataset.component;
+        const middles = [...document.querySelectorAll(`#pillars .card.${component}`)].map((card) => {
+          const r = card.getBoundingClientRect();
+          return Math.round(r.x + r.width / 2);
+        });
+        const meets = (x) => middles.some((middle) => Math.abs(middle - x) <= 1);
+        const depth = Math.round(arc.querySelector('.relationship-arc-line').getBoundingClientRect().height);
+        return `${arc.dataset.relationshipId} ${depth} ${box.width === 0 || (meets(box.x) && meets(box.x + box.width))}`;
+      }));
+      const before = await natal();
+      await showLuck(page);
+      const luckArcs = () => page.evaluate(() => [...document.querySelectorAll('#pillars .luck-arcs .relationship-arc')].map((arc) => ({
+        id: arc.dataset.relationshipId,
+        level: Number(arc.style.getPropertyValue('--level')),
+        resting: arc.classList.contains('is-resting'),
+        middles: arc.querySelectorAll('.relationship-arc-foot').length,
+        depth: Math.round(arc.querySelector('.relationship-arc-line').getBoundingClientRect().height),
+        // The arc spans from the middle of its first card to the middle of the luck card.
+        ends: (() => {
+          const box = arc.getBoundingClientRect();
+          const component = arc.closest('.luck-arcs').dataset.component;
+          const middles = [...document.querySelectorAll(`#pillars .card.${component}`)].map((card) => {
+            const r = card.getBoundingClientRect();
+            return Math.round(r.x + r.width / 2);
+          });
+          return [middles.some((x) => Math.abs(x - box.x) <= 1), Math.abs(box.x + box.width - middles.at(-1)) <= 1];
+        })(),
+      })));
+      // 己丑 Ji Chou's stem combinations with the Month's and the Hour's 甲 Jia, in the stem phase.
+      const stems = await luckArcs();
+      assert.deepEqual(stems.map(({ id, level, resting, middles }) => [id, level, resting, middles]), [
+        ['stem_combination:1:month-luck', 1, false, 0],
+        ['stem_combination:1:hour-luck', 2, false, 0],
+      ]);
+      // Phones draw no arcs; elsewhere they rise in the outer band, above the natal four levels.
+      if (profile.name === 'desktop') {
+        assert.ok(stems.every((arc) => arc.depth > 44 && arc.ends.every(Boolean)), JSON.stringify(stems));
+      }
+      // The natal arcs keep their depth, span their cards in the chart's five columns, and recede.
+      assert.deepEqual(await natal(), before);
+      assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), true);
+      // In the branch phase the stem's relationships rest.
+      await click(page, '[data-luck-step="1"]');
+      assert.deepEqual((await luckArcs()).map((arc) => arc.resting), [true, true]);
+      // 戊子 Wu Zi's Zi completes two Water frames and punishes the Year's Mao: the narrower
+      // stands lower, and each frame's Month stands under it.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, sampleLink({ luck: '4/branch' }), { place: HELSINKI });
+      const branches = await luckArcs();
+      assert.deepEqual(branches.map(({ id, level, resting, middles }) => [id, level, resting, middles]), [
+        ['harmony_frame:18:month-day-luck', 2, false, 1],
+        ['harmony_frame:18:month-hour-luck', 3, false, 1],
+        ['punishment:34:year-luck', 1, false, 0],
+      ]);
+      // Their feet: on the Day, the Hour and the Year beyond the natal arcs', which stand there
+      // already; on the luck card, around its middle.
+      const feet = await page.locator('#pillars .luck-arcs .relationship-arc').evaluateAll((arcs) =>
+        arcs.map((arc) => [arc.style.getPropertyValue('--foot-from').trim(), arc.style.getPropertyValue('--foot-to').trim()]));
+      assert.deepEqual(feet, [['1.5', '0'], ['1.5', '1'], ['1.5', '-1']]);
+      // A relationship on the page rings its arc.
+      await click(page, '[data-luck="4"]');
+      await page.locator('.luck-relationship').first().click();
+      assert.deepEqual(await page.locator('#pillars .is-spotlit').evaluateAll((nodes) =>
+        nodes.filter((node) => node.matches('.relationship-arc')).map((node) => node.dataset.relationshipId)), ['harmony_frame:18:month-day-luck']);
+      // Hidden, the luck pillar draws none.
+      await click(page, '#luck-switch [data-luck-show="off"]');
+      assert.equal(await page.locator('#pillars .luck-arcs').count(), 0);
+      assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), false);
+      await screenshot(page, `${profile.name}-luck-arcs`);
+    });
+
+    check('the topics carry what the luck pillar adds while it shows, and natal read as a chart\'s without one', async (page) => {
+      // Each topic as it reads, and its box within the topics' row: a chart with a gender has
+      // the Natal / With luck switch in its header, above the row.
+      const topics = () => page.evaluate(() => {
+        const row = document.getElementById('day-master-context').getBoundingClientRect();
+        return [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
+          const box = button.getBoundingClientRect();
+          return {
+            text: button.textContent.replace(/\s+/g, ' ').trim(),
+            label: button.getAttribute('aria-label'),
+            box: `${Math.round(box.x - row.x)},${Math.round(box.y - row.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
+          };
+        });
+      });
+      // Each topic's icon badge (controls.js), by topic.
+      const badges = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#context-controls button, #relationships-topic')]
+        .map((button) => [button.dataset.context ?? 'relationships', button.querySelector('.control-caption')?.dataset.caption ?? null])));
+      // The same birth without a gender, then with one: natal, its topics are the same.
+      await openSample(page, { gender: null });
+      const plain = await topics();
+      await openSample(page);
+      const natal = await topics();
+      assert.deepEqual(natal.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
+      assert.deepEqual(natal, plain);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      const shown = await topics();
+      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem
+      // combinations; the badges say so too.
+      assert.deepEqual(shown.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3 + 2)']);
+      assert.deepEqual(await badges(), { season: null, roots: '3+1', roles: '+2', relationships: '3+2' });
+      assert.equal(await page.locator('button[data-context="roots"]').getAttribute('aria-label'), 'Roots · Roots in 3 branches + luck');
+      // Hidden again, the topics are natal again, badges too.
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await topics(), natal);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
+      await page.keyboard.press('l');
+      await settled(page);
+      // The Roots page adds the luck branch's root, and points at it.
+      await click(page, 'button[data-context="roots"]');
+      const luckRoot = page.locator('#context-detail .relationship-member').last();
+      // As it reads on screen: the position in capitals and the qi in lower case, as the
+      // natal members read.
+      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'LUCK Chou 丑 Yin Earth Gui 癸 · Yin Water mid Rob Wealth · Same element, opposite polarity');
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-context-source')), true);
+      // The Roles page adds what the luck pillar brings in the phase.
+      await click(page, 'button[data-context="roles"]');
+      assert.equal(await page.locator('#context-detail h4').last().textContent(), 'Brought by the luck pillar');
+      assert.deepEqual(await page.locator('#context-detail .context-evidence-list').last().locator('.context-evidence-role').allTextContents(),
+        ['Direct Officer · new to this chart', 'Direct Officer · new to this chart', 'Rob Wealth', 'Direct Resource · new to this chart']);
+      // The relationships list adds the luck pillar's, which open as the natal ones do.
+      await click(page, '#relationships-topic');
+      assert.equal(await page.locator('.relationship-luck-heading').textContent(), 'With the luck pillar');
+      const luckChips = page.locator('.relationship-luck-heading ~ .relationship-chip');
+      assert.deepEqual((await luckChips.allTextContents()).map((text) => text.replace(/\s+/g, ' ').trim()),
+        ['Month–Luck · Stem combination', 'Hour–Luck · Stem combination']);
+      // Each arc's ink as it reads: in the ink, or receded. No line in the panel points.
+      const inks = async () => {
+        assert.equal(await page.locator('#pillars[data-spotlight]').count(), 0);
+        return page.evaluate(() => {
+          const probe = (ink) => {
+            const node = document.createElement('span');
+            node.style.borderLeft = `1px solid var(${ink})`;
+            document.body.append(node);
+            const color = getComputedStyle(node).borderLeftColor;
+            node.remove();
+            return color;
+          };
+          const named = { [probe('--ink-1')]: 'ink', [probe('--line-2')]: 'receded' };
+          return Object.fromEntries([...document.querySelectorAll('#pillars .relationship-arc')].map((arc) =>
+            [arc.dataset.relationshipId, named[getComputedStyle(arc.querySelector('.relationship-arc-line')).borderLeftColor] ?? 'neither']));
+        });
+      };
+      const natalArcs = { 'self_punishment:35:day-hour': 'receded', 'harm:42:year-day': 'receded', 'harm:42:year-hour': 'receded' };
+      // While the luck pillar shows, the natal arcs recede for its own.
+      assert.deepEqual(await inks(), { ...natalArcs, 'stem_combination:1:month-luck': 'ink', 'stem_combination:1:hour-luck': 'ink' });
+      // A relationship chosen stands in the ink, and every other arc recedes, natal or not.
+      await page.locator('.relationship-chip[data-relationship="self_punishment:35:day-hour"]').click();
+      await settled(page);
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
+      });
+      await luckChips.first().click();
+      await settled(page);
+      assert.deepEqual(await inks(), { ...natalArcs, 'stem_combination:1:month-luck': 'ink', 'stem_combination:1:hour-luck': 'receded' });
+      assert.equal(await linkPart(page, 'topic'), 'relationships/stem_combination:1:month-luck');
+      assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Month–Luck · Stem combination');
+      assert.deepEqual(await page.locator('#relationship-detail .relationship-identity').allTextContents(), ['Jia 甲', 'Ji 己']);
+      assert.equal(await page.locator('.card.stem[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-related')), true);
+      assert.equal(await page.locator('.luck-arcs .relationship-arc.is-active').getAttribute('data-relationship-id'), 'stem_combination:1:month-luck');
+      // In the branch phase the stem combinations rest: the chosen one closes, and the topics follow.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press(']');
+      await settled(page);
+      assert.equal(await page.locator('#relationship-detail').isVisible(), false);
+      assert.equal(await page.locator('.relationship-luck-heading').count(), 0);
+      assert.deepEqual((await topics()).map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3)']);
+      // A link opens a luck relationship with the luck pillar it names.
+      await page.goto('about:blank');
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, sampleLink({ luck: '4/branch', topic: 'relationships/punishment:34:year-luck' }), { place: HELSINKI });
+      assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Year–Luck · Punishment');
+      // A choice that still acts stays in the ink as the period moves and the luck pillar's
+      // arcs are drawn anew, and every other arc recedes. The punishment acts in both phases.
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('[');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '4/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'harmony_frame:18:month-day-luck': 'receded', 'harmony_frame:18:month-hour-luck': 'receded', 'punishment:34:year-luck': 'ink',
+      });
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-related')), true);
+      // A natal relationship chosen stays so into the next decade, whose arcs recede.
+      await page.locator('.relationship-chip[data-relationship="self_punishment:35:day-hour"]').click();
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('}');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '5/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
+      });
+      await screenshot(page, `${profile.name}-luck-topics`);
+    });
+
+    check('with no natal root, the luck branch\'s root names the Roots topic and its page', async (page) => {
+      // 15 April 1975, 12:00, Helsinki, female: Day Master 辛 Xin, whose Metal no natal branch
+      // holds. The fourth decade, 甲申 Jia Shen, roots it in Shen's 庚 Geng.
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, `/#chart?${new URLSearchParams({
+        date: '1975-04-15', time: '12:00', place: HELSINKI.display, city: HELSINKI.city,
+        latitude: String(HELSINKI.latitude), longitude: String(HELSINKI.longitude), timezone: HELSINKI.timezone,
+        lang: 'en', gender: 'female', luck: '4/stem',
+      })}`, { place: HELSINKI });
+      const roots = page.locator('button[data-context="roots"]');
+      const read = async () => [(await roots.textContent()).replace(/\s+/g, ' ').trim(), await roots.getAttribute('aria-label')];
+      assert.deepEqual(await read(), ['Root in the luck pillar’s branch', 'Roots · Root in the luck pillar’s branch']);
+      await click(page, 'button[data-context="roots"]');
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'Root in the luck pillar’s branch');
+      assert.deepEqual(await page.locator('#context-detail .relationship-member .relationship-identity').allTextContents(), ['Shen 申']);
+      // Natal, there is none, and the topic and its page say so.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await read(), ['No roots detected', 'Roots · No roots detected']);
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'No roots detected');
+      assert.equal(await page.locator('#context-detail .relationship-member').count(), 0);
+    });
+
     check('on paper a luck pillar shown stands fifth, and a natal chart has its four columns', async (page) => {
       await openSample(page);
       await page.setViewportSize({ width: 1024, height: 900 });
@@ -1014,6 +1247,12 @@ for (const profile of profiles) {
       const shown = await placed();
       assert.deepEqual(Object.keys(shown), ['hour', 'day', 'month', 'year', 'luck']);
       assert.ok(shown.luck > shown.year, JSON.stringify(shown));
+      // Its arcs come along: 己丑 Ji Chou's two stem combinations, over the stems.
+      const stemTop = await page.locator('#pillars .card.stem[data-pillar="luck"]').evaluate((card) => card.getBoundingClientRect().top);
+      assert.deepEqual(await page.locator('#pillars .luck-arcs .relationship-arc-line').evaluateAll((lines, top) => lines.map((line) => {
+        const box = line.getBoundingClientRect();
+        return box.width > 0 && box.height > 0 && box.bottom <= top + 1;
+      }), stemTop), [true, true]);
       const tops = await page.locator('#pillars .card.stem').evaluateAll((cards) => new Set(cards.map((card) => Math.round(card.getBoundingClientRect().top))).size);
       assert.equal(tops, 1);
       await page.emulateMedia({ media: 'screen' });

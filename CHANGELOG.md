@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.43.0
+
+The luck pillar's relationships stand on the chart as arcs, and the topics take what it adds. This is the luck pillar design's fourth slice, in its second part. The life grid comes next.
+
+### Added
+- **The luck pillar's arcs.** While it shows, each relationship it forms with the natal pillars is drawn as the natal ones are: a stem's above the stems, a branch's below the branches, each in its kind's line.
+  - They ride an outer band beyond the natal arcs' four levels, the narrower lower.
+  - A triple's middle member stands under its arc.
+  - On a natal card their feet stand beyond the natal arcs' feet, so no natal arc's foot moves on its card.
+  - In the branch phase a stem's relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs recede for its own.
+  - A relationship on the decade's page rings its arc. One chosen in the list, natal or the luck pillar's, stands in the ink, and every other arc recedes.
+- **The topics with luck.** While the luck pillar shows, its period adds to the topics, for its phase:
+  - Roots reads "+ luck" when the luck branch roots the Day Master, and its page adds the luck branch with its roots. With no natal root, the topic and its page read "Root in the luck pillar's branch".
+  - Roles reads "+ 2 new" for the roles new to the chart that act in the phase, and its page adds what the luck pillar brings, each marked when new.
+  - Relationships reads "(3 + 2)", and its list adds the luck pillar's that act in the phase, under their own heading. They open as the natal ones do; the canon has no readings for them yet.
+
+  Their icons' badges (0.42.0) say the same: Relationships 3+2, Roots 3+1 (the luck branch one more root), Roles +2. The words are in their names, as screen readers read them. Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
+- **Finnish, provisional until confirmed:** + onni (Roots), Juuri onnenpilarin haarassa (Roots, with no natal root), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
+
+### Changed
+- While the luck pillar shows, the arcs' rows are 74px instead of 40px, to hold its arcs beyond the natal ones; natal, they stay 40px.
+
+### Tests
+- `tests/browser/luck.test.mjs`:
+  - the arcs: their levels, middle members and feet, the natal arcs keeping their depth and their cards, resting in the branch phase, pointing, and none while hidden;
+  - the topics: none of their words natal, the topics' row drawn as a chart's without a gender, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
+- `tests/test_api_interactions.py`: the luck arcs' layout over every combination, four natal branches with a luck branch (248,832) and four natal stems with a luck stem (100,000). Every one fits four levels and four strands, and both limits are reached: in Zi Hai Hai Hai (子亥亥亥) with a luck Chou (丑), a branch combination and three directional combinations span the same columns.
+- Version bumped to `0.43.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.42.1
 
 A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.

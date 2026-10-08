@@ -1,6 +1,8 @@
 // Presence only: the cards keep their natal elements and their existing gestures.
 (() => {
   const DISPLAY_ORDER = ['hour', 'day', 'month', 'year'];
+  // With the luck pillar standing in the chart (luck.js), it is a fifth member.
+  const MEMBER_ORDER = [...DISPLAY_ORDER, 'luck'];
   // What each kind is, as the API states it: its component, how many members it has,
   // how complete it is, and whether a transformation could be assessed at all.
   const KIND_RULES = {
@@ -103,9 +105,16 @@
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
+    // The luck pillar's relationships that act in its phase, while it stands in the chart.
+    let luckEntries = [];
+    const allEntries = () => [...entries, ...luckEntries];
+    const isLuck = (relationship) => relationship.members.some((member) => member.pillar === 'luck');
     let selected = null;
     let chartByPillar = {};
     let tenGods = {};
+    // How far right the natal arcs' feet stand on each card, in spreads from its middle:
+    // the luck pillar's arcs stand their feet beyond them (luck.js).
+    let feetEdges = { stem: {}, branch: {} };
 
     const cardFor = (relationship, member) => {
       const card = root.querySelector(
@@ -117,9 +126,9 @@
       return card;
     };
 
-    // Plain names, in the chart's own order (Hour, Day, Month, Year).
+    // Plain names, in the chart's own order (Hour, Day, Month, Year, then Luck).
     const labelFor = (relationship) => {
-      const positions = DISPLAY_ORDER.filter((pillar) => relationship.members.some((member) => member.pillar === pillar))
+      const positions = MEMBER_ORDER.filter((pillar) => relationship.members.some((member) => member.pillar === pillar))
         .map((pillar) => t('pillar_' + pillar));
       return `${positions.join('–')} · ${t('relationship_' + relationship.kind)}`;
     };
@@ -128,7 +137,7 @@
       selected = null;
       root.removeAttribute('data-relationship-kind');
       root.querySelectorAll('.card.is-related').forEach((card) => card.classList.remove('is-related'));
-      pillars.querySelectorAll('.relationship-arcs').forEach((band) => band.classList.remove('has-selection'));
+      pillars.querySelectorAll('.relationship-arcs, .luck-arcs').forEach((band) => band.classList.remove('has-selection'));
       pillars.querySelectorAll('.relationship-arc.is-active').forEach((arc) => arc.classList.remove('is-active'));
       list.querySelectorAll('button').forEach((button) => {
         button.setAttribute('aria-expanded', 'false');
@@ -164,19 +173,25 @@
         </div>`;
     };
 
+    // What a chosen relationship marks on the chart: its cards, its arc in the ink, and the
+    // other arcs receding in every band. The luck pillar's column and arcs are drawn anew
+    // as its period moves (luck.js), and a choice that still acts marks them again (setLuck).
+    const mark = (relationship) => {
+      root.dataset.relationshipKind = relationship.kind;
+      relationship.members.forEach((member) => cardFor(relationship, member).classList.add('is-related'));
+      const arc = [...pillars.querySelectorAll('.relationship-arc')]
+        .find((node) => node.dataset.relationshipId === relationship.id);
+      if (!arc) throw new Error(`Relationship ${relationship.id} has no arc.`);
+      pillars.querySelectorAll('.relationship-arcs, .luck-arcs').forEach((band) => band.classList.add('has-selection'));
+      arc.classList.add('is-active');
+    };
     const select = (relationship, button) => {
       const wasSelected = selected === relationship.id;
       clear();
       if (wasSelected) return;
       beforeSelect();
       selected = relationship.id;
-      root.dataset.relationshipKind = relationship.kind;
-      relationship.members.forEach((member) => cardFor(relationship, member).classList.add('is-related'));
-      const arc = [...pillars.querySelectorAll('.relationship-arc')]
-        .find((node) => node.dataset.relationshipId === relationship.id);
-      if (!arc) throw new Error(`Relationship ${relationship.id} has no arc.`);
-      pillars.querySelectorAll('.relationship-arcs').forEach((band) => band.classList.add('has-selection'));
-      arc.classList.add('is-active');
+      mark(relationship);
       button.setAttribute('aria-expanded', 'true');
       button.classList.add('is-active');
       const meta = [t(relationship.adjacent ? 'relationship_adjacent' : 'relationship_non_adjacent')];
@@ -185,19 +200,22 @@
       }
       const noteKey = NOTE_KEY[relationship.kind];
       const displayMembers = [...relationship.members].sort(
-        (a, b) => DISPLAY_ORDER.indexOf(a.pillar) - DISPLAY_ORDER.indexOf(b.pillar)
+        (a, b) => MEMBER_ORDER.indexOf(a.pillar) - MEMBER_ORDER.indexOf(b.pillar)
       );
+      // The canon reads the natal relationships; the luck pillar's have no reading yet.
+      const reading = isLuck(relationship) ? '' : canon.relationship(relationship.id);
+      const note = [t(noteKey), isLuck(relationship) ? '' : canon.note()].filter(Boolean).join(' ');
       // What the canon says of it sits under its finding, before its members.
       detail.innerHTML = `
         <div class="relationship-detail-heading">
           <h3 id="relationship-detail-title">${esc(labelFor(relationship))}</h3>
         </div>
         <p class="relationship-meta">${esc(meta.join(' · '))}</p>
-        ${canon.relationship(relationship.id)}
+        ${reading}
         <div class="relationship-members" style="--member-count: ${relationship.members.length}">
           ${displayMembers.map((member) => memberMarkup(relationship, member)).join('')}
         </div>
-        <p class="relationship-note">${esc([t(noteKey), canon.note()].filter(Boolean).join(' '))}</p>`;
+        <p class="relationship-note">${esc(note)}</p>`;
       detail.classList.remove('hidden');
       status.textContent = t('relationship_selected', {relationship: labelFor(relationship)});
     };
@@ -205,7 +223,7 @@
     list.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-relationship-index]');
       if (!button) return;
-      const relationship = entries[Number(button.dataset.relationshipIndex)];
+      const relationship = allEntries()[Number(button.dataset.relationshipIndex)];
       if (!relationship) throw new Error('Unknown relationship selection.');
       select(relationship, button);
     });
@@ -250,7 +268,8 @@
         throw new Error(t('interactions_error'));
       }
       chartByPillar = Object.fromEntries(DISPLAY_ORDER.map((name, index) => [name, chartData.pillars[index]]));
-      tenGods = tenGodsData;
+      // Its own copy: the luck pillar's roles join it (setLuck), not the chart's.
+      tenGods = { ...tenGodsData };
       const ids = new Set();
       relationships.forEach((relationship) => {
         const rule = KIND_RULES[relationship.kind];
@@ -286,30 +305,67 @@
         band.className = 'relationship-arcs';
         band.dataset.component = component;
         band.setAttribute('aria-hidden', 'true');
-        band.innerHTML = arcLayout(relationships.filter((relationship) => relationship.component === component))
-          .map(arcMarkup).join('');
+        const arcs = arcLayout(relationships.filter((relationship) => relationship.component === component));
+        feetEdges[component] = {};
+        arcs.forEach((arc) => Object.entries(arc.feet).forEach(([end, offset]) => {
+          const pillar = DISPLAY_ORDER[end === 'from' ? arc.from : end === 'to' ? arc.to : arc.columns[1]];
+          feetEdges[component][pillar] = Math.max(feetEdges[component][pillar] ?? -Infinity, offset);
+        }));
+        band.innerHTML = arcs.map(arcMarkup).join('');
         pillars.append(band);
       });
-      // Each entry points at its cards and its arc.
-      list.innerHTML = relationships.map((relationship, index) => `
+      luckEntries = [];
+      drawList();
+      about.innerHTML = canon.relationshipsAbout();
+    };
+
+    // Each entry points at its cards and its arc. The luck pillar's follow the natal ones.
+    const chipMarkup = (relationship, index) => `
         <button type="button" class="relationship-chip" data-kind="${esc(relationship.kind)}"
           data-relationship-index="${index}" data-relationship="${esc(relationship.id)}"${spot.attr([
             ...relationship.members.map((member) => `${relationship.component}:${member.pillar}`), `arc:${relationship.id}`])}
-          aria-expanded="false" aria-controls="relationship-detail">
+          aria-expanded="${selected === relationship.id}" aria-controls="relationship-detail">
           <span class="relationship-mark" aria-hidden="true"></span>
-          <span>${esc(labelFor(relationship))}</span>${canon.chipLine(relationship.id)}
-        </button>`).join('');
-      empty.classList.toggle('hidden', relationships.length !== 0);
-      about.innerHTML = canon.relationshipsAbout();
+          <span>${esc(labelFor(relationship))}</span>${isLuck(relationship) ? '' : canon.chipLine(relationship.id)}
+        </button>`;
+    const drawList = () => {
+      // Focus on a chip stays on it as the list is drawn again, or on the list's topic.
+      const focused = list.contains(document.activeElement) ? document.activeElement.closest('[data-relationship]')?.dataset.relationship : null;
+      list.innerHTML = entries.map(chipMarkup).join('') + (luckEntries.length === 0 ? ''
+        : `<h4 class="panel-subheading relationship-luck-heading">${esc(t('relationships_luck_heading'))}</h4>
+          ${luckEntries.map((relationship, index) => chipMarkup(relationship, entries.length + index)).join('')}`);
+      list.querySelector('.relationship-chip[aria-expanded="true"]')?.classList.add('is-active');
+      empty.classList.toggle('hidden', allEntries().length !== 0);
+      if (focused !== undefined && focused !== null) {
+        const chip = [...list.querySelectorAll('[data-relationship]')].find((node) => node.dataset.relationship === focused);
+        (chip ?? root.querySelector('#relationships-topic')).focus({ preventScroll: true });
+      }
+    };
+    // The luck pillar's period (luck.js): while it stands in the chart, the relationships
+    // it forms that act in its phase join the list, and its cards are named as the natal
+    // ones are. A luck relationship chosen that no longer acts closes; a choice that still
+    // acts marks the chart again, its luck column and arcs drawn anew.
+    const setLuck = (period) => {
+      luckEntries = period !== null ? period.relationships : [];
+      if (period !== null) {
+        chartByPillar.luck = { stem: period.cards.stem, branch: period.cards.branch };
+        tenGods.luck = { stem: period.visible, branch: period.cards.branch.char, hidden_stems: period.hidden };
+      }
+      const chosen = selected === null ? null : allEntries().find((entry) => entry.id === selected);
+      if (chosen === undefined) clear();
+      else if (chosen !== null) mark(chosen);
+      drawList();
     };
 
     // A relationship's name as the list names it, for the pages that link to it.
     const labelOf = (id) => {
-      const relationship = entries.find((entry) => entry.id === id);
+      const relationship = allEntries().find((entry) => entry.id === id);
       if (!relationship) throw new Error(`Unknown relationship ${id}.`);
       return labelFor(relationship);
     };
-    return { render, clear, labelOf };
+    // The rightmost natal foot on a card, or null where no natal arc stands.
+    const feetEdge = (component, pillar) => feetEdges[component][pillar] ?? null;
+    return { render, clear, labelOf, feetEdge, setLuck };
   };
 
   window.EC_RELATIONSHIPS = { create };
