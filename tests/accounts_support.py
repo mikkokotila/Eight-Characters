@@ -2,11 +2,20 @@
 
 import email
 import re
+import shutil
 import subprocess
+import tempfile
+import unittest
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from email.policy import default
 from pathlib import Path
+
+from fastapi.testclient import TestClient
+
+from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.web import Accounts, get_accounts, load_config
+from eight_characters.main import app
 
 # Commits the tests make by hand carry an identity of their own, so no global Git
 # configuration is needed.
@@ -124,3 +133,56 @@ def code_in(message: EmailMessage) -> str:
     if match is None:
         raise AssertionError(f'No code in: {message["Subject"]}')
     return match.group(1) + match.group(2)
+
+
+def install_accounts(case: type[unittest.TestCase]) -> Accounts:
+    """A fresh account database and services, in place of the app's own for as long
+    as the test class runs."""
+    directory = Path(tempfile.mkdtemp())
+    case.addClassCleanup(shutil.rmtree, directory)
+    config = load_config(account_environment(directory))
+    AccountStore.create(config.database)
+    accounts = Accounts.open(config, person_check=FakePersonCheck(), clock=Clock())
+    app.dependency_overrides[get_accounts] = lambda: accounts
+    case.addClassCleanup(app.dependency_overrides.pop, get_accounts, None)
+    return accounts
+
+
+def sign_in(client: TestClient, accounts: Accounts, email: str) -> None:
+    """Signs `client` in to a new account, the way the page does: a code asked for,
+    read from the mail folder and sent back."""
+    asked = client.post(
+        '/api/account/code',
+        json={
+            'email': email,
+            'purpose': 'create',
+            'language': 'en',
+            'page_language': 'en',
+            'turnstile': 'token',
+        },
+    )
+    if asked.status_code != 202:
+        raise AssertionError(f'Asking for a code failed: {asked.text}')
+    folder = accounts.config.mail_directory
+    if folder is None:
+        raise AssertionError('The test accounts send no mail to a folder.')
+    code = code_in(mails_to(folder.parent, email)[-1])
+    signed = client.post('/api/account/session', json={'email': email, 'code': code})
+    if signed.status_code != 200:
+        raise AssertionError(f'Signing in failed: {signed.text}')
+
+
+def site_client() -> TestClient:
+    """A browser on the site: its requests carry the site's own origin."""
+    return TestClient(app, base_url=TEST_ORIGIN, headers={'Origin': TEST_ORIGIN})
+
+
+def signed_in_client(
+    case: type[unittest.TestCase], email: str = 'tester@example.com'
+) -> TestClient:
+    """A client signed in to a new account, in account services of its own for as
+    long as the test class runs."""
+    accounts = install_accounts(case)
+    client = site_client()
+    sign_in(client, accounts, email)
+    return client

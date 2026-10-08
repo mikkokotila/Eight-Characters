@@ -1531,3 +1531,9 @@ input[type='range']::-moz-range-thumb {
     box-shadow: 0 -8px 24px rgba(42, 37, 32, 0.12);
   }
 }
+
+/* Signing in happens on the start page, which the status bar links to. */
+.status-bar a {
+  color: inherit;
+  text-decoration: underline;
+}
