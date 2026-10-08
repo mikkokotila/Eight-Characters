@@ -763,6 +763,8 @@ for (const profile of profiles) {
 
     check('the keys\' hint stays over its card as the luck pillar comes and goes, and as its page opens', async (page) => {
       await openSample(page);
+      // The pointer rests clear of the cards: a card that comes under it takes the hint.
+      await page.mouse.move(0, 0);
       // Where the hint stands from the top middle of the card with focus, in whole pixels
       // (+ 0 makes a -0 a 0), or null hidden.
       const hint = () => page.evaluate(() => {
