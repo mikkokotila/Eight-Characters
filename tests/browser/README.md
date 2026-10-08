@@ -321,7 +321,8 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   1440px to 700px and on phones.
 - **The fifth pillar.** L and the switch show the chosen period beside the Year, with
   the ribbon, and hide them; hidden, the chart is drawn as it was, and focus that was
-  on the ribbon, the page or the column goes to the chart's cards. The stem leads in
+  on the ribbon, the page or the column goes to the chart's cards. The hint over a card
+  stays over it as the chart moves, and as the page opens beside it. The stem leads in
   the stem phase, and the branch in the branch phase with the stem set aside. Its cards
   take the display, the cards' arrows, Enter, T and R. On a phone it stands above the
   two-by-two chart.
