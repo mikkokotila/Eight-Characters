@@ -133,6 +133,17 @@ class TestApiIndexRoute(unittest.TestCase):
         )
         self.assertEqual(self.client.get('/static/roles.js').status_code, 200)
 
+    def test_life_grid_loads_before_luck_and_is_served(self) -> None:
+        # luck.js draws the life grid, so life.js must be loaded first.
+        response = self.client.get('/')
+        for element_id in ('life', 'life-title', 'life-meta', 'life-head', 'life-body'):
+            self.assertIn(f'id="{element_id}"', response.text)
+        self.assertLess(
+            response.text.index('/static/life.js'),
+            response.text.index('/static/luck.js'),
+        )
+        self.assertEqual(self.client.get('/static/life.js').status_code, 200)
+
     def test_index_versions_static_assets(self) -> None:
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
@@ -144,6 +155,7 @@ class TestApiIndexRoute(unittest.TestCase):
             'relationships.js',
             'day-master-context.js',
             'roles.js',
+            'life.js',
             'luck.js',
             'palette.js',
             'spotlight.js',

@@ -400,6 +400,32 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   shown. The commands offer each decade.
 - **Refusal.** Luck pillars that do not hold together stop the chart with a message.
 
+The life grid suite checks the grid under a chart asked for with a gender, while its
+luck pillar shows, on the same sample and clock as the luck pillars suite:
+- **Its rows.** The years before the first decade, then each decade's two phases,
+  grouped by direction with their years; each row's character, name, role and years,
+  and what it says to a screen reader. A chart without a gender has no grid, and one
+  with a gender has none while natal.
+- **Its columns** are the chart's, at widths from 1440px to 700px, and each mark stands
+  under the character it touches in the head. A branch's relationships run through
+  their decade and a stem's through its stem phase; the first natal member's mark names
+  the characters, and a line joins the natal members. Phones draw the lines only.
+- **Choosing.** A row chooses its phase everywhere: the chart, the ribbon, the page and
+  the address. Pressed again, it closes the page. The head holds the chosen pair, sets
+  its stem aside in the branch phase, and rings what the phase's relationships touch;
+  the marks of what rests grow quiet.
+- **Focus and keys.** A page opened from the grid gives focus back to its row on Escape
+  and Close, one opened from the ribbon to its chip. The rows take one tab stop, the
+  arrows move between them, and the chart's keys act from them. ? lists the arrows.
+- **Today, L and the head.** Today stands in its row. L brings the grid with the luck
+  pillar and takes it away, and focus on a row goes to the chart's cards. The head stays
+  at the top while the grid scrolls, and the grid reads in Finnish without running past
+  the page's edge.
+- **Pillars only.** The switch folds the natal columns away and lists the life path,
+  each phase's role, years, age, element or Day Master stage and roots; a line chooses
+  as a row does. The link names the view, and refuses it without a gender.
+- **Paper.** The grid prints after the chart, its head where it stands.
+
 The explorer parameters suite checks the explorer's parameter pane (PR #7):
 - **Loading.** The chart is asked for exactly as before; the pane asks for its
   controls only when it opens, and every control shows the value the graph was

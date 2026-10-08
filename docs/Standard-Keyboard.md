@@ -43,6 +43,11 @@ and End go to the first and the last; moving opens nothing. Enter or Space opens
 and Escape closes it, giving focus back to its chip. The steps and Today are buttons
 of their own.
 
+While the luck pillar shows, so does the life grid under the chart. Its rows take a
+single tab stop too, the chosen phase's row. Up and Down arrows move between them, and
+Home and End go to the first and the last; Enter or Space chooses the phase and opens
+its page. Escape then gives focus back to the row. The chart's keys act from the rows.
+
 While the luck pillar shows, its cards follow the Year's in the cards' arrows, and Enter,
 Space and T work on them as on the natal cards. R on them opens the decade's page.
 Hidden, the chart is natal: the luck pillar, its ribbon and its page are gone, and

@@ -643,7 +643,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
-      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge }, request.location.timezone);
+      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge, natal: chartData.pillars }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     showRelationshipsTopic();
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
@@ -975,9 +975,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const panelObserver = new MutationObserver(syncPanel);
   panelSections.forEach((section) => panelObserver.observe(section, { attributes: true, attributeFilter: ['class'] }));
 
-  // Closing returns focus to the chart control whose topic was open.
+  // Closing returns focus to the chart control whose topic was open; the luck pillar's
+  // page names its own, as it opens from the ribbon or from the life grid.
   const closePanelAndReturnFocus = () => {
-    const opener = chartView.querySelector('.chart-column [aria-expanded="true"]');
+    const opener = luck.opener() ?? chartView.querySelector('.chart-column [aria-expanded="true"]');
     closePanel();
     if (opener) opener.focus();
   };
@@ -1385,12 +1386,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── The address: the chart on screen and its open topic ──
   // A chart lives in the address's fragment, which browsers never send to the server:
   // #chart?date=…&time=…&place=…&city=…&latitude=…&longitude=…&timezone=…&lang=…, then
-  // gender, zi, display, luck and topic where they differ from a new chart's. A new
+  // gender, zi, display, luck, life and topic where they differ from a new chart's. A new
   // chart, another topic, Edit and New chart add history entries; the language, the
-  // Zi-hour convention, the display and the luck pillar replace the current one. The
-  // address never names a chart that is not on screen.
+  // Zi-hour convention, the display, the luck pillar and the life grid's view replace the
+  // current one. The address never names a chart that is not on screen.
   const CHART_ROUTE = '#chart?';
-  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'gender', 'zi', 'display', 'luck', 'topic'];
+  const LINK_PARTS = ['date', 'time', 'place', 'city', 'latitude', 'longitude', 'timezone', 'lang', 'gender', 'zi', 'display', 'luck', 'life', 'topic'];
   // The period standing in the chart as its fifth pillar: before the luck pillars, or a
   // decade's phase.
   const LUCK_PATH = /^(before|\d{1,2}\/(stem|branch))$/;
@@ -1436,6 +1437,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (displayMode !== 'characters') params.set('display', displayMode);
     const standing = luck.standing();
     if (standing !== null) params.set('luck', standing);
+    if (luck.has() && luck.lifeView() === 'pillars') params.set('life', 'pillars');
     const topic = currentTopic();
     if (topic !== null) params.set('topic', topic);
     return `${formAddress()}${CHART_ROUTE}${params}`;
@@ -1445,7 +1447,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let addressed = null;
   const addressChart = (method) => {
     history[embedded ? 'replaceState' : method](null, '', chartAddress());
-    addressed = { topic: currentTopic(), display: displayMode, luck: luck.standing() };
+    addressed = { topic: currentTopic(), display: displayMode, luck: luck.standing(), life: luck.lifeView() };
     if (embedded) window.parent.postMessage({ type: 'ec-chart', hash: location.hash, title: document.title }, location.origin);
   };
   const addressForm = (method) => {
@@ -1458,7 +1460,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (addressed === null || chartView.getAttribute('aria-busy') === 'true') return;
     const topic = currentTopic();
     if (topic !== addressed.topic) addressChart('pushState');
-    else if (displayMode !== addressed.display || luck.standing() !== addressed.luck) addressChart('replaceState');
+    else if (displayMode !== addressed.display || luck.standing() !== addressed.luck || luck.lifeView() !== addressed.life) {
+      addressChart('replaceState');
+    }
   };
   chartView.addEventListener('click', followView);
   document.addEventListener('keydown', followView);
@@ -1511,6 +1515,8 @@ document.addEventListener('DOMContentLoaded', () => {
       display: optional('display', (value) => DISPLAYS.includes(value)) ?? 'characters',
       // Only a chart with a gender has luck pillars to stand in it.
       luck: optional('luck', (value) => LUCK_PATH.test(value) && params.has('gender')),
+      // So has its life grid, whose list of the pillars alone a link can name.
+      life: optional('life', (value) => value === 'pillars' && params.has('gender')) ?? 'grid',
       topic: optional('topic', (value) => TOPIC_PATH.test(value)),
     };
   };
@@ -1754,6 +1760,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (link.luck === null) luck.setShown(false);
       else if (!luck.stand(link.luck)) throw linkError('luck');
+      if (luck.has()) luck.setLifeView(link.life);
       if (link.topic !== null) openTopic(link.topic);
       // A decade's page shows the period standing in the chart.
       if (link.luck !== null && link.topic?.startsWith('luck/') && link.topic !== `luck/${link.luck}`) throw linkError('topic');

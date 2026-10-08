@@ -26,6 +26,8 @@ The chart lives in the address's fragment, the part after `#`:
 - `luck`, only while a luck pillar stands in the chart: `before`, or
   `<decade>/<stem|branch>` such as `5/stem` (see
   [Luck pillars](Standard-Luck-Pillars.md)). It needs `gender`.
+- `life`, only while the life grid's view is the pillars alone: `pillars`. It needs
+  `gender`. The grid itself shows while the luck pillar does.
 - `topic`, only when one is open: `season`, `roots`, `roles`, `roles/<role>`,
   `roles/stem/<pillar>`, `roles/<role>/stem/<pillar>` (a stem's roots reached
   from a role's page), `relationships`, `relationships/<id>` (the API's
@@ -44,8 +46,8 @@ birth in the body of its request, as it does when the form is used.
 - Creating a chart, opening another topic, Edit and New chart each add a history
   entry, and Back and Forward step through them. Back from a chart returns to the
   form, with the chart's birth in it.
-- The language, the Zi-hour convention, the display and the luck pillar replace the
-  current entry.
+- The language, the Zi-hour convention, the display, the luck pillar and the life
+  grid's view replace the current entry.
 - A chart reached through Back or Forward is calculated again when another chart
   is on screen. Only the chart of the latest step is drawn: one that arrives after
   a later step is dropped.

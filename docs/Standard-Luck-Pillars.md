@@ -114,6 +114,49 @@ reads them. Natal, there are none of these: the topics read as a chart's without
 pillars. A luck relationship chosen that stops acting, as a stem's does in the branch
 phase, closes.
 
+## The life grid
+
+While the luck pillar shows, the chart's five columns run on under it through the whole
+life, a row for each five years: each decade's stem phase, then its branch phase, after
+a row for the years before the first decade. The decades are grouped by the direction
+their branch travels, as on the ribbon, each group with its years. Natal, there is no
+grid, as there is no ribbon.
+
+- **The Luck column** holds the decades, each a small pillar: its stem's tile over its
+  branch's, meeting at the line between the phases. Each phase's row names its
+  character, the role it brings (a branch's by its main qi), "new" when no natal stem
+  has that role, and its years. Today's row is marked "Today".
+- **Marks.** Under each natal character, a mark shows each relationship the luck pillar
+  forms with it, drawn in its kind's line, as the lists draw it. A stem's mark stands a
+  quarter of the way across its column, under the stem in the head; a branch's three
+  quarters across, under the branch. Its line runs for as long as it acts: a stem's
+  relationship through the stem phase, a branch's through the decade. The first natal
+  member's mark names the characters, and a line joins a relationship's natal members.
+- **Today** is a line across the natal columns, where today falls in its phase.
+- **The head**, a compact copy of the chart with each pillar's stem beside its branch,
+  stays at the top while the grid scrolls by. Its Luck column holds the period chosen:
+  its pair and phase. Each natal character the chosen phase's relationships touch is
+  ringed.
+
+A phase's row chooses it as a chip does: it stands in the chart and its page opens.
+Pressed again, the row closes the page and leaves the period in the chart. The chosen
+row is shaded, and in its decade's branch phase the stem's tile is set aside and the
+marks of what rests grow quiet. Hiding the luck pillar takes the grid away with it, and
+focus that was on a row goes to the chart's cards.
+
+On a phone the grid keeps its five narrow columns: the head stands each stem over its
+branch, the marks are drawn as their lines only, each relationship's in its kind's line,
+side by side on one character, and each row gives its character's tile, name
+and the year it starts.
+
+**Pillars only**, the switch beside the grid's title, folds the natal columns away: the
+Luck column becomes the life path, a list across the page, still grouped by direction.
+Each phase is a line: its tile and name, the role it brings, its years and the age it
+starts at, and then a stem's element or a branch's Day Master stage and roots. A line
+chooses its phase as a row does. **With the chart** brings the columns back. The view
+stays from chart to chart, and the link names it (`life=pillars`). On a phone each line
+gives its tile, its name and its role.
+
 ## A decade's page
 
 The page shows:
@@ -160,9 +203,13 @@ predicts.
   them, and Home and End go to either end, opening nothing. Enter or Space opens one.
 - The luck pillar's cards follow the Year's in the cards' arrows while it shows. Enter or
   Space opens its branch's hidden stems, T turns a card, and R opens the decade's page.
-  Hidden, the luck pillar, its ribbon and its page are gone, and focus that was on them
-  goes to the chart's cards. See [Keyboard](Standard-Keyboard.md).
-- Escape closes the page and gives focus back to its chip, as Close does.
+  Hidden, the luck pillar, its ribbon, its life grid and its page are gone, and focus
+  that was on them goes to the chart's cards. See [Keyboard](Standard-Keyboard.md).
+- The life grid's rows take one tab stop, the chosen phase's row. Up and Down move
+  between them, and Home and End go to either end, opening nothing. Enter or Space
+  chooses one. The chart's keys act from them.
+- Escape closes the page and gives focus back to its chip, as Close does; a page opened
+  from the life grid gives it back to the chosen phase's row.
 - The commands (⌘K or Ctrl+K) offer the years before the decades, each decade named as
   its chip is, and the switch's other side.
 - The address names the period standing in the chart, `luck=before` or
@@ -173,11 +220,11 @@ predicts.
 ## Printing and comparing
 
 Print leaves the ribbon out. A luck pillar shown prints in the chart as its fifth
-pillar; a natal chart prints its four. An open decade's page prints below the chart, as
-any open topic does (see [Copying and printing](Standard-Copy-and-Print.md)). In a
-comparison, a chart whose link has a gender has its own luck pillars, natal until they
-are shown; the second birth starts without one (see
-[Comparing two charts](Standard-Compare.md)).
+pillar, and the life grid after the chart, its head once, at its top; a natal chart
+prints its four pillars. An open decade's page prints below the chart, as any open
+topic does (see [Copying and printing](Standard-Copy-and-Print.md)). In a comparison,
+a chart whose link has a gender has its own luck pillars, natal until they are shown;
+the second birth starts without one (see [Comparing two charts](Standard-Compare.md)).
 
 ## A nominal timeline
 
