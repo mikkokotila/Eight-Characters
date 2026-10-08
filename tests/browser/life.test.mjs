@@ -123,19 +123,21 @@ for (const profile of profiles) {
       ]);
       assert.deepEqual(read.groups, ['West · Autumn 1983–2003', 'North · Winter 2003–2033', 'East · Spring 2033–2063', 'South · Summer 2063–2083']);
       assert.deepEqual(read.rows, PHASE_ROWS);
-      // Each phase: its character and name, the role it brings, and its years.
+      // Each phase: its character and name, the role it brings, and its years; on a phone,
+      // the year it starts.
+      const years = (from, to) => (profile.name === 'mobile' ? String(from) : `${from}–${to}`);
       assert.deepEqual(await row(page, 'before'), {
-        tile: '', name: 'Before', role: 'No luck pillar', years: '1975–1983', label: 'Before the first luck pillar, age 0 to 8',
+        tile: '', name: 'Before', role: 'No luck pillar', years: years(1975, 1983), label: 'Before the first luck pillar, age 0 to 8',
       });
       assert.deepEqual(await row(page, '5/stem'), {
-        tile: '己', name: 'Ji', role: 'Direct Officer · new', years: '2023–2028', label: 'Ji Chou, Stem phase, 2023 to 2028, now',
+        tile: '己', name: 'Ji', role: 'Direct Officer · new', years: years(2023, 2028), label: 'Ji Chou, Stem phase, 2023 to 2028, now',
       });
       // A branch brings the role of its main qi.
       assert.deepEqual(await row(page, '5/branch'), {
-        tile: '丑', name: 'Chou', role: 'Direct Officer · new', years: '2028–2033', label: 'Ji Chou, Branch phase, 2028 to 2033',
+        tile: '丑', name: 'Chou', role: 'Direct Officer · new', years: years(2028, 2033), label: 'Ji Chou, Branch phase, 2028 to 2033',
       });
       assert.deepEqual(await row(page, '4/stem'), {
-        tile: '戊', name: 'Wu', role: 'Seven Killings', years: '2013–2018', label: 'Wu Zi, Stem phase, 2013 to 2018',
+        tile: '戊', name: 'Wu', role: 'Seven Killings', years: years(2013, 2018), label: 'Wu Zi, Stem phase, 2013 to 2018',
       });
       await screenshot(page, `${profile.name}-life`);
     });
