@@ -1,32 +1,32 @@
 # Changelog
 
-## 0.42.0
+## 0.43.0
 
-The life grid: under the chart, its five columns run on through the whole life, or, with Pillars only, the decades alone as a list. This is the luck pillar design's fifth slice. The luck pillar's readings come next.
+The life grid: while the luck pillar shows, the chart's five columns run on under it through the whole life, or, with Pillars only, the decades alone as a list. This is the luck pillar design's fifth slice. The luck pillar's readings come next.
 
 ### Added
-- **The life grid.** Under a chart with a gender, a row for each five years: the years before the first decade, then each decade's stem phase over its branch phase, grouped by the direction their branch travels, as on the ribbon. Its columns are the chart's.
+- **The life grid.** Under the chart, while its luck pillar shows, a row for each five years: the years before the first decade, then each decade's stem phase over its branch phase, grouped by the direction their branch travels, as on the ribbon. Its columns are the chart's.
   - The Luck column holds the decades, each a small pillar: its stem's tile over its branch's. Each phase's row names its character, the role it brings (a branch's by its main qi), "new" when no natal stem has that role, and its years. Today's row is marked.
   - Under each natal character a mark shows each relationship the luck pillar forms with it, in its kind's line: a stem's under the stem, for the stem phase; a branch's under the branch, for the decade. The first natal member's mark names the characters, and a line joins the natal members.
   - Today is a line across the natal columns, where it falls in its phase.
-  - A compact copy of the chart heads the grid, each pillar's stem beside its branch, and stays at the top while the grid scrolls by. Its Luck column holds the period chosen, and while the luck pillar shows, each natal character the chosen phase's relationships touch is ringed.
-- **Choosing in the grid.** A phase's row chooses it as a chip does: it stands in the chart and its page opens; pressed again, the page closes. The chosen row is shaded, and in its decade's branch phase the stem is set aside and the marks of what rests grow quiet. Showing and hiding the luck pillar moves nothing in the grid.
+  - A compact copy of the chart heads the grid, each pillar's stem beside its branch, and stays at the top while the grid scrolls by. Its Luck column holds the period chosen, and each natal character the chosen phase's relationships touch is ringed.
+- **Choosing in the grid.** A phase's row chooses it as a chip does: it stands in the chart and its page opens; pressed again, the page closes. The chosen row is shaded, and in its decade's branch phase the stem is set aside and the marks of what rests grow quiet. Natal, there is no grid, as there is no ribbon: L or With luck brings it with the luck pillar, and focus on it goes to the chart's cards when it goes.
 - **Keys.** The rows take one tab stop; Up and Down move between them, Home and End go to either end, and the chart's keys act from them. A page opened from the grid gives focus back to its row on Escape and Close. ? lists the arrows.
 - **Pillars only.** A switch beside the grid's title folds the natal columns away, and the Luck column becomes the life path: each phase a line with the role it brings, its years and age, and a stem's element or a branch's Day Master stage and roots. The view stays from chart to chart, and the link names it, `life=pillars`, which needs `gender`.
 - **Phones** keep the grid's five narrow columns: the head stands each stem over its branch, and the marks are drawn as lines only. Pillars only gives each phase its tile, name and role.
 - **Paper.** The grid prints after the chart.
-- **Finnish, provisional until confirmed:** Elämä (the grid's title), Onni (its Luck column), Ei onnenpilaria, uusi, Piilossa, Elämän vaiheesta toiseen (the keys), Kartan kanssa and Vain pilarit (the switch), ikä, Päivän mestari, Juuret, Ei juuria, and the grid's description.
+- **Finnish, provisional until confirmed:** Elämä (the grid's title), Onni (its Luck column), Ei onnenpilaria, uusi, Elämän vaiheesta toiseen (the keys), Kartan kanssa and Vain pilarit (the switch), ikä, Päivän mestari, Juuret, Ei juuria, and the grid's description.
 
 ### Changed
 - The gap between the chart's columns is a token, `--pillar-gap`, which the chart and the grid share.
 
 ### Tests
-- `tests/browser/life.test.mjs`, desktop and mobile: the rows and their groups; the columns and the marks under what they touch, at widths from 1440px to 700px; choosing from the grid, and focus coming back to a row; the rows' keys; today, L, the sticky head and Finnish; Pillars only and its link; paper.
+- `tests/browser/life.test.mjs`, desktop and mobile: the rows and their groups; the columns and the marks under what they touch, at widths from 1440px to 700px; choosing from the grid, and focus coming back to a row; the rows' keys; today; none natal, and L bringing it and taking it away; the sticky head and Finnish; Pillars only and its link; paper.
 - `tests/browser/luck-helpers.mjs` holds the sample chart, its link and its clock, for the luck pillars and life grid suites.
 - `tests/test_api_index_route.py`: life.js is served, versioned, and loaded before luck.js.
-- Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+- Version bumped to `0.43.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
-## 0.41.0
+## 0.42.0
 
 The luck pillar's relationships stand on the chart as arcs, and the topics take what it adds. This is the luck pillar design's fourth slice, in its second part. The life grid comes next.
 
@@ -34,7 +34,7 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
 - **The luck pillar's arcs.** While it shows, each relationship it forms with the natal pillars is drawn as the natal ones are: a stem's above the stems, a branch's below the branches, each in its kind's line.
   - They ride an outer band beyond the natal arcs' four levels, the narrower lower.
   - A triple's middle member stands under its arc.
-  - On a natal card their feet stand beyond the natal arcs' feet, so showing them moves no natal arc.
+  - On a natal card their feet stand beyond the natal arcs' feet, so no natal arc's foot moves on its card.
   - In the branch phase a stem's relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs recede for its own.
   - A relationship on the decade's page rings its arc. One chosen in the list, natal or the luck pillar's, stands in the ink, and every other arc recedes.
 - **The topics with luck.** While the luck pillar shows, its period adds to the topics, for its phase:
@@ -42,17 +42,75 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
   - Roles reads "+ 2 new" for the roles new to the chart that act in the phase, and its page adds what the luck pillar brings, each marked when new.
   - Relationships reads "(3 + 2)", and its list adds the luck pillar's that act in the phase, under their own heading. They open as the natal ones do; the canon has no readings for them yet.
 
-  The words keep their place, unseen, while the luck pillar is hidden, so the topics' row never rewraps on L. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
+  Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
 - **Finnish, provisional until confirmed:** + onni (Roots), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
 
 ### Changed
-- A chart with a gender keeps the luck pillar's arc band, 74px rows instead of 40px, whether the luck pillar shows or not.
+- While the luck pillar shows, the arcs' rows are 74px instead of 40px, to hold its arcs beyond the natal ones; natal, they stay 40px.
 
 ### Tests
 - `tests/browser/luck.test.mjs`:
   - the arcs: their levels, middle members and feet, the natal arcs unmoved, resting in the branch phase, pointing, and none while hidden;
-  - the topics: their words in place while hidden, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
+  - the topics: none of their words natal, the topics' row drawn as a chart's without a gender, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
 - `tests/test_api_interactions.py`: the luck arcs' layout over every combination, four natal branches with a luck branch (248,832) and four natal stems with a luck stem (100,000). Every one fits four levels and four strands, and both limits are reached: in Zi Hai Hai Hai (子亥亥亥) with a luck Chou (丑), a branch combination and three directional combinations span the same columns.
+- Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.41.1
+
+A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.
+
+### Fixed
+- **A natal chart showed the luck pillars it was not showing.** Since 0.39.0 a chart with a gender kept the ribbon of decades under its topics, and since 0.40.0 an empty fifth column beside the Year with its note, "L shows the luck pillar", while the switch said Natal. Natal, the chart is now drawn as the same birth without a gender: its four pillars where they were, the same room between the topics and the pillars, no ribbon and no fifth column, in every display and at every width.
+  - **L**, or **With luck**, shows the luck pillar at the period chosen, first today's phase, with the ribbon under the topics. L or **Natal** takes them both away again. Choosing a period with the keys ([ ] { } N) or the commands shows it, as before.
+  - Showing the luck pillar now moves the chart: the ribbon comes in above the pillars, and the fifth column beside the Year. While it shows, choosing another period still moves nothing.
+  - Hidden and shown again, the luck pillar's column is drawn anew in the chart's display; a card turned or a branch opened by hand there no longer stays so.
+  - Hiding it from the ribbon, the page or the column gives focus to the chart's cards, where the keys go on: the card that had the tab stop.
+  - The notice of a nominal luck timeline (a birth within the luck pillars' 3 s of a jie) shows only while the luck pillar does. The chart's own notices stay.
+  - On paper, a natal chart prints its four pillars, as before.
+
+### Removed
+- The empty column's note, "L shows the luck pillar" (Finnish "L näyttää onnenpilarin").
+
+### Tests
+- `tests/browser/luck.test.mjs`: the sample chart natal is drawn as the same birth without a gender: every pillar, card, panel and arc in the same place from the pillars' corner, the pillars' size, the room between the topics and the pillars, and what stands there, in all three displays, at 1440, 1024, 900 and 700px and on phones (390 and 320px). L and the switch show the luck pillar and its ribbon and take them away, the chart drawn as it was; focus goes to the chart's cards. A birth 0.48 s from Jingzhe keeps its natal notice when natal, and the luck notice goes. The other tests show the luck pillar before they use the ribbon; natal, [ and ] show it from the ends of the timeline.
+- `tests/browser/foundations.test.mjs`: the audits visit the chart natal with a gender, then with its luck pillar shown.
+- Version bumped to `0.41.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.41.0
+
+Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
+
+### Added
+- **The account dialog**, on the start page (Sign in) and when a chart needs it.
+  - A new account needs its language, Finnish or English, chosen and never preset. Its emails come in it, and signing in sets the page to it; the chart asked for is then drawn in it.
+  - An existing account signs in from the same dialog, without a language. Every answer reads the same whether the address has an account or not.
+  - Cloudflare Turnstile checks for a person; its script loads only when the dialog first opens, so the start page loads nothing from another site. A script that does not load is said, and tried again.
+  - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
+- **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty. As it opens (or, opened again while an action or this question is under way, once that one ends), it asks who the session belongs to, and its actions wait for the answer, so it never acts for an account another tab has left, and shows a language another tab set. An action's answer counts as the newest of its moment: if the page has learned nothing since, it is the session's, and a language set there signs the page in to its account, even after an older check found the session ended; if the page has learned since, it keeps that, and the action does nothing more, and says so. A language set is saved, and shown, unless a later change of the account (another tab's) stands.
+- **The newest answer decides who is signed in.** Tabs share the session cookie, and answers come in any order. Each tells of the cookie at a moment: a request that carries it, as it was sent; an answer that sets or removes it (signing in or out, deleting the account), from when it comes. The page takes the newest, and an older answer changes nothing, however late it comes; of one account, it keeps the language and plan of the later change. A sign-in whose answer sets its cookie after a check took another tab's account signs the page in; one overtaken by a newer answer closes signed in to that answer's account, or, if the session ended since, asks for a sign-in again. A code answered after the page took another tab's session changes nothing, and the account's menu stays.
+- **A session that ended** (signed out elsewhere, deleted, or past its 30 days) asks for a sign-in once more, and the chart is asked for again. A refusal is checked once more first: if the browser holds a session after all (another tab signed in), the page takes it and asks for the chart again; a chart left meanwhile asks for nothing. A refusal that arrives for a chart no longer wanted asks nothing, so a sign-in made since for a newer chart stays.
+- **A comparison** opened signed out, or after the session ended elsewhere, asks on its own page (which checks the session with the server first), before its frames ask for their charts. One signed in to in another tab is taken as a sign-in here, and both charts take its language, as when signing in here; a check asked for before a language set in the dialog meanwhile is older, so the language stays. The answer to a check for a comparison no longer wanted, or older than what the page has learned since, changes nothing, and signing out abandons a comparison on its way. **The explorer**, given a birth, links a visitor to the start page to sign in.
+- **[Your account](docs/Account.md)**, a guide for readers.
+
+### Changed
+- **The account's actions name the account they are for**: setting its language (`PATCH /api/account`), signing out everywhere (`DELETE /api/account/sessions`) and Download my data, which is now `POST /api/account/export`, carry `{"key": …}`, the account's key from its answers, and Delete account carries it beside the address typed again. Tabs share the session cookie, so another tab may have signed in to another account since, or deleted this one and made it again with its address: the server then answers `409` and changes nothing, and the menu says so and asks who the session is.
+- **Charts need an account.** `POST /api/four_pillars`, `/api/chart`, `/api/hidden_stems` and `/api/evolution_explorer` answer `401` without one, before the request is validated. The place search and `GET /api/evolution_controls` stay open. A test holds both lists, so a new request must join one.
+- **An account's answers say when it last changed** (`updated_at`), and each change moves that on, by a second within one second or with the clock gone back: of two answers about the account (the newest or not, and one for a chart or comparison no longer wanted too), the page keeps the later change's, of any account it has seen, so a change saved while it held another account is kept when that account comes back. They name the account by a `key`, a hash of its id (which no account answer carries), so that an account made again with an address is told apart.
+- **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It extends a session in its second half, on the server.
+- **The app reads its account settings, and opens its database, as it starts**: a missing or malformed setting stops it with the reason. Running it on a laptop needs the settings in [Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop).
+
+### Fixed
+- **Signing in when another tab made the account and it was deleted meanwhile** refused nothing and answered 500; it now refuses the code, as when an account goes before its session is made.
+- **A late answer that renewed a session set its cookie again**: after a sign-out and a new sign-in, it put back the session signed out, and the browser lost the new one. Only signing in now sets the cookie, for 400 days, the longest browsers keep one; the server alone extends a session used in its second half, and ends one 30 days after it was made or last extended.
+- **An answer for a session that ended removed the session cookie**, though by then it could be a newer session's: the browser may have signed in meanwhile, and a cookie is removed by its name. The cookie of a session that ended is now left to expire; signing out and deleting the account still remove it.
+- **A session renewed by one request while another found it ended** was deleted by the second, or turned away by it, and its answer removed the browser's fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live; a request that found it ended after another renewed it takes it as renewed.
+- **The account export listed requests for codes older than the hour**, kept until the next code was asked for. Exporting now drops what has passed its time first: ended sessions and codes, and requests older than the hourly window.
+- **A full or unwritable mail folder** (on a laptop) answered 500; it is now a mail error, answered 502 like any message that could not be sent.
+
+### Tests
+- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), extending the session there without a cookie (also when another request renews it as the page's crosses its old end), leaving the cookie of a session that ended, and starting the app with missing settings, a missing database, and complete ones.
+- The API tests sign in as the page does.
+- The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.41.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.40.0
@@ -95,7 +153,7 @@ The luck pillar stands in the chart. This is the fourth slice of the luck pillar
 
   The earlier tests follow the steps and chips as they now behave.
 - `tests/test_api_luck_pillars.py`: `luck_chart` in both languages, checked against the natal chart's own drawing of a character the two share; absent without the chart or the luck pillars.
-- Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
+- Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.39.0
 
@@ -132,7 +190,7 @@ Luck pillars on the chart. This is the third slice of the luck pillar design: th
   - links, an absorbed natal half, refused data, Finnish, the language switch and the commands.
 - The foundations audits (fonts, glyphs, contrast and element dots) visit a chart with luck pillars.
 - `luck.js`'s pinyin and direction tables match the engine's, and the English stage names match the canon's twelve.
-- Version bumped to `0.39.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
+- Version bumped to `0.39.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.37.0
 
@@ -161,7 +219,7 @@ The engine says what each luck pillar brings to a chart, phase by phase. This is
 - The design's sample chart (14 August 1975, 07:45, Helsinki, female), decade by decade by hand, and through the API.
 - Phases, and their leap-day anniversaries.
 - `tests.test_api_luck_context` runs in the API integration gate.
-- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 is held by the open PR #48.)
+- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.35.0
 
@@ -216,7 +274,7 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - the arcs' levels and strands on every combination;
   - real charts for each new family, an arc of three strands and six feet on one card.
 - Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.
-- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 is held by the open PR #48.)
+- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.33.1
 

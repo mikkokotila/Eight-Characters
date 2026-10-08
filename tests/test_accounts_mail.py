@@ -1,5 +1,6 @@
 import email
 import json
+import os
 import shutil
 import smtplib
 import ssl
@@ -101,6 +102,18 @@ class TestTransports(unittest.TestCase):
             email.message_from_bytes(files[1].read_bytes(), policy=default)['Subject'],
             'second',
         )
+
+    def test_a_folder_it_cannot_write_to_fails_as_mail(self) -> None:
+        if os.geteuid() == 0:
+            self.skipTest('root writes to any folder')
+        folder = self.directory / 'locked'
+        folder.mkdir()
+        transport = DirectoryTransport(folder)
+        folder.chmod(0o500)
+        self.addCleanup(folder.chmod, 0o700)
+        with self.assertRaises(MailError):
+            transport.send(self.message)
+        self.assertEqual(list(folder.iterdir()), [])
 
     def test_a_missing_folder_is_refused(self) -> None:
         with self.assertRaises(MailError):

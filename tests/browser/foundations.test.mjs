@@ -4,6 +4,7 @@ import {
   assert, describe, it, engineName, profiles, openChart, count, settled, withPage, showDisplay, openRelationships,
   HELSINKI, TROMSO,
 } from './chart-helpers.mjs';
+import { newAddress, stubTurnstile, turnstileAnswered } from './account-helpers.mjs';
 
 const BRAND_FAMILIES = ['Manrope', 'Cormorant Garamond', 'Noto Serif TC'];
 // The characters the page's own CJK font carries (static/fonts/README.md).
@@ -132,10 +133,14 @@ async function visitReadings(page, inspect) {
   }
 }
 
-// A chart with luck pillars (luck.test.mjs): its ribbon, a decade's page in each phase,
-// and the years before the first decade. `inspect` runs in each.
+// A chart with luck pillars (luck.test.mjs): natal, then with its luck pillar and ribbon,
+// a decade's page in each phase, and the years before the first decade. `inspect` runs
+// in each.
 async function visitLuck(page, lang, inspect) {
   await openChart(page, { lang, place: HELSINKI, date: '1975-08-14', time: '07:45', gender: 'female' });
+  await inspect(`${lang} natal, with a gender`);
+  await page.locator('#luck-switch [data-luck-show="on"]').click();
+  await settled(page);
   await inspect(`${lang} luck pillars`);
   await page.locator('.luck-chip[data-luck="5"]').click();
   await page.locator('[data-luck-phase="stem"]').click();
@@ -359,6 +364,54 @@ for (const profile of profiles) {
         // The theme measured is the one asked for.
         assert.equal(await page.evaluate(() => getComputedStyle(document.body).backgroundColor),
           scheme === 'dark' ? 'rgb(28, 25, 22)' : 'rgb(245, 240, 232)');
+      });
+    }
+
+    // The account dialog, signed in (the account, with deleting it open) and signed out
+    // (creating an account and the code, each with what to fix), in both languages.
+    for (const scheme of ['light', 'dark']) {
+      check(`the account dialog is set in the page fonts and meets AA contrast (${scheme})`, async (page) => {
+        await page.emulateMedia({ colorScheme: scheme });
+        await installAudit(page);
+        await stubTurnstile(page);
+        const failures = [];
+        const inspect = async (state) => {
+          await settled(page);
+          const found = [
+            ...await page.evaluate(() => window.__ecAudit.contrastFailures()),
+            ...await fontFamilyFailures(page, BRAND_FAMILIES),
+          ];
+          failures.push(...found.map((failure) => `${state}: ${failure}`));
+        };
+        for (const lang of ['en', 'fi']) {
+          await page.goto(process.env.EC_BASE_URL);
+          await page.locator(`[data-lang="${lang}"]`).click();
+          await page.locator('#account-btn').click();
+          await page.locator('#account-delete-open').click();
+          // Nothing typed: the dialog says so, and deletes nothing.
+          await page.locator('#account-delete-confirm').click();
+          await page.locator('#account-delete-status.is-error').waitFor();
+          await inspect(`${lang} account`);
+          await page.keyboard.press('Escape');
+        }
+        await page.context().clearCookies();
+        for (const lang of ['en', 'fi']) {
+          await page.goto(process.env.EC_BASE_URL);
+          await page.locator(`[data-lang="${lang}"]`).click();
+          await page.locator('#account-btn').click();
+          await turnstileAnswered(page);
+          await page.locator('#account-send').click();
+          await page.locator('#account-email-status.is-error').waitFor();
+          await inspect(`${lang} creating an account, with what to fix`);
+          await page.locator('#account-mode').click();
+          await page.locator('#account-email').fill(newAddress('audit'));
+          await page.locator('#account-send').click();
+          await page.locator('#account-code-step').waitFor({ state: 'visible' });
+          await page.locator('#account-verify').click();
+          await page.locator('#account-code-status.is-error').waitFor();
+          await inspect(`${lang} the code, with what to fix`);
+        }
+        assert.deepEqual([...new Set(failures)], []);
       });
     }
 

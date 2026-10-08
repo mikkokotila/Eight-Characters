@@ -222,12 +222,18 @@
     return { date, time, city, country };
   }
 
+  // Thrown when the chart needs an account: signing in happens on the start page.
+  class SignInNeeded extends Error {}
+
   async function loadGraphData(queryPayload) {
     const response = await fetch('/api/evolution_explorer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(queryPayload),
     });
+    if (response.status === 401) {
+      throw new SignInNeeded('Charts need an account.');
+    }
     const payload = await response.json();
     if (!response.ok) {
       const detail = payload && payload.detail ? String(payload.detail) : 'Evolution load failed.';
@@ -2134,7 +2140,12 @@
     } catch (error) {
       console.error(error);
       const statusBar = document.getElementById('statusBar');
-      if (statusBar) {
+      if (statusBar && error instanceof SignInNeeded) {
+        const startPage = document.createElement('a');
+        startPage.href = '/';
+        startPage.textContent = 'Sign in on the start page';
+        statusBar.replaceChildren(startPage, ' to see this chart in the explorer.');
+      } else if (statusBar) {
         statusBar.textContent = `Failed to load evolution data: ${error?.message || 'unknown error'}`;
       }
       return;

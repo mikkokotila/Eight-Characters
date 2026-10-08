@@ -1,11 +1,10 @@
 import unittest
 
-from fastapi.testclient import TestClient
-
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_context import ELEMENTS, PHASES, build_luck_context
-from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup, app
+from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup
 from eight_characters.ten_gods import TEN_GOD_NAMES
+from tests.accounts_support import signed_in_client
 
 # The sample of the luck pillar design: 14 August 1975, 07:45, Helsinki, female.
 # Natal 乙卯 Yi Mao, 甲申 Jia Shen, 壬辰 Ren Chen, 甲辰 Jia Chen; Day Master 壬 Ren.
@@ -264,7 +263,7 @@ class TestLuckContext(unittest.TestCase):
 class TestLuckContextAPI(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def test_the_sample_chart_through_the_api(self):
         response = self.client.post(

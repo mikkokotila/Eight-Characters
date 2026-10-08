@@ -3,7 +3,7 @@
 `eight_characters/accounts/` keeps the app's accounts: one SQLite database, and a
 backup of every record as its own age-encrypted file in a private Git repository,
 from which the database can be rebuilt with one command, and the API that signs people
-in with a code sent by email. The page starts using the API in a later release.
+in with a code sent by email. Charts need an account; the start page does not.
 
 ## Goals
 
@@ -68,8 +68,12 @@ it; the first code redeemed for a new address creates its account.
    works once, for 10 minutes, and at most 5 wrong tries; a new code replaces the last.
    Spaces and hyphens in what is typed are ignored.
 4. The server sets the session cookie: `__Host-ec_session` over HTTPS (`ec_session` on a
-   laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 30 days. A session
-   used in its second half is extended to 30 days again.
+   laptop's plain HTTP), `HttpOnly`, `SameSite=Lax`, `Path=/`, for 400 days, the longest
+   browsers keep one. The session it names ends on the server 30 days after it was
+   made or last extended; one used in its second half is extended to 30 days again,
+   there. Only signing in sets the cookie, and only signing out or deleting the account
+   removes it (by its name, whichever session it holds by then): a renewal or a refusal
+   that arrives late changes no cookie.
 
 Codes and session tokens are stored only as HMAC-SHA256 hashes under `EC_SECRET_KEY`,
 so the database alone cannot be used to test guesses or take over a session.
@@ -80,25 +84,113 @@ so the database alone cannot be used to test guesses or take over a session.
 |---|---|---|
 | `POST /api/account/code` | sends a code, or word of no account | `202`; `400` malformed, `403` failed person check, `429` over the hourly limit (with `Retry-After`), `502` the email could not be sent, `503` Turnstile not answering |
 | `POST /api/account/session` | signs in with a code, creating the account if it was asked for | `200` and the account; `400` wrong or used code |
-| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at}`; `401` |
-| `PATCH /api/account` | sets `language` | `200`; `401` |
+| `GET /api/account` | the signed-in account | `200` `{email, language, plan, created_at, updated_at, key}`; `401` |
+| `PATCH /api/account` | sets `language`; `key` names the account | `200`; `400`, `401`, `409` |
 | `DELETE /api/account/session` | signs this browser out | `204` |
-| `DELETE /api/account/sessions` | signs the account out everywhere | `204`; `401` |
-| `GET /api/account/export` | everything kept for the account, as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `401` |
-| `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …}` must repeat its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401` |
+| `DELETE /api/account/sessions` | signs the account out everywhere; `{"key": …}` names it | `204`; `400`, `401`, `409` |
+| `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
+| `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.
+
+An action on the account names the account the page shows by its `key`, which every
+account answer carries. Tabs share the session cookie, so another tab may have signed
+in to another account since, or deleted this one and made it again with its address:
+the action is then refused with `409` (`This browser is signed in to another account
+now.`) and changes nothing. A malformed `key` is `400`. Deleting the account also needs
+its address typed again (`400` if it differs).
+
+## The page
+
+Anyone can open the start page, choose its language, search for a place and type a
+birth. Creating the chart asks for an account first.
+
+| Request | Needs an account |
+|---|---|
+| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is validated |
+| `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls` | no |
+
+`tests/test_accounts_app.py` holds both lists, so a new request fails it until it is
+put on one.
+
+- **Who is signed in.** `GET /` writes the account (`{email, language, plan,
+  created_at, updated_at, key}`, or `null`) into `<script id="account-state">`, sent with
+  `Cache-Control: private, no-cache` so that no shared cache keeps it. The page extends
+  a session in its second half too, on the server, and sends no cookie (see step 4).
+- **Signing in** (`static/account.js`). Creating a chart while signed out opens the
+  account dialog: the address, and for a new account its language, chosen and never
+  preset; Cloudflare Turnstile's widget, whose script loads only when the dialog first
+  opens; then the code from the email. The dialog switches to signing in an existing
+  account, which needs no language.
+- **The account's language.** Signing in sets the page to the account's language, and
+  the chart is asked for in it. The page's own language switches change only the page,
+  as before. The account's language, which its emails use, is set in the account
+  dialog, and the page follows it.
+- **A session that ended** (signed out elsewhere, the account deleted, or past its
+  30 days) answers a chart with `401`: the dialog asks once more, and the chart is asked
+  for again after signing in. Closing the dialog leaves the form, which says that
+  charts need an account, with the birth kept. A `401` that arrives for a chart no
+  longer wanted asks nothing, so a sign-in made since for a newer one stays.
+- **A refusal is checked before the page signs out.** A request refused for want of a
+  session (`401`) may have been sent before another tab signed in: the page asks once
+  more (`GET /api/account`), takes a session the browser holds after all, and asks for
+  the chart again; only a second refusal signs the page out. A chart left meanwhile
+  asks for nothing.
+- **The newest answer decides who is signed in.** Tabs share the session cookie, and
+  answers come in any order. Each answer tells of the cookie at a moment: a request
+  that carries it, of the cookie as it was sent; an answer that sets or removes it
+  (signing in, signing out, deleting the account), of the cookie from when it comes.
+  The page takes who is signed in from the newest of these, and an answer older than
+  what it has taken changes nothing, however late it comes. Another account, signed in
+  to in another tab, is taken as a sign-in here, with its language, and a dialog asking
+  for a sign-in closes, signed in to it. Of one account, the page keeps the language
+  and plan of the later change, from any answer (the newest or not, and one for a chart
+  or comparison no longer wanted too): every change moves
+  the account's `updated_at` past the last (by a second, within one second or with the
+  clock gone back), and every answer carries it, since a check sent after a change may
+  read the account before it. An account is told apart by its `key`, a hash of its id,
+  which no account answer carries: an account made again with an address is another. So a sign-in whose answer sets its cookie
+  after a check found another tab's account signs the page in, and one overtaken by a
+  newer answer (another tab's account, or the session ended since) closes signed in to
+  that account, or asks for a sign-in again.
+- **A comparison** checks the session with the server (`GET /api/account`) and asks
+  for a sign-in on its own page, before its frames ask for their charts: the frames
+  cannot ask themselves. Another account, signed in to in another tab, is taken as a
+  sign-in here, with its language; a check asked for before a language set in the
+  dialog meanwhile is older, and the language stays. The answer to a check for a
+  comparison no longer
+  wanted, or older than what the page has learned since, changes nothing, and signing
+  out abandons a comparison on its way. **The explorer**, given a birth, links to the start page to sign
+  in.
+- **Signed in, the dialog is the account:** its address and plan, its language,
+  Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
+  account, which needs the address typed again. Signing out starts the page again,
+  empty. Tabs share the session cookie, so as the menu opens it asks who the session
+  belongs to (`GET /api/account`; opened again while an action or this question is
+  under way, once that one ends), and its actions wait for the answer, which it takes
+  whole (a language another tab set shows): an account signed in to in another tab is
+  taken as a sign-in here, and a session ended elsewhere asks for a sign-in. Its
+  actions name the account (see the API above): one refused with `409` changed
+  nothing, and the menu says so and asks again. An action's answer is the newest of
+  its moment too: if the page has learned nothing since, it is the session's (a
+  language set there signs the page in to its account, even after an older check found
+  the session ended), and if the page has learned since, it keeps that, and the action
+  does nothing more and says so. A language set is saved, and shown, unless a later
+  change of the account (another tab's) stands. A sign-out or
+  deletion that went through still signs the page out, since its answer removed the
+  cookie.
 
 ## Settings
 
 Everything that differs between a laptop, CI and the server comes from the environment
 (AGENTS.md). On the server the values live in `/etc/eight-characters/env`, outside Git.
-A missing or malformed value stops the account API with the list of what is wrong.
+The app reads them, and opens the database, as it starts: a missing or malformed value,
+or a database it cannot open, stops it with the reason.
 
 | Variable | Production | On a laptop |
 |---|---|---|
-| `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://localhost:8000` |
+| `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://127.0.0.1:8000` |
 | `EC_DATABASE_PATH` | `/data/accounts.sqlite3` | any path, made with `init` |
 | `EC_SECRET_KEY` | 32 bytes or more, random | the same |
 | `EC_MAIL_FROM` | `BaZi <kirjaudu@nektari.fi>` | any address |
@@ -112,7 +204,32 @@ A missing or malformed value stops the account API with the list of what is wron
 
 SMTP is used with TLS from the first byte (port 465). Cloudflare publishes test keys
 for Turnstile: site key `1x00000000000000000000AA` and secret
-`1x0000000000000000000000000000000AA` always pass.
+`1x0000000000000000000000000000000AA` always pass (the secret is still checked with
+Cloudflare, so asking for a code needs the network).
+
+### On a laptop
+
+```bash
+LOCAL=~/eight-characters-local
+mkdir -p "$LOCAL/mail"
+python -m eight_characters.accounts init --database "$LOCAL/accounts.sqlite3"
+export EC_APP_ORIGIN=http://127.0.0.1:8000
+export EC_DATABASE_PATH="$LOCAL/accounts.sqlite3"
+export EC_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
+export EC_MAIL_FROM='BaZi <kirjaudu@example.com>'
+export EC_MAIL_TRANSPORT=directory
+export EC_MAIL_DIRECTORY="$LOCAL/mail"
+export EC_TURNSTILE_SITE_KEY=1x00000000000000000000AA
+export EC_TURNSTILE_SECRET=1x0000000000000000000000000000000AA
+export EC_CLIENT_IP_HEADER=peer
+export EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS=5
+export EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT=20
+uvicorn eight_characters.main:app
+```
+
+Open the page at the origin the settings name, `http://127.0.0.1:8000`: requests from
+another, such as `localhost`, are refused. Each email arrives as a `.eml` file in
+`$LOCAL/mail`, its code in the subject. A new `EC_SECRET_KEY` ends every session.
 
 ## The backup
 

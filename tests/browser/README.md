@@ -2,14 +2,32 @@
 
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend
-build step, or alter the running app. The server address, module, and browser are
-explicit environment settings; a missing setting or browser fails the run.
+build step, or alter the running app. The server address, its mail folder, the module
+and the browser are explicit environment settings; a missing setting or browser fails
+the run.
 
-Start the app as usual, then run from the repository root:
+Charts need an account. Each suite signs in to an account of its own through the app's
+API, as the page does (`account-helpers.mjs`), reads the code from the folder the app
+writes its emails to, gives every page it opens that session, and deletes the account
+at the end. The account suites open their pages signed out instead, and make the
+accounts their tests need, on `example.com` addresses. Start the app with its account settings (see
+[Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
+- `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
+- Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
+  the network;
+- `EC_APP_ORIGIN` the same as `EC_BASE_URL` here, since the app refuses account
+  requests from another origin;
+- `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` of at least 1000: every suite, and most
+  account tests, ask for a code, all from one client within the hour. The account
+  sessions suite alone asks for some 125 over its two profiles, and one engine's full
+  run for some 175.
+
+Then run from the repository root:
 
 ```bash
 EC_PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 EC_BASE_URL=http://127.0.0.1:8000 \
+EC_MAIL_DIRECTORY=/the/app/mail/folder \
 EC_BROWSER=chromium \
 node --test --test-concurrency=1 tests/browser/*.test.mjs
 ```
@@ -26,9 +44,63 @@ changing typography, spacing, or responsive layout.
 
 The tests calculate charts and explorer graphs through the real API. They stub
 only location suggestions, whose fixed test coordinates the page sends as the
-chart's `location`, so no test depends on the geocoder. Malformed-response tests
-intentionally modify the real response to verify visible errors. No real birth
-records or saved user data are used.
+chart's `location`, so no test depends on the geocoder, and, in the account suites and
+the foundations audit of the dialog, Cloudflare's Turnstile widget. The account
+sessions suite also answers some requests itself, a refusal or an answer held on its
+way, to play the late answers it checks. Malformed-response tests intentionally modify the real
+response to verify visible errors. No real birth records or saved user data are used,
+and every account is made for the run, on `example.com` addresses.
+
+The account suite (`account.test.mjs`) checks:
+- that the start page needs no account, and that creating a chart signed out opens the
+  account dialog before anything is sent, with no language preset;
+- that a new account needs its language, that its email and then the page take it, and
+  that the chart is asked for in it, once; a wrong code is said;
+- signing in an existing account, in its own language and in any letter case;
+- that closing the dialog asks for no chart and says why, keeping the birth;
+- that a Turnstile script that does not load is said, and no code is asked for;
+- the account: its address and plan, its language (the page follows it), Download my
+  data, Sign out, Sign out on every device (from the commands, on a chart), and Delete
+  account, which needs the address typed again;
+- that a chart link and a comparison opened signed out ask first, the comparison
+  before its frames, in the account's language;
+- that a code is described as it was asked for, even if the dialog changes side
+  while the answer is on its way;
+- that the explorer links a visitor to the start page;
+- that the dialog fits a phone's screen.
+
+The account sessions suite (`account-sessions.test.mjs`) checks:
+- that a session ended elsewhere asks for a sign-in once, and the chart, or a
+  comparison before its frames, is asked for again;
+- that an answer arriving late changes nothing it should not: a refusal for a chart
+  or a comparison no longer wanted, a comparison's check after a sign-out and a new
+  sign-in or a language set meanwhile, and a menu action answered after the page took
+  another session (signing out everywhere still signs the page out);
+- that tabs, which share the session cookie, are followed: another tab signing in to
+  another account is named by the menu (and by Download my data, refused for the
+  account left), taken by a comparison's check, and kept when a refusal crosses it;
+  a language set in another tab shows in the menu, and a sign-in answered after the
+  page took another tab's session keeps that one;
+- that the newest answer decides who is signed in: a sign-in whose answer sets its
+  cookie after the page took another tab's session signs the page in, in its language,
+  and one whose session ends before its account arrives asks for a sign-in again,
+  asking for no chart meanwhile; a language set while an older check finds the session
+  ended signs the page in to that session, one answered after newer checks keeps the
+  language they found, and one saved after a newer check read the old one is kept; a
+  menu check answered late keeps a later change it read, a chart left while its check
+  reads a later language keeps it, an account made again with its address in
+  another tab shows its own language, Download my data for such an account does
+  nothing, and says so, a code answered after the page took another tab's session
+  leaves the account's menu, and a language saved while another account is held is
+  kept when that account comes back.
+
+Their pages are shared through `account-page.mjs`. The two are separate files, so each
+runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
+one browser (the 64th, a phone's 32nd, never loaded). The account sessions suite opens
+62, so a test more on each profile needs another file first.
+
+The foundations suite also audits the account dialog's fonts and contrast, signed in
+and signed out, in both languages and both themes.
 
 Coverage includes selection and keyboard focus, unchanged pillar geometry and
 natal colors, the display switch and individual flips (and the switch's mixed state),
@@ -106,8 +178,9 @@ with it; charts whose conventions agree show no switch, and a switched chart tha
 cannot be read sends the form back with the reason. The high-latitude and
 solar-term notices appear, and flags that contradict the chart stop it. The
 foundations audits also walk the pillar change details, a Zi-hour chart and a
-high-latitude chart. They also visit a chart with luck pillars: its ribbon, a decade's
-page in each phase, and the years before the first decade.
+high-latitude chart. They also visit a chart with luck pillars: natal, then with its
+luck pillar and ribbon, a decade's page in each phase, and the years before the first
+decade.
 
 The design-system suite checks the one grid of the pillars: the stem and branch
 rows and the pillar names share top edges and heights across the four pillars,
@@ -242,23 +315,28 @@ The compare suite checks two charts side by side (#20).
 
 The luck pillars suite checks a chart asked for with a gender. It runs with the clock
 at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, female).
-- **The fifth pillar.** The chart opens natal, the luck pillar's column kept but
-  empty. L and the switch show the chosen period there and hide it. Every card, panel
-  and arc stands where it stood, in all three displays, at widths from 1440px to 700px
-  and on phones. The stem leads in the stem phase, and the branch in the branch phase
-  with the stem set aside. Its cards take the display, the cards' arrows, Enter, T and
-  R; hidden, they take no focus. On a phone it stands above the two-by-two chart.
+- **Natal.** The chart opens natal, drawn as the same birth without a gender: every
+  pillar, card, panel and arc in the same place, the same room between the topics and
+  the pillars, no ribbon and no fifth column, in all three displays, at widths from
+  1440px to 700px and on phones.
+- **The fifth pillar.** L and the switch show the chosen period beside the Year, with
+  the ribbon, and hide them; hidden, the chart is drawn as it was, and focus that was
+  on the ribbon, the page or the column goes to the chart's cards. The stem leads in
+  the stem phase, and the branch in the branch phase with the stem set aside. Its cards
+  take the display, the cards' arrows, Enter, T and R. On a phone it stands above the
+  two-by-two chart.
 - **Keys.** [ ] { } N and L act only while the chart has focus; ? lists them, and a
   chart without a gender has none.
 - **Arcs.** The luck pillar's relationships stand in the outer band, from the middle of
   their first card to the middle of the luck card. The narrower stands lower, and a
   frame's middle member stands under it. Their feet stand beyond the natal arcs'
-  feet, and the natal arcs do not move. A stem's arc rests in the branch phase. A line
-  on the decade's page rings its arc, and a hidden luck pillar draws none.
-- **Topics.** Roots, Roles and Relationships carry what the period adds, in place but
-  unseen while the luck pillar is hidden. The pages add the luck branch's roots, the roles
-  it brings, and its relationships, which open with its card and arc and close when they
-  stop acting. A link opens one.
+  feet, and the natal arcs keep their depth and their cards. A stem's arc rests in the
+  branch phase. A line on the decade's page rings its arc, and a hidden luck pillar
+  draws none.
+- **Topics.** Roots, Roles and Relationships carry what the period adds while the luck
+  pillar shows; natal, they read and stand as the chart's without a gender. The pages add
+  the luck branch's roots, the roles it brings, and its relationships, which open with its
+  card and arc and close when they stop acting. A link opens one.
 - **Asking.** The gender is optional, in both languages. A chart without one asks for
   no luck pillars, shows no ribbon, and its link names no gender.
 - **The ribbon.** Each decade by its characters, names, years and starting age, and the
@@ -278,7 +356,8 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
 - **Edges.** A child's chart is before its first decade today, an old one is past its
   last, and a birth still to come has no today. A birth seconds from Jingzhe or Lichun,
   within the luck pillars' allowance but not the natal one, has a notice and nominal
-  dates.
+  dates; natal, the notice goes with the luck pillar. One within the natal allowance too
+  keeps its natal notice.
 - **Links, language and commands.** A link names the luck pillar standing in the chart
   and opens the page it names. Edit keeps the gender and New chart clears it. A link to
   a decade the chart lacks, to an unknown gender, or to a page other than the luck
@@ -286,11 +365,12 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   shown. The commands offer each decade.
 - **Refusal.** Luck pillars that do not hold together stop the chart with a message.
 
-The life grid suite checks the grid under a chart asked for with a gender, on the same
-sample and clock as the luck pillars suite:
+The life grid suite checks the grid under a chart asked for with a gender, while its
+luck pillar shows, on the same sample and clock as the luck pillars suite:
 - **Its rows.** The years before the first decade, then each decade's two phases,
   grouped by direction with their years; each row's character, name, role and years,
-  and what it says to a screen reader. A chart without a gender has no grid.
+  and what it says to a screen reader. A chart without a gender has no grid, and one
+  with a gender has none while natal.
 - **Its columns** are the chart's, at widths from 1440px to 700px, and each mark stands
   under the character it touches in the head. A branch's relationships run through
   their decade and a stem's through its stem phase; the first natal member's mark names
@@ -302,9 +382,10 @@ sample and clock as the luck pillars suite:
 - **Focus and keys.** A page opened from the grid gives focus back to its row on Escape
   and Close, one opened from the ribbon to its chip. The rows take one tab stop, the
   arrows move between them, and the chart's keys act from them. ? lists the arrows.
-- **Today, L and the head.** Today stands in its row. L moves nothing in the grid. The
-  head stays at the top while the grid scrolls, and the grid reads in Finnish without
-  running past the page's edge.
+- **Today, L and the head.** Today stands in its row. L brings the grid with the luck
+  pillar and takes it away, and focus on a row goes to the chart's cards. The head stays
+  at the top while the grid scrolls, and the grid reads in Finnish without running past
+  the page's edge.
 - **Pillars only.** The switch folds the natal columns away and lists the life path,
   each phase's role, years, age, element or Day Master stage and roots; a line chooses
   as a row does. The link names the view, and refuses it without a gender.

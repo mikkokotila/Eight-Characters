@@ -266,6 +266,17 @@ body {
   letter-spacing: var(--tracking-1);
 }
 
+/* The start page's tools: its language, and signing in or the account. */
+.page-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.page-tools .language-switch { margin: 0; }
+
 /* Date/time row */
 .datetime-row {
   display: flex;
@@ -690,10 +701,8 @@ body {
 .chart-topics .context-toggle[aria-expanded='true'] { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
 .topic-button:focus-visible,
 .chart-topics .context-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
-/* What the luck pillar adds to a topic, kept in its place while the luck pillar is hidden
-   so the topics' row never rewraps on L. */
+/* What the luck pillar adds to a topic while it shows. */
 .topic-delta { font-weight: 600; }
-.topic-delta.is-hidden { visibility: hidden; }
 
 /* ── The luck pillars: a ribbon of the decades under the topics, each a stem phase and a
    branch phase, grouped by the direction their branch travels (luck.js). The track
@@ -1024,15 +1033,14 @@ body {
   color: var(--ink-2);
 }
 
-/* ── The luck pillar: a fifth column beside the Year, in a chart with a gender
-   (luck.js). It keeps its place and its size whether it shows or not, so showing it
-   moves nothing: hidden, only what the decade adds is out of sight. ── */
+/* ── The luck pillar: a fifth column beside the Year, while it shows (luck.js). Hidden,
+   the chart is natal, with its four columns, as a chart without a gender. ── */
 .pillars.has-luck,
 .pillars.has-luck :is(.relationship-arcs, .luck-arcs) { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-/* Its arcs' outer band is kept whether it shows or not. */
+/* Its arcs' outer band, while it shows, whichever period stands there. */
 .pillars.has-luck { --arc-band: var(--luck-arc-band); }
 .pillar.is-luck { position: relative; }
-/* Its lane: a quiet band behind the column, whether it shows or not. */
+/* Its lane: a quiet band behind the column. */
 .pillar.is-luck::before {
   content: '';
   position: absolute;
@@ -1042,26 +1050,11 @@ body {
   background: var(--surface-1);
   box-shadow: inset 0 0 0 1px var(--line-1);
 }
-/* Hidden, or before the first decade, the cards keep their room unseen; hidden, so do
-   the column's name and mark. */
-.pillar.is-luck:not([data-luck-state='on']) .card-face,
-.pillar.is-luck:not([data-luck-state='on']) .hidden-stems-panel,
-.pillar.is-luck[data-luck-state='off'] .pillar-header > * { visibility: hidden; }
-.pillar.is-luck:not([data-luck-state='on']) .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
+/* Before the first decade, the cards keep their room unseen. */
+.pillar.is-luck[data-luck-state='none'] .card-face,
+.pillar.is-luck[data-luck-state='none'] .hidden-stems-panel,
 .pillar.is-luck[data-luck-state='none'] .pillar-chars { visibility: hidden; }
-/* Hidden, the stem's room says what brings it back. */
-.luck-ghost {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  display: grid;
-  place-items: center;
-  padding: var(--space-3);
-  font-size: var(--text-1);
-  text-align: center;
-  color: var(--ink-2);
-  pointer-events: none;
-}
+.pillar.is-luck[data-luck-state='none'] .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
 /* In the stem phase the stem leads and the branch acts too; in the branch phase the
    branch leads, and the stem is set aside. */
 .card[data-luck-part='leading']::after {
@@ -1196,12 +1189,10 @@ body {
 }
 .life-mini-char { font-family: var(--font-glyph); font-size: var(--text-3); line-height: 1.15; }
 .life-mini-name { font-size: var(--text-1); font-weight: 600; line-height: 1.15; }
-/* What the chosen phase's relationships touch, while the luck pillar shows. */
+/* What the chosen phase's relationships touch. */
 .life-mini.is-ringed { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink-1); }
 /* The luck pillar's stem, set aside in the branch phase, takes its element's tint. */
 .life-mini.is-resting { background: var(--el-tint); color: var(--ink-1); }
-/* Hidden, the luck pillar's pair waits in outline. */
-.life-head-cell.is-luck.is-hidden .life-mini { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
 
 .life-body { position: relative; isolation: isolate; }
 /* A row's parts share its grid row. A decade's phase is as tall as its marks need. */
@@ -2378,6 +2369,139 @@ kbd {
   font-size: var(--text-4);
   letter-spacing: var(--tracking-1);
 }
+
+/* ── The account: signing in with a code, and the account itself ──
+   Taller than the chart's dialogs: the sign-in form scrolls inside it on a short
+   screen, and its fields keep the start page's own look. */
+.account-dialog {
+  margin-top: 6vh;
+  max-height: 88dvh;
+}
+.account-step {
+  display: grid;
+  gap: var(--space-4);
+  font-family: var(--font-sans);
+}
+.account-notice {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: var(--text-2);
+  line-height: 1.5;
+}
+.account-lead {
+  font-size: var(--text-2);
+  line-height: 1.5;
+}
+.account-field {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  border: 0;
+}
+.account-field label,
+.account-field legend,
+.account-label {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.account-field legend { margin-bottom: var(--space-2); }
+.account-field input[type='email'],
+.account-field input[type='text'] {
+  width: 100%;
+  height: 48px;
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-2);
+  font-size: var(--text-2);
+  color: var(--ink-1);
+}
+.account-field input[type='email']:focus-visible,
+.account-field input[type='text']:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.account-field .field-status {
+  min-height: 0;
+  margin-top: 0;
+  text-align: left;
+}
+.account-language-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-5);
+}
+/* Each language is named in itself, in the page's sans. */
+.account-language-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2);
+  letter-spacing: var(--tracking-1);
+  text-transform: none;
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.account-language-options input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--ink-1);
+}
+.account-note {
+  max-width: 35em;
+  font-size: var(--text-1);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+/* Turnstile's widget, 65px tall, holds its place while it loads. */
+.account-check { min-height: 65px; }
+.account-step .form-error {
+  margin: 0;
+  text-align: left;
+}
+.account-step .submit-btn {
+  justify-self: start;
+  padding: var(--space-3) var(--space-6);
+}
+.account-switch {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  color: var(--ink-1);
+  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+  cursor: pointer;
+}
+.account-switch:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.account-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+.account-delete {
+  display: grid;
+  gap: var(--space-3);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--line-1);
+}
+.account-delete .bar-action { justify-self: start; }
+.bar-action.is-danger { color: var(--ink-error); border-color: var(--ink-error); }
+.account-status {
+  min-height: 1.5em;
+  font-size: var(--text-1);
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+.account-status.is-error { color: var(--ink-error); }
 /* A relationship chosen from the list opens below it. */
 .relationships:not(.hidden) ~ .relationship-detail:not(.hidden) {
   margin-top: var(--space-5);
@@ -2550,6 +2674,7 @@ kbd {
   .reading-toggle,
   .segmented button,
   .bar-action,
+  .account-switch,
   .panel-close,
   .topic-button,
   .role-choice,
@@ -2865,7 +2990,8 @@ kbd {
 .is-embedded #copy-link-btn,
 .is-embedded #back-btn,
 .is-embedded #new-chart-btn,
-.is-embedded #compare-btn { display: none; }
+.is-embedded #compare-btn,
+.is-embedded .account-btn { display: none; }
 .is-embedded { --page-block: var(--space-4); }
 .is-embedded body { padding: var(--page-block) var(--space-4); }
 
@@ -2983,10 +3109,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 
   .chart-container,
   .chart-container.has-panel { display: block; max-width: none; padding-bottom: 0; }
-  /* A hidden luck pillar is not printed, and leaves the chart its four columns. */
-  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']),
-  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']) .relationship-arcs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .pillar.is-luck[data-luck-state='off'] { display: none; }
   .pillars { break-inside: avoid; }
   .chart-bar,
   .chart-topics { break-after: avoid; }

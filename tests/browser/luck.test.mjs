@@ -2,12 +2,13 @@
 // The luck pillars of a chart asked for with a gender: a ribbon of its decades under the
 // topics, the chosen period standing in the chart as a fifth pillar, and its page in the
 // panel. Each decade is a stem phase, its first five years, and a branch phase, its last
-// five; a chart without a gender has none.
+// five; a chart without a gender has none. A chart with one opens natal, as a chart
+// without one: the luck pillar, its ribbon and its column show only once it is shown.
 import {
   assert, describe, it, engineName, profiles, openChart, openLink, settled, geometry, screenshot, withPage,
   openRelationships, showDisplay, HELSINKI, CHENGDU,
 } from './chart-helpers.mjs';
-import { SAMPLE, TODAY, DECADES, sampleLink, TAB, openSample, linkPart, click } from './luck-helpers.mjs';
+import { SAMPLE, TODAY, DECADES, sampleLink, TAB, openSample, linkPart, click, showLuck } from './luck-helpers.mjs';
 
 // The four_pillars requests the page sends.
 function requests(page) {
@@ -94,19 +95,6 @@ function column(page) {
   }));
 }
 
-// Every card's box on the page, and the natal arcs', by the card's pillar and side.
-function boxes(page) {
-  return page.evaluate(() => [...document.querySelectorAll('#pillars .card, #pillars .relationship-arcs .relationship-arc, #pillars .hidden-stems-panel')]
-    // What is not drawn has no place (phones draw no arcs).
-    .filter((node) => node.getClientRects().length > 0)
-    .map((node) => {
-      const box = node.getBoundingClientRect();
-      const name = node.matches('.card') ? `${node.dataset.pillar} ${node.classList.contains('stem') ? 'stem' : 'branch'}`
-        : node.matches('.hidden-stems-panel') ? `${node.dataset.pillar} hidden` : `arc ${node.dataset.relationshipId}`;
-      return `${name} ${Math.round(box.x * 10) / 10},${Math.round((box.y + scrollY) * 10) / 10} ${Math.round(box.width * 10) / 10}x${Math.round(box.height * 10) / 10}`;
-    }));
-}
-
 function focused(page) {
   return page.evaluate(() => {
     const node = document.activeElement;
@@ -116,6 +104,41 @@ function focused(page) {
     if (node.dataset.luckPhase) return `phase ${node.dataset.luckPhase}`;
     if (node.hasAttribute('data-luck-today')) return 'today';
     return node.id || node.textContent.replace(/\s+/g, ' ').trim();
+  });
+}
+
+// The chart as it is drawn, within its pillars: every pillar's, card's, arc's and opened
+// hidden stems' box from the pillars' corner (what is not drawn has no box: phones draw
+// no arcs), the pillars' size and classes, the room between the topics and the pillars,
+// what stands between them, and the notices.
+function chartLayout(page) {
+  return page.evaluate(() => {
+    const pillars = document.getElementById('pillars');
+    const corner = pillars.getBoundingClientRect();
+    const round = (value) => Math.round(value * 10) / 10;
+    const parts = [...pillars.querySelectorAll('.pillar, .card, .relationship-arc, .hidden-stems-panel')]
+      .filter((node) => node.getClientRects().length > 0)
+      .map((node) => {
+        const box = node.getBoundingClientRect();
+        const name = node.matches('.pillar') ? `pillar ${node.dataset.pillar}`
+          : node.matches('.card') ? `${node.dataset.pillar} ${node.classList.contains('stem') ? 'stem' : 'branch'}`
+            : node.matches('.hidden-stems-panel') ? `${node.dataset.pillar} hidden` : `arc ${node.dataset.relationshipId}`;
+        return `${name} ${round(box.x - corner.x)},${round(box.y - corner.y)} ${round(box.width)}x${round(box.height)}`;
+      });
+    const topics = document.getElementById('day-master-context').getBoundingClientRect();
+    const between = [...document.querySelectorAll('#day-master-context ~ *')]
+      .filter((node) => node.compareDocumentPosition(pillars) & Node.DOCUMENT_POSITION_FOLLOWING)
+      .filter((node) => node.getClientRects().length > 0 && !node.matches('.sr-only'))
+      .map((node) => node.id || node.className);
+    return {
+      parts,
+      size: `${round(corner.width)}x${round(corner.height)}`,
+      classes: pillars.className,
+      gap: round(corner.top - topics.bottom),
+      between,
+      notices: [...document.querySelectorAll('#chart-notices li')].filter((node) => node.getClientRects().length > 0)
+        .map((node) => node.textContent),
+    };
   });
 }
 
@@ -173,6 +196,9 @@ for (const profile of profiles) {
       const payload = await openSample(page);
       assert.deepEqual([sent[0].gender, sent[0].include_luck_pillars, sent[0].include_luck_context], ['female', true, true]);
       assert.equal(await linkPart(page, 'gender'), 'female');
+      // The chart opens natal: the ribbon comes with the luck pillar.
+      assert.equal(await page.locator('#luck-ribbon').isVisible(), false);
+      await showLuck(page);
       assert.equal(await page.locator('#luck-ribbon').isVisible(), true);
       assert.deepEqual(await ribbon(page), [
         { name: 'Before', chips: ['before'] },
@@ -195,11 +221,13 @@ for (const profile of profiles) {
       const before = page.locator('.luck-chip.is-before');
       assert.equal((await before.textContent()).trim(), '0–8');
       assert.equal(await before.getAttribute('aria-label'), 'Before the first luck pillar, age 0 to 8');
+      // The luck pillar shows at today's phase; no page opens.
       assert.deepEqual(await ribbonState(page), {
-        expanded: [], selected: [], today: ['5'], chosenPhase: [], todayPhase: ['5/stem'], stop: ['5'], todayDisabled: false,
+        expanded: [], selected: ['5'], today: ['5'], chosenPhase: ['5/stem'], todayPhase: ['5/stem'], stop: ['5'], todayDisabled: false,
       });
       assert.equal(await page.locator('#chart-panel').isVisible(), false);
       assert.equal(await linkPart(page, 'topic'), null);
+      assert.equal(await linkPart(page, 'luck'), '5/stem');
       // The track scrolls within the ribbon, never the page, and shows today's decade.
       const fit = await page.evaluate(() => {
         const track = document.querySelector('.luck-track').getBoundingClientRect();
@@ -216,6 +244,7 @@ for (const profile of profiles) {
 
     check('Today opens the decade at today\'s phase: what it brings, its roots, relationships and elements', async (page) => {
       await openSample(page);
+      await showLuck(page);
       const before = await geometry(page);
       await click(page, '[data-luck-today]');
       assert.equal(await linkPart(page, 'topic'), 'luck/5/stem');
@@ -242,6 +271,7 @@ for (const profile of profiles) {
 
     check('the branch phase sets the stem aside, and the ribbon and the address follow the phase', async (page) => {
       await openSample(page);
+      await showLuck(page);
       await click(page, '[data-luck-today]');
       await click(page, '[data-luck-phase="branch"]');
       assert.equal(await linkPart(page, 'topic'), 'luck/5/branch');
@@ -290,7 +320,8 @@ for (const profile of profiles) {
         assert.equal(await focused(page), `step ${by}`);
         steps.push(`${await linkPart(page, 'luck')} ${await linkPart(page, 'topic')}`);
       };
-      // With the luck pillar hidden, a step goes from today's phase, and shows it; no page opens.
+      // Shown, the luck pillar stands at today's phase, and a step goes from there; no page opens.
+      await showLuck(page);
       await stepBy(1);
       await stepBy(1);
       await stepBy(-1);
@@ -311,6 +342,7 @@ for (const profile of profiles) {
 
     check('a chip opens its decade and closes it; Escape and Close give focus back to it', async (page) => {
       await openSample(page);
+      await showLuck(page);
       // Today does not fall in the fourth decade: it opens at its stem phase.
       await click(page, '[data-luck="4"]');
       assert.equal(await linkPart(page, 'topic'), 'luck/4/stem');
@@ -353,6 +385,7 @@ for (const profile of profiles) {
 
     check('the chips take one tab stop, arrows move between them, and Enter opens one', async (page) => {
       await openSample(page);
+      await showLuck(page);
       await page.locator('#relationships-topic').focus();
       const reached = [];
       for (let presses = 0; presses < 4; presses += 1) {
@@ -386,6 +419,7 @@ for (const profile of profiles) {
 
     check('the years before the first decade have their own page', async (page) => {
       await openSample(page);
+      await showLuck(page);
       await click(page, '[data-luck="before"]');
       assert.equal(await linkPart(page, 'topic'), 'luck/before');
       assert.equal(await page.locator('#luck-detail').innerText().then((text) => text.replace(/\s+/g, ' ').trim()),
@@ -396,32 +430,38 @@ for (const profile of profiles) {
     });
 
     check('a child\'s chart is before its first decade today, an old one past its last, and a birth to come before all', async (page) => {
-      // Born 1 June 2025 in Chengdu, male: the decades run backward from age 8.
+      // Born 1 June 2025 in Chengdu, male: the decades run backward from age 8. Shown, the
+      // luck pillar stands at today's period, the years before.
       await openSample(page, { date: '2025-06-01', time: '12:00', place: CHENGDU, gender: 'male' });
+      await showLuck(page);
       assert.deepEqual(await ribbonState(page), {
-        expanded: [], selected: [], today: ['before'], chosenPhase: [], todayPhase: [], stop: ['before'], todayDisabled: false,
+        expanded: [], selected: ['before'], today: ['before'], chosenPhase: [], todayPhase: [], stop: ['before'], todayDisabled: false,
       });
+      assert.equal((await column(page)).state, 'none');
       await click(page, '[data-luck-today]');
       assert.equal(await linkPart(page, 'topic'), 'luck/before');
       assert.equal((await decadePage(page)).title, 'Before the first luck pillar');
-      // Born 1 March 1949, female, seen in 2060: the last decade ended in 2050.
+      // Born 1 March 1949, female, seen in 2060: the last decade ended in 2050. Natal, a
+      // step back goes from just past the end, to the last phase, and shows it.
       await openSample(page, { date: '1949-03-01', time: '12:00', place: CHENGDU, gender: 'female' }, new Date('2060-01-01T12:00:00Z'));
-      assert.deepEqual(await ribbonState(page), {
-        expanded: [], selected: [], today: [], chosenPhase: [], todayPhase: [], stop: ['10'], todayDisabled: true,
-      });
-      // With the luck pillar hidden, a step back goes from just past the end: to the last phase.
-      await click(page, '[data-luck-step="-1"]');
+      await page.locator('.card.stem[data-pillar="hour"]').focus();
+      await page.keyboard.press('[');
+      await settled(page);
       assert.equal(await linkPart(page, 'luck'), '10/branch');
-      // Born 1 March 2040, female, seen in 2026: today is before the birth, and no period
-      // holds it.
-      await openSample(page, { date: '2040-03-01', time: '12:00', place: CHENGDU, gender: 'female' });
       assert.deepEqual(await ribbonState(page), {
-        expanded: [], selected: [], today: [], chosenPhase: [], todayPhase: [], stop: ['before'], todayDisabled: true,
+        expanded: [], selected: ['10'], today: [], chosenPhase: ['10/branch'], todayPhase: [], stop: ['10'], todayDisabled: true,
+      });
+      // Born 1 March 2040, female, seen in 2026: today is before the birth, and no period
+      // holds it. Natal, a step goes from just before the start, to the years before.
+      await openSample(page, { date: '2040-03-01', time: '12:00', place: CHENGDU, gender: 'female' });
+      await page.locator('.card.stem[data-pillar="hour"]').focus();
+      await page.keyboard.press(']');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), 'before');
+      assert.deepEqual(await ribbonState(page), {
+        expanded: [], selected: ['before'], today: [], chosenPhase: [], todayPhase: [], stop: ['before'], todayDisabled: true,
       });
       assert.equal(await page.locator('.luck-chip.is-before').getAttribute('aria-label'), 'Before the first luck pillar, age 0 to 8');
-      // With the luck pillar hidden, a step goes from just before the start: to the years before.
-      await click(page, '[data-luck-step="1"]');
-      assert.equal(await linkPart(page, 'luck'), 'before');
       assert.equal((await column(page)).state, 'none');
     });
 
@@ -445,7 +485,21 @@ for (const profile of profiles) {
         assert.equal(await page.locator('#luck-detail .luck-nominal').textContent(), 'The dates are nominal: see the notice at the top of the chart.');
         await click(page, '[data-luck="before"]');
         assert.equal(await page.locator('#luck-detail .luck-nominal').count(), 1);
+        // Natal, the chart reads as one without luck pillars: their notice goes with them.
+        await click(page, '#luck-switch [data-luck-show="off"]');
+        assert.equal(await page.locator('#chart-notices').isVisible(), false);
+        await showLuck(page);
+        assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [notice]);
       }
+      // 0.48 s after Jingzhe: within the natal calculation's 0.5 s too. Natal, its notice stays.
+      await page.goto('about:blank');
+      const both = await openLink(page, near('1988-03-05', '16:46:33'), { place: CHENGDU });
+      assert.deepEqual([both.flags.solar_term_ambiguous, both.luck_pillars.uncertainty.boundary_ambiguous], [true, true]);
+      const natalNotice = 'The birth lies within the calculation\'s uncertainty (0.5 s) of a solar term, so the month pillar could be the other one.';
+      assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [natalNotice,
+        'The birth lies within the luck pillars\' allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.']);
+      await click(page, '#luck-switch [data-luck-show="off"]');
+      assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [natalNotice]);
     });
 
     check('a link opens the decade and phase it names, and the form keeps the gender for Edit', async (page) => {
@@ -488,7 +542,8 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
       assert.equal(await linkPart(page, 'gender'), 'female');
-      assert.equal(await page.locator('#luck-ribbon').isVisible(), true);
+      // It opens natal, the switch ready to show the luck pillar.
+      assert.deepEqual([await page.locator('#luck-switch').isVisible(), await page.locator('#luck-ribbon').isVisible()], [true, false]);
       await page.locator('#new-chart-btn').click();
       assert.equal(await page.locator('input[name="gender"]:checked').getAttribute('value'), '');
     });
@@ -565,6 +620,8 @@ for (const profile of profiles) {
 
     check('in Finnish, and through a change of language that keeps the luck pillars', async (page) => {
       await openSample(page, { lang: 'fi' });
+      assert.deepEqual(await page.locator('#luck-switch button').allTextContents(), ['Syntymäkartta', 'Onnen kanssa']);
+      await showLuck(page);
       assert.deepEqual((await ribbon(page)).map((group) => group.name),
         ['Ennen', 'Länsi · Syksy', 'Pohjoinen · Talvi', 'Itä · Kevät', 'Etelä · Kesä']);
       assert.equal(await page.locator('[data-luck-today]').textContent(), 'Tänään');
@@ -587,60 +644,40 @@ for (const profile of profiles) {
         ['Before', 'West · Autumn', 'North · Winter', 'East · Spring', 'South · Summer']);
     });
 
-    check('a chart with a gender opens natal, its fifth column kept, and L shows the decade without moving anything', async (page) => {
+    check('a chart with a gender opens natal, drawn as the chart without one, and L or the switch shows the luck pillar', async (page) => {
+      // The chart as it is drawn, in every display and at every width.
+      const widths = profile.name === 'desktop' ? [1440, 1024, 900, 700] : [profile.viewport.width, 320];
+      const layouts = async () => {
+        const seen = {};
+        for (const display of ['characters', 'ten-gods', 'hidden-stems']) {
+          await showDisplay(page, display);
+          for (const width of widths) {
+            await page.setViewportSize({ width, height: profile.viewport.height });
+            // The pointer rests clear of the cards: a branch under it lifts.
+            await page.mouse.move(0, 0);
+            await settled(page);
+            seen[`${display} ${width}px`] = await chartLayout(page);
+          }
+        }
+        await page.setViewportSize(profile.viewport);
+        await showDisplay(page, 'characters');
+        return seen;
+      };
+      // The same birth without a gender: the chart as it was before the luck pillars.
+      await openSample(page, { gender: null });
+      const plain = await layouts();
       await openSample(page);
-      assert.deepEqual(await column(page), {
-        state: 'off', inert: true, poetic: '5 of 10 · 2023–2033', name: '己丑 Ji Chou', mark: '', parts: ['己:-', '丑:-'], setAside: null,
-      });
-      assert.equal(await page.locator('.luck-ghost').textContent(), 'L shows the luck pillar');
       const switched = () => page.locator('#luck-switch button').evaluateAll((nodes) =>
         nodes.map((node) => `${node.textContent} ${node.getAttribute('aria-pressed')}`));
       assert.deepEqual(await switched(), ['Natal true', 'With luck false']);
       assert.equal(await linkPart(page, 'luck'), null);
-      // Every card, panel and arc stands where it stood, in every display and at every width.
-      const widths = profile.name === 'desktop' ? [1440, 1024, 900, 700] : [profile.viewport.width, 320];
-      const failures = [];
-      for (const display of ['characters', 'ten-gods', 'hidden-stems']) {
-        await showDisplay(page, display);
-        for (const width of widths) {
-          await page.setViewportSize({ width, height: profile.viewport.height });
-          await page.locator('.card.stem[data-pillar="year"]').focus();
-          // The pointer rests clear of the cards: a branch under it lifts.
-          await page.mouse.move(0, 0);
-          await settled(page);
-          const off = await boxes(page);
-          const seen = await page.locator('.pillar.is-luck .card-face, .pillar.is-luck .hidden-stem-item').evaluateAll((nodes) =>
-            nodes.filter((node) => node.checkVisibility({ checkVisibilityCSS: true })).length);
-          if (seen > 0) failures.push(`${display} ${width}px: ${seen} parts of the hidden luck pillar show`);
-          await page.keyboard.press('l');
-          await settled(page);
-          const on = await boxes(page);
-          on.forEach((box, at) => { if (box !== off[at]) failures.push(`${display} ${width}px: ${off[at]} → ${box}`); });
-          await page.keyboard.press('l');
-          await settled(page);
-        }
-      }
-      assert.deepEqual(failures, []);
-      await page.setViewportSize(profile.viewport);
-      await showDisplay(page, 'characters');
-      // A branch opened by hand keeps its room as L hides and shows the luck pillar.
-      await page.locator('.card.stem[data-pillar="year"]').focus();
-      await page.keyboard.press('l');
-      await click(page, '.card.branch[data-pillar="luck"]');
-      await page.mouse.move(0, 0);
-      await settled(page);
-      const opened = await boxes(page);
+      assert.deepEqual([await page.locator('.pillar.is-luck').count(), await page.locator('#luck-ribbon').isVisible()], [0, false]);
+      assert.deepEqual(await layouts(), plain);
+      // L shows the luck pillar at today's phase, beside the Year, and its ribbon over the
+      // chart; focus stays where it was.
       await page.locator('.card.stem[data-pillar="year"]').focus();
       await page.keyboard.press('l');
       await settled(page);
-      assert.deepEqual(await boxes(page), opened);
-      await page.keyboard.press('l');
-      await settled(page);
-      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').getAttribute('aria-expanded'), 'true');
-      await page.keyboard.press('l');
-      await settled(page);
-      // The switch does what L does.
-      await click(page, '#luck-switch [data-luck-show="on"]');
       assert.deepEqual(await switched(), ['Natal false', 'With luck true']);
       assert.deepEqual(await column(page), {
         state: 'on', inert: false, poetic: '5 of 10 · 2023–2033', name: '己丑 Ji Chou', mark: 'Stem phase until 2028',
@@ -648,14 +685,40 @@ for (const profile of profiles) {
       });
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar shown.');
+      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck', ['luck-ribbon']]);
+      assert.equal(await focused(page), 'year stem');
+      // L again hides them, and the chart is drawn as it was.
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar hidden.');
+      assert.equal(await linkPart(page, 'luck'), null);
+      await page.evaluate(() => document.activeElement.blur());
+      await page.mouse.move(0, 0);
+      await settled(page);
+      assert.deepEqual(await chartLayout(page), plain[`characters ${profile.viewport.width}px`]);
+      // The switch does what L does, and the luck pillar's cards come in the chart's display.
+      await showDisplay(page, 'ten-gods');
+      await showLuck(page);
+      assert.deepEqual(await switched(), ['Natal false', 'With luck true']);
+      assert.equal(await page.locator('.pillar.is-luck .card.is-flipped').count(), 2);
+      await showDisplay(page, 'characters');
       // In the branch phase the stem is set aside.
       await click(page, '[data-luck-step="1"]');
       assert.deepEqual((await column(page)).parts, ['己:resting', '丑:leading']);
       assert.equal((await column(page)).setAside, 'Set aside');
       assert.equal((await column(page)).mark, 'Branch phase until 2033');
       await screenshot(page, `${profile.name}-luck-column`);
+      // Hidden from the ribbon, focus goes to the chart's cards, where the keys go on.
+      await page.locator('[data-luck="5"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.equal(await focused(page), 'year stem');
+      assert.deepEqual([await page.locator('.pillar.is-luck').count(), await page.locator('#luck-ribbon').isVisible()], [0, false]);
+      await page.keyboard.press('l');
+      assert.equal(await linkPart(page, 'luck'), '5/branch');
       await click(page, '#luck-switch [data-luck-show="off"]');
-      assert.equal((await column(page)).state, 'off');
+      assert.deepEqual(await switched(), ['Natal true', 'With luck false']);
+      assert.equal(await page.locator('.pillar.is-luck').count(), 0);
       assert.equal(await linkPart(page, 'luck'), null);
     });
 
@@ -693,13 +756,14 @@ for (const profile of profiles) {
       await page.keyboard.press(']');
       assert.equal(await linkPart(page, 'luck'), '5/branch');
       await page.keyboard.press('[');
-      // L from the open page closes it with the luck pillar, and focus goes to the chip.
+      // L from the open page closes it with the luck pillar and its ribbon, and focus goes
+      // to the chart's cards, on the card that had it last.
       await page.keyboard.press('n');
       await settled(page);
       await page.locator('[data-luck-phase="branch"]').focus();
       await page.keyboard.press('l');
       await settled(page);
-      assert.deepEqual([await linkPart(page, 'luck'), await linkPart(page, 'topic'), await focused(page)], [null, null, 'chip 5']);
+      assert.deepEqual([await linkPart(page, 'luck'), await linkPart(page, 'topic'), await focused(page)], [null, null, 'hour stem']);
       await page.keyboard.press('l');
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       // At the last decade a decade's step stays where it is, in either phase.
@@ -795,7 +859,9 @@ for (const profile of profiles) {
       await settled(page);
       assert.equal(await page.locator('#form-error').isVisible(), false);
       assert.equal(await page.locator('#chart-view').isVisible(), true);
-      assert.equal(await page.locator('.pillar.is-luck').count(), 1);
+      // Its link names no luck pillar: it opens natal, the tab stop on a natal card.
+      assert.deepEqual([await page.locator('#pillars .pillar').count(), await page.locator('.pillar.is-luck').count()], [4, 0]);
+      assert.equal(await page.locator('.card[tabindex="0"]').getAttribute('data-pillar'), 'year');
     });
 
     check('a link names the luck pillar standing in the chart, with or without its page', async (page) => {
@@ -839,12 +905,21 @@ for (const profile of profiles) {
 
     check('the luck pillar\'s relationships stand as arcs in an outer band, their feet beyond the natal arcs\'', async (page) => {
       await openSample(page);
+      // A natal arc: its relationship, its depth, and whether it spans from the middle of
+      // its first card to the middle of its last (phones draw none).
       const natal = () => page.locator('#pillars .relationship-arcs .relationship-arc').evaluateAll((arcs) => arcs.map((arc) => {
-        const box = arc.querySelector('.relationship-arc-line').getBoundingClientRect();
-        return `${arc.dataset.relationshipId} ${Math.round(box.x)} ${Math.round(box.width)} ${Math.round(box.height)}`;
+        const box = arc.getBoundingClientRect();
+        const component = arc.closest('.relationship-arcs').dataset.component;
+        const middles = [...document.querySelectorAll(`#pillars .card.${component}`)].map((card) => {
+          const r = card.getBoundingClientRect();
+          return Math.round(r.x + r.width / 2);
+        });
+        const meets = (x) => middles.some((middle) => Math.abs(middle - x) <= 1);
+        const depth = Math.round(arc.querySelector('.relationship-arc-line').getBoundingClientRect().height);
+        return `${arc.dataset.relationshipId} ${depth} ${box.width === 0 || (meets(box.x) && meets(box.x + box.width))}`;
       }));
       const before = await natal();
-      await click(page, '#luck-switch [data-luck-show="on"]');
+      await showLuck(page);
       const luckArcs = () => page.evaluate(() => [...document.querySelectorAll('#pillars .luck-arcs .relationship-arc')].map((arc) => ({
         id: arc.dataset.relationshipId,
         level: Number(arc.style.getPropertyValue('--level')),
@@ -872,7 +947,7 @@ for (const profile of profiles) {
       if (profile.name === 'desktop') {
         assert.ok(stems.every((arc) => arc.depth > 44 && arc.ends.every(Boolean)), JSON.stringify(stems));
       }
-      // The natal arcs stay where they are, and recede.
+      // The natal arcs keep their depth, span their cards in the chart's five columns, and recede.
       assert.deepEqual(await natal(), before);
       assert.equal(await page.locator('#pillars').evaluate((node) => node.classList.contains('is-luck-shown')), true);
       // In the branch phase the stem's relationships rest.
@@ -906,24 +981,35 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-luck-arcs`);
     });
 
-    check('the topics carry what the luck pillar adds, unseen but in place while it is hidden', async (page) => {
-      await openSample(page);
+    check('the topics carry what the luck pillar adds while it shows, and natal read as a chart\'s without one', async (page) => {
       const topics = () => page.evaluate(() => [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
-        const copy = button.cloneNode(true);
-        copy.querySelectorAll('.topic-delta.is-hidden').forEach((delta) => delta.remove());
         const box = button.getBoundingClientRect();
-        return { text: copy.textContent.replace(/\s+/g, ' ').trim(), box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}` };
+        return {
+          text: button.textContent.replace(/\s+/g, ' ').trim(),
+          label: button.getAttribute('aria-label'),
+          box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
+        };
       }));
-      const hidden = await topics();
-      assert.deepEqual(hidden.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
+      // The same birth without a gender, then with one: natal, its topics are the same.
+      await openSample(page, { gender: null });
+      const plain = await topics();
+      await openSample(page);
+      const natal = await topics();
+      assert.deepEqual(natal.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
+      assert.deepEqual(natal, plain);
       await page.locator('.card.stem[data-pillar="year"]').focus();
       await page.keyboard.press('l');
       await settled(page);
       const shown = await topics();
       // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem combinations.
       assert.deepEqual(shown.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3 + 2)']);
-      assert.deepEqual(shown.map((topic) => topic.box), hidden.map((topic) => topic.box));
       assert.equal(await page.locator('button[data-context="roots"]').getAttribute('aria-label'), 'Roots · Roots in 3 branches + luck');
+      // Hidden again, the topics are natal again.
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await topics(), natal);
+      await page.keyboard.press('l');
+      await settled(page);
       // The Roots page adds the luck branch's root, and points at it.
       await click(page, 'button[data-context="roots"]');
       const luckRoot = page.locator('#context-detail .relationship-member').last();
@@ -989,7 +1075,7 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-luck-topics`);
     });
 
-    check('on paper a luck pillar shown stands fifth, and a hidden one leaves the chart its four columns', async (page) => {
+    check('on paper a luck pillar shown stands fifth, and a natal chart has its four columns', async (page) => {
       await openSample(page);
       await page.setViewportSize({ width: 1024, height: 900 });
       await page.emulateMedia({ media: 'print' });

@@ -1,14 +1,12 @@
 import unittest
 
-from fastapi.testclient import TestClient
-
-from eight_characters.main import app
+from tests.accounts_support import signed_in_client
 
 
 class TestApiHiddenStemsEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def test_hidden_stems_canonical_pillars(self) -> None:
         response = self.client.post(

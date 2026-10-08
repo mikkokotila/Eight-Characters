@@ -1,5 +1,6 @@
-// The life grid: under the chart, its five columns run on through the whole life, a row
-// for each five years, a decade's stem phase above its branch phase (luck.js). The Luck
+// The life grid: under the chart while the luck pillar shows, its five columns run on
+// through the whole life, a row for each five years, a decade's stem phase above its
+// branch phase (luck.js). Natal, there is none: the chart is as without luck pillars. The Luck
 // column holds the decades, each a small pillar of its stem over its branch, and choosing
 // a phase there chooses it everywhere. Under each natal character a mark shows each
 // relationship the luck pillar forms with it, for as long as it acts: a stem's for its
@@ -57,14 +58,11 @@
         </div>`;
     };
     // The Luck column holds the period chosen: its pair, the stem set aside in the branch
-    // phase; hidden, the pair waits in outline. The natal characters that the chosen
-    // phase's relationships touch are ringed while the luck pillar shows.
-    const syncHead = (cursor, shown) => {
+    // phase. The natal characters that the chosen phase's relationships touch are ringed.
+    const syncHead = (cursor) => {
       const decade = cursor === 'before' ? null : decadeOf(cursor.sequence);
       const cell = head.querySelector('.life-head-cell.is-luck');
-      cell.classList.toggle('is-hidden', !shown);
-      cell.querySelector('.life-head-state').textContent = !shown ? t('life_hidden')
-        : decade === null ? t('luck_before') : t('luck_phase_' + cursor.phase);
+      cell.querySelector('.life-head-state').textContent = decade === null ? t('luck_before') : t('luck_phase_' + cursor.phase);
       const pair = cell.querySelector('.life-mini-pair');
       const parts = decade === null ? '' : PHASES.map((part) => {
         const card = decade.cards[part];
@@ -74,9 +72,9 @@
         pair.innerHTML = parts;
         pair.dataset.drawn = parts;
       }
-      pair.querySelector('[data-part="stem"]')?.classList.toggle('is-resting', shown && cursor.phase === 'branch');
+      pair.querySelector('[data-part="stem"]')?.classList.toggle('is-resting', decade !== null && cursor.phase === 'branch');
       const ringed = new Set();
-      if (shown && decade !== null) {
+      if (decade !== null) {
         decade.interactions.filter((r) => r.phases.includes(cursor.phase)).forEach((r) => r.members
           .filter((m) => m.pillar !== 'luck').forEach((m) => ringed.add(`${m.pillar}:${r.component}`)));
       }
@@ -213,14 +211,15 @@
       return { row: String(decade.sequence), at: (index + (when - span.start) / (span.end - span.start)) / 2 };
     };
 
-    // What is chosen and what is now, drawn in place: the rows stay the same elements,
-    // so focus and a reader's place stay on them. The rows take one tab stop, as the
-    // ribbon's chips do, at `stop`.
-    const sync = ({ cursor, shown, open, now, stop }) => {
+    // The grid shows while the luck pillar does. What is chosen and what is now, drawn in
+    // place: the rows stay the same elements, so focus and a reader's place stay on them.
+    // The rows take one tab stop, as the ribbon's chips do: the chosen period's row.
+    const sync = ({ cursor, shown, open, now }) => {
       if (life === null) return;
-      const chosen = shown ? pathOf(cursor) : null;
+      section.classList.toggle('hidden', !shown);
+      if (!shown) return;
+      const chosen = pathOf(cursor);
       const nowPath = now === null ? null : pathOf(now);
-      const stopPath = pathOf(stop);
       body.querySelectorAll('[data-life]').forEach((button) => {
         const path = button.dataset.life;
         const on = path === chosen;
@@ -228,12 +227,12 @@
         button.classList.toggle('is-now', path === nowPath);
         button.setAttribute('aria-expanded', String(open && on));
         button.setAttribute('aria-label', labelOf(path, nowPath));
-        button.tabIndex = path === stopPath ? 0 : -1;
+        button.tabIndex = on ? 0 : -1;
       });
       body.querySelectorAll('.life-half').forEach((half) => half.classList.toggle('is-chosen', half.dataset.lifeHalf === chosen));
       // The chosen decade's pair as the fifth pillar stands: in the branch phase its stem
       // is set aside, and the marks of what rests until the other phase grow quiet.
-      const decade = shown && cursor !== 'before' ? cursor : null;
+      const decade = cursor !== 'before' ? cursor : null;
       body.querySelectorAll('.life-phase[data-part="stem"]').forEach((button) => {
         button.classList.toggle('is-resting', decade !== null && button.dataset.life === `${decade.sequence}/stem` && decade.phase === 'branch');
       });
@@ -249,7 +248,7 @@
         todayLine.style.setProperty('--at', String(at));
         body.querySelector(`.life-row[data-life-row="${row}"]`).append(todayLine);
       }
-      syncHead(cursor, shown);
+      syncHead(cursor);
     };
 
     // The grid with the chart's columns, or the pillars only.
@@ -288,6 +287,7 @@
 
     // `data` is the luck pillars as luck.js reads them, with the natal pillars and luck.js's
     // ways of naming: { decades, before, startAge, natal, year, names }. Null: no grid.
+    // Drawn, it shows when sync says the luck pillar does.
     const render = (data) => {
       life = data;
       if (life === null) {
@@ -306,7 +306,6 @@
       drawHead();
       drawBody();
       setView(view);
-      section.classList.remove('hidden');
     };
     // The row of a period, for focus to come back to.
     const rowOf = (choice) => body.querySelector(`[data-life="${pathOf(choice)}"]`);

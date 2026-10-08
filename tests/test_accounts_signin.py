@@ -5,7 +5,7 @@ from datetime import timedelta
 from pathlib import Path
 from unittest.mock import patch
 
-from eight_characters.accounts.records import Language, RecordError, User
+from eight_characters.accounts.records import Language, RecordError, User, timestamp
 from eight_characters.accounts.signin import (
     CODE_LIFETIME,
     SESSION_LIFETIME,
@@ -17,7 +17,7 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import AccountStore, EmailTaken, Session
 from tests.accounts_support import Clock
 
 SECRET = b'a test secret that is long enough!!'
@@ -161,6 +161,25 @@ class TestRedeemingCodes(SignInTestCase):
         ):
             self.sign_in.redeem_code('reader@example.com', code)
 
+    def test_an_account_made_and_deleted_while_creating_it_gets_no_session(
+        self,
+    ) -> None:
+        # Another tab made the account with another code, and it was deleted before
+        # this one could sign in to it.
+        code = self.code_for('reader@example.com', 'create', 'fi')
+        create = self.store.create_user
+
+        def made_and_deleted_meanwhile(email: str, language: Language) -> User:
+            self.store.delete_user(create(email, language).id)
+            raise EmailTaken('An account with that email address exists already.')
+
+        with (
+            patch.object(self.store, 'create_user', made_and_deleted_meanwhile),
+            self.assertRaises(CodeRefused),
+        ):
+            self.sign_in.redeem_code('reader@example.com', code)
+        self.assertIsNone(self.store.user_by_email('reader@example.com'))
+
     def test_a_code_works_once(self) -> None:
         code = self.code_for()
         self.sign_in.redeem_code('reader@example.com', code)
@@ -243,12 +262,80 @@ class TestSessions(SignInTestCase):
         self.clock.advance(timedelta(days=10).total_seconds())
         current = self.sign_in.current(self.signed.token)
         assert current is not None
-        self.assertFalse(current.renewed)
+        self.assertEqual(current.expires_at, self.signed.expires_at)
         self.clock.advance(timedelta(days=6).total_seconds())
         current = self.sign_in.current(self.signed.token)
         assert current is not None
-        self.assertTrue(current.renewed)
         self.assertEqual(current.expires_at, self.clock.now + SESSION_LIFETIME)
+        stored = self.store.session(current.token_hash)
+        assert stored is not None
+        self.assertEqual(stored.expires_at, timestamp(current.expires_at))
+
+    def test_a_session_renewed_meanwhile_is_kept(self) -> None:
+        # This request reads the session just before it ends; another renews it; this
+        # one's clock then passes the old end. It finds the session as renewed, rather
+        # than turning it away.
+        self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)
+        read = self.store.session_and_user
+        renewals: list[str] = []
+
+        def renewed_meanwhile(token_hash: str) -> tuple[Session, User] | None:
+            found = read(token_hash)
+            if not renewals:
+                now = self.clock.now
+                renewal = timestamp(now + SESSION_LIFETIME)
+                self.assertTrue(
+                    self.store.extend_session(token_hash, renewal, timestamp(now))
+                )
+                renewals.append(renewal)
+                self.clock.advance(2)
+            return found
+
+        with patch.object(self.store, 'session_and_user', renewed_meanwhile):
+            current = self.sign_in.current(self.signed.token)
+        assert current is not None
+        self.assertEqual(current.user.id, self.signed.user.id)
+        self.assertEqual(timestamp(current.expires_at), renewals[0])
+        later = self.sign_in.current(self.signed.token)
+        assert later is not None
+        self.assertEqual(timestamp(later.expires_at), renewals[0])
+
+    def test_a_session_read_as_ended_and_signed_out_meanwhile_is_gone(self) -> None:
+        self.clock.advance(SESSION_LIFETIME.total_seconds() - 1)
+        read = self.store.session_and_user
+
+        def signed_out_meanwhile(token_hash: str) -> tuple[Session, User] | None:
+            found = read(token_hash)
+            if found is not None:
+                self.store.delete_session(token_hash)
+                self.clock.advance(2)
+            return found
+
+        with patch.object(self.store, 'session_and_user', signed_out_meanwhile):
+            self.assertIsNone(self.sign_in.current(self.signed.token))
+        self.assertIsNone(self.sign_in.current(self.signed.token))
+
+    def test_a_session_kept_as_renewed_that_has_still_ended_is_an_error(self) -> None:
+        # Only renewal keeps an ended session, and it moves the end past now.
+        self.clock.advance(SESSION_LIFETIME.total_seconds())
+        with (
+            patch.object(self.store, 'end_expired_session', return_value=False),
+            self.assertRaises(RuntimeError),
+        ):
+            self.sign_in.current(self.signed.token)
+
+    def test_a_session_ended_meanwhile_is_not_renewed(self) -> None:
+        self.clock.advance(timedelta(days=16).total_seconds())
+        read = self.store.session_and_user
+
+        def signed_out_meanwhile(token_hash: str) -> tuple[Session, User] | None:
+            found = read(token_hash)
+            self.store.delete_session(token_hash)
+            return found
+
+        with patch.object(self.store, 'session_and_user', signed_out_meanwhile):
+            self.assertIsNone(self.sign_in.current(self.signed.token))
+        self.assertIsNone(self.sign_in.current(self.signed.token))
 
     def test_a_session_unused_for_its_lifetime_ends(self) -> None:
         self.clock.advance(SESSION_LIFETIME.total_seconds())

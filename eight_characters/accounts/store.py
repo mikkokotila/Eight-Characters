@@ -13,7 +13,7 @@ import sqlite3
 from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final
 
@@ -28,6 +28,7 @@ from eight_characters.accounts.records import (
     is_plan,
     new_id,
     normalize_email,
+    parse_timestamp,
     timestamp,
     user_path,
 )
@@ -540,7 +541,13 @@ class AccountStore:
             )
             if changed == current:
                 return current
-            changed = replace(changed, updated_at=max(self._now(), current.updated_at))
+            # Each change moves updated_at past the last, even within one second or with
+            # the clock gone back: of two answers about the account, a page keeps the
+            # later change's.
+            after = timestamp(
+                parse_timestamp(current.updated_at) + timedelta(seconds=1)
+            )
+            changed = replace(changed, updated_at=max(self._now(), after))
             connection.execute(
                 'UPDATE users SET language = ?, plan = ?, updated_at = ? WHERE id = ?',
                 (changed.language, changed.plan, changed.updated_at, changed.id),
@@ -622,12 +629,26 @@ class AccountStore:
         )
         return session, _user_from_row(row[4:])
 
-    def extend_session(self, token_hash: str, expires_at: str) -> None:
+    def extend_session(self, token_hash: str, expires_at: str, now: str) -> bool:
+        """Extends a session that is still live at `now`; False if it is gone or has
+        ended meanwhile."""
         with self._write() as connection:
-            connection.execute(
-                'UPDATE sessions SET expires_at = ? WHERE token_hash = ?',
-                (expires_at, token_hash),
-            )
+            extended = connection.execute(
+                'UPDATE sessions SET expires_at = ? '
+                'WHERE token_hash = ? AND expires_at > ?',
+                (expires_at, token_hash, now),
+            ).rowcount
+        return extended == 1
+
+    def end_expired_session(self, token_hash: str, now: str) -> bool:
+        """Deletes a session if it has ended by `now`; False if it is gone, or a
+        request renewed it meanwhile and it is kept."""
+        with self._write() as connection:
+            ended = connection.execute(
+                'DELETE FROM sessions WHERE token_hash = ? AND expires_at <= ?',
+                (token_hash, now),
+            ).rowcount
+        return ended == 1
 
     def delete_session(self, token_hash: str) -> None:
         with self._write() as connection:
@@ -642,12 +663,16 @@ class AccountStore:
                 'DELETE FROM sessions WHERE user_id = ?', (user_id,)
             ).rowcount
 
-    def delete_expired(self, now: str) -> None:
-        """Drops sessions and codes past their time."""
+    def delete_expired(self, now: str, requests_before: str) -> None:
+        """Drops sessions and codes past their time, and the record of codes asked
+        for before `requests_before`, the start of the hourly limits' window."""
         with self._write() as connection:
             connection.execute('DELETE FROM sessions WHERE expires_at <= ?', (now,))
             connection.execute(
                 'DELETE FROM sign_in_codes WHERE expires_at <= ?', (now,)
+            )
+            connection.execute(
+                'DELETE FROM code_requests WHERE requested_at < ?', (requests_before,)
             )
 
     def account_data(self, user_id: str) -> dict[str, Any]:

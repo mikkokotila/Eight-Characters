@@ -3,13 +3,13 @@ import itertools
 import re
 import unittest
 
-from fastapi.testclient import TestClient
 from lunar_python.util import LunarUtil
 
 from eight_characters.canon import BRANCH_CHARS, STEM_CHARS, CanonError, load_canon
 from eight_characters.interactions import detect_interactions
-from eight_characters.main import _load_ten_gods_lookup, app
+from eight_characters.main import _load_ten_gods_lookup
 from eight_characters.reading import build_reading, check_reading_canon
+from tests.accounts_support import signed_in_client
 from tests.test_canon import parsed_texts
 
 PILLARS = ('year', 'month', 'day', 'hour')
@@ -82,8 +82,9 @@ def same_polarity_stem(branch):
 
 
 class TestReadingApi(unittest.TestCase):
-    def setUp(self):
-        self.client = TestClient(app)
+    @classmethod
+    def setUpClass(cls):
+        cls.client = signed_in_client(cls)
 
     def post(self, **flags):
         response = self.client.post('/api/four_pillars', json={**HELSINKI, **flags})
