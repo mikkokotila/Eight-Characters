@@ -1165,6 +1165,12 @@ body {
   white-space: nowrap;
 }
 .life-head-state { color: var(--ink-1); }
+/* The Luck column's lane runs up into the head. */
+.life-head-cell.is-luck {
+  border-radius: 20px 20px 0 0;
+  background: var(--surface-1);
+  box-shadow: inset 1px 0 0 var(--line-1), inset -1px 0 0 var(--line-1), inset 0 1px 0 var(--line-1);
+}
 .life-mini-pair {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

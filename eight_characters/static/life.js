@@ -58,8 +58,8 @@
       const decade = cursor === 'before' ? null : decadeOf(cursor.sequence);
       const cell = head.querySelector('.life-head-cell.is-luck');
       cell.classList.toggle('is-hidden', !shown);
-      cell.querySelector('.life-head-state').textContent = decade === null ? t('luck_before')
-        : shown ? t('luck_phase_' + cursor.phase) : t('life_hidden');
+      cell.querySelector('.life-head-state').textContent = !shown ? t('life_hidden')
+        : decade === null ? t('luck_before') : t('luck_phase_' + cursor.phase);
       const pair = cell.querySelector('.life-mini-pair');
       const parts = decade === null ? '' : PHASES.map((part) => {
         const card = decade.cards[part];
