@@ -1184,6 +1184,27 @@ for (const profile of profiles) {
       await page.clock.setFixedTime(TODAY);
       await openLink(page, sampleLink({ luck: '4/branch', topic: 'relationships/punishment:34:year-luck' }), { place: HELSINKI });
       assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Year–Luck · Punishment');
+      // A choice that still acts stays in the ink as the period moves and the luck pillar's
+      // arcs are drawn anew, and every other arc recedes. The punishment acts in both phases.
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('[');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '4/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'harmony_frame:18:month-day-luck': 'receded', 'harmony_frame:18:month-hour-luck': 'receded', 'punishment:34:year-luck': 'ink',
+      });
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-related')), true);
+      // A natal relationship chosen stays so into the next decade, whose arcs recede.
+      await page.locator('.relationship-chip[data-relationship="self_punishment:35:day-hour"]').click();
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('}');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '5/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
+      });
       await screenshot(page, `${profile.name}-luck-topics`);
     });
 

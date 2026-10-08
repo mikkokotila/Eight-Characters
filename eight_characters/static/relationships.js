@@ -173,12 +173,10 @@
         </div>`;
     };
 
-    const select = (relationship, button) => {
-      const wasSelected = selected === relationship.id;
-      clear();
-      if (wasSelected) return;
-      beforeSelect();
-      selected = relationship.id;
+    // What a chosen relationship marks on the chart: its cards, its arc in the ink, and the
+    // other arcs receding in every band. The luck pillar's column and arcs are drawn anew
+    // as its period moves (luck.js), and a choice that still acts marks them again (setLuck).
+    const mark = (relationship) => {
       root.dataset.relationshipKind = relationship.kind;
       relationship.members.forEach((member) => cardFor(relationship, member).classList.add('is-related'));
       const arc = [...pillars.querySelectorAll('.relationship-arc')]
@@ -186,6 +184,14 @@
       if (!arc) throw new Error(`Relationship ${relationship.id} has no arc.`);
       pillars.querySelectorAll('.relationship-arcs, .luck-arcs').forEach((band) => band.classList.add('has-selection'));
       arc.classList.add('is-active');
+    };
+    const select = (relationship, button) => {
+      const wasSelected = selected === relationship.id;
+      clear();
+      if (wasSelected) return;
+      beforeSelect();
+      selected = relationship.id;
+      mark(relationship);
       button.setAttribute('aria-expanded', 'true');
       button.classList.add('is-active');
       const meta = [t(relationship.adjacent ? 'relationship_adjacent' : 'relationship_non_adjacent')];
@@ -337,14 +343,17 @@
     };
     // The luck pillar's period (luck.js): while it stands in the chart, the relationships
     // it forms that act in its phase join the list, and its cards are named as the natal
-    // ones are. A luck relationship chosen that no longer acts closes.
+    // ones are. A luck relationship chosen that no longer acts closes; a choice that still
+    // acts marks the chart again, its luck column and arcs drawn anew.
     const setLuck = (period) => {
       luckEntries = period !== null ? period.relationships : [];
       if (period !== null) {
         chartByPillar.luck = { stem: period.cards.stem, branch: period.cards.branch };
         tenGods.luck = { stem: period.visible, branch: period.cards.branch.char, hidden_stems: period.hidden };
       }
-      if (selected !== null && !allEntries().some((entry) => entry.id === selected)) clear();
+      const chosen = selected === null ? null : allEntries().find((entry) => entry.id === selected);
+      if (chosen === undefined) clear();
+      else if (chosen !== null) mark(chosen);
       drawList();
     };
 
