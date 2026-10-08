@@ -923,6 +923,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const open = panelSections.some((section) => !section.classList.contains('hidden'));
     chartPanel.classList.toggle('hidden', !open);
     chartView.classList.toggle('has-panel', open);
+    // From 1200px wide the chart column moves over as the panel opens beside it.
+    followCardHint();
   };
   const panelObserver = new MutationObserver(syncPanel);
   panelSections.forEach((section) => panelObserver.observe(section, { attributes: true, attributeFilter: ['class'] }));
@@ -1000,6 +1002,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!keyed || keyed.closest('[inert]')) setKeyCard(cardAt({ pillar: 'year', component: keyCard.component }));
     else setKeyCard(keyed);
     syncDisplaySwitch();
+    // The luck pillar's column, drawn or taken away, moves the chart's cards.
+    followCardHint();
     if (focused === null) return;
     const target = scope === null ? null
       : focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
@@ -1095,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // Nothing else shows that a card turns over, so a hint says so, above the card
-  // under the mouse. It stays there while the page scrolls.
+  // under the mouse. It stays over its card while the chart moves under it.
   const cardHint = document.createElement('div');
   cardHint.className = 'card-hint hidden';
   cardHint.setAttribute('aria-hidden', 'true');
@@ -1110,6 +1114,14 @@ document.addEventListener('DOMContentLoaded', () => {
     hintedCard = null;
     cardHint.classList.add('hidden');
   };
+  // The chart moves under the hint as the page scrolls, as the luck pillar comes or goes
+  // (fitCards), and as the panel opens or closes beside it (syncPanel). A card taken away,
+  // the luck pillar's as it is hidden, takes its hint with it.
+  const followCardHint = () => {
+    if (hintedCard === null) return;
+    if (hintedCard.isConnected) placeCardHint();
+    else hideCardHint();
+  };
   pillarsContainer.addEventListener('pointerover', (event) => {
     const card = event.target.closest('.card');
     if (!card || event.pointerType !== 'mouse' || activePress) return;
@@ -1121,7 +1133,7 @@ document.addEventListener('DOMContentLoaded', () => {
   pillarsContainer.addEventListener('pointerout', (event) => {
     if (!event.relatedTarget || !event.target.closest('.card')?.contains(event.relatedTarget)) hideCardHint();
   });
-  window.addEventListener('scroll', () => { if (hintedCard) placeCardHint(); }, { passive: true });
+  window.addEventListener('scroll', followCardHint, { passive: true });
 
   // A card is named by its pillar and the side it shows.
   const labelCard = (card) => {

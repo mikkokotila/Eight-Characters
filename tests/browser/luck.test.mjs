@@ -761,6 +761,48 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'luck'), null);
     });
 
+    check('the keys\' hint stays over its card as the luck pillar comes and goes, and as its page opens', async (page) => {
+      await openSample(page);
+      // Where the hint stands from the top middle of the card with focus, or null hidden.
+      const hint = () => page.evaluate(() => {
+        const node = document.querySelector('.card-hint');
+        if (node.classList.contains('hidden')) return null;
+        const card = document.activeElement.getBoundingClientRect();
+        return [Math.round(parseFloat(node.style.left) - (card.left + card.width / 2)), Math.round(parseFloat(node.style.top) - card.top)];
+      });
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('ArrowLeft');
+      assert.equal(await focused(page), 'month stem');
+      assert.deepEqual(await hint(), [0, 0]);
+      // L makes room for the luck pillar and its ribbon, and gives the room back.
+      for (const presses of [1, 2]) {
+        await page.keyboard.press('l');
+        await settled(page);
+        assert.deepEqual(await hint(), [0, 0], `L ${presses}`);
+      }
+      // N shows the luck pillar and opens today's page; from 1200px wide the panel opens
+      // beside the chart and moves it over.
+      await page.keyboard.press('n');
+      await settled(page);
+      assert.deepEqual([await focused(page), await hint()], ['month stem', [0, 0]]);
+      if (profile.name === 'desktop') {
+        // The pointer's hint over the luck pillar's card goes with the card: the hint never
+        // stands where no card is.
+        await page.locator('.card.stem[data-pillar="luck"]').hover();
+        assert.equal(await page.locator('.card-hint').isVisible(), true);
+        await page.keyboard.press('l');
+        await settled(page);
+        assert.equal(await page.locator('.pillar.is-luck').count(), 0);
+        assert.equal(await page.evaluate(() => {
+          const node = document.querySelector('.card-hint');
+          return node.classList.contains('hidden') || [...document.querySelectorAll('#pillars .card')].some((card) => {
+            const box = card.getBoundingClientRect();
+            return Math.abs(parseFloat(node.style.left) - (box.left + box.width / 2)) < 1 && Math.abs(parseFloat(node.style.top) - box.top) < 1;
+          });
+        }), true);
+      }
+    });
+
     check('the keys move the luck pillar while the chart has focus: [ and ] a phase, { and } a decade, N to now, L', async (page) => {
       await openSample(page);
       // Keys act only while the chart has focus (WCAG 2.1.4).
