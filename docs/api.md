@@ -92,6 +92,7 @@ Response conditionally includes:
 - `day_master_context` (when `include_day_master_context=true`)
 - `role_profile` (when `include_role_profile=true`)
 - `reading` (when `include_reading=true`)
+- `luck_reading` (when `include_reading=true` and `include_luck_context=true`)
 
 `ten_gods` gives, for each pillar, the ten god of its stem and of every
 hidden stem of its branch, relative to the Day Master (the day stem). Hidden
@@ -342,6 +343,34 @@ verdict, or prediction.
 - **The canon's own example.** It is Helsinki, 1976-06-29 at 07:02. Its
   `cycle.stages` are Tomb (9), Embryo (11), Emperor's Peak (5) and Death (8),
   from the year to the hour.
+
+**`luck_reading`**, with `include_luck_context` too, reads each luck pillar, under the
+same policy and language. The canon has no passages for the luck position, so a luck
+pillar reads as the canon's passages for its stem and its branch from the Day Master's
+seat. Its `decades` follow the luck pillars, each with:
+- `sequence`;
+- `stem`: the luck stem's `ten_god`, and the canon's `name`, `relation` and `core` for
+  it;
+- `branch`:
+  - `about`, the branch itself;
+  - `meets`, the Day Master on it, its Day-Pillar sentence left out;
+  - `stage`, the Day Master's life stage on it, with the stage's core passage;
+- `relationships`, keyed by the luck context's ids. Each reads as a natal
+  relationship does, with `pairing` always `null`: the canon's pairings are the natal
+  positions';
+- `settles`: the canon's sentences that wait for a luck pillar, where this one brings
+  what they wait for. Each has its `source`, the natal relationship it settles
+  (`natal`, or `null` for a Birth and Storage, which the chart holds as no
+  relationship), the luck pillar's relationships that settle it (`by`), and the
+  canon's `sentence`. The sources are:
+  - `year_hour_stems`: the luck stem is one of a natal Year–Hour stem combination's
+    stems, and combines with the other;
+  - `year_hour_branches`: the luck branch is one end of a natal Year–Hour branch
+    relationship, and forms it with the other end;
+  - `half_frame`: the luck branch is a natal half-frame's missing branch, and its
+    whole takes the half in;
+  - `cradle`: the luck branch is the Peak of a frame whose Birth and Storage the natal
+    chart holds without it.
 
 See [Readings](Standard-Readings.md).
 
