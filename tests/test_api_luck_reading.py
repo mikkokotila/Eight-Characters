@@ -2,19 +2,18 @@ import copy
 import re
 import unittest
 
-from fastapi.testclient import TestClient
-
 from eight_characters.canon import BRANCH_CHARS, STEM_CHARS, CanonError, load_canon
 from eight_characters.interactions import detect_interactions
 from eight_characters.life_stages import life_stage
 from eight_characters.luck_context import build_luck_context
-from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup, app
+from eight_characters.main import _load_hidden_stems_lookup, _load_ten_gods_lookup
 from eight_characters.reading import (
     DAY_PILLAR_ONLY,
     SETTLE_SENTENCES,
     build_luck_reading,
     check_reading_canon,
 )
+from tests.accounts_support import signed_in_client
 
 # The sample of the luck pillar design: 14 August 1975, 07:45, Helsinki, female.
 # Natal 乙卯 Yi Mao, 甲申 Jia Shen, 壬辰 Ren Chen, 甲辰 Jia Chen; Day Master 壬 Ren.
@@ -101,7 +100,7 @@ def luck_interactions(pillars, *luck):
 class TestApiLuckReading(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
         cls.canon = load_canon()
 
     def four_pillars(self, body):

@@ -1098,7 +1098,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('.relationship-luck-heading').textContent(), 'With the luck pillar');
       const luckChips = page.locator('.relationship-luck-heading ~ .relationship-chip');
       // Each named as the natal ones are; in English the canon's line follows (luck readings).
-      assert.deepEqual(await luckChips.evaluateAll((chips) => chips.map((chip) => chip.children[1].textContent.trim())),
+      assert.deepEqual(await luckChips.evaluateAll((chips) => chips.map((chip) => chip.querySelector('.relationship-mark + span').textContent.trim())),
         ['Month–Luck · Stem combination', 'Hour–Luck · Stem combination']);
       // Each arc's ink as it reads: in the ink, or receded. No line in the panel points.
       const inks = async () => {
