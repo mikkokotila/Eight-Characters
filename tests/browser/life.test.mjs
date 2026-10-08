@@ -35,7 +35,8 @@ function row(page, path) {
       tile: text(button.querySelector('.life-tile')),
       name: text(button.querySelector('.life-phase-name').firstChild),
       role: text(button.querySelector('.life-phase-role')),
-      years: text(button.querySelector('.life-phase-years')),
+      // As shown: the age at its start shows only with Pillars only.
+      years: button.querySelector('.life-phase-years').innerText.replace(/\s+/g, ' ').trim(),
       label: button.getAttribute('aria-label'),
     };
   });
@@ -49,7 +50,7 @@ function decadeMarks(page, sequence) {
       mark.closest('.life-cell').dataset.pillar, mark.dataset.lane, mark.dataset.relationship,
       mark.querySelector('b')?.textContent ?? '', mark.style.getPropertyValue('--at').trim(),
     ]),
-    bars: [...row.querySelectorAll('.life-bar')].map((bar) => [
+    bars: [...row.querySelectorAll('.life-run')].map((bar) => [
       bar.closest('.life-cell').dataset.pillar, bar.dataset.lane, bar.style.getPropertyValue('--to').trim(),
     ]),
     links: [...row.querySelectorAll('.life-link')].map((link) => [link.dataset.relationship, link.style.gridColumn]),
@@ -84,6 +85,17 @@ function focused(page) {
     if (node.dataset.luck) return `chip ${node.dataset.luck}`;
     return node.id || node.textContent.replace(/\s+/g, ' ').trim();
   });
+}
+
+// A row chosen as a reader reaches it: scrolled to just under the grid's head, which
+// stays at the top, and so clear of a page open as a sheet over the foot of a phone.
+async function choose(page, path) {
+  await page.locator(`#life [data-life="${path}"]`).evaluate((node) => {
+    const head = document.getElementById('life-head');
+    node.scrollIntoView({ block: 'start' });
+    window.scrollBy(0, -(parseFloat(getComputedStyle(head).top) + head.offsetHeight + 8));
+  });
+  await click(page, `#life [data-life="${path}"]`);
 }
 
 const PHASE_ROWS = ['before', ...Array.from({ length: 10 }, (_, index) => [`${index + 1}/stem`, `${index + 1}/branch`]).flat()];
@@ -178,20 +190,20 @@ for (const profile of profiles) {
       // A stem's line runs for its phase; a branch's for the decade.
       const lines = await page.evaluate(() => Object.fromEntries([4, 5].map((sequence) => {
         const decade = document.querySelector(`#life .life-row[data-life-row="${sequence}"] .life-block`).getBoundingClientRect();
-        const bar = document.querySelector(`#life .life-row[data-life-row="${sequence}"] .life-bar`).getBoundingClientRect();
+        const bar = document.querySelector(`#life .life-row[data-life-row="${sequence}"] .life-run`).getBoundingClientRect();
         return [sequence, Math.round((bar.height / decade.height) * 10) / 10];
       })));
       assert.ok(lines[4] > 0.8 && lines[5] > 0.3 && lines[5] < 0.5, JSON.stringify(lines));
       // Marks are drawn on wide screens; on a phone their lines say it.
       const shown = await page.locator('#life .life-mark').evaluateAll((marks) => marks.filter((mark) => mark.getClientRects().length > 0).length);
       assert.equal(shown > 0, profile.name === 'desktop');
-      assert.ok(await page.locator('#life .life-bar').evaluateAll((bars) => bars.every((bar) => bar.getClientRects().length > 0)));
+      assert.ok(await page.locator('#life .life-run').evaluateAll((bars) => bars.every((bar) => bar.getClientRects().length > 0)));
     });
 
     check('a phase chosen in the grid is chosen everywhere, and pressed again closes its page', async (page) => {
       await openSample(page);
       await showLuck(page);
-      await click(page, '#life [data-life="4/branch"]');
+      await choose(page, '4/branch');
       assert.equal(await linkPart(page, 'luck'), '4/branch');
       assert.equal(await linkPart(page, 'topic'), 'luck/4/branch');
       assert.equal(await page.locator('.pillar.is-luck').getAttribute('data-luck-state'), 'on');
@@ -210,17 +222,17 @@ for (const profile of profiles) {
       assert.deepEqual(chosen.setAside, ['stem']);
       assert.deepEqual(chosen.ringed, ['hour branch', 'day branch', 'month branch', 'year branch']);
       // Pressed again, the page closes and the decade stays in the chart.
-      await click(page, '#life [data-life="4/branch"]');
+      await choose(page, '4/branch');
       assert.equal(await page.locator('#luck-detail').isVisible(), false);
       assert.equal(await linkPart(page, 'luck'), '4/branch');
       assert.deepEqual((await state(page)).expanded, []);
       assert.deepEqual((await state(page)).chosen, ['4/branch']);
       // 己丑 Ji Chou's stem phase: its stem combinations ring the stems; in its branch phase
       // they rest, and their marks grow quiet.
-      await click(page, '#life [data-life="5/stem"]');
+      await choose(page, '5/stem');
       assert.deepEqual((await state(page)).ringed, ['hour stem', 'month stem']);
       assert.deepEqual((await state(page)).quiet, []);
-      await click(page, '#life [data-life="5/branch"]');
+      await choose(page, '5/branch');
       assert.deepEqual((await state(page)).ringed, []);
       assert.deepEqual((await state(page)).quiet, ['stem_combination:1:hour-luck', 'stem_combination:1:month-luck']);
       await screenshot(page, `${profile.name}-life-chosen`);
@@ -229,16 +241,16 @@ for (const profile of profiles) {
     check('a page opened from the grid gives focus back to its row; one opened from the ribbon, to its chip', async (page) => {
       await openSample(page);
       await showLuck(page);
-      await click(page, '#life [data-life="4/stem"]');
+      await choose(page, '4/stem');
       await page.keyboard.press('Escape');
       await settled(page);
       assert.equal(await page.locator('#luck-detail').isVisible(), false);
       assert.equal(await focused(page), 'row 4/stem');
-      await click(page, '#life [data-life="4/stem"]');
+      await choose(page, '4/stem');
       await click(page, '#chart-panel [data-close-panel]');
       assert.equal(await focused(page), 'row 4/stem');
       // The page's phases move the choice; closing then gives focus to the row now chosen.
-      await click(page, '#life [data-life="2/branch"]');
+      await choose(page, '2/branch');
       await click(page, '#luck-detail [data-luck-phase="stem"]');
       await page.keyboard.press('Escape');
       await settled(page);
@@ -247,7 +259,7 @@ for (const profile of profiles) {
       await click(page, '#luck-ribbon [data-luck="6"]');
       await click(page, '#chart-panel [data-close-panel]');
       assert.equal(await focused(page), 'chip 6');
-      await click(page, '#life [data-life="3/stem"]');
+      await choose(page, '3/stem');
       await click(page, '#luck-ribbon [data-luck="7"]');
       await click(page, '#chart-panel [data-close-panel]');
       assert.equal(await focused(page), 'chip 7');
@@ -352,7 +364,7 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'life'), 'pillars');
       // The head, the marks and today's line fold away; every phase is a line of the list.
       assert.equal(await page.locator('#life-head').isVisible(), false);
-      assert.equal(await page.locator('#life .life-mark, #life .life-bar, #life .life-link, #life .life-today')
+      assert.equal(await page.locator('#life .life-mark, #life .life-run, #life .life-link, #life .life-today')
         .evaluateAll((nodes) => nodes.filter((node) => node.getClientRects().length > 0).length), 0);
       // A line's name, then its role, years and what else it lists, where shown.
       const list = (path) => page.locator(`#life [data-life="${path}"]`).evaluate((button) => {
@@ -378,7 +390,7 @@ for (const profile of profiles) {
         assert.deepEqual(await list('5/branch'), ['Chou', 'Direct Officer · new', null, null]);
       }
       // A line chooses its phase as a row does.
-      await click(page, '#life [data-life="5/branch"]');
+      await choose(page, '5/branch');
       assert.equal(await linkPart(page, 'topic'), 'luck/5/branch');
       assert.equal(await linkPart(page, 'life'), 'pillars');
       // A link names the view; without a gender it names no life at all. Natal, the view
