@@ -1,5 +1,22 @@
 # Browser regression tests
 
+The classic controls suite covers preserved action names and command text, local
+icons on rerendered panels, chart evidence counts, luck and Zi-hour selections,
+localized keyboard descriptions, cancelled 500 ms hovers, hoverable tooltips,
+touch hold versus tap, Escape, reduced motion, dark mode and 320px layouts.
+It also verifies that printing keeps the selected Zi convention as readable text.
+Gender help describes the radio input, a tooltip stays open on return to its trigger,
+and branch help leaves the card's existing turn instructions unobscured.
+Tooltip text remains hoverable while passing clicks through to underlying controls,
+and activating a control cancels pending hover help. The runner emits TAP diagnostics;
+`--suite foundations --name 'text meets WCAG'` isolates its contrast checks.
+
+`EC_NODE` names the Node executable for `python tests/run_checks.py syntax` and
+`python tests/run_checks.py browser --browser chromium`. The browser runner uses
+the same settings below, selects the engine explicitly, and can run the controls
+alone with `--suite controls` or the other regressions with `--exclude controls`.
+`python tests/run_checks.py types` runs Pyright with the current Python environment.
+
 The harness uses Node's built-in test runner and an existing Playwright installation
 with matching browser binaries. It does not install dependencies, add a frontend
 build step, or alter the running app. The server address, its mail folder, the module
@@ -137,12 +154,19 @@ change. It checks:
 - that each line's words are the API's own, first sentence and passage;
 - that kinds of reading stay open from page to page;
 - the Day Master's page, its cycle and ring, and its link after a reload;
+- the ring's labels: every point's stage, its branch by pinyin and character, and
+  the pillars on it, one to a line, and the Day Master over its pinyin in the
+  centre, for the canon's example and for a chart with all four pillars on one
+  branch. For every Day Master, the ring is drawn with the four pillars on every
+  set of stages they can stand on together (13,650 rings), and no line's ink may
+  meet another line, the ring, a point or the figure's edge;
 - that links open their page at their line, one step in the history;
 - R and the arrow keys;
 - that a full panel keeps the page's margins;
 - relationship conditions, stem combinations with and without the Day Master,
   and frames;
-- the refusal of a reading that does not match its chart;
+- the refusal of a reading that does not match its chart, or whose ring lacks a
+  branch's pinyin or contradicts the chart's;
 - print.
 
 The foundations suite's font, glyph and contrast audits also visit the Day

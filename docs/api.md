@@ -305,8 +305,8 @@ The `language` is `en` whatever `lang` is, because the canon is English.
   - `grounds`, on how this stem meets any ground;
   - `cycle`:
     - `stages`: the Day Master's life stage, 1 to 12, on each pillar's branch;
-    - `ring`: the twelve stages in order, each with its `stage`, `branch`,
-      `name` and `chinese`;
+    - `ring`: the twelve stages in order, each with its `stage`, `branch`, the
+      branch's `pinyin`, and the stage's `name` and `chinese`;
     - `introduction`, `mapping_introduction`, the stem's `narrative`, and
       `reconception`.
 - **`pillars`,** for `year`, `month`, `day` and `hour`:
