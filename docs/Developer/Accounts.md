@@ -143,7 +143,8 @@ put on one.
   what it has taken changes nothing, however late it comes. Another account, signed in
   to in another tab, is taken as a sign-in here, with its language, and a dialog asking
   for a sign-in closes, signed in to it. Of one account, the page keeps the language
-  and plan of the later change, from any answer, the newest or not: every change moves
+  and plan of the later change, from any answer (the newest or not, and one for a chart
+  or comparison no longer wanted too): every change moves
   the account's `updated_at` past the last (by a second, within one second or with the
   clock gone back), and every answer carries it, since a check sent after a change may
   read the account before it. An account is told apart by its `key`, a hash of its id,

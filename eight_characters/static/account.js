@@ -384,6 +384,7 @@
         // to it, or, if there was none (signed out elsewhere since), asks for a sign-in
         // again.
         if (at < known) {
+          merge(value);
           if (account !== null) closeSignedIn();
           else askAgain();
           return;
@@ -453,12 +454,13 @@
     // signed in. Before the page lets its session go, it asks whether the browser holds
     // one now: if so, the page takes it and answers true; if not, `letGo` ends it here,
     // and the answer is false. An answer no longer wanted (`wanted`), or older than what
-    // the page has learned since, changes nothing, and the page answers with what it
-    // knows.
+    // the page has learned since, changes nothing of who is signed in, and the page
+    // answers with what it knows; a later change of the account it holds is kept.
     const refusedNow = async (letGo, { wanted = () => true } = {}) => {
       const at = moment();
       const response = await call('GET', '/api/account');
-      if (!wanted() || (at < known && !response.ok)) return account !== null;
+      const late = () => !wanted() || at < known;
+      if (late() && !response.ok) return account !== null;
       if (response.status === 401) {
         known = at;
         letGo();
@@ -466,8 +468,7 @@
       }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (!wanted()) return account !== null;
-      if (at < known) {
+      if (late()) {
         merge(value);
         return account !== null;
       }
@@ -621,6 +622,7 @@
 
     exportButton.addEventListener('click', () => act(exportButton, async () => {
       const named = account.email;
+      const { key } = account;
       const at = moment();
       const response = await call('POST', '/api/account/export', { email: named });
       if (response.status === 409) return elsewhere(at);
@@ -630,7 +632,7 @@
       // Made for the account named, in the session as it was sent. The file is the
       // reader's if the page still names that account, or if the page has learned
       // nothing since: then what it holds is older, and it asks whose the session is.
-      const holds = account !== null && account.email === named;
+      const holds = account !== null && account.key === key;
       if (!holds && at < known) return changed();
       if (holds && at > known) known = at;
       const url = URL.createObjectURL(file);
@@ -715,19 +717,20 @@
     // Whether the session still holds, as the server says: one that ended since the page
     // was served (signed out elsewhere, or unused for 30 days) is forgotten. An answer
     // no longer wanted (`wanted` says), or older than what the page has learned since,
-    // changes nothing, so a sign-in made meanwhile stays; the caller goes no further.
+    // changes nothing of who is signed in, so a sign-in made meanwhile stays, and the
+    // caller goes no further; a later change of the account the page holds is kept.
     // The newest answer is taken whole; one asked for before a language the reader set
     // since is older, and changes nothing.
     const stillSignedIn = async (wanted) => {
       if (!account) return false;
       const at = moment();
       const response = await call('GET', '/api/account');
-      if (!wanted() || (at < known && !response.ok)) return false;
+      const late = () => !wanted() || at < known;
+      if (late() && !response.ok) return false;
       if (response.status === 401) return refusedNow(forget, { wanted });
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
-      if (!wanted()) return false;
-      if (at < known) {
+      if (late()) {
         merge(value);
         return false;
       }

@@ -81,7 +81,10 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
   and one whose session ends before its account arrives asks for a sign-in again,
   asking for no chart meanwhile; a language set while an older check finds the session
   ended signs the page in to that session, one answered after newer checks keeps the
-  language they found, and one saved after a newer check read the old one is kept.
+  language they found, and one saved after a newer check read the old one is kept; a
+  menu check answered late keeps a later change it read, a chart left while its check
+  reads a later language keeps it, and an account made again with its address in
+  another tab shows its own language.
 
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in

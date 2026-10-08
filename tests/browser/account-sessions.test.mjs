@@ -1074,6 +1074,43 @@ for (const profile of profiles) {
       assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'false');
     });
 
+    check('a chart left while its check reads a later language keeps that language', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'left-later' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The next chart is refused, and the refusal held on its way.
+      let releaseChart;
+      const chartHeld = new Promise((resolve) => { releaseChart = resolve; });
+      let refusing = true;
+      await page.route('**/api/four_pillars', async (route) => {
+        if (!refusing) return route.continue();
+        refusing = false;
+        await chartHeld;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      // Another tab sets Finnish. The refused chart's check of the session reads it, and
+      // its answer is held on its way.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.patch('/api/account', { data: { language: 'fi', email: account.email } })).status(), 200);
+      });
+      const check = await holdAnswer(page, '**/api/account');
+      releaseChart();
+      await check.answered;
+      // Back to the form meanwhile: that chart is no longer wanted.
+      await page.goBack();
+      await page.locator('#chart-form').waitFor({ state: 'visible' });
+      // The answer still tells of the account: its menu has Finnish, the later change,
+      // and no sign-in is asked for.
+      check.release();
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      assert.equal(await dialogIsOpen(page), false);
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);
