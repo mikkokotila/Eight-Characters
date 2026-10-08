@@ -927,14 +927,12 @@ document.addEventListener('DOMContentLoaded', () => {
     onShown: renderNotices,
     keyCard: () => cardAt(keyCard),
     // What the luck pillar's period adds to the topics while it shows: Roots, Roles and
-    // Relationships. Natal (null), nothing. Their words can rewrap the topics' row, and
-    // move the chart under the hint.
+    // Relationships. Natal (null), nothing.
     onPeriod: (period) => {
       luckPeriod = period;
       dayMasterContext.setLuck(period);
       relationships.setLuck(period);
       showRelationshipsTopic();
-      followCardHint();
     },
   });
   // The relationships topic names their count, and, while the luck pillar shows, the
@@ -1162,15 +1160,19 @@ document.addEventListener('DOMContentLoaded', () => {
     hintedCard = null;
     cardHint.classList.add('hidden');
   };
-  // The chart moves under the hint as the page scrolls, as the luck pillar comes or goes
-  // (fitCards) and its words rewrap the topics (onPeriod), and as the panel opens or
-  // closes beside it (syncPanel). A card taken away, the luck pillar's as it is hidden,
-  // takes its hint with it.
+  // The chart moves under the hint as the page scrolls; as the luck pillar comes or goes
+  // (fitCards); as what stands above the cards changes its size, the header, the topics
+  // (whose badges controls.js draws a moment later) or the ribbon; and as the panel opens
+  // or closes beside the chart (syncPanel). A card taken away, the luck pillar's as it is
+  // hidden, takes its hint with it.
   const followCardHint = () => {
     if (hintedCard === null) return;
     if (hintedCard.isConnected) placeCardHint();
     else hideCardHint();
   };
+  const aboveCards = new ResizeObserver(followCardHint);
+  ['.chart-bar', '#day-master-context', '#luck-ribbon'].forEach((selector) => aboveCards.observe(chartView.querySelector(selector)));
+  aboveCards.observe(pillarsContainer);
   pillarsContainer.addEventListener('pointerover', (event) => {
     const card = event.target.closest('.card');
     if (!card || event.pointerType !== 'mouse' || activePress) return;

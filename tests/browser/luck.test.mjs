@@ -725,7 +725,8 @@ for (const profile of profiles) {
       });
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar shown.');
-      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck', ['luck-ribbon']]);
+      // Shown, the natal arcs recede for the luck pillar's (is-luck-shown).
+      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck is-luck-shown', ['luck-ribbon']]);
       assert.equal(await focused(page), 'year stem');
       // L again hides them, and the chart is drawn as it was.
       await page.keyboard.press('l');
@@ -1079,14 +1080,19 @@ for (const profile of profiles) {
     });
 
     check('the topics carry what the luck pillar adds while it shows, and natal read as a chart\'s without one', async (page) => {
-      const topics = () => page.evaluate(() => [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
-        const box = button.getBoundingClientRect();
-        return {
-          text: button.textContent.replace(/\s+/g, ' ').trim(),
-          label: button.getAttribute('aria-label'),
-          box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
-        };
-      }));
+      // Each topic as it reads, and its box within the topics' row: a chart with a gender has
+      // the Natal / With luck switch in its header, above the row.
+      const topics = () => page.evaluate(() => {
+        const row = document.getElementById('day-master-context').getBoundingClientRect();
+        return [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
+          const box = button.getBoundingClientRect();
+          return {
+            text: button.textContent.replace(/\s+/g, ' ').trim(),
+            label: button.getAttribute('aria-label'),
+            box: `${Math.round(box.x - row.x)},${Math.round(box.y - row.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
+          };
+        });
+      });
       // Each topic's icon badge (controls.js), by topic.
       const badges = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#context-controls button, #relationships-topic')]
         .map((button) => [button.dataset.context ?? 'relationships', button.querySelector('.control-caption')?.dataset.caption ?? null])));
