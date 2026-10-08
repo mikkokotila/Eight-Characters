@@ -100,16 +100,23 @@
       ];
       return { marks, need: Math.max(stems.length, whole.length) + 1 };
     };
+    // A character's runs: each relationship's line for as long as it acts, in its kind's
+    // line (the phone's only sign of its kind, where the marks are not drawn). Several on
+    // one character and lane stand side by side around the lane, a spread apart.
+    const runsMarkup = (runs) => ['stem', 'branch'].map((lane) => {
+      const here = runs.filter((run) => run.lane === lane);
+      return here.map((run, index) => `<span class="life-run" ${run.attrs} style="--to: ${run.to}; --run: ${index - (here.length - 1) / 2}"></span>`).join('');
+    }).join('');
     const decadeMarkup = (decade, row) => {
       const { marks, need } = layout(decade);
-      const cells = Object.fromEntries(NATAL.map((pillar) => [pillar, { bars: new Set(), marks: '' }]));
+      const cells = Object.fromEntries(NATAL.map((pillar) => [pillar, { runs: [], marks: '' }]));
       const links = [];
       marks.forEach(({ r, to, at }) => {
         const natal = ordered(r).filter((m) => m.pillar !== 'luck');
         const label = nameOf(r);
         const attrs = `data-kind="${esc(r.kind)}" data-lane="${r.component}" data-relationship="${esc(r.id)}" data-phases="${r.phases.join(' ')}"`;
         natal.forEach((m, index) => {
-          cells[m.pillar].bars.add(`<span class="life-run" data-lane="${r.component}" style="--to: ${to}"></span>`);
+          cells[m.pillar].runs.push({ attrs, to, lane: r.component });
           // The first natal member's mark names the characters, in the chart's order.
           cells[m.pillar].marks += `<span class="life-mark" ${attrs} style="--at: ${at}" title="${esc(label)}">
               <span class="relationship-mark"></span>${index === 0 ? `<b>${esc(ordered(r).map((x) => x.pinyin).join('-'))}</b>` : ''}</span>`;
@@ -122,7 +129,7 @@
       });
       return `<div class="life-row" data-life-row="${decade.sequence}" style="--row: ${row}; --need: ${need}">
           <div class="life-block" aria-hidden="true">${PHASES.map((phase) => `<span class="life-half" data-life-half="${decade.sequence}/${phase}"></span>`).join('')}</div>
-          ${NATAL.map((pillar) => `<div class="life-cell" data-pillar="${pillar}" aria-hidden="true">${[...cells[pillar].bars].join('')}${cells[pillar].marks}</div>`).join('')}
+          ${NATAL.map((pillar) => `<div class="life-cell" data-pillar="${pillar}" aria-hidden="true">${runsMarkup(cells[pillar].runs)}${cells[pillar].marks}</div>`).join('')}
           ${links.join('')}
           <div class="life-rail">${PHASES.map((phase) => phaseButton(decade, phase)).join('')}</div>
         </div>`;
@@ -238,7 +245,7 @@
       });
       body.querySelectorAll('.life-row[data-life-row]').forEach((row) => {
         const here = decade !== null && row.dataset.lifeRow === String(decade.sequence);
-        row.querySelectorAll('.life-mark, .life-link').forEach((mark) => {
+        row.querySelectorAll('.life-mark, .life-link, .life-run').forEach((mark) => {
           mark.classList.toggle('is-quiet', here && !mark.dataset.phases.split(' ').includes(decade.phase));
         });
       });

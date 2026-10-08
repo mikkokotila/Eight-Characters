@@ -145,7 +145,8 @@ marks of what rests grow quiet. Hiding the luck pillar takes the grid away with 
 focus that was on a row goes to the chart's cards.
 
 On a phone the grid keeps its five narrow columns: the head stands each stem over its
-branch, the marks are drawn as lines only, and each row gives its character's tile, name
+branch, the marks are drawn as their lines only, each relationship's in its kind's line,
+side by side on one character, and each row gives its character's tile, name
 and the year it starts.
 
 **Pillars only**, the switch beside the grid's title, folds the natal columns away: the

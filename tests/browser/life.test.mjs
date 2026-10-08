@@ -50,8 +50,11 @@ function decadeMarks(page, sequence) {
       mark.closest('.life-cell').dataset.pillar, mark.dataset.lane, mark.dataset.relationship,
       mark.querySelector('b')?.textContent ?? '', mark.style.getPropertyValue('--at').trim(),
     ]),
+    // Each relationship's run under each natal member: its pillar, lane and kind, how long
+    // it runs, and its place beside the others on that character.
     bars: [...row.querySelectorAll('.life-run')].map((bar) => [
-      bar.closest('.life-cell').dataset.pillar, bar.dataset.lane, bar.style.getPropertyValue('--to').trim(),
+      bar.closest('.life-cell').dataset.pillar, bar.dataset.lane, bar.dataset.kind,
+      bar.style.getPropertyValue('--to').trim(), bar.style.getPropertyValue('--run').trim(),
     ]),
     links: [...row.querySelectorAll('.life-link')].map((link) => [link.dataset.relationship, link.style.gridColumn]),
   }));
@@ -176,7 +179,11 @@ for (const profile of profiles) {
           ['month', 'branch', 'harmony_frame:18:month-hour-luck', '', '0.5'],
           ['year', 'branch', 'punishment:34:year-luck', 'Mao-Zi', '0.75'],
         ],
-        bars: [['hour', 'branch', '1'], ['day', 'branch', '1'], ['month', 'branch', '1'], ['year', 'branch', '1']],
+        bars: [
+          ['hour', 'branch', 'harmony_frame', '1', '0'], ['day', 'branch', 'harmony_frame', '1', '0'],
+          ['month', 'branch', 'harmony_frame', '1', '-0.5'], ['month', 'branch', 'harmony_frame', '1', '0.5'],
+          ['year', 'branch', 'punishment', '1', '0'],
+        ],
         links: [['harmony_frame:18:month-day-luck', '2 / 4'], ['harmony_frame:18:month-hour-luck', '1 / 4']],
       });
       // 己丑 Ji Chou's Ji combines with the Month's and the Hour's Jia: a stem's, under the
@@ -186,7 +193,7 @@ for (const profile of profiles) {
           ['hour', 'stem', 'stem_combination:1:hour-luck', 'Jia-Ji', '0.3333333333333333'],
           ['month', 'stem', 'stem_combination:1:month-luck', 'Jia-Ji', '0.16666666666666666'],
         ],
-        bars: [['hour', 'stem', '0.5'], ['month', 'stem', '0.5']],
+        bars: [['hour', 'stem', 'stem_combination', '0.5', '0'], ['month', 'stem', 'stem_combination', '0.5', '0']],
         links: [],
       });
       // A stem's line runs for its phase; a branch's for the decade.
@@ -196,6 +203,12 @@ for (const profile of profiles) {
         return [sequence, Math.round((bar.height / decade.height) * 10) / 10];
       })));
       assert.ok(lines[4] > 0.8 && lines[5] > 0.3 && lines[5] < 0.5, JSON.stringify(lines));
+      // Each run is drawn in its kind's line, the phone's only sign of the kind: a frame's
+      // double, a punishment's dashes, a combination's solid line.
+      const lineStyles = (sequence) => page.locator(`#life .life-row[data-life-row="${sequence}"] .life-run`).evaluateAll((runs) =>
+        runs.map((run) => `${run.dataset.kind} ${getComputedStyle(run).borderLeftStyle}`));
+      assert.deepEqual(await lineStyles(4), [...Array(4).fill('harmony_frame double'), 'punishment dashed']);
+      assert.deepEqual(await lineStyles(5), ['stem_combination solid', 'stem_combination solid']);
       // Marks are drawn on wide screens; on a phone their lines say it.
       const shown = await page.locator('#life .life-mark').evaluateAll((marks) => marks.filter((mark) => mark.getClientRects().length > 0).length);
       assert.equal(shown > 0, profile.name === 'desktop');
