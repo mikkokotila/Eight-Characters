@@ -133,23 +133,26 @@ put on one.
 - **A refusal is checked before the page signs out.** A request refused for want of a
   session (`401`) may have been sent before another tab signed in: the page asks once
   more (`GET /api/account`), takes a session the browser holds after all, and asks for
-  the chart again; only a second refusal signs the page out. Of the same account, this
-  check takes only who it is, and a chart left meanwhile asks for nothing.
+  the chart again; only a second refusal signs the page out. A chart left meanwhile
+  asks for nothing.
 - **The newest answer decides who is signed in.** Tabs share the session cookie, and
   answers come in any order. Each answer tells of the cookie at a moment: a request
   that carries it, of the cookie as it was sent; an answer that sets or removes it
   (signing in, signing out, deleting the account), of the cookie from when it comes.
   The page takes who is signed in from the newest of these, and an answer older than
-  what it has taken changes nothing, however late it comes. So a sign-in whose answer
-  sets its cookie after a check found another tab's account signs the page in, and
-  one overtaken by a newer answer (another tab's account, or the session ended since)
-  closes signed in to that account, or asks for a sign-in again.
+  what it has taken changes nothing, however late it comes. The newest answer is
+  taken whole, the account's language and plan with it; another account, signed in to
+  in another tab, is taken as a sign-in here, with its language, and a dialog asking
+  for a sign-in closes, signed in to it. So a sign-in whose answer sets its cookie
+  after a check found another tab's account signs the page in, and one overtaken by a
+  newer answer (another tab's account, or the session ended since) closes signed in to
+  that account, or asks for a sign-in again.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
-  cannot ask themselves. Of the account, the check takes only who it is: another
-  account, signed in to in another tab, is taken as a sign-in here, with its language;
-  the same account keeps what the page knows of it (a language set in the dialog
-  meanwhile stays). The answer to a check for a comparison no longer
+  cannot ask themselves. Another account, signed in to in another tab, is taken as a
+  sign-in here, with its language; a check asked for before a language set in the
+  dialog meanwhile is older, and the language stays. The answer to a check for a
+  comparison no longer
   wanted, or older than what the page has learned since, changes nothing, and signing
   out abandons a comparison on its way. **The explorer**, given a birth, links to the start page to sign
   in.
@@ -162,10 +165,13 @@ put on one.
   whole (a language another tab set shows): an account signed in to in another tab is
   taken as a sign-in here, and a session ended elsewhere asks for a sign-in. Its
   actions name the account (see the API above): one refused with `409` changed
-  nothing, and the menu says so and asks again. An action answered after the page has
-  taken another account, or found the session ended, does nothing more, and says so; a
-  sign-out or deletion that went through still signs the page out, since its answer
-  removed the cookie.
+  nothing, and the menu says so and asks again. An action's answer is the newest of
+  its moment too: if the page has learned nothing since, it is the session's (a
+  language set there signs the page in to its account, even after an older check found
+  the session ended), and if the page has learned since, it keeps that, and the action
+  does nothing more and says so (a language another tab set since stays). A sign-out or
+  deletion that went through still signs the page out, since its answer removed the
+  cookie.
 
 ## Settings
 

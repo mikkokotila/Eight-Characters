@@ -79,7 +79,9 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
 - that the newest answer decides who is signed in: a sign-in whose answer sets its
   cookie after the page took another tab's session signs the page in, in its language,
   and one whose session ends before its account arrives asks for a sign-in again,
-  asking for no chart meanwhile.
+  asking for no chart meanwhile; a language set while an older check finds the session
+  ended signs the page in to that session, and one answered after newer checks keeps
+  the language they found.
 
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
