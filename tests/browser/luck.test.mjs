@@ -1123,7 +1123,9 @@ for (const profile of profiles) {
       // The Roots page adds the luck branch's root, and points at it.
       await click(page, 'button[data-context="roots"]');
       const luckRoot = page.locator('#context-detail .relationship-member').last();
-      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'Luck Chou 丑 Yin Earth Gui 癸 · Yin Water Mid Rob Wealth · Same element, opposite polarity');
+      // As it reads on screen: the position in capitals and the qi in lower case, as the
+      // natal members read.
+      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'LUCK Chou 丑 Yin Earth Gui 癸 · Yin Water mid Rob Wealth · Same element, opposite polarity');
       assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-context-source')), true);
       // The Roles page adds what the luck pillar brings in the phase.
       await click(page, 'button[data-context="roles"]');
