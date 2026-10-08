@@ -199,13 +199,17 @@ class TestRunBackup(BackupTestCase):
             self.assertEqual(self.status(), '')
 
     def test_a_link_in_the_checkout_stops_the_run(self) -> None:
-        self.store.create_user('reader@example.com', 'fi')
+        # Neither user's records take the shard of the link (ids are random, and one in
+        # 256 began with ff, where the link could not be made).
+        with patch('eight_characters.accounts.store.new_id', side_effect=['00' + '1' * 30]):
+            self.store.create_user('reader@example.com', 'fi')
         self.backup()
         outside = self.directory / 'outside'
         outside.mkdir()
         (self.checkout / 'users' / 'ff').symlink_to(outside, target_is_directory=True)
         self.commit_by_hand('a link')
-        self.store.create_user('later@example.com', 'fi')
+        with patch('eight_characters.accounts.store.new_id', side_effect=['01' + '2' * 30]):
+            self.store.create_user('later@example.com', 'fi')
         with self.assertRaises(BackupError) as caught:
             self.backup()
         self.assertIn('a link, which it never writes: users/ff', str(caught.exception))
