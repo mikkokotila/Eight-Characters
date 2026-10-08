@@ -1140,12 +1140,18 @@ for (const profile of profiles) {
       });
       const again = await newAccount(playwright, { language: 'en', email: first.email });
       await page.context().addCookies(again.cookies);
+      // Deleting the first is begun meanwhile, its address typed.
+      await page.locator('#account-delete-open').click();
+      await page.locator('#account-delete-email').fill(first.email);
       await page.locator('#account-export').click();
       await page.locator('#account-status').filter({ hasText: 'The account changed meanwhile: nothing was done.' }).waitFor();
-      // The menu asks whose the session is, and shows the account made again, in English.
+      // The menu asks whose the session is, and shows the account made again, in English,
+      // with the deletion begun for the first closed and empty.
       await page.waitForFunction(() =>
         document.querySelector('[data-account-lang="en"]').getAttribute('aria-pressed') === 'true');
       assert.equal(downloads, 0);
+      assert.equal(await page.locator('#account-delete').isVisible(), false);
+      assert.equal(await page.locator('#account-delete-email').inputValue(), '');
     });
 
     check("a code answered after the page took another tab's session leaves the account's menu", async (page) => {

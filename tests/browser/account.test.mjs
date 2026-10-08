@@ -212,6 +212,135 @@ for (const profile of profiles) {
       assert.equal(await statusOf(account), 401);
     });
 
+    check('going back to a chart after signing out shows no chart, and asks for a sign-in', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'back-out' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // Edit: the form, with the chart's address a step back. Signed out there.
+      await page.locator('#back-btn').click();
+      await page.locator('#chart-form').waitFor({ state: 'visible' });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-sign-out').click();
+      await page.locator('#account-notice').filter({ hasText: 'You are signed out.' }).waitFor();
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      // Back to the chart's address: the chart is asked for, which needs a sign-in.
+      await page.goBack();
+      await dialogOpens(page);
+      assert.equal(await page.locator('#chart-view').isVisible(), false);
+    });
+
+    check("a chart on screen is asked for again in the language set in the account's menu", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'chart-tongue' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      const asked = chartsAskedFor(page);
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('account');
+      await page.keyboard.press('Enter');
+      await dialogOpens(page);
+      await page.locator('[data-account-lang="fi"]:not([disabled])').click();
+      await page.locator('#account-status').filter({ hasText: 'Tallennettu.' }).waitFor();
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy'));
+      await settled(page);
+      assert.deepEqual(asked.map((body) => body.lang), ['en', 'fi']);
+      assert.equal(await page.locator('#chart-language button[data-chart-lang="fi"]').getAttribute('aria-pressed'), 'true');
+      assert.equal(new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length)).get('lang'), 'fi');
+    });
+
+    check("a chart on its way while the account's language is set in its menu is drawn in the language set last", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'way-tongue' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      const asked = chartsAskedFor(page);
+      // The chart's first two answers are held, each while the language is set.
+      const reached = [];
+      const holding = [0, 1].map(() => new Promise((resolve) => { reached.push(resolve); }));
+      const releases = [];
+      let answers = 0;
+      await page.route('**/api/four_pillars', async (route) => {
+        const index = answers;
+        answers += 1;
+        if (index < 2) {
+          await new Promise((resolve) => {
+            releases[index] = resolve;
+            reached[index]();
+          });
+        }
+        return route.fallback();
+      });
+      await askForChart(page);
+      await holding[0];
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('[data-account-lang="fi"]:not([disabled])').click();
+      await page.locator('#account-status').filter({ hasText: 'Tallennettu.' }).waitFor();
+      // The answer in English comes: the chart is asked for again in Finnish, which is held
+      // while English is set again.
+      releases[0]();
+      await holding[1];
+      await page.locator('[data-account-lang="en"]:not([disabled])').click();
+      await page.locator('#account-status').filter({ hasText: 'Saved.' }).waitFor();
+      await page.locator('#account-dialog [data-close-dialog]').click();
+      await dialogCloses(page);
+      // The answer in Finnish comes after: the chart is asked for again in English.
+      releases[1]();
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      assert.deepEqual(asked.map((body) => body.lang), ['en', 'fi', 'en']);
+      assert.equal(new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length)).get('lang'), 'en');
+      assert.equal(await page.locator('#chart-language button[data-chart-lang="en"]').getAttribute('aria-pressed'), 'true');
+      assert.match(await page.locator('#chart-solar-time').textContent(), /^True solar time/);
+    });
+
+    check('swapping a comparison after the session ended asks for a sign-in first', async (page) => {
+      // A Finnish account, on a page in English.
+      const account = await newAccount(playwright, { language: 'fi', label: 'swap-ended' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      // Signed out on every device, from another one; then the sides are swapped.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
+      });
+      await page.locator('#compare-swap').click();
+      // The page asks for the sign-in the frames cannot, before they ask for their charts.
+      await dialogOpens(page);
+      assert.equal(await text(page, '#account-notice'), 'Your session ended. Sign in again.');
+      await signInThroughDialog(page, account.email);
+      // The sides are swapped, and both charts drawn in the account's language, as
+      // signing in sets it.
+      for (const side of ['a', 'b']) {
+        const frame = page.frameLocator(`#compare-charts .compare-frame[data-side="${side}"]`);
+        await frame.locator('#chart-view:not(.hidden) #pillars .card').first().waitFor({ state: 'attached' });
+        assert.equal(await frame.locator('html').getAttribute('lang'), 'fi');
+      }
+      const address = new URLSearchParams(new URL(page.url()).hash.slice('#compare?'.length));
+      assert.equal(new URLSearchParams(address.get('a')).get('date'), '1990-05-09');
+      assert.equal(new URLSearchParams(address.get('b')).get('date'), BIRTH.date);
+      assert.deepEqual(['a', 'b'].map((key) => new URLSearchParams(address.get(key)).get('lang')), ['fi', 'fi']);
+      assert.equal(await page.locator('#compare-language button[data-compare-lang="fi"]').getAttribute('aria-pressed'), 'true');
+    });
+
     check('deleting the account needs its address typed again', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'delete' });
       await signInPage(page, account);
