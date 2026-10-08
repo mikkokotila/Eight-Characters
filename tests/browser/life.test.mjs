@@ -429,6 +429,8 @@ for (const profile of profiles) {
       await page.emulateMedia({ media: 'print' });
       assert.equal(await page.locator('#life').isVisible(), true);
       assert.equal(await page.locator('#life-head').evaluate((node) => getComputedStyle(node).position), 'static');
+      // Its title prints, and its view switch, a control, does not.
+      assert.deepEqual([await page.locator('#life-title').isVisible(), await page.locator('#life-view').isVisible()], [true, false]);
       await page.emulateMedia({ media: 'screen' });
     });
   });
