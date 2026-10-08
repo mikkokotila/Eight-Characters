@@ -458,7 +458,11 @@
       const another = !same(told);
       known = at;
       account = later(told);
-      if (another) onLanguage(account.language);
+      if (another) {
+        // A deletion begun for the account held before is not carried over to this one.
+        closeDeleting();
+        onLanguage(account.language);
+      }
       if (another && dialog.open && step !== 'menu') closeSignedIn();
       else refresh();
     };

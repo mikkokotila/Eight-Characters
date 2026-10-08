@@ -42,8 +42,12 @@ Ctrl+K, on a chart) opens it:
 The account's email address and language, when it was made and changed, and its
 sessions. The IP address a code is asked from is kept with that request, for the
 hourly limits on codes; a request is dropped once it is an hour old, when the next
-code is asked for or the account's data is downloaded. Deleting the account leaves its requests until then, so that the
-limits hold. Charts are calculated, not stored.
+code is asked for or the account's data is downloaded. Deleting the account leaves its
+requests until then, so that the limits hold. Charts are calculated, not stored.
+
+Accounts are also kept in an encrypted backup, which only the site's owner can read. A
+deleted account leaves it at the backup's next run; earlier copies stay in the
+backup's history until the owner clears it.
 
 A session lasts 30 days from signing in, and using the site in its last 15 days
 extends it to 30 days again, for at most 400 days from signing in. After it ends, or
