@@ -191,8 +191,14 @@ class TestApiLuckReading(unittest.TestCase):
             # Without a pairing, the list's line is the entry's own first sentence.
             self.assertEqual(read['line'], sentences(unlabelled[0]['text'])[0])
         # A luck stem that combines with the Day Master reads the Day Master's paragraph.
+        # 丁酉 Ding You: its 丁 Ding combines with 壬 Ren, and its 酉 You with the Day's
+        # 辰 Chen, one of the six harmonies; only a stem combination has that paragraph.
         with_dm = luck_reading(SAMPLE, ('丁', '酉'))['decades'][0]['relationships']
-        own = [r for key, r in with_dm.items() if key.endswith(':day-luck')]
+        own = [
+            r
+            for key, r in with_dm.items()
+            if key.startswith('stem_combination:') and key.endswith(':day-luck')
+        ]
         self.assertEqual(len(own), 1)
         self.assertEqual(
             own[0]['with_day_master']['label'],
