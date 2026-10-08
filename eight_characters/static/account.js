@@ -340,6 +340,9 @@
         if (response.status !== 202) {
           throw new Error(t(CODE_REFUSALS[response.status] ?? 'account_server_error', { status: response.status }));
         }
+        // The page took a session meanwhile (another tab's): the code asked for changes
+        // nothing here, and the account's menu stays.
+        if (account !== null) return;
         asked = { email: address, purpose };
         noticeKey = null;
         step = 'code';
@@ -353,6 +356,7 @@
       } finally {
         resetCheck();
         setBusy(send, false, 'account_send');
+        askedMeanwhile();
       }
     });
 
@@ -395,6 +399,7 @@
         setStatus(codeStatus, err.message);
       } finally {
         setBusy(verify, false, 'account_continue');
+        askedMeanwhile();
       }
     });
 
@@ -521,8 +526,8 @@
         askedMeanwhile();
       }
     };
-    // An action or a question ended: if the menu opened again meanwhile, who the
-    // session is is asked now, since the answer may have changed since.
+    // An action, a question or a step of signing in ended: if the menu opened again
+    // meanwhile, who the session is is asked now, since the answer may have changed.
     const askedMeanwhile = () => {
       if (!confirmLater) return;
       confirmLater = false;

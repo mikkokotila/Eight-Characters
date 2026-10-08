@@ -1135,6 +1135,34 @@ for (const profile of profiles) {
       assert.equal(downloads, 0);
     });
 
+    check("a code answered after the page took another tab's session leaves the account's menu", async (page) => {
+      const first = await newAccount(playwright, { language: 'en', label: 'code-late-a' });
+      const other = await newAccount(playwright, { language: 'en', label: 'code-late-b' });
+      await signInPage(page, first);
+      const chart = await refusedWhileSigningIn(page, first);
+      // A code is asked for to sign in again; the server sends it, and its answer is held
+      // on its way.
+      const asked = await holdAnswer(page, '**/api/account/code', 'POST');
+      await page.locator('#account-email').fill(first.email);
+      await turnstileAnswered(page);
+      await page.locator('#account-send').click();
+      await asked.answered;
+      // Another tab signs in to another account, which the refused chart's check, released
+      // now, takes: the dialog closes, signed in. The menu is opened again and names it.
+      await page.context().addCookies(other.cookies);
+      chart.release();
+      await dialogCloses(page);
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: other.email }).waitFor();
+      // The code's answer comes last: the menu stays, with its actions.
+      asked.release();
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('#account-menu').isVisible(), true);
+      assert.equal(await page.locator('#account-code-step').isVisible(), false);
+      assert.equal(await page.locator('#account-export').isEnabled(), true);
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);
