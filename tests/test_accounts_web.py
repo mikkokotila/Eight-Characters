@@ -318,9 +318,13 @@ class TestTheAccount(AccountApiTestCase):
         return {'key': account_key(user)}
 
     def test_its_language_changes(self) -> None:
-        reply = self.client.patch('/api/account', json={**self.this(), 'language': 'en'})
+        reply = self.client.patch(
+            '/api/account', json={**self.this(), 'language': 'en'}
+        )
         self.assertEqual((reply.status_code, reply.json()['language']), (200, 'en'))
-        unknown = self.client.patch('/api/account', json={**self.this(), 'language': 'sv'})
+        unknown = self.client.patch(
+            '/api/account', json={**self.this(), 'language': 'sv'}
+        )
         self.assertEqual(unknown.status_code, 400)
         forged = self.client.patch(
             '/api/account', json={**self.this(), 'language': 'fi'}, headers=ELSEWHERE
