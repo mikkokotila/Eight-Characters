@@ -35,6 +35,12 @@ async function bothDrawn(page) {
   await page.locator('#compare-view').waitFor({ state: 'visible' });
   return [await side(page, 'a'), await side(page, 'b')];
 }
+// A side's chart drawn again in Finnish: its true solar time, written as the chart is
+// drawn, reads so. The frame's own words, and the pair's address, take a language at once.
+async function drawnInFinnish(page, key) {
+  await page.frameLocator(`#compare-charts .compare-frame[data-side="${key}"]`)
+    .locator('#chart-solar-time').filter({ hasText: /^Todellinen aurinkoaika/ }).waitFor({ state: 'attached' });
+}
 const pairIn = (url) => {
   const params = new URLSearchParams(new URL(url).hash.slice('#compare?'.length));
   return { a: new URLSearchParams(params.get('a') ?? ''), b: params.has('b') ? new URLSearchParams(params.get('b')) : null };
@@ -176,6 +182,7 @@ for (const profile of profiles) {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
         return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
       });
+      for (const key of ['a', 'b']) await drawnInFinnish(page, key);
       assert.equal(await page.locator('#compare-close').textContent(), 'Sulje vertailu');
       assert.equal(await page.locator('#compare-language button[data-compare-lang="fi"]').getAttribute('aria-pressed'), 'true');
       for (const key of ['a', 'b']) {
@@ -210,15 +217,13 @@ for (const profile of profiles) {
       await side(page, 'a');
       await holding;
       await page.locator('#compare-language button[data-compare-lang="fi"]').click();
-      await page.waitForFunction(() =>
-        new URLSearchParams(new URLSearchParams(location.hash.slice('#compare?'.length)).get('a')).get('lang') === 'fi');
+      await drawnInFinnish(page, 'a');
       // The second chart's answer, in English, comes after: it is asked for again in Finnish.
       release();
-      await page.waitForFunction(() => {
-        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
-        return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
-      });
+      await drawnInFinnish(page, 'b');
       assert.deepEqual(asked, ['en', 'fi']);
+      const pair = pairIn(page.url());
+      assert.deepEqual([pair.a.get('lang'), pair.b.get('lang')], ['fi', 'fi']);
       if (profile.name === 'mobile') await page.locator('#compare-sides button[data-compare-side="b"]').click();
       const { frame } = await side(page, 'b');
       assert.equal(await frame.locator('html').getAttribute('lang'), 'fi');
@@ -259,11 +264,74 @@ for (const profile of profiles) {
       assert.equal(checks, 1);
       // Then it takes a change again.
       await page.locator('#compare-language button[data-compare-lang="fi"]').click();
+      for (const key of ['a', 'b']) await drawnInFinnish(page, key);
+    });
+
+    check('a check of the session that fails says so, and the comparison stays as it was', async (page) => {
+      await compareWithSecond(page);
+      await bothDrawn(page);
+      // The server fails the page's first check of the session.
+      let failed = false;
+      await page.route((url) => url.pathname === '/api/account', async (route) => {
+        if (!failed && route.request().method() === 'GET' && route.request().frame() === page.mainFrame()) {
+          failed = true;
+          return route.fulfill({ status: 500, json: { detail: 'Internal Server Error' } });
+        }
+        return route.fallback();
+      });
+      await page.locator('#compare-swap').click();
+      const toast = page.locator('.toast.is-error');
+      await toast.waitFor({ state: 'visible' });
+      assert.equal(await toast.textContent(), 'The server answered 500. Try again.');
+      await page.waitForFunction(() => !document.getElementById('compare-view').hasAttribute('aria-busy'));
+      const pair = pairIn(page.url());
+      assert.deepEqual([pair.a.get('date'), pair.b.get('date')], ['1988-02-04', SECOND.date]);
+      // Asked again, the sides change.
+      await page.locator('#compare-swap').click();
+      await page.waitForFunction((date) => {
+        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
+        return new URLSearchParams(pair.get('a')).get('date') === date;
+      }, SECOND.date);
+      await bothDrawn(page);
+    });
+
+    check('a swap made before a chart has taken the comparison\'s new language draws it in that language', async (page) => {
+      await compareWithSecond(page);
+      await bothDrawn(page);
+      // The first chart's answer in Finnish never comes: its frame goes with the swap.
+      let withhold;
+      const withheld = new Promise((resolve) => { withhold = resolve; });
+      let held = false;
+      await page.route('**/api/four_pillars', async (route) => {
+        const body = route.request().postDataJSON();
+        if (!held && body.date === '1988-02-04' && body.lang === 'fi') {
+          held = true;
+          withhold();
+          return;
+        }
+        return route.fallback();
+      });
+      await page.locator('#compare-language button[data-compare-lang="fi"]').click();
+      // The address names the language at once, before the charts are drawn again in it.
       await page.waitForFunction(() => {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
         return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
       });
+      await withheld;
+      await page.locator('#compare-swap').click();
+      await page.waitForFunction((date) => {
+        const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
+        return new URLSearchParams(pair.get('a')).get('date') === date;
+      }, SECOND.date);
       await bothDrawn(page);
+      for (const key of ['a', 'b']) {
+        if (profile.name === 'mobile') await page.locator(`#compare-sides button[data-compare-side="${key}"]`).click();
+        const { frame } = await side(page, key);
+        assert.equal(await frame.locator('html').getAttribute('lang'), 'fi');
+        assert.match(await frame.locator('#chart-solar-time').textContent(), /^Todellinen aurinkoaika/);
+      }
+      const pair = pairIn(page.url());
+      assert.deepEqual([pair.a.get('lang'), pair.b.get('lang')], ['fi', 'fi']);
     });
 
     check('a comparison link that names no pair says why, and Copy link copies the pair', async (page) => {
@@ -275,6 +343,8 @@ for (const profile of profiles) {
       await bothDrawn(page);
       await page.locator('#compare-copy-link').click();
       await page.waitForFunction(() => document.querySelector('.toast').textContent === 'Comparison link copied');
+      // Said where it shows: over the comparison, which hides the chart view.
+      assert.equal(await page.locator('.toast').isVisible(), true);
       assert.deepEqual(await page.evaluate(() => window.__copied), [page.url()]);
       for (const [hash, part] of [['#compare?b=date%3D1990-05-09', 'a'], ['#compare?a=date%3D1990-13-40', 'date'], ['#compare?a=x&c=1', 'c']]) {
         await page.goto(new URL(`/${hash}`, page.url()).href);

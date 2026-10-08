@@ -60,9 +60,9 @@ The account suite (`account.test.mjs`) checks:
 - that closing the dialog asks for no chart and says why, keeping the birth;
 - that a Turnstile script that does not load is said, and no code is asked for;
 - the account: its address and plan, its language (the page follows it, and a chart
-  on screen, or on its way, is asked for again in it), Download my data, Sign out,
-  Sign out on every device (from the commands, on a chart), and Delete account, which
-  needs the address typed again;
+  on screen, or on its way, is asked for again in it, in the language set last),
+  Download my data, Sign out, Sign out on every device (from the commands, on a
+  chart), and Delete account, which needs the address typed again;
 - that going back to a chart's address after signing out shows no chart, and asks
   for a sign-in;
 - that a chart link and a comparison opened signed out ask first, the comparison
@@ -312,12 +312,14 @@ The compare suite checks two charts side by side (#20).
 - **Swap, Close and Back.** Swap sides keeps each chart with what is open in it;
   Close goes to the first chart; Back walks the pair, its form, then the first chart.
 - **Language and narrow screens.** The language asks both charts again in it, and a
-  chart still on its way takes it too. On a narrow screen one chart shows at a time,
-  and the switch shows the other.
+  chart still on its way takes it too; a swap made before a chart has taken it draws
+  it in it. On a narrow screen one chart shows at a time, and the switch shows the
+  other.
 - **One change at a time.** While the page makes sure of the session, before the
-  charts are asked for again, the language and the sides take no clicks.
+  charts are asked for again, the language and the sides take no clicks. A check that
+  fails says so, and the comparison stays as it was.
 - **Broken links and commands.** A link that names no pair says why. Copy link
-  copies the pair. The commands offer Compare on a chart and leave the page's
+  copies the pair, and says so over the comparison. The commands offer Compare on a chart and leave the page's
   actions out of a compared chart.
 
 The luck pillars suite checks a chart asked for with a gender. It runs with the clock

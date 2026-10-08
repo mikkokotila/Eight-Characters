@@ -555,13 +555,6 @@ document.addEventListener('DOMContentLoaded', () => {
       asked = { ...asked, lang: currentLanguage };
     }
     let response = await post(asked);
-    // The page's language, set while the chart was on its way (in the account's menu,
-    // say, or by the comparison around this chart), is the chart's: it is asked for again
-    // in it.
-    if (response.ok && wanted() && asked.lang !== currentLanguage) {
-      asked = { ...asked, lang: currentLanguage };
-      response = await post(asked);
-    }
     if (response.status === 401 && wanted()) {
       // Refused, perhaps for a session another tab has replaced since: a sign-in is
       // asked for only if the browser holds none now, and the chart is still wanted.
@@ -593,6 +586,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!pillarsRes.ok) {
       throw new Error(pillarsRes.status === 401 ? t('account_needed') : pillarsData.detail || t('pillars_error'));
     }
+    // The page's language, set while the chart was on its way (in the account's menu,
+    // say, or by the comparison around this chart), is the chart's: it is asked for again
+    // in it. Nothing waits from here until the chart is drawn, so it is drawn in the
+    // language the page is in.
+    if (request.lang !== currentLanguage) return showChart({ ...request, lang: currentLanguage }, place);
 
     const chartData = pillarsData.chart;
     if (!chartData) {
@@ -835,8 +833,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // The page's language set from outside its own switches: by the account, or, in a
   // comparison's frame, by the comparison. The page's words follow, and so does a chart
-  // on screen, asked for again in it; a chart on its way takes it as it comes
-  // (askForPillars).
+  // on screen, asked for again in it; a chart on its way takes it before it is drawn
+  // (showChart).
   const takeLanguage = (lang) => {
     currentLanguage = i18n.setLanguage(lang);
     applyLanguage();
@@ -1741,11 +1739,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyLinkBtn = document.getElementById('copy-link-btn');
   const copyTextBtn = document.getElementById('copy-text-btn');
   if (!copyLinkBtn || !copyTextBtn) throw new Error('Chart bar is incomplete.');
-  // What a bar action did, said briefly over the foot of the page and read out.
+  // What a bar action did, said briefly over the foot of the page and read out. It is
+  // the page's, not the chart view's, so that it shows over a comparison too, which
+  // hides the chart view.
   const toast = document.createElement('div');
   toast.className = 'toast';
   toast.setAttribute('role', 'status');
-  chartView.append(toast);
+  document.body.append(toast);
   let toastTimer = null;
   const showToast = (text, isError) => {
     clearTimeout(toastTimer);

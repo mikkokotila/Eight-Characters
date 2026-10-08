@@ -126,19 +126,23 @@
       language = lang;
       onLanguage(lang);
       pressLanguage(lang);
+      // Each chart's link names the language at once: a frame tells its new one only
+      // once its chart is drawn again, and one that shows no chart (its form) never does.
+      SIDES.forEach((side) => { pair[side] = inLanguage(pair[side], lang); });
+      title();
+      onAddress(address());
       SIDES.forEach((side) => frames[side].contentWindow.postMessage({ type: 'ec-language', lang }, location.origin));
     });
     // The charts change sides. A frame moved in the page would load again from its first
     // link, so both are drawn anew from their links as they stand, with what is open in
     // them; the order they are read in stays the order they are seen in. The session is
-    // made sure of first, as for the language; a sign-in asked for then sets the page's
-    // language, which both charts take.
+    // made sure of first, as for the language; both are drawn in the page's language,
+    // which a sign-in asked for then sets.
     swapButton.addEventListener('click', async () => {
       const lang = await whenReady();
       if (lang === null) return;
       const shown = charts.dataset.shown === 'a' ? 'b' : 'a';
-      const [a, b] = lang === language ? [pair.b, pair.a] : [inLanguage(pair.b, lang), inLanguage(pair.a, lang)];
-      show(a, b, lang);
+      show(inLanguage(pair.b, lang), inLanguage(pair.a, lang), lang);
       showSide(shown);
       onAddress(address());
     });

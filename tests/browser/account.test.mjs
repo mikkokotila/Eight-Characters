@@ -257,40 +257,49 @@ for (const profile of profiles) {
       assert.equal(new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length)).get('lang'), 'fi');
     });
 
-    check("a chart on its way when the account's language is set in its menu is drawn in that language", async (page) => {
+    check("a chart on its way while the account's language is set in its menu is drawn in the language set last", async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'way-tongue' });
       await signInPage(page, account);
       await visit(page, { lang: 'en' });
       const asked = chartsAskedFor(page);
-      // The chart's first answer is held while the language is set.
-      let release;
-      const held = new Promise((resolve) => { release = resolve; });
-      let reached;
-      const holding = new Promise((resolve) => { reached = resolve; });
+      // The chart's first two answers are held, each while the language is set.
+      const reached = [];
+      const holding = [0, 1].map(() => new Promise((resolve) => { reached.push(resolve); }));
+      const releases = [];
       let answers = 0;
       await page.route('**/api/four_pillars', async (route) => {
+        const index = answers;
         answers += 1;
-        if (answers === 1) {
-          reached();
-          await held;
+        if (index < 2) {
+          await new Promise((resolve) => {
+            releases[index] = resolve;
+            reached[index]();
+          });
         }
         return route.fallback();
       });
       await askForChart(page);
-      await holding;
+      await holding[0];
       await page.locator('#account-btn').click();
       await dialogOpens(page);
       await page.locator('[data-account-lang="fi"]:not([disabled])').click();
       await page.locator('#account-status').filter({ hasText: 'Tallennettu.' }).waitFor();
+      // The answer in English comes: the chart is asked for again in Finnish, which is held
+      // while English is set again.
+      releases[0]();
+      await holding[1];
+      await page.locator('[data-account-lang="en"]:not([disabled])').click();
+      await page.locator('#account-status').filter({ hasText: 'Saved.' }).waitFor();
       await page.locator('#account-dialog [data-close-dialog]').click();
       await dialogCloses(page);
-      // The answer in English comes after: the chart is asked for again in Finnish.
-      release();
+      // The answer in Finnish comes after: the chart is asked for again in English.
+      releases[1]();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      assert.deepEqual(asked.map((body) => body.lang), ['en', 'fi']);
-      assert.equal(new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length)).get('lang'), 'fi');
-      assert.equal(await page.locator('#chart-language button[data-chart-lang="fi"]').getAttribute('aria-pressed'), 'true');
+      assert.deepEqual(asked.map((body) => body.lang), ['en', 'fi', 'en']);
+      assert.equal(new URLSearchParams(new URL(page.url()).hash.slice('#chart?'.length)).get('lang'), 'en');
+      assert.equal(await page.locator('#chart-language button[data-chart-lang="en"]').getAttribute('aria-pressed'), 'true');
+      assert.match(await page.locator('#chart-solar-time').textContent(), /^True solar time/);
     });
 
     check('swapping a comparison after the session ended asks for a sign-in first', async (page) => {

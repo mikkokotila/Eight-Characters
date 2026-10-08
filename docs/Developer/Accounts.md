@@ -160,16 +160,17 @@ put on one.
   sign-in here, with its language, which both charts take; a check asked for before a
   language set in the dialog meanwhile is older, and the language stays. Swapping its
   sides, or changing its language, checks the session first in the same way, one
-  change at a time: meanwhile its language and sides take no clicks. Its frames take
-  its language as the page takes the account's (below). The answer to a check for a
+  change at a time: meanwhile its language and sides take no clicks, and a check that
+  fails says so. Its frames take its language as the page takes the account's (below),
+  and its address names the language at once, so a swap draws both charts in it. The answer to a check for a
   comparison no longer wanted, or older than what the page has learned since, changes
   nothing, and signing out abandons a comparison on its way.
   **The explorer**, given a birth, links to the start page to sign in.
 - **Signed in, the dialog is the account:** its address and plan, its language,
   Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete
   account, which needs the address typed again. A chart on screen follows the
-  account's language, asked for again in it, and so does a chart on its way, when its
-  answer comes. Signing out starts the page again, empty,
+  account's language, asked for again in it, and so does a chart on its way, before it
+  is drawn. Signing out starts the page again, empty,
   and forgets the chart it showed: going back to its address asks for it, and for a
   sign-in. Tabs share the session cookie, so as the menu opens it asks who the session
   belongs to (`GET /api/account`; opened again while an action or this question is
