@@ -8,7 +8,7 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
 - **The luck pillar's arcs.** While it shows, each relationship it forms with the natal pillars is drawn as the natal ones are: a stem's above the stems, a branch's below the branches, each in its kind's line.
   - They ride an outer band beyond the natal arcs' four levels, the narrower lower.
   - A triple's middle member stands under its arc.
-  - On a natal card their feet stand beyond the natal arcs' feet, so showing them moves no natal arc.
+  - On a natal card their feet stand beyond the natal arcs' feet, so no natal arc's foot moves on its card.
   - In the branch phase a stem's relationship rests, and its arc recedes. While the luck pillar shows, the natal arcs recede for its own.
   - A relationship on the decade's page rings its arc. One chosen in the list, natal or the luck pillar's, stands in the ink, and every other arc recedes.
 - **The topics with luck.** While the luck pillar shows, its period adds to the topics, for its phase:
@@ -16,17 +16,39 @@ The luck pillar's relationships stand on the chart as arcs, and the topics take 
   - Roles reads "+ 2 new" for the roles new to the chart that act in the phase, and its page adds what the luck pillar brings, each marked when new.
   - Relationships reads "(3 + 2)", and its list adds the luck pillar's that act in the phase, under their own heading. They open as the natal ones do; the canon has no readings for them yet.
 
-  The words keep their place, unseen, while the luck pillar is hidden, so the topics' row never rewraps on L. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
+  Natal, there are none of these: the topics read as a chart's without luck pillars. A luck relationship chosen that stops acting, as a stem's does in the branch phase, closes. A link opens one in the period it names: `luck=4/branch&topic=relationships/punishment:34:year-luck`.
 - **Finnish, provisional until confirmed:** + onni (Roots), + {count} uutta (Roles), Onnenpilarin tuomat (the Roles page), Onnenpilarin kanssa (the relationships list).
 
 ### Changed
-- A chart with a gender keeps the luck pillar's arc band, 74px rows instead of 40px, whether the luck pillar shows or not.
+- While the luck pillar shows, the arcs' rows are 74px instead of 40px, to hold its arcs beyond the natal ones; natal, they stay 40px.
 
 ### Tests
 - `tests/browser/luck.test.mjs`:
   - the arcs: their levels, middle members and feet, the natal arcs unmoved, resting in the branch phase, pointing, and none while hidden;
-  - the topics: their words in place while hidden, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
+  - the topics: none of their words natal, the topics' row drawn as a chart's without a gender, the Roots, Roles and Relationships pages with luck, each arc's ink as relationships are chosen, a luck relationship opened and closed, and a link to one.
 - `tests/test_api_interactions.py`: the luck arcs' layout over every combination, four natal branches with a luck branch (248,832) and four natal stems with a luck stem (100,000). Every one fits four levels and four strands, and both limits are reached: in Zi Hai Hai Hai (子亥亥亥) with a luck Chou (丑), a branch combination and three directional combinations span the same columns.
+- Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.41.1
+
+A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.
+
+### Fixed
+- **A natal chart showed the luck pillars it was not showing.** Since 0.39.0 a chart with a gender kept the ribbon of decades under its topics, and since 0.40.0 an empty fifth column beside the Year with its note, "L shows the luck pillar", while the switch said Natal. Natal, the chart is now drawn as the same birth without a gender: its four pillars where they were, the same room between the topics and the pillars, no ribbon and no fifth column, in every display and at every width.
+  - **L**, or **With luck**, shows the luck pillar at the period chosen, first today's phase, with the ribbon under the topics. L or **Natal** takes them both away again. Choosing a period with the keys ([ ] { } N) or the commands shows it, as before.
+  - Showing the luck pillar now moves the chart: the ribbon comes in above the pillars, and the fifth column beside the Year. While it shows, choosing another period still moves nothing.
+  - Hidden and shown again, the luck pillar's column is drawn anew in the chart's display; a card turned or a branch opened by hand there no longer stays so.
+  - Hiding it from the ribbon, the page or the column gives focus to the chart's cards, where the keys go on: the card that had the tab stop.
+  - The notice of a nominal luck timeline (a birth within the luck pillars' 3 s of a jie) shows only while the luck pillar does. The chart's own notices stay.
+  - On paper, a natal chart prints its four pillars, as before.
+
+### Removed
+- The empty column's note, "L shows the luck pillar" (Finnish "L näyttää onnenpilarin").
+
+### Tests
+- `tests/browser/luck.test.mjs`: the sample chart natal is drawn as the same birth without a gender: every pillar, card, panel and arc in the same place from the pillars' corner, the pillars' size, the room between the topics and the pillars, and what stands there, in all three displays, at 1440, 1024, 900 and 700px and on phones (390 and 320px). L and the switch show the luck pillar and its ribbon and take them away, the chart drawn as it was; focus goes to the chart's cards. A birth 0.48 s from Jingzhe keeps its natal notice when natal, and the luck notice goes. The other tests show the luck pillar before they use the ribbon; natal, [ and ] show it from the ends of the timeline.
+- `tests/browser/foundations.test.mjs`: the audits visit the chart natal with a gender, then with its luck pillar shown.
+- Version bumped to `0.41.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.41.0
 

@@ -170,7 +170,7 @@
         <div class="context-evidence-list">${luck.roots.map((e) => evidenceMarkup(e, { rootMatch: true })).join('')}</div>
       </div>`;
     const rootsPage = () => {
-      const withLuck = luck !== null && luck.shown && luck.roots.length > 0;
+      const withLuck = luck !== null && luck.roots.length > 0;
       const members = natal.rootPillars.length + (withLuck ? 1 : 0);
       const content = members > 0
         ? `<div class="relationship-members" style="--member-count: ${members}">${natal.rootPillars.map((pillar) =>
@@ -183,7 +183,7 @@
     };
     // The roles the luck pillar brings in its phase, under the roles overview.
     const withLuckRoles = (page) => {
-      if (page.path !== 'roles' || luck === null || !luck.shown || luck.occurrences.length === 0) return page;
+      if (page.path !== 'roles' || luck === null || luck.occurrences.length === 0) return page;
       return {
         ...page,
         evidence: [...page.evidence, ...luck.occurrences],
@@ -270,12 +270,12 @@
       }
       controls.innerHTML = Object.entries(labels).map(([key, label]) => `
         <button type="button" class="reading-toggle context-toggle" data-context="${key}" data-label="${esc(pages[key].title + ' · ' + label)}" aria-expanded="false" aria-controls="context-detail" aria-label="${esc(pages[key].title + ' · ' + label)}">${esc(label)}${
-          ['roots', 'roles'].includes(key) ? '<span class="topic-delta is-hidden"></span>' : ''}</button>`).join('');
+          ['roots', 'roles'].includes(key) ? '<span class="topic-delta"></span>' : ''}</button>`).join('');
       setLuck(luck);
     };
-    // What the luck pillar's period adds to the Roots and Roles topics: a word on each
-    // button, kept in its place while the luck pillar is hidden so the topics' row never
-    // rewraps on L, and its part of their pages while it shows.
+    // What the luck pillar's period adds to the Roots and Roles topics while it stands in
+    // the chart: a word on each button, and its part of their pages. Natal (null), there is
+    // none, and the topics read as a chart's without luck pillars.
     const setLuck = (period) => {
       luck = period;
       if (natal === null) return;
@@ -285,10 +285,8 @@
       };
       Object.entries(words).forEach(([key, word]) => {
         const button = controls.querySelector(`button[data-context="${key}"]`);
-        const delta = button.querySelector('.topic-delta');
-        delta.textContent = word ? ` ${word}` : '';
-        delta.classList.toggle('is-hidden', !(luck !== null && luck.shown));
-        button.setAttribute('aria-label', [button.dataset.label, luck !== null && luck.shown ? word : ''].filter(Boolean).join(' '));
+        button.querySelector('.topic-delta').textContent = word ? ` ${word}` : '';
+        button.setAttribute('aria-label', [button.dataset.label, word].filter(Boolean).join(' '));
       });
       // A topic open shows the luck pillar's part as it comes and goes. Pages are built
       // when shown: while a new chart is drawn, this one's are not yet its own.

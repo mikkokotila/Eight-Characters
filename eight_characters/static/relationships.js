@@ -339,7 +339,7 @@
     // it forms that act in its phase join the list, and its cards are named as the natal
     // ones are. A luck relationship chosen that no longer acts closes.
     const setLuck = (period) => {
-      luckEntries = period !== null && period.shown ? period.relationships : [];
+      luckEntries = period !== null ? period.relationships : [];
       if (period !== null) {
         chartByPillar.luck = { stem: period.cards.stem, branch: period.cards.branch };
         tenGods.luck = { stem: period.visible, branch: period.cards.branch.char, hidden_stems: period.hidden };
