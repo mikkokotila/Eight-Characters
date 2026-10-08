@@ -553,8 +553,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let response = await post(asked);
     if (response.status === 401 && wanted()) {
       // Refused, perhaps for a session another tab has replaced since: a sign-in is
-      // asked for only if the browser holds none now.
-      if (!(await account.recheck())) await account.signIn();
+      // asked for only if the browser holds none now, and the chart is still wanted.
+      const holds = await account.recheck(wanted);
+      if (!wanted()) return { asked, response };
+      if (!holds) await account.signIn();
       asked = { ...asked, lang: currentLanguage };
       response = await post(asked);
     }

@@ -862,6 +862,118 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-view').isVisible(), true);
     });
 
+    // Holds the first GET of `pattern` after the server has answered it: `answered`
+    // resolves when it has, and `release` lets the answer reach the page.
+    const holdAnswer = async (page, pattern, method = 'GET') => {
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let sent;
+      const answered = new Promise((resolve) => { sent = resolve; });
+      let holding = true;
+      await page.route(pattern, async (route) => {
+        if (!holding || route.request().method() !== method) return route.continue();
+        holding = false;
+        const response = await route.fetch();
+        sent();
+        await held;
+        return route.fulfill({ response });
+      });
+      return { answered, release };
+    };
+
+    check('a chart left while its refusal is checked asks for no sign-in', async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'left' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The session ends elsewhere: the next chart is refused, and the page's check of
+      // the session that follows is refused too, and held on its way.
+      await asAccount(playwright, account, async (request) => {
+        assert.equal((await request.delete('/api/account/sessions', { data: { email: account.email } })).status(), 204);
+      });
+      const check = await holdAnswer(page, '**/api/account');
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      await check.answered;
+      // Back to the form meanwhile: that chart is no longer wanted.
+      await page.goBack();
+      await page.locator('#chart-form').waitFor({ state: 'visible' });
+      check.release();
+      await page.waitForTimeout(500);
+      assert.equal(await dialogIsOpen(page), false);
+    });
+
+    check('signing out everywhere signs the page out, though it took another account meanwhile', async (page) => {
+      const earlier = await newAccount(playwright, { language: 'en', label: 'everywhere-a' });
+      const later = await newAccount(playwright, { language: 'en', label: 'everywhere-b' });
+      await signInPage(page, earlier);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      await page.locator('#compare-btn').click();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await page.locator('#date').fill('1990-05-09');
+      await page.locator('#time').fill('12:00');
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      await page.goBack();
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      // Sign out on every device goes through for the earlier account, and its answer,
+      // which removes the session cookie, is held on its way.
+      const everywhere = await holdAnswer(page, '**/api/account/sessions', 'DELETE');
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      await page.locator('#account-who').filter({ hasText: `Signed in as ${earlier.email}` }).waitFor();
+      await page.locator('#account-sign-out-everywhere').click();
+      await everywhere.answered;
+      // Another tab signs in to another account, which the comparison, come forward
+      // again, takes.
+      await page.context().addCookies(later.cookies);
+      await page.goForward();
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      everywhere.release();
+      await page.locator('#account-notice').filter({ hasText: 'You are signed out on every device.' }).waitFor();
+      assert.equal(await text(page, '#account-btn'), 'Sign in');
+    });
+
+    check("a chart's check of its refusal leaves a language set meanwhile", async (page) => {
+      const account = await newAccount(playwright, { language: 'en', label: 'recheck-tongue' });
+      await signInPage(page, account);
+      await visit(page, { lang: 'en' });
+      await askForChart(page);
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      // The next chart is refused (sent, say, with a session replaced since), and the
+      // page's check that follows is answered at once, for the account in English,
+      // and held on its way.
+      let refusing = true;
+      await page.route('**/api/four_pillars', async (route) => {
+        if (!refusing) return route.continue();
+        refusing = false;
+        return route.fulfill({ status: 401, json: { detail: 'Sign in to continue.' } });
+      });
+      const check = await holdAnswer(page, '**/api/account');
+      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+      await check.answered;
+      // The account's language is set to Finnish meanwhile, in its menu.
+      await page.keyboard.press('ControlOrMeta+k');
+      await page.locator('#palette-input').fill('tili');
+      await page.keyboard.press('Enter');
+      await dialogOpens(page);
+      await page.locator('[data-account-lang="fi"]:not([disabled])').click();
+      await page.waitForFunction(() =>
+        document.querySelector('[data-account-lang="fi"]').getAttribute('aria-pressed') === 'true');
+      check.release();
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('[data-account-lang="fi"]').getAttribute('aria-pressed'), 'true');
+      const stored = await asAccount(playwright, account, async (request) => (await request.get('/api/account')).json());
+      assert.equal(stored.language, 'fi');
+    });
+
     check('a session found ended while the menu is open asks for a sign-in, with its check', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'menu-end' });
       await signInPage(page, account);

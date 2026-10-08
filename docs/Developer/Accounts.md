@@ -133,7 +133,8 @@ put on one.
 - **A refusal is checked before the page signs out.** A request refused for want of a
   session (`401`) may have been sent before another tab signed in: the page asks once
   more (`GET /api/account`), takes a session the browser holds after all, and asks for
-  the chart again; only a second refusal signs the page out.
+  the chart again; only a second refusal signs the page out. Of the same account, this
+  check takes only who it is, and a chart left meanwhile asks for nothing.
 - **A comparison** checks the session with the server (`GET /api/account`) and asks
   for a sign-in on its own page, before its frames ask for their charts: the frames
   cannot ask themselves. Of the account, the check takes only who it is: another
