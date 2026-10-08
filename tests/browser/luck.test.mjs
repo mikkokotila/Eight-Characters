@@ -790,20 +790,17 @@ for (const profile of profiles) {
       await settled(page);
       assert.deepEqual([await focused(page), await hint()], ['month stem', [0, 0]]);
       if (profile.name === 'desktop') {
-        // The pointer's hint over the luck pillar's card goes with the card: the hint never
-        // stands where no card is.
+        // The pointer's hint over the luck pillar's card goes with the card as L takes it
+        // away. Read at once, as the key and the panel's closing are handled: the pointer's
+        // next move then gives the hint to the card under it.
         await page.locator('.card.stem[data-pillar="luck"]').hover();
         assert.equal(await page.locator('.card-hint').isVisible(), true);
-        await page.keyboard.press('l');
-        await settled(page);
-        assert.equal(await page.locator('.pillar.is-luck').count(), 0);
-        assert.equal(await page.evaluate(() => {
-          const node = document.querySelector('.card-hint');
-          return node.classList.contains('hidden') || [...document.querySelectorAll('#pillars .card')].some((card) => {
-            const box = card.getBoundingClientRect();
-            return Math.abs(parseFloat(node.style.left) - (box.left + box.width / 2)) < 1 && Math.abs(parseFloat(node.style.top) - box.top) < 1;
-          });
+        assert.equal(await page.evaluate(async () => {
+          document.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', bubbles: true }));
+          await Promise.resolve();
+          return document.querySelector('.card-hint').classList.contains('hidden');
         }), true);
+        assert.equal(await page.locator('.pillar.is-luck').count(), 0);
       }
     });
 
