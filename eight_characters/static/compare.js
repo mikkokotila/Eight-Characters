@@ -3,7 +3,7 @@
 // language, which side is which and, on a narrow screen, which of the two is shown.
 (() => {
   const SIDES = ['a', 'b'];
-  const create = ({ view, translate: t, heading, onAddress, onLanguage, onClose, toast }) => {
+  const create = ({ view, translate: t, heading, onAddress, onLanguage, onClose, toast, ready }) => {
     const charts = view.querySelector('#compare-charts');
     const shownSwitch = view.querySelector('#compare-sides');
     const languageSwitch = view.querySelector('#compare-language');
@@ -13,12 +13,22 @@
     if (!charts || !shownSwitch || !languageSwitch || !swapButton || !copyButton || !closeButton) {
       throw new Error('Comparison view is incomplete.');
     }
+    if (typeof ready !== 'function') throw new Error('The comparison needs the page to make sure of the session.');
     // Each side's chart link (its fragment's parameters), its frame, and the language.
     let pair = null;
     let language = null;
     const frames = {};
+    // The check of the session under way before the frames ask for their charts again,
+    // or null.
+    let checking = null;
 
     const address = () => `#compare?${new URLSearchParams({ a: pair.a, b: pair.b })}`;
+    // A chart's link in another language.
+    const inLanguage = (params, lang) => {
+      const next = new URLSearchParams(params);
+      next.set('lang', lang);
+      return next.toString();
+    };
     const title = () => {
       SIDES.forEach((side, index) => {
         frames[side].title = t('compare_frame', { n: index + 1, chart: heading(pair[side]) });
@@ -35,6 +45,11 @@
       languageSwitch.querySelectorAll('button[data-compare-lang]').forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.compareLang === lang));
       });
+    };
+    const setChecking = (check) => {
+      checking = check;
+      if (check === null) view.removeAttribute('aria-busy');
+      else view.setAttribute('aria-busy', 'true');
     };
 
     // A new frame for each chart: a frame's first page replaces its blank one, so it adds
@@ -63,7 +78,27 @@
       });
       pair = null;
       language = null;
+      setChecking(null);
       view.classList.add('hidden');
+    };
+    // Before the frames ask for their charts again (in another language, or with the
+    // sides swapped), the page makes sure of the session (`ready`): the frames cannot ask
+    // for a sign-in themselves. Meanwhile the comparison is busy, and its language and
+    // sides take no clicks, so one change is made at a time, to the comparison as it then
+    // stands. Answers with the page's language, which a sign-in may have set, or null:
+    // without a session, or with the comparison left or shown anew meanwhile, nothing
+    // changes.
+    const whenReady = async () => {
+      if (checking !== null) return null;
+      const asked = pair;
+      const check = {};
+      setChecking(check);
+      try {
+        const lang = await ready();
+        return pair === asked ? lang : null;
+      } finally {
+        if (checking === check) setChecking(null);
+      }
     };
 
     // Each chart tells its new address (another topic, display, convention or language).
@@ -81,22 +116,33 @@
       const button = event.target.closest('button[data-compare-side]');
       if (button) showSide(button.dataset.compareSide);
     });
-    // Both charts are asked for again in the language; each tells its new address.
-    languageSwitch.addEventListener('click', (event) => {
+    // Both charts are asked for again in the language, once the session is made sure of;
+    // each tells its new address.
+    languageSwitch.addEventListener('click', async (event) => {
       const button = event.target.closest('button[data-compare-lang]');
       if (!button || button.getAttribute('aria-pressed') === 'true') return;
+      if ((await whenReady()) === null) return;
       const lang = button.dataset.compareLang;
       language = lang;
       onLanguage(lang);
       pressLanguage(lang);
+      // Each chart's link names the language at once: a frame tells its new one only
+      // once its chart is drawn again, and one that shows no chart (its form) never does.
+      SIDES.forEach((side) => { pair[side] = inLanguage(pair[side], lang); });
+      title();
+      onAddress(address());
       SIDES.forEach((side) => frames[side].contentWindow.postMessage({ type: 'ec-language', lang }, location.origin));
     });
     // The charts change sides. A frame moved in the page would load again from its first
     // link, so both are drawn anew from their links as they stand, with what is open in
-    // them; the order they are read in stays the order they are seen in.
-    swapButton.addEventListener('click', () => {
+    // them; the order they are read in stays the order they are seen in. The session is
+    // made sure of first, as for the language; both are drawn in the page's language,
+    // which a sign-in asked for then sets.
+    swapButton.addEventListener('click', async () => {
+      const lang = await whenReady();
+      if (lang === null) return;
       const shown = charts.dataset.shown === 'a' ? 'b' : 'a';
-      show(pair.b, pair.a, language);
+      show(inLanguage(pair.b, lang), inLanguage(pair.a, lang), lang);
       showSide(shown);
       onAddress(address());
     });
