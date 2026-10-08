@@ -17,8 +17,9 @@ Each chart is the chart view itself, in a frame of its own:
 - the pillars, their arcs and hidden stems, and the pointing from its panel.
 
 Each scrolls on its own. The two charts have nothing drawn between them: the
-relationships are each chart's own. A chart whose link has a gender shows its own
-[luck pillars](Standard-Luck-Pillars.md); the second birth starts without one.
+relationships are each chart's own. A chart whose link has a gender has its own
+[luck pillars](Standard-Luck-Pillars.md), natal until they are shown; the second birth
+starts without one.
 
 The comparison's bar holds what belongs to the pair:
 - the language: both charts are asked for again in it;

@@ -208,8 +208,8 @@
       if (event.pointerType === 'touch') return;
       const node = trigger(event.target);
       if (node?.contains(event.relatedTarget) || overTip(event)) return;
-      if (pending === node) cancelHover();
-      if (active === node) exitTimer = setTimeout(() => {
+      if (node && pending === node) cancelHover();
+      if (node && active === node) exitTimer = setTimeout(() => {
         if (!(keyboard && active?.contains(document.activeElement))) hide();
       }, 100);
       if (dismissed === node) dismissed = null;
@@ -233,7 +233,7 @@
       const node = trigger(event.target);
       if (active && active !== node && !tip.contains(event.target)) hide();
       if (event.pointerType !== 'touch' || !node || !info(node).only || node.matches(':disabled')) return;
-      cancelHover(); touch = { node, x: event.clientX, y: event.clientY, shown: false };
+      cancelHover(); clearTimeout(exitTimer); touch = { node, x: event.clientX, y: event.clientY, shown: false };
       hoverTimer = setTimeout(() => { if (touch) { touch.shown = true; show(touch.node); } }, 500);
     }, true);
     document.addEventListener('pointermove', event => {

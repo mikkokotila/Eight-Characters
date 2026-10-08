@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.42.1
+
+A chart with a gender opens natal exactly as a chart without one. The luck pillars stay out of sight until they are shown.
+
+### Fixed
+- **A natal chart showed the luck pillars it was not showing.** Since 0.39.0 a chart with a gender kept the ribbon of decades under its topics, and since 0.40.0 an empty fifth column beside the Year with its note, "L shows the luck pillar", while the switch said Natal. Natal, the chart is now drawn as the same birth without a gender: its four pillars where they were, the same room between the topics and the pillars, no ribbon and no fifth column, in every display and at every width.
+  - **L**, or **With luck**, shows the luck pillar at the period chosen, first today's phase, with the ribbon under the topics. L or **Natal** takes them both away again. Choosing a period with the keys ([ ] { } N) or the commands shows it, as before.
+  - Showing the luck pillar now moves the chart: the ribbon comes in above the pillars, and the fifth column beside the Year. While it shows, choosing another period still moves nothing.
+  - Hidden and shown again, the luck pillar's column is drawn anew in the chart's display; a card turned or a branch opened by hand there no longer stays so.
+  - Hiding it from the ribbon, the page or the column gives focus to the chart's cards, where the keys go on: the card that had the tab stop.
+  - The hint over a card, the keys' or the pointer's, stays over its card as the chart makes room for the luck pillar or gives it back, and as the panel opens or closes beside the chart (from 1200px wide it moves the chart over). It followed only the page's scroll, and stayed where the card had been. A card taken away, the luck pillar's, takes its hint with it.
+  - The notice of a nominal luck timeline (a birth within the luck pillars' 3 s of a jie) shows only while the luck pillar does. The chart's own notices stay.
+  - On paper, a natal chart prints its four pillars, as before.
+
+### Removed
+- The empty column's note, "L shows the luck pillar" (Finnish "L näyttää onnenpilarin").
+
+### Tests
+- `tests/browser/luck.test.mjs`: the sample chart natal is drawn as the same birth without a gender: every pillar, card, panel and arc in the same place from the pillars' corner, the pillars' size, the room between the topics and the pillars, and what stands there, in all three displays, at 1440, 1024, 900 and 700px and on phones (390 and 320px). L and the switch show the luck pillar and its ribbon and take them away, the chart drawn as it was; focus goes to the chart's cards. A birth 0.48 s from Jingzhe keeps its natal notice when natal, and the luck notice goes. The keys' hint stays over its card through L, L again and N (which opens the page beside the chart), and the pointer's hint never stands where no card is once the luck pillar's card is taken away. The other tests show the luck pillar before they use the ribbon; natal, [ and ] show it from the ends of the timeline.
+- `tests/browser/foundations.test.mjs`: the audits visit the chart natal with a gender, then with its luck pillar shown.
+- Version bumped to `0.42.1`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.41.3 was held for this change; main reached 0.42.0 in the meantime.)
+
 ## 0.41.3
 
 The Day Master's ring names every character with its pinyin, and every pillar on it in full. Nothing else on the page changes.

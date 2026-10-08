@@ -37,15 +37,17 @@ In a chart with a gender, while the chart has focus:
 - [ and ] step it a phase back or forward, { and } a decade;
 - N chooses today's phase and opens its page.
 
-The ribbon's chips take a single tab stop: the chosen decade's chip while the luck
-pillar shows, else today's. Left and Right arrows move between them, and Home and End
-go to the first and the last; moving opens nothing. Enter or Space opens the decade,
+While the luck pillar shows, so does its ribbon. The ribbon's chips take a single
+tab stop, the chosen period's chip. Left and Right arrows move between them, and Home
+and End go to the first and the last; moving opens nothing. Enter or Space opens the decade,
 and Escape closes it, giving focus back to its chip. The steps and Today are buttons
 of their own.
 
 While the luck pillar shows, its cards follow the Year's in the cards' arrows, and Enter,
 Space and T work on them as on the natal cards. R on them opens the decade's page.
-Hidden, they take no focus. See [Luck pillars](Standard-Luck-Pillars.md).
+Hidden, the chart is natal: the luck pillar, its ribbon and its page are gone, and
+focus that was on them goes to the chart's cards. See
+[Luck pillars](Standard-Luck-Pillars.md).
 
 ## ? and the commands
 

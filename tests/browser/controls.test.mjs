@@ -62,6 +62,9 @@ for (const profile of profiles) {
 
     check('luck phases and Zi conventions keep their period and calculation labels', async (page) => {
       await openChart(page, { place: HELSINKI, date: '1975-08-14', time: '23:50', gender: 'female' });
+      assert.equal(await page.locator('#luck-ribbon').isVisible(), false);
+      await page.locator('#luck-switch [data-luck-show="on"]').click(); await settled(page);
+      assert.equal(await page.locator('#luck-ribbon').isVisible(), true);
       assert.equal(await page.locator('#luck-switch svg[data-control-icon]').count(), 2);
       assert.equal(await page.locator('.luck-step svg[data-control-icon]').count(), 2);
       assert.equal(await page.locator('[data-luck-today] svg[data-control-icon="calendar-check"]').count(), 1);
@@ -189,11 +192,17 @@ for (const profile of profiles) {
     } else {
       check('holding either luck arrow describes its phase without navigating, while tapping still navigates', async (page) => {
         await openChart(page, { place: HELSINKI, date: '1975-08-14', time: '23:50', gender: 'female' });
+        assert.equal(await page.locator('#luck-ribbon').isVisible(), false);
+        await page.locator('#luck-switch [data-luck-show="on"]').tap(); await settled(page);
+        assert.equal(await page.locator('#luck-ribbon').isVisible(), true);
         await page.locator('.luck-chip[data-luck="5"]').tap(); await settled(page);
         const phase = () => page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('luck'));
-        const point = { pointerType: 'touch', pointerId: 42, isPrimary: true, clientX: 100, clientY: 100, bubbles: true };
         for (const [direction, label] of [['-1', 'Previous phase'], ['1', 'Next phase']]) {
           const arrow = page.locator(`[data-luck-step="${direction}"]`);
+          await arrow.scrollIntoViewIfNeeded(); await settled(page);
+          const box = await arrow.boundingBox(); assert.ok(box);
+          const point = { pointerType: 'touch', pointerId: 42, isPrimary: true,
+            clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, bubbles: true };
           const before = await phase();
           await arrow.dispatchEvent('pointerdown', point); await tipOpen(page);
           assert.equal(await page.locator(tipSelector + ' strong').textContent(), label);
@@ -204,6 +213,21 @@ for (const profile of profiles) {
           assert.notEqual(await phase(), before, 'a quick tap moves to the adjacent phase');
           await tipClosed(page);
         }
+      });
+
+      check('leaving non-control content does not cancel a subsequent touch hold', async (page) => {
+        await openChart(page);
+        const gods = page.locator('[data-display="ten-gods"]');
+        await gods.scrollIntoViewIfNeeded(); await settled(page);
+        const box = await gods.boundingBox(); assert.ok(box);
+        const point = { pointerType: 'touch', pointerId: 43, isPrimary: true,
+          clientX: box.x + box.width / 2, clientY: box.y + box.height / 2, bubbles: true };
+        assert.equal(await page.locator(tipSelector).isVisible(), false);
+        await page.locator('#pillars').dispatchEvent('pointerout', { pointerType: 'mouse', bubbles: true });
+        await gods.dispatchEvent('pointerdown', point); await tipOpen(page);
+        assert.equal(await page.locator(tipSelector + ' strong').textContent(), 'Ten Gods');
+        assert.equal(await gods.getAttribute('aria-pressed'), 'false', 'help does not activate the action');
+        await gods.dispatchEvent('pointercancel', point); await tipClosed(page);
       });
 
       check('a touch hold reveals the action without running it, while a quick tap still selects', async (page) => {

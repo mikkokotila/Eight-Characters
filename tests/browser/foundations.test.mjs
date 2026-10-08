@@ -133,10 +133,14 @@ async function visitReadings(page, inspect) {
   }
 }
 
-// A chart with luck pillars (luck.test.mjs): its ribbon, a decade's page in each phase,
-// and the years before the first decade. `inspect` runs in each.
+// A chart with luck pillars (luck.test.mjs): natal, then with its luck pillar and ribbon,
+// a decade's page in each phase, and the years before the first decade. `inspect` runs
+// in each.
 async function visitLuck(page, lang, inspect) {
   await openChart(page, { lang, place: HELSINKI, date: '1975-08-14', time: '07:45', gender: 'female' });
+  await inspect(`${lang} natal, with a gender`);
+  await page.locator('#luck-switch [data-luck-show="on"]').click();
+  await settled(page);
   await inspect(`${lang} luck pillars`);
   await page.locator('.luck-chip[data-luck="5"]').click();
   await page.locator('[data-luck-phase="stem"]').click();

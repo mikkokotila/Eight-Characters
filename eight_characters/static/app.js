@@ -135,7 +135,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const ZI_CONVENTIONS = ['split_midnight', 'whole_zi_23'];
   // Reads the flags, checking them against the pillars; inconsistent flags stop the chart.
   // Luck pillars count their start from a jie too, within an allowance of their own: a
-  // birth that close to one has a nominal luck timeline, and the chart says so.
+  // birth that close to one has a nominal luck timeline, and the chart says so while its
+  // luck pillar shows. Each notice is { text, luck }.
   const readFlags = (flags, fourPillars, request, luckPillars) => {
     const fail = () => { throw new Error(requiredTranslation('flags_error')); };
     if (!flags || typeof flags.zi_hour_window !== 'boolean' || typeof flags.solar_term_ambiguous !== 'boolean'
@@ -164,8 +165,8 @@ document.addEventListener('DOMContentLoaded', () => {
       && Math.abs(nearest.seconds - flags.model_uncertainty_seconds) > 0.001) fail();
     if (flags.solar_term_ambiguous) {
       const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(flags.model_uncertainty_seconds);
-      notices.push(requiredTranslation(
-        nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }));
+      notices.push({ text: requiredTranslation(
+        nearest.term === 'lichun_315' ? 'notice_term_ambiguous_year' : 'notice_term_ambiguous_month', { seconds }), luck: false });
     }
     if (luckPillars) {
       const uncertainty = luckPillars.uncertainty;
@@ -176,16 +177,24 @@ document.addEventListener('DOMContentLoaded', () => {
         && Math.abs(nearest.seconds - allowance) > 0.05) fail();
       if (uncertainty.boundary_ambiguous) {
         const seconds = new Intl.NumberFormat(locale(), { maximumFractionDigits: 1 }).format(allowance);
-        notices.push(requiredTranslation(
-          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }));
+        notices.push({ text: requiredTranslation(
+          nearest.term === 'lichun_315' ? 'notice_luck_ambiguous_year' : 'notice_luck_ambiguous', { seconds }), luck: true });
       }
     }
-    if (flags.high_latitude_warning) notices.push(requiredTranslation('notice_high_latitude'));
+    if (flags.high_latitude_warning) notices.push({ text: requiredTranslation('notice_high_latitude'), luck: false });
     return { zi, notices };
   };
+  // The chart's notices; a luck pillar's only while it shows, so that a natal chart reads
+  // as a chart without luck pillars.
+  let chartNoticeList = [];
+  const renderNotices = () => {
+    const shown = chartNoticeList.filter((notice) => !notice.luck || luck.shown());
+    chartNotices.innerHTML = shown.map((notice) => `<li>${esc(notice.text)}</li>`).join('');
+    chartNotices.classList.toggle('hidden', shown.length === 0);
+  };
   const renderFlags = ({ zi, notices }) => {
-    chartNotices.innerHTML = notices.map((notice) => `<li>${esc(notice)}</li>`).join('');
-    chartNotices.classList.toggle('hidden', notices.length === 0);
+    chartNoticeList = notices;
+    renderNotices();
     ziSwitch.classList.toggle('hidden', zi === null);
     ziSwitch.innerHTML = zi === null ? '' : `
       <p class="zi-switch-note" id="zi-switch-note">${esc(requiredTranslation('zi_switch_note'))}</p>
@@ -907,11 +916,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // The luck pillars: the ribbon of decades, the chosen period as the chart's fifth
   // pillar, and its page (luck.js). Its cards, drawn anew as the choice moves, show what
-  // every card shows.
+  // every card shows. Hidden, the chart is natal, notices too, and focus that was on the
+  // luck pillars goes to the chart's cards.
   const luck = window.EC_LUCK.create({
     root: chartView, pillars: chartView.querySelector('#pillars'), translate: requiredTranslation, escape: esc, spot, locale,
     beforeSelect: () => { relationships.clear(); dayMasterContext.clear(); pillarChanges.clear(); setRelationshipsOpen(false); },
     onCards: (column, focused, redrawn) => fitCards(column, focused, redrawn),
+    onShown: renderNotices,
+    keyCard: () => cardAt(keyCard),
   });
   const closePanel = () => {
     relationships.clear();
@@ -933,6 +945,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const open = panelSections.some((section) => !section.classList.contains('hidden'));
     chartPanel.classList.toggle('hidden', !open);
     chartView.classList.toggle('has-panel', open);
+    // From 1200px wide the chart column moves over as the panel opens beside it.
+    followCardHint();
   };
   const panelObserver = new MutationObserver(syncPanel);
   panelSections.forEach((section) => panelObserver.observe(section, { attributes: true, attributeFilter: ['class'] }));
@@ -992,7 +1006,8 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   // Cards drawn anew (the luck pillar's, for another decade) show what every card
   // shows, at once. The tab stop stays on a card that can take it, and focus that was
-  // on the changed part comes back to it, or else to that card.
+  // on the changed part comes back to it, or else to that card. A scope of null is a
+  // column taken away (the luck pillar's, hidden).
   const fitCards = (scope, focused = null, redrawn = true) => {
     if (redrawn) {
       scope.querySelectorAll('.card').forEach((card) => {
@@ -1009,8 +1024,11 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!keyed || keyed.closest('[inert]')) setKeyCard(cardAt({ pillar: 'year', component: keyCard.component }));
     else setKeyCard(keyed);
     syncDisplaySwitch();
+    // The luck pillar's column, drawn or taken away, moves the chart's cards.
+    followCardHint();
     if (focused === null) return;
-    const target = focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
+    const target = scope === null ? null
+      : focused === 'identity' ? scope.querySelector('[data-luck-identity]') : scope.querySelector(`.card.${focused}`);
     (target && !target.closest('[inert]') ? target : cardAt(keyCard)).focus({ preventScroll: true });
   };
   displaySwitch.addEventListener('click', (event) => {
@@ -1103,7 +1121,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
   // Nothing else shows that a card turns over, so a hint says so, above the card
-  // under the mouse. It stays there while the page scrolls.
+  // under the mouse. It stays over its card while the chart moves under it.
   const cardHint = document.createElement('div');
   cardHint.className = 'card-hint hidden';
   cardHint.setAttribute('aria-hidden', 'true');
@@ -1118,6 +1136,14 @@ document.addEventListener('DOMContentLoaded', () => {
     hintedCard = null;
     cardHint.classList.add('hidden');
   };
+  // The chart moves under the hint as the page scrolls, as the luck pillar comes or goes
+  // (fitCards), and as the panel opens or closes beside it (syncPanel). A card taken away,
+  // the luck pillar's as it is hidden, takes its hint with it.
+  const followCardHint = () => {
+    if (hintedCard === null) return;
+    if (hintedCard.isConnected) placeCardHint();
+    else hideCardHint();
+  };
   pillarsContainer.addEventListener('pointerover', (event) => {
     const card = event.target.closest('.card');
     if (!card || event.pointerType !== 'mouse' || activePress) return;
@@ -1129,7 +1155,7 @@ document.addEventListener('DOMContentLoaded', () => {
   pillarsContainer.addEventListener('pointerout', (event) => {
     if (!event.relatedTarget || !event.target.closest('.card')?.contains(event.relatedTarget)) hideCardHint();
   });
-  window.addEventListener('scroll', () => { if (hintedCard) placeCardHint(); }, { passive: true });
+  window.addEventListener('scroll', followCardHint, { passive: true });
 
   // A card is named by its pillar and the side it shows.
   const labelCard = (card) => {
