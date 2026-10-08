@@ -231,11 +231,20 @@ class TestUsers(StoreTestCase):
         self.assertEqual(self.store.set_language(user.id, 'fi'), user)
         self.assertEqual(self.store.backup_snapshot().changes, ())
 
-    def test_updated_at_never_goes_back_with_the_clock(self) -> None:
+    def test_each_change_moves_updated_at_on(self) -> None:
+        # Within one second, and with the clock gone back, each change still comes
+        # after the last, so that a page told of the account twice keeps the later.
         user = self.store.create_user('reader@example.com', 'fi')
+        self.assertEqual(
+            self.store.set_language(user.id, 'en').updated_at, '2026-10-07T12:00:01Z'
+        )
         self.clock.advance(-3600)
         self.assertEqual(
-            self.store.set_plan(user.id, 'basic').updated_at, user.created_at
+            self.store.set_plan(user.id, 'basic').updated_at, '2026-10-07T12:00:02Z'
+        )
+        self.clock.advance(3600 + 60)
+        self.assertEqual(
+            self.store.set_plan(user.id, 'pro').updated_at, '2026-10-07T12:01:00Z'
         )
 
     def test_changes_refuse_unknown_values_and_users(self) -> None:
@@ -363,13 +372,32 @@ class TestSessionsAndCodes(StoreTestCase):
     def test_sessions_are_kept_extended_and_ended(self) -> None:
         self.store.create_session(self.session('a'))
         self.assertEqual(self.store.session('a'), self.session('a'))
-        self.store.extend_session('a', '2026-12-01T00:00:00Z')
+        extended = self.store.extend_session(
+            'a', '2026-12-01T00:00:00Z', '2026-10-20T00:00:00Z'
+        )
+        self.assertTrue(extended)
         self.assertEqual(
             self.store.session('a'),
             replace(self.session('a'), expires_at='2026-12-01T00:00:00Z'),
         )
         self.store.delete_session('a')
         self.assertIsNone(self.store.session('a'))
+
+    def test_only_a_live_session_is_extended_and_only_an_ended_one_is_ended(
+        self,
+    ) -> None:
+        self.store.create_session(self.session('a'))
+        ended_at = self.session('a').expires_at
+        late = self.store.extend_session('a', '2027-01-01T00:00:00Z', ended_at)
+        self.assertFalse(late)
+        self.assertFalse(
+            self.store.extend_session('gone', '2027-01-01T00:00:00Z', ended_at)
+        )
+        self.assertFalse(self.store.end_expired_session('a', '2026-11-06T11:59:59Z'))
+        self.assertEqual(self.store.session('a'), self.session('a'))
+        self.assertTrue(self.store.end_expired_session('a', ended_at))
+        self.assertIsNone(self.store.session('a'))
+        self.assertFalse(self.store.end_expired_session('a', ended_at))
 
     def test_signing_out_everywhere_ends_only_that_account(self) -> None:
         other = self.store.create_user('other@example.com', 'en')
@@ -522,14 +550,26 @@ class TestSessionsAndCodes(StoreTestCase):
         )
         self.assertIsNone(self.store.code('reader@example.com'))
 
-    def test_expired_sessions_and_codes_are_dropped(self) -> None:
+    def test_expired_sessions_codes_and_requests_are_dropped(self) -> None:
         self.store.create_session(self.session('a'))
         self.store.put_code(self.code())
-        self.store.delete_expired('2026-10-07T12:10:00Z')
+        self.assertTrue(
+            self.store.allow_code_request(
+                'reader@example.com',
+                'client',
+                '2026-10-07T12:00:00Z',
+                '2026-10-07T11:00:00Z',
+                5,
+                20,
+            )
+        )
+        self.store.delete_expired('2026-10-07T12:10:00Z', '2026-10-07T11:10:00Z')
         self.assertIsNone(self.store.code('reader@example.com'))
         self.assertIsNotNone(self.store.session('a'))
-        self.store.delete_expired('2026-11-06T12:00:00Z')
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(1,)])
+        self.store.delete_expired('2026-11-06T12:00:00Z', '2026-10-07T12:00:01Z')
         self.assertIsNone(self.store.session('a'))
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
 
     def test_code_requests_are_limited_per_address_and_per_client(self) -> None:
         def ask(email: str, client: str, now: str = '2026-10-07T12:00:00Z') -> bool:

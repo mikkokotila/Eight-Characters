@@ -1,5 +1,7 @@
+import hashlib
 import json
 import shutil
+import sqlite3
 import tempfile
 import unittest
 from datetime import timedelta
@@ -16,6 +18,7 @@ from eight_characters.accounts.store import AccountStore, StoreError, UnknownUse
 from eight_characters.accounts.web import (
     Accounts,
     ConfigError,
+    account_key,
     get_accounts,
     load_config,
 )
@@ -246,12 +249,17 @@ class TestSigningIn(AccountApiTestCase):
             'language': 'fi',
             'plan': 'free',
             'created_at': '2026-10-07T12:00:00Z',
+            'updated_at': '2026-10-07T12:00:00Z',
         }
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        expected['key'] = hashlib.sha256(user.id.encode()).hexdigest()
         self.assertEqual(reply.json(), expected)
         cookie = SimpleCookie(reply.headers['set-cookie'])['__Host-ec_session']
         self.assertEqual(cookie['path'], '/')
-        month = str(int(timedelta(days=30).total_seconds()))
-        self.assertEqual(cookie['max-age'], month)
+        # The longest browsers keep a cookie: the session ends on the server.
+        lifetime = str(int(timedelta(days=400).total_seconds()))
+        self.assertEqual(cookie['max-age'], lifetime)
         self.assertTrue(cookie['secure'])
         self.assertTrue(cookie['httponly'])
         self.assertEqual(cookie['samesite'].lower(), 'lax')
@@ -275,14 +283,18 @@ class TestSigningIn(AccountApiTestCase):
         self.client.cookies.set('__Host-ec_session', 'forged', domain='testserver')
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
-    def test_a_session_in_its_second_half_gets_a_fresh_cookie(self) -> None:
+    def test_a_session_in_use_is_extended_without_a_cookie(self) -> None:
         self.sign_in()
-        self.clock.advance(timedelta(days=10).total_seconds())
-        self.assertNotIn('set-cookie', self.client.get('/api/account').headers)
-        self.clock.advance(timedelta(days=6).total_seconds())
+        self.clock.advance(timedelta(days=16).total_seconds())
         reply = self.client.get('/api/account')
         self.assertEqual(reply.status_code, 200)
-        self.assertIn('__Host-ec_session=', reply.headers['set-cookie'])
+        self.assertNotIn('set-cookie', reply.headers)
+        # Extended on the server: it holds past the first 30 days, until 30 days
+        # without use.
+        self.clock.advance(timedelta(days=20).total_seconds())
+        self.assertEqual(self.client.get('/api/account').status_code, 200)
+        self.clock.advance(timedelta(days=30).total_seconds())
+        self.assertEqual(self.client.get('/api/account').status_code, 401)
 
     def test_plain_http_on_a_laptop(self) -> None:
         laptop = 'http://localhost:8000'
@@ -299,15 +311,69 @@ class TestTheAccount(AccountApiTestCase):
         super().setUp()
         self.assertEqual(self.sign_in().status_code, 200)
 
+    def this(self) -> dict[str, str]:
+        """The account the page names in its requests, by its key: the one signed in."""
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        return {'key': account_key(user)}
+
     def test_its_language_changes(self) -> None:
-        reply = self.client.patch('/api/account', json={'language': 'en'})
+        reply = self.client.patch(
+            '/api/account', json={**self.this(), 'language': 'en'}
+        )
         self.assertEqual((reply.status_code, reply.json()['language']), (200, 'en'))
-        unknown = self.client.patch('/api/account', json={'language': 'sv'})
+        unknown = self.client.patch(
+            '/api/account', json={**self.this(), 'language': 'sv'}
+        )
         self.assertEqual(unknown.status_code, 400)
         forged = self.client.patch(
-            '/api/account', json={'language': 'fi'}, headers=ELSEWHERE
+            '/api/account', json={**self.this(), 'language': 'fi'}, headers=ELSEWHERE
         )
         self.assertEqual(forged.status_code, 403)
+
+    def test_an_action_for_another_account_does_nothing(self) -> None:
+        # Another tab signed in to another account since the page learned this one:
+        # the session cookie, which tabs share, is the other account's now.
+        other = {'key': '0' * 64}
+        changed = {'detail': 'This browser is signed in to another account now.'}
+        requests = (
+            ('PATCH', '/api/account', {**other, 'language': 'en'}),
+            ('POST', '/api/account/export', other),
+            ('DELETE', '/api/account/sessions', other),
+        )
+        for verb, path, body in requests:
+            with self.subTest(path):
+                reply = self.client.request(verb, path, json=body)
+                self.assertEqual((reply.status_code, reply.json()), (409, changed))
+        account = self.client.get('/api/account')
+        self.assertEqual((account.status_code, account.json()['language']), (200, 'fi'))
+        malformed = self.client.request(
+            'POST', '/api/account/export', json={'key': 'not a key'}
+        )
+        self.assertEqual(malformed.status_code, 400)
+
+    def test_an_action_for_an_account_made_again_does_nothing(self) -> None:
+        # Another tab deleted the account and made it again with its address: the
+        # session is the new account's, and an action for the one the page names
+        # (by its key) changes nothing.
+        named = self.this()
+        user = self.accounts.store.user_by_email('reader@example.com')
+        assert user is not None
+        self.accounts.store.delete_user(user.id)
+        self.assertEqual(self.sign_in().status_code, 200)
+        self.assertNotEqual(self.this(), named)
+        changed = {'detail': 'This browser is signed in to another account now.'}
+        requests = (
+            ('PATCH', '/api/account', {**named, 'language': 'en'}),
+            ('POST', '/api/account/export', named),
+            ('DELETE', '/api/account/sessions', named),
+            ('DELETE', '/api/account', {**named, 'email': 'reader@example.com'}),
+        )
+        for verb, path, body in requests:
+            with self.subTest(f'{verb} {path}'):
+                reply = self.client.request(verb, path, json=body)
+                self.assertEqual((reply.status_code, reply.json()), (409, changed))
+        self.assertEqual(self.client.get('/api/account').status_code, 200)
 
     def test_signing_out(self) -> None:
         reply = self.client.delete('/api/account/session')
@@ -318,12 +384,15 @@ class TestTheAccount(AccountApiTestCase):
     def test_signing_out_everywhere(self) -> None:
         other = self.new_client()
         self.assertEqual(self.sign_in(other, purpose='sign_in').status_code, 200)
-        self.assertEqual(self.client.delete('/api/account/sessions').status_code, 204)
+        everywhere = self.client.request(
+            'DELETE', '/api/account/sessions', json=self.this()
+        )
+        self.assertEqual(everywhere.status_code, 204)
         self.assertEqual(other.get('/api/account').status_code, 401)
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
     def test_its_data_downloads(self) -> None:
-        reply = self.client.get('/api/account/export')
+        reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(reply.status_code, 200)
         disposition = reply.headers['content-disposition']
         self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
@@ -347,20 +416,33 @@ class TestTheAccount(AccountApiTestCase):
         self.assertEqual(exported['code_requests'], [request])
         self.assertIsNone(exported['sign_in_code'])
 
-    def test_an_export_in_a_sessions_second_half_renews_its_cookie(self) -> None:
+    def test_an_export_holds_no_request_older_than_the_hour(self) -> None:
+        self.clock.advance(timedelta(hours=1, seconds=1).total_seconds())
+        reply = self.client.post('/api/account/export', json=self.this())
+        self.assertEqual(json.loads(reply.content)['code_requests'], [])
+        # Dropped, not only left out of the file.
+        connection = sqlite3.connect(self.accounts.store.path)
+        try:
+            count = connection.execute('SELECT COUNT(*) FROM code_requests').fetchone()
+        finally:
+            connection.close()
+        self.assertEqual(count, (0,))
+
+    def test_an_export_in_a_sessions_second_half_sets_no_cookie(self) -> None:
         self.clock.advance(timedelta(days=16).total_seconds())
-        reply = self.client.get('/api/account/export')
+        reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(reply.status_code, 200)
-        self.assertIn('__Host-ec_session=', reply.headers['set-cookie'])
+        self.assertNotIn('set-cookie', reply.headers)
         disposition = reply.headers['content-disposition']
         self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
 
     def test_an_account_deleted_meanwhile_answers_as_signed_out(self) -> None:
         gone = UnknownUser('gone')
-        confirm = {'email': 'reader@example.com'}
+        this = self.this()
+        confirm = {**this, 'email': 'reader@example.com'}
         requests: dict[str, tuple[str, str, dict[str, str] | None]] = {
-            'set_language': ('PATCH', '/api/account', {'language': 'en'}),
-            'account_data': ('GET', '/api/account/export', None),
+            'set_language': ('PATCH', '/api/account', {**this, 'language': 'en'}),
+            'account_data': ('POST', '/api/account/export', this),
             'delete_user': ('DELETE', '/api/account', confirm),
         }
         for method, (verb, path, body) in requests.items():
@@ -372,27 +454,30 @@ class TestTheAccount(AccountApiTestCase):
                 self.assertEqual(reply.status_code, 401)
 
     def test_deleting_needs_the_address_typed_again(self) -> None:
+        this = self.this()
         for typed in ('other@example.com', 'not an address'):
             with self.subTest(typed):
-                body = {'email': typed}
+                body = {**this, 'email': typed}
                 reply = self.client.request('DELETE', '/api/account', json=body)
                 self.assertEqual(reply.status_code, 400)
         self.assertIsNotNone(self.accounts.store.user_by_email('reader@example.com'))
-        confirm = {'email': ' Reader@Example.com '}
+        confirm = {**this, 'email': ' Reader@Example.com '}
         reply = self.client.request('DELETE', '/api/account', json=confirm)
         self.assertEqual(reply.status_code, 204)
         self.assertIsNone(self.accounts.store.user_by_email('reader@example.com'))
         self.assertEqual(self.client.get('/api/account').status_code, 401)
 
-    def test_the_charts_need_no_account_yet(self) -> None:
+    def test_charts_need_an_account(self) -> None:
         pillars = {
             'year_pillar': '甲子',
             'month_pillar': '乙丑',
             'day_pillar': '丙寅',
             'hour_pillar': '丁卯',
         }
-        reply = TestClient(app).post('/api/hidden_stems', json=pillars)
-        self.assertEqual(reply.status_code, 200)
+        anonymous = TestClient(app).post('/api/hidden_stems', json=pillars)
+        self.assertEqual(anonymous.status_code, 401)
+        signed_in = self.client.post('/api/hidden_stems', json=pillars)
+        self.assertEqual(signed_in.status_code, 200)
 
 
 if __name__ == '__main__':

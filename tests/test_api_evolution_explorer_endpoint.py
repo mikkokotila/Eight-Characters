@@ -2,8 +2,6 @@ import unittest
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
 from eight_characters.evolution import (
     DEFAULT_MODEL_PARAMETERS,
     InferenceConfig,
@@ -16,14 +14,14 @@ from eight_characters.main import (
     LocationInput,
     ResolvedCity,
     _build_four_pillars_result,
-    app,
 )
+from tests.accounts_support import signed_in_client
 
 
 class TestApiEvolutionExplorerEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def test_evolution_explorer_returns_graph_payload(self) -> None:
         fake_four_pillars = {

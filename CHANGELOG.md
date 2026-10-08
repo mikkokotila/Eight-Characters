@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.41.0
+
+Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
+
+### Added
+- **The account dialog**, on the start page (Sign in) and when a chart needs it.
+  - A new account needs its language, Finnish or English, chosen and never preset. Its emails come in it, and signing in sets the page to it; the chart asked for is then drawn in it.
+  - An existing account signs in from the same dialog, without a language. Every answer reads the same whether the address has an account or not.
+  - Cloudflare Turnstile checks for a person; its script loads only when the dialog first opens, so the start page loads nothing from another site. A script that does not load is said, and tried again.
+  - Closing the dialog leaves the form, saying that charts need an account, with the birth kept.
+- **The account**, signed in, in the same dialog (and among the chart's commands): its address and plan, its language (the page follows it), Download my data (`bazi-account.json`), Sign out, Sign out on every device, and Delete account, which needs the address typed again. Signing out starts the page again, empty. As it opens (or, opened again while an action or this question is under way, once that one ends), it asks who the session belongs to, and its actions wait for the answer, so it never acts for an account another tab has left, and shows a language another tab set. An action's answer counts as the newest of its moment: if the page has learned nothing since, it is the session's, and a language set there signs the page in to its account, even after an older check found the session ended; if the page has learned since, it keeps that, and the action does nothing more, and says so. A language set is saved, and shown, unless a later change of the account (another tab's) stands.
+- **The newest answer decides who is signed in.** Tabs share the session cookie, and answers come in any order. Each tells of the cookie at a moment: a request that carries it, as it was sent; an answer that sets or removes it (signing in or out, deleting the account), from when it comes. The page takes the newest, and an older answer changes nothing, however late it comes; of one account, it keeps the language and plan of the later change. A sign-in whose answer sets its cookie after a check took another tab's account signs the page in; one overtaken by a newer answer closes signed in to that answer's account, or, if the session ended since, asks for a sign-in again. A code answered after the page took another tab's session changes nothing, and the account's menu stays.
+- **A session that ended** (signed out elsewhere, deleted, or past its 30 days) asks for a sign-in once more, and the chart is asked for again. A refusal is checked once more first: if the browser holds a session after all (another tab signed in), the page takes it and asks for the chart again; a chart left meanwhile asks for nothing. A refusal that arrives for a chart no longer wanted asks nothing, so a sign-in made since for a newer chart stays.
+- **A comparison** opened signed out, or after the session ended elsewhere, asks on its own page (which checks the session with the server first), before its frames ask for their charts. One signed in to in another tab is taken as a sign-in here, and both charts take its language, as when signing in here; a check asked for before a language set in the dialog meanwhile is older, so the language stays. The answer to a check for a comparison no longer wanted, or older than what the page has learned since, changes nothing, and signing out abandons a comparison on its way. **The explorer**, given a birth, links a visitor to the start page to sign in.
+- **[Your account](docs/Account.md)**, a guide for readers.
+
+### Changed
+- **The account's actions name the account they are for**: setting its language (`PATCH /api/account`), signing out everywhere (`DELETE /api/account/sessions`) and Download my data, which is now `POST /api/account/export`, carry `{"key": …}`, the account's key from its answers, and Delete account carries it beside the address typed again. Tabs share the session cookie, so another tab may have signed in to another account since, or deleted this one and made it again with its address: the server then answers `409` and changes nothing, and the menu says so and asks who the session is.
+- **Charts need an account.** `POST /api/four_pillars`, `/api/chart`, `/api/hidden_stems` and `/api/evolution_explorer` answer `401` without one, before the request is validated. The place search and `GET /api/evolution_controls` stay open. A test holds both lists, so a new request must join one.
+- **An account's answers say when it last changed** (`updated_at`), and each change moves that on, by a second within one second or with the clock gone back: of two answers about the account (the newest or not, and one for a chart or comparison no longer wanted too), the page keeps the later change's, of any account it has seen, so a change saved while it held another account is kept when that account comes back. They name the account by a `key`, a hash of its id (which no account answer carries), so that an account made again with an address is told apart.
+- **The start page names the signed-in account** (or `null`) for its script, and is sent `Cache-Control: private, no-cache`. It extends a session in its second half, on the server.
+- **The app reads its account settings, and opens its database, as it starts**: a missing or malformed setting stops it with the reason. Running it on a laptop needs the settings in [Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop).
+
+### Fixed
+- **Signing in when another tab made the account and it was deleted meanwhile** refused nothing and answered 500; it now refuses the code, as when an account goes before its session is made.
+- **A late answer that renewed a session set its cookie again**: after a sign-out and a new sign-in, it put back the session signed out, and the browser lost the new one. Only signing in now sets the cookie, for 400 days, the longest browsers keep one; the server alone extends a session used in its second half, and ends one 30 days after it was made or last extended.
+- **An answer for a session that ended removed the session cookie**, though by then it could be a newer session's: the browser may have signed in meanwhile, and a cookie is removed by its name. The cookie of a session that ended is now left to expire; signing out and deleting the account still remove it.
+- **A session renewed by one request while another found it ended** was deleted by the second, or turned away by it, and its answer removed the browser's fresh cookie. A session is now deleted only while it is still ended, and renewed only while it is still live; a request that found it ended after another renewed it takes it as renewed.
+- **The account export listed requests for codes older than the hour**, kept until the next code was asked for. Exporting now drops what has passed its time first: ended sessions and codes, and requests older than the hourly window.
+- **A full or unwritable mail folder** (on a laptop) answered 500; it is now a mail error, answered 502 like any message that could not be sent.
+
+### Tests
+- `tests/test_accounts_app.py`: which requests need an account, the `401`s (also for a session that ended), the start page's account state (escaped, without the session or the account's id), extending the session there without a cookie (also when another request renews it as the page's crosses its old end), leaving the cookie of a session that ended, and starting the app with missing settings, a missing database, and complete ones.
+- The API tests sign in as the page does.
+- The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
+- Version bumped to `0.41.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.40.0
 
 The luck pillar stands in the chart. This is the fourth slice of the luck pillar design, in its first part: the fifth pillar, its keys and its link. The luck pillar's arcs, and the topics with luck, come next.
@@ -40,7 +77,7 @@ The luck pillar stands in the chart. This is the fourth slice of the luck pillar
 
   The earlier tests follow the steps and chips as they now behave.
 - `tests/test_api_luck_pillars.py`: `luck_chart` in both languages, checked against the natal chart's own drawing of a character the two share; absent without the chart or the luck pillars.
-- Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
+- Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.39.0
 
@@ -77,7 +114,7 @@ Luck pillars on the chart. This is the third slice of the luck pillar design: th
   - links, an absorbed natal half, refused data, Finnish, the language switch and the commands.
 - The foundations audits (fonts, glyphs, contrast and element dots) visit a chart with luck pillars.
 - `luck.js`'s pinyin and direction tables match the engine's, and the English stage names match the canon's twelve.
-- Version bumped to `0.39.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
+- Version bumped to `0.39.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.37.0
 
@@ -106,7 +143,7 @@ The engine says what each luck pillar brings to a chart, phase by phase. This is
 - The design's sample chart (14 August 1975, 07:45, Helsinki, female), decade by decade by hand, and through the API.
 - Phases, and their leap-day anniversaries.
 - `tests.test_api_luck_context` runs in the API integration gate.
-- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 is held by the open PR #48.)
+- Version bumped to `0.37.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.36.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.35.0
 
@@ -161,7 +198,7 @@ Standard reads every relationship family the canon defines. Luck pillars will fo
   - the arcs' levels and strands on every combination;
   - real charts for each new family, an arc of three strands and six feet on one card.
 - Browser expectations that named a chart's relationships now include what the canon finds besides. The chart with none is 1990-01-15 12:00 in Chengdu; 1990-01-01 holds a harm and a half-punishment, twice.
-- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 is held by the open PR #48.)
+- Version bumped to `0.35.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.34.0 was skipped: it was held for PR #48, released as 0.41.0.)
 
 ## 0.33.1
 

@@ -2,6 +2,7 @@
 // Covers picking the birth place and handing it to the chart and the explorer.
 import assert from 'node:assert/strict';
 import { before, after, describe, it } from 'node:test';
+import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -11,8 +12,16 @@ assert.ok(baseURL, 'Set EC_BASE_URL to the app under test.');
 assert.ok(['chromium', 'webkit'].includes(engineName), 'Set EC_BROWSER to chromium or webkit.');
 const playwright = await import(moduleName);
 let browser;
-before(async () => { browser = await playwright[engineName].launch({ headless: true }); });
-after(async () => { if (browser) await browser.close(); });
+// Charts need an account: the suite signs in to one of its own, which every page gets.
+let account;
+before(async () => {
+  browser = await playwright[engineName].launch({ headless: true });
+  account = await newAccount(playwright);
+});
+after(async () => {
+  if (account) await deleteAccount(playwright, account);
+  if (browser) await browser.close();
+});
 
 const profiles = [
   { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
@@ -102,6 +111,7 @@ for (const profile of profiles) {
     const check = (name, run) => it(name, { timeout: 30000 }, async () => {
       const { name: _name, ...options } = profile;
       const page = await browser.newPage(options);
+      await signInPage(page, account);
       const errors = [];
       page.on('pageerror', (error) => errors.push(error.message));
       try {

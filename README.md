@@ -15,7 +15,9 @@ reliable backend/API foundation for Ba Zi (Four Pillars) applications, integrati
 
 # Quick Start
 
-If your environment is already configured, use these three examples:
+If your environment is already configured, with the account settings in
+[Accounts, on a laptop](docs/Developer/Accounts.md#on-a-laptop), use these three
+examples:
 
 1) Running the app
 
@@ -29,10 +31,12 @@ uvicorn eight_characters.main:app --reload
 curl http://127.0.0.1:8000/
 ```
 
-3) Calling the Four Pillars API
+3) Calling the Four Pillars API, with the session cookie of a browser signed in to
+the page (charts need an account)
 
 ```bash
 curl -X POST 'http://127.0.0.1:8000/api/four_pillars' \
+  -b "ec_session=$SESSION" \
   -H 'Content-Type: application/json' \
   -d '{
     "date": "1988-02-04",

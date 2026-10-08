@@ -6,8 +6,6 @@ from dataclasses import fields
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
-from fastapi.testclient import TestClient
-
 from eight_characters.evolution import (
     DEFAULT_MODEL_PARAMETERS,
     InferenceConfig,
@@ -24,7 +22,8 @@ from eight_characters.explorer_controls import (
     LIFE_STAGE_LABELS,
     describe_model,
 )
-from eight_characters.main import BASE_DIR, app
+from eight_characters.main import BASE_DIR
+from tests.accounts_support import signed_in_client
 
 BIRTH: dict[str, Any] = {
     'date': '1988-02-04',
@@ -48,7 +47,7 @@ def _entries(value: Any) -> list[float]:
 class TestApiEvolutionControlsEndpoint(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        cls.client = TestClient(app)
+        cls.client = signed_in_client(cls)
 
     def catalogue(self) -> dict[str, list[dict[str, Any]]]:
         response = self.client.get('/api/evolution_controls')

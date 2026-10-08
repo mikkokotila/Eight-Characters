@@ -93,8 +93,6 @@ class CurrentSession:
     user: User
     token_hash: str
     expires_at: datetime
-    # Extended now, so the browser's cookie must be set again.
-    renewed: bool
 
 
 class SignIn:
@@ -135,7 +133,7 @@ class SignIn:
         if purpose == 'create' and language is None:
             raise SignInError('Choose a language for the account.')
         now = self._clock()
-        self._store.delete_expired(timestamp(now))
+        self._store.delete_expired(timestamp(now), timestamp(now - REQUEST_WINDOW))
         allowed = self._store.allow_code_request(
             address,
             client,
@@ -191,11 +189,12 @@ class SignIn:
             try:
                 user = self._store.create_user(address, taken.new_language)
                 created = True
-            except EmailTaken:
+            except EmailTaken as exc:
                 # Made meanwhile, from another tab with another code.
                 user = self._store.user_by_email(address)
                 if user is None:
-                    raise
+                    # And deleted since: there is no account to sign in to.
+                    raise CodeRefused('That code is wrong or no longer works.') from exc
         token = secrets.token_urlsafe(32)
         expires_at = now + SESSION_LIFETIME
         session = Session(
@@ -222,15 +221,36 @@ class SignIn:
         now = self._clock()
         expires_at = parse_timestamp(session.expires_at)
         if expires_at <= now:
-            self._store.delete_session(token_hash)
-            return None
-        renewed = expires_at - now < SESSION_RENEWAL
-        if renewed:
+            # Only while it is still ended: another request may have renewed it.
+            if self._store.end_expired_session(token_hash, timestamp(now)):
+                return None
+            # Renewed meanwhile, or signed out: as it is now.
+            found = self._store.session_and_user(token_hash)
+            if found is None:
+                return None
+            session, user = found
+            expires_at = parse_timestamp(session.expires_at)
+            if expires_at <= now:
+                raise RuntimeError(
+                    'A session kept as renewed has ended: only renewal moves its end.'
+                )
+            return CurrentSession(
+                user=user, token_hash=token_hash, expires_at=expires_at
+            )
+        if expires_at - now < SESSION_RENEWAL:
             expires_at = now + SESSION_LIFETIME
-            self._store.extend_session(token_hash, timestamp(expires_at))
-        return CurrentSession(
-            user=user, token_hash=token_hash, expires_at=expires_at, renewed=renewed
-        )
+            if not self._store.extend_session(
+                token_hash, timestamp(expires_at), timestamp(now)
+            ):
+                # Signed out, or ended, meanwhile.
+                return None
+        return CurrentSession(user=user, token_hash=token_hash, expires_at=expires_at)
+
+    def sweep(self) -> None:
+        """Drops what has passed its time: ended sessions and codes, and the record of
+        codes asked for before the hourly window."""
+        now = self._clock()
+        self._store.delete_expired(timestamp(now), timestamp(now - REQUEST_WINDOW))
 
     def sign_out(self, token: str) -> None:
         if token and len(token) <= SESSION_TOKEN_MAX_LENGTH:

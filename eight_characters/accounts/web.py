@@ -6,12 +6,13 @@ of what is wrong. Requests that change an account must come from the site's own
 origin, and the session lives in an HttpOnly cookie the page's scripts cannot read.
 """
 
+import hashlib
 import logging
 import os
 import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
@@ -57,6 +58,12 @@ from eight_characters.accounts.store import AccountStore, UnknownUser
 logger = logging.getLogger(__name__)
 
 SIGN_IN_REQUIRED: Final = 'Sign in to continue.'
+ACCOUNT_CHANGED: Final = 'This browser is signed in to another account now.'
+# How long the browser keeps the session cookie: the longest browsers keep one
+# (RFC 6265bis caps Max-Age at 400 days). Only signing in sets it. The session it
+# names ends on the server 30 days after it was made or last extended, and is
+# extended there when used in its second half.
+SESSION_COOKIE_LIFETIME: Final = timedelta(days=400)
 _HEADER_NAME = re.compile(r'[A-Za-z0-9-]+')
 _LOCAL_HOSTS: Final = frozenset({'localhost', '127.0.0.1', '::1'})
 
@@ -254,13 +261,11 @@ def get_accounts() -> Accounts:
 AccountsDependency = Annotated[Accounts, Depends(get_accounts)]
 
 
-def _set_session_cookie(
-    response: Response, accounts: Accounts, token: str, expires_at: datetime
-) -> None:
+def _set_session_cookie(response: Response, accounts: Accounts, token: str) -> None:
     response.set_cookie(
         accounts.config.cookie_name,
         token,
-        max_age=max(0, int((expires_at - accounts.clock()).total_seconds())),
+        max_age=int(SESSION_COOKIE_LIFETIME.total_seconds()),
         path='/',
         secure=accounts.config.secure,
         httponly=True,
@@ -279,18 +284,16 @@ def _clear_session_cookie(response: Response, accounts: Accounts) -> None:
 
 
 def current_session(
-    request: Request, response: Response, accounts: AccountsDependency
+    request: Request, accounts: AccountsDependency
 ) -> CurrentSession | None:
-    """The signed-in account, if any; a session in its second half is renewed."""
+    """The signed-in account, if any; a session in its second half is extended, on
+    the server. No answer here sets or removes the cookie: one arriving late could
+    not tell whether the browser had signed out, or in again, meanwhile, and a cookie
+    is set and removed by its name."""
     token = request.cookies.get(accounts.config.cookie_name)
     if token is None:
         return None
-    current = accounts.sign_in.current(token)
-    if current is None:
-        _clear_session_cookie(response, accounts)
-    elif current.renewed:
-        _set_session_cookie(response, accounts, token, current.expires_at)
-    return current
+    return accounts.sign_in.current(token)
 
 
 SessionDependency = Annotated[CurrentSession | None, Depends(current_session)]
@@ -300,6 +303,11 @@ def _signed_in(current: CurrentSession | None) -> CurrentSession:
     if current is None:
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED)
     return current
+
+
+def require_account(current: SessionDependency) -> User:
+    """For what needs an account: the signed-in user, or 401."""
+    return _signed_in(current).user
 
 
 def _same_origin(request: Request, accounts: Accounts) -> None:
@@ -331,14 +339,28 @@ class AccountView(TypedDict):
     language: Language
     plan: str
     created_at: str
+    updated_at: str
+    key: str
 
 
-def _view(user: User) -> AccountView:
+_KEY: Final = re.compile('[0-9a-f]{64}')
+
+
+def account_key(user: User) -> str:
+    """The account's key: the same for its whole life, and another for an account
+    made again with its address. A hash of its id, which no account answer carries."""
+    return hashlib.sha256(user.id.encode()).hexdigest()
+
+
+def account_view(user: User) -> AccountView:
+    """What the page is told of an account: never its id or a session."""
     return {
         'email': user.email,
         'language': user.language,
         'plan': user.plan,
         'created_at': user.created_at,
+        'updated_at': user.updated_at,
+        'key': account_key(user),
     }
 
 
@@ -365,6 +387,18 @@ class LanguageRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
     language: Literal['fi', 'en']
+    # The account the page names, by its key (see AccountRequest).
+    key: str
+
+
+class AccountRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid')
+
+    # The account the page names, by its key. Tabs share the session cookie, so another
+    # tab may have signed in to another account since the page learned it, or deleted
+    # it and made it again with its address; the action is then refused (409) and
+    # changes nothing.
+    key: str
 
 
 class DeleteRequest(BaseModel):
@@ -372,9 +406,21 @@ class DeleteRequest(BaseModel):
 
     # The account's address, typed again to confirm.
     email: str
+    # The account the page names, by its key (see AccountRequest).
+    key: str
 
 
 router = APIRouter(prefix='/api/account')
+
+
+def _named(user: User, key: str) -> None:
+    """An action is for the account the page names, by its key: if the session
+    belongs to another one now, or to an account made again with the address,
+    nothing is done."""
+    if _KEY.fullmatch(key) is None:
+        raise HTTPException(status_code=400, detail='The account named is not a key.')
+    if key != account_key(user):
+        raise HTTPException(status_code=409, detail=ACCOUNT_CHANGED)
 
 
 @router.post('/code', status_code=202)
@@ -445,13 +491,13 @@ def sign_in(
         raise HTTPException(
             status_code=400, detail='That code is wrong or no longer works.'
         ) from exc
-    _set_session_cookie(response, accounts, signed.token, signed.expires_at)
-    return _view(signed.user)
+    _set_session_cookie(response, accounts, signed.token)
+    return account_view(signed.user)
 
 
 @router.get('')
 def read_account(current: SessionDependency) -> AccountView:
-    return _view(_signed_in(current).user)
+    return account_view(_signed_in(current).user)
 
 
 @router.patch('')
@@ -465,8 +511,9 @@ def update_account(
     language of its emails."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.key)
     try:
-        return _view(accounts.store.set_language(user.id, payload.language))
+        return account_view(accounts.store.set_language(user.id, payload.language))
     except UnknownUser as exc:
         # Deleted since the session was found.
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
@@ -485,23 +532,35 @@ def sign_out(
 
 @router.delete('/sessions', status_code=204)
 def sign_out_everywhere(
+    payload: AccountRequest,
     request: Request,
     response: Response,
     current: SessionDependency,
     accounts: AccountsDependency,
 ) -> None:
     _same_origin(request, accounts)
-    accounts.sign_in.sign_out_everywhere(_signed_in(current).user.id)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    accounts.sign_in.sign_out_everywhere(user.id)
     _clear_session_cookie(response, accounts)
 
 
-@router.get('/export')
+@router.post('/export')
 def export_account(
-    response: Response, current: SessionDependency, accounts: AccountsDependency
+    payload: AccountRequest,
+    request: Request,
+    response: Response,
+    current: SessionDependency,
+    accounts: AccountsDependency,
 ) -> dict[str, Any]:
-    """Everything kept for the account, as a JSON file. Returned as data, so a renewed
-    session cookie goes out with it."""
+    """Everything kept for the account, as a JSON file. What has passed its time is
+    dropped first, so the file holds what the account keeps, and no request older
+    than the hour. The account is named in the body, not the address, which servers
+    log."""
+    _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.key)
+    accounts.sign_in.sweep()
     try:
         data = accounts.store.account_data(user.id)
     except UnknownUser as exc:
@@ -522,6 +581,7 @@ def delete_account(
     run."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
+    _named(user, payload.key)
     try:
         typed = normalize_email(payload.email)
     except RecordError as exc:
