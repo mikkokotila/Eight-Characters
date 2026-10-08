@@ -57,7 +57,11 @@ from eight_characters.luck_pillars import (
 )
 from eight_characters.nutation import nutation_series
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
-from eight_characters.reading import build_reading, check_reading_canon
+from eight_characters.reading import (
+    build_luck_reading,
+    build_reading,
+    check_reading_canon,
+)
 from eight_characters.role_profile import build_role_profile
 from eight_characters.ten_gods import (
     DAY_MASTER,
@@ -1082,12 +1086,23 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
             )
         if payload.include_reading:
             components = _chart_components_from_four_pillars(four_pillars)
+            natal_interactions = detect_interactions(components)
             response['reading'] = build_reading(
                 load_canon(),
                 components,
                 _load_ten_gods_lookup(),
-                detect_interactions(components),
+                natal_interactions,
             )
+            # With its luck context, a chart reads each of its luck pillars too.
+            if payload.include_luck_context:
+                response['luck_reading'] = build_luck_reading(
+                    load_canon(),
+                    components,
+                    _load_ten_gods_lookup(),
+                    natal_interactions,
+                    result['luck_pillars']['pillars'],
+                    response['luck_context']['decades'],
+                )
         if payload.include_hidden_stems or payload.include_ten_gods:
             hidden_stems_request = HiddenStemsRequest(
                 year_pillar=_pillar_text_for_hidden_stems(four_pillars, 'year'),

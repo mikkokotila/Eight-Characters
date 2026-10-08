@@ -5,6 +5,12 @@ Master, the Ten God of each stem, the branch in each pillar, the Day Master on e
 branch, the life stages, and the relationships the engine detects. Nothing here
 writes, shortens or rephrases a passage, and nothing assesses strength or predicts.
 
+A chart with luck pillars reads each of them too (build_luck_reading). The canon has
+no passages for the luck position, so a luck pillar reads as the canon's passages for
+its stem and its branch from the Day Master's seat, its relationships as their entries
+read, and the canon's sentences that wait for a luck pillar where it brings what they
+wait for.
+
 The canon speaks in English; the reading is English only.
 """
 
@@ -33,10 +39,14 @@ from eight_characters.interactions import (
     CANON_PUNISHMENT_PAIR,
     CANON_PUNISHMENT_TRIANGLES,
     CANON_SELF_PUNISHMENTS,
+    LUCK,
     Interaction,
     InteractionKind,
+    InteractionMember,
 )
 from eight_characters.life_stages import life_stage
+from eight_characters.luck_context import DecadeContext
+from eight_characters.luck_pillars import LuckPillar
 from eight_characters.ten_gods import TEN_GOD_NAMES, TenGodName
 
 POLICY = 'canon_taxonomy_v1'
@@ -253,6 +263,85 @@ class Reading(TypedDict):
     relationships: dict[str, RelationshipReading]
 
 
+# ── The luck pillars ──
+
+SettleSource = Literal['year_hour_stems', 'year_hour_branches', 'half_frame', 'cradle']
+
+# The canon's sentences that wait for a luck pillar. A luck pillar settles one when it
+# brings what the sentence waits for:
+# - one of a natal Year–Hour stem combination's stems, which then combines with the other;
+# - the same branch as one end of a natal Year–Hour relationship, which then forms it
+#   with the other end;
+# - the missing branch of a natal half-frame, which its whole then takes in;
+# - the Peak of a frame whose Birth and Storage the natal chart holds without it.
+# Checked against the canon, word for word, when it loads (_settle_texts).
+SETTLE_SENTENCES: dict[SettleSource, str] = {
+    'year_hour_stems': (
+        'The ancestry and the private world are too far apart to combine on their own; the attraction '
+        'becomes real only when a Luck Pillar or annual pillar brings one of the two Stems into an '
+        'adjacent position.'
+    ),
+    'year_hour_branches': (
+        'Year–Hour, separated by two, is so remote that most practitioners disregard it unless a Luck '
+        'Pillar or annual pillar brings the same Branch into an adjacent position.'
+    ),
+    'half_frame': (
+        "When only two of the three Branches are present and one of them is the Peak Branch, it's a "
+        'half-frame (半合) — a coalition waiting for its third member, potential energy that activates '
+        'when the missing Branch arrives via Luck Pillar (the ten-year cycles that run alongside the '
+        'natal chart) or annual pillar.'
+    ),
+    'cradle': (
+        'Birth and Storage without the Peak is not a half-frame: the two ends of the triangle can only '
+        'cradle (拱) the absent middle, a virtual bond so weak that most practitioners disregard it '
+        'until the missing Branch actually arrives.'
+    ),
+}
+# A natal Year–Hour relationship's two ends.
+_OTHER_END = {'year': 'hour', 'hour': 'year'}
+
+
+class LuckStemReading(TypedDict):
+    ten_god: TenGodName
+    # The canon's heading for the role, e.g. 'The Equal (Companion)', and its relation.
+    name: str
+    relation: str
+    core: list[Paragraph]
+
+
+class LuckBranchReading(TypedDict):
+    # The branch itself; the Day Master on it, its Day-Pillar sentence left out; and the
+    # Day Master's stage on it.
+    about: list[Paragraph]
+    meets: list[Paragraph]
+    stage: StageReading
+
+
+class Settled(TypedDict):
+    source: SettleSource
+    # The natal relationship the luck pillar settles; None for a Birth and Storage, which
+    # the chart holds as no relationship.
+    natal: str | None
+    # The luck pillar's relationships that settle it.
+    by: list[str]
+    sentence: str
+
+
+class LuckDecadeReading(TypedDict):
+    sequence: int
+    stem: LuckStemReading
+    branch: LuckBranchReading
+    # Each relationship the luck pillar forms, read as its entry reads, without pairing.
+    relationships: dict[str, RelationshipReading]
+    settles: list[Settled]
+
+
+class LuckReading(TypedDict):
+    policy: Literal['canon_taxonomy_v1']
+    language: Literal['en']
+    decades: list[LuckDecadeReading]
+
+
 def _plain(texts: Sequence[str]) -> list[Paragraph]:
     return [{'label': None, 'text': text} for text in texts]
 
@@ -309,6 +398,12 @@ def check_reading_canon(canon: Canon) -> None:
         if set(_point_labels(entry)) != {BRANCHES[b]['pinyin'] for b in members}:
             raise CanonError(f'{entry["title"]}: its points do not name its branches')
     _check_lines(canon)
+    texts = _settle_texts(canon)
+    for source, sentence in SETTLE_SENTENCES.items():
+        if _sentences(texts[source]).count(sentence) != 1:
+            raise CanonError(
+                f'the sentence that waits for a luck pillar ({source}) is no longer in the canon'
+            )
     table = canon['cycle']['table']
     for stem in STEM_CHARS:
         for branch, stage in table[stem].items():
@@ -316,6 +411,19 @@ def check_reading_canon(canon: Canon) -> None:
                 raise CanonError(
                     f'the canon puts {stem} on {branch} at stage {stage}, the engine does not'
                 )
+
+
+def _settle_texts(canon: Canon) -> dict[SettleSource, str]:
+    """Where the canon says each sentence that waits for a luck pillar."""
+    harmonies = ' '.join(p['text'] for p in canon['three_harmonies']['introduction'])
+    return {
+        'year_hour_stems': canon['stem_combinations']['pairings']['Year–Hour']['text'],
+        'year_hour_branches': ' '.join(
+            p['text'] for p in canon['six_harmonies']['introduction']
+        ),
+        'half_frame': harmonies,
+        'cradle': harmonies,
+    }
 
 
 def _labelled(entry: Entry, label: str) -> Paragraph:
@@ -515,9 +623,10 @@ def _relationship(
     entry = family['entries'][key]
     member_pillars = [member['pillar'] for member in interaction['members']]
     # Only the families the canon gives pairings for read one; a pair's is its pillars'.
+    # The canon's pairings are the natal positions', so a luck pillar's pair reads none.
     pairing = (
         family['pairings'][_pairing(member_pillars)]
-        if len(member_pillars) == 2 and family['pairings']
+        if len(member_pillars) == 2 and family['pairings'] and LUCK not in member_pillars
         else None
     )
     with_dm = neither = dynamic = None
@@ -661,3 +770,153 @@ def build_reading(
             for interaction in interactions
         },
     }
+
+
+def _luck_char(interaction: Interaction) -> str:
+    return next(m['char'] for m in interaction['members'] if m['pillar'] == LUCK)
+
+
+def _natal_members(interaction: Interaction) -> list[InteractionMember]:
+    return [m for m in interaction['members'] if m['pillar'] != LUCK]
+
+
+def _settles(
+    pillars: Mapping[str, tuple[str, str]],
+    natal: Sequence[Interaction],
+    decade: DecadeContext,
+) -> list[Settled]:
+    """The canon's sentences that wait for a luck pillar, where this one brings what
+    they wait for: each with the natal relationship it settles and the luck pillar's
+    relationships that settle it (SETTLE_SENTENCES)."""
+    luck = decade['interactions']
+    found: list[Settled] = []
+    # A natal Year–Hour relationship, of stems or of branches: the luck pillar brings the
+    # same character as one end, and forms the same relationship with the other.
+    for relationship in natal:
+        if {m['pillar'] for m in relationship['members']} != {'year', 'hour'}:
+            continue
+        index = 0 if relationship['component'] == 'stem' else 1
+        by = [
+            other['id']
+            for other in luck
+            if other['kind'] == relationship['kind']
+            and len(other['members']) == 2
+            and _natal_members(other)[0]['pillar'] in _OTHER_END
+            and _luck_char(other)
+            == pillars[_OTHER_END[_natal_members(other)[0]['pillar']]][index]
+        ]
+        if by:
+            source: SettleSource = (
+                'year_hour_stems'
+                if relationship['component'] == 'stem'
+                else 'year_hour_branches'
+            )
+            found.append(
+                {
+                    'source': source,
+                    'natal': relationship['id'],
+                    'by': by,
+                    'sentence': SETTLE_SENTENCES[source],
+                }
+            )
+    # A natal half-frame whose missing branch the luck pillar brings: its whole takes the
+    # half in for the decade.
+    halves = {r['id'] for r in natal if r['kind'] == 'half_frame'}
+    for absorbed in decade['absorbed']:
+        if absorbed['id'] in halves:
+            found.append(
+                {
+                    'source': 'half_frame',
+                    'natal': absorbed['id'],
+                    'by': list(absorbed['by']),
+                    'sentence': SETTLE_SENTENCES['half_frame'],
+                }
+            )
+    # A frame's Birth and Storage, which the natal chart holds without its Peak and which
+    # only cradle it: the luck pillar brings the Peak.
+    natal_branches = {pillars[pillar][1] for pillar in PILLARS}
+    peaks = {frozenset(key): peak for key, peak in CANON_HALF_FRAMES}
+    cradled = [
+        other['id']
+        for other in luck
+        if other['kind'] == 'harmony_frame'
+        and _luck_char(other)
+        == peaks[frozenset(m['char'] for m in other['members'])]
+        and _luck_char(other) not in natal_branches
+    ]
+    if cradled:
+        found.append(
+            {
+                'source': 'cradle',
+                'natal': None,
+                'by': cradled,
+                'sentence': SETTLE_SENTENCES['cradle'],
+            }
+        )
+    return found
+
+
+def build_luck_reading(
+    canon: Canon,
+    pillars: Mapping[str, tuple[str, str]],
+    ten_gods: Mapping[tuple[str, str], TenGodName],
+    interactions: Sequence[Interaction],
+    luck_pillars: Sequence[LuckPillar],
+    decades: Sequence[DecadeContext],
+) -> LuckReading:
+    """The canon's passages for each luck pillar of this chart, decade by decade.
+
+    `interactions` are the natal chart's, and `decades` the luck context's
+    (luck_context.build_luck_context), in the luck pillars' order.
+    """
+    if set(pillars) != set(PILLARS):
+        raise ValueError('A reading requires exactly year, month, day, and hour.')
+    if len(decades) != len(luck_pillars):
+        raise ValueError('A luck reading requires one context for each luck pillar.')
+    day_master = pillars['day'][0]
+    grounds = canon['stems_on_branches'][day_master]
+    season = _SEASON_BY_BRANCH[pillars['month'][1]]
+    read: list[LuckDecadeReading] = []
+    for pillar, decade in zip(luck_pillars, decades, strict=True):
+        stem = pillar['stem']['chinese']
+        branch = pillar['branch']['chinese']
+        god = ten_gods[(day_master, stem)]
+        stage = life_stage(day_master, branch)
+        if (
+            decade['sequence'] != pillar['sequence']
+            or decade['occurrences'][0]['ten_god'] != god
+            or decade['day_master_stage'] != stage
+        ):
+            raise ValueError(f'Luck pillar {pillar["sequence"]} and its context disagree.')
+        # The Day Master on the luck branch, as on any branch but the Day's own.
+        text = grounds['branches'][branch]
+        only = DAY_PILLAR_ONLY.get(day_master + branch)
+        if only is not None:
+            text = ' '.join(s for s in _sentences(text) if s != only)
+        passages = canon['ten_gods'][god]
+        read.append(
+            {
+                'sequence': pillar['sequence'],
+                'stem': {
+                    'ten_god': god,
+                    'name': passages['name'],
+                    'relation': passages['relation'],
+                    'core': _plain(passages['core']),
+                },
+                'branch': {
+                    'about': _plain(canon['branches'][branch]['core']),
+                    'meets': _plain([text]),
+                    'stage': _stage_reading(
+                        canon, stage, _plain(canon['stages'][stage]['core'])
+                    ),
+                },
+                'relationships': {
+                    interaction['id']: _relationship(
+                        canon, interaction, pillars, season
+                    )
+                    for interaction in decade['interactions']
+                },
+                'settles': _settles(pillars, interactions, decade),
+            }
+        )
+    return {'policy': POLICY, 'language': 'en', 'decades': read}
