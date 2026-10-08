@@ -61,6 +61,14 @@ SEASONS = {
     '亥子丑': 'winter',
 }
 SEASON_OF = {char: name for chars, name in SEASONS.items() for char in chars}
+# The branches' pinyin as the app writes them, with no diacritics.
+BRANCH_PINYIN = dict(
+    zip(
+        BRANCH_CHARS,
+        'Zi Chou Yin Mao Chen Si Wu Wei Shen You Xu Hai'.split(),
+        strict=True,
+    )
+)
 
 
 def sentences(text):
@@ -153,6 +161,27 @@ class TestReadingApi(unittest.TestCase):
         self.assertTrue(
             clash['condition']['sentence'].startswith('The seasonal question matters')
         )
+        # Its ring runs from Yang Water's Birth on the Monkey, each branch with its pinyin.
+        self.assertEqual(
+            [
+                (s['stage'], s['branch'], s['pinyin'])
+                for s in result['day_master']['cycle']['ring']
+            ],
+            [
+                (1, '申', 'Shen'),
+                (2, '酉', 'You'),
+                (3, '戌', 'Xu'),
+                (4, '亥', 'Hai'),
+                (5, '子', 'Zi'),
+                (6, '丑', 'Chou'),
+                (7, '寅', 'Yin'),
+                (8, '卯', 'Mao'),
+                (9, '辰', 'Chen'),
+                (10, '巳', 'Si'),
+                (11, '午', 'Wu'),
+                (12, '未', 'Wei'),
+            ],
+        )
 
 
 class TestReadingSelection(unittest.TestCase):
@@ -223,6 +252,27 @@ class TestReadingSelection(unittest.TestCase):
             texts(got['stage']['paragraphs']),
             [canon['stages'][stage]['pillars'][pillar]],
         )
+
+    def test_the_ring_names_every_branch_by_its_pinyin(self):
+        # The ring pairs each branch's character with its pinyin, which carries no
+        # diacritics, for every Day Master.
+        for day_master in STEM_CHARS:
+            pillars = {name: ('甲', '子') for name in PILLARS}
+            pillars['day'] = (
+                day_master,
+                '子' if STEM_CHARS.index(day_master) % 2 == 0 else '丑',
+            )
+            ring = reading(pillars)['day_master']['cycle']['ring']
+            with self.subTest(day_master=day_master):
+                self.assertEqual([s['stage'] for s in ring], list(range(1, 13)))
+                self.assertEqual(
+                    sorted(s['branch'] for s in ring), sorted(BRANCH_CHARS)
+                )
+                for s in ring:
+                    table = self.canon['cycle']['table'][day_master]
+                    self.assertEqual(s['stage'], table[s['branch']])
+                    self.assertEqual(s['pinyin'], BRANCH_PINYIN[s['branch']])
+                    self.assertRegex(s['pinyin'], r'^[A-Z][a-z]+$')
 
     def test_the_day_pillar_sentences_stay_on_the_day_only(self):
         found = 0
