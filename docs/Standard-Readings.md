@@ -116,9 +116,9 @@ API for no reading, and every page is as it was before readings. The language
 switch asks for the chart again, with or without its reading.
 
 The app writes pinyin without diacritics, and so does the canon: a test refuses
-any. A reading names a stem or branch with its character, as in "Ren 壬 on Chou 丑",
-never by the character alone. The canon's arrow, in the stem combinations' titles, is drawn, as the app's
-other arrows are.
+any. A reading names a stem or branch by its pinyin and its character, as in
+"Ren 壬 on Chou 丑", never by the character alone. The canon's arrow, in the stem
+combinations' titles, is drawn, as the app's other arrows are.
 
 ## On paper
 

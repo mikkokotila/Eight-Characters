@@ -13,7 +13,7 @@ The luck pillar's readings: what the canon says of each decade, and the canon's 
 - **A decade's page reads the canon**, in an English chart: its stem's role, its branch, and the Day Master there and its stage, a line each under the phases. Each of its relationships has the canon's line about its form, there and in the relationships list, and its page reads its entry. Where the decade brings what the canon waits for, the page quotes the sentence after its relationships.
 
 ### Fixed
-- Readings name a stem or branch with its character, never by the character alone: "Your Water on this ground · Ren 壬 on Mao 卯", "Your seat · Ren 壬 on Zi 子", and the Day Master page's lens keys such as "Hour · Ren Shen 壬申". The readings' note names its source as San Ming Tong Hui 三命通会.
+- Readings name a stem or branch by its pinyin and its character, never by the character alone: "Your Water on this ground · Ren 壬 on Mao 卯", "Your seat · Ren 壬 on Zi 子", and the Day Master page's lens keys such as "Hour · Ren Shen 壬申". The readings' note names its source as San Ming Tong Hui 三命通会.
 
 ### Tests
 - `tests/test_api_luck_reading.py`:
@@ -24,7 +24,7 @@ The luck pillar's readings: what the canon says of each decade, and the canon's 
   - every one of the sixty pillars as the luck pillar of every Day Master;
   - a canon without a sentence it waits on, refused.
 - `tests/browser/luck.test.mjs`: an English decade's page reads its stem and branch, its relationships' lines and the cradle 戊子 Wu Zi completes; a luck relationship's page reads its entry; a Finnish chart has none.
-- `tests/browser/reading.test.mjs` follows the readings' keys, now naming the characters.
+- `tests/browser/reading.test.mjs` follows the readings' keys, which now pair the pinyin with the characters.
 - Version bumped to `0.45.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
 
 ## 0.44.0
