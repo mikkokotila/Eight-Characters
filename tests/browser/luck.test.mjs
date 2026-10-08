@@ -763,12 +763,14 @@ for (const profile of profiles) {
 
     check('the keys\' hint stays over its card as the luck pillar comes and goes, and as its page opens', async (page) => {
       await openSample(page);
-      // Where the hint stands from the top middle of the card with focus, or null hidden.
+      // Where the hint stands from the top middle of the card with focus, in whole pixels
+      // (+ 0 makes a -0 a 0), or null hidden.
       const hint = () => page.evaluate(() => {
         const node = document.querySelector('.card-hint');
         if (node.classList.contains('hidden')) return null;
         const card = document.activeElement.getBoundingClientRect();
-        return [Math.round(parseFloat(node.style.left) - (card.left + card.width / 2)), Math.round(parseFloat(node.style.top) - card.top)];
+        return [parseFloat(node.style.left) - (card.left + card.width / 2), parseFloat(node.style.top) - card.top]
+          .map((offset) => Math.round(offset) + 0);
       });
       await page.locator('.card.stem[data-pillar="year"]').focus();
       await page.keyboard.press('ArrowLeft');
