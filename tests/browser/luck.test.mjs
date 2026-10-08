@@ -767,15 +767,24 @@ for (const profile of profiles) {
       // The pointer rests clear of the cards: a card that comes under it takes the hint.
       await page.mouse.move(0, 0);
       // Where the hint stands from the top middle of the card with focus, in whole pixels
-      // (+ 0 makes a -0 a 0), or null hidden. Read after two frames: a focus that scrolls
-      // the page is followed by its scroll event in the next one (WebKit on a phone).
+      // (+ 0 makes a -0 a 0), or null hidden. A focus that scrolls the page sends its scroll
+      // event, which places the hint again, when the engine has scrolled: in WebKit on a
+      // phone that can be some frames later. So the hint has up to 60 frames to stand over
+      // its card; one that never follows it does not.
       const hint = () => page.evaluate(async () => {
-        await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-        const node = document.querySelector('.card-hint');
-        if (node.classList.contains('hidden')) return null;
-        const card = document.activeElement.getBoundingClientRect();
-        return [parseFloat(node.style.left) - (card.left + card.width / 2), parseFloat(node.style.top) - card.top]
-          .map((offset) => Math.round(offset) + 0);
+        const read = () => {
+          const node = document.querySelector('.card-hint');
+          if (node.classList.contains('hidden')) return null;
+          const card = document.activeElement.getBoundingClientRect();
+          return [parseFloat(node.style.left) - (card.left + card.width / 2), parseFloat(node.style.top) - card.top]
+            .map((offset) => Math.round(offset) + 0);
+        };
+        for (let frame = 0; frame < 60; frame += 1) {
+          const offsets = read();
+          if (offsets !== null && offsets.every((offset) => offset === 0)) return offsets;
+          await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        return read();
       });
       // Into the cards with Tab, and on to the Month's stem with the arrows: keyboard focus,
       // which the hint is for (keyboard.test.mjs). WebKit shows none for a script's focus.
