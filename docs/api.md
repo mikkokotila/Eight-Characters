@@ -94,6 +94,9 @@ Response conditionally includes:
   was resolved to, with the same `city`, `region`, `country`, `timezone`,
   `latitude` and `longitude` fields as a `POST /api/location_search` result
 - `chart` (when `include_chart=true`)
+- `luck_chart` (when `include_chart=true` and `include_luck_pillars=true`): each
+  luck pillar's cards, drawn as `chart` draws the natal pillars' (each stem and branch
+  with its element, labels and lines, in `lang`), under the pillar's `sequence`
 - `hidden_stems` (when `include_hidden_stems=true`)
 - `ten_gods` (when `include_ten_gods=true`)
 - `interactions` (when `include_interactions=true`)

@@ -966,7 +966,7 @@ body {
 
 /* The pillar's own name: its characters, then their pinyin. It opens the
    pillar's exact changes. */
-.pillar-identity {
+:is(.pillar-identity, .luck-identity) {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -980,9 +980,9 @@ body {
   cursor: pointer;
   transition: background 0.2s ease, border-color 0.2s ease;
 }
-.pillar-identity:hover { background: var(--surface-1); border-color: var(--line-1); }
-.pillar-identity:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 3px; }
-.pillar-identity[aria-expanded='true'] { background: var(--surface-1); border-color: var(--line-2); }
+:is(.pillar-identity, .luck-identity):hover { background: var(--surface-1); border-color: var(--line-1); }
+:is(.pillar-identity, .luck-identity):focus-visible { outline: 2px solid var(--ink-2); outline-offset: 3px; }
+:is(.pillar-identity, .luck-identity)[aria-expanded='true'] { background: var(--surface-1); border-color: var(--line-2); }
 
 /* A pillar at most 30 minutes from a change. Every header keeps the row, so the
    cards stay level across the columns. */
@@ -1020,6 +1020,68 @@ body {
   font-size: var(--text-3);
   letter-spacing: var(--tracking-1);
   color: var(--ink-2);
+}
+
+/* ── The luck pillar: a fifth column beside the Year, in a chart with a gender
+   (luck.js). It keeps its place and its size whether it shows or not, so showing it
+   moves nothing: hidden, only what the decade adds is out of sight. ── */
+.pillars.has-luck,
+.pillars.has-luck .relationship-arcs { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.pillar.is-luck { position: relative; }
+/* Its lane: a quiet band behind the column, whether it shows or not. */
+.pillar.is-luck::before {
+  content: '';
+  position: absolute;
+  inset: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-3));
+  z-index: -1;
+  border-radius: 20px;
+  background: var(--surface-1);
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+/* Hidden, or before the first decade, the cards keep their room unseen; hidden, so do
+   the column's name and mark. */
+.pillar.is-luck:not([data-luck-state='on']) .card-face,
+.pillar.is-luck:not([data-luck-state='on']) .hidden-stems-panel,
+.pillar.is-luck[data-luck-state='off'] .pillar-header > * { visibility: hidden; }
+.pillar.is-luck:not([data-luck-state='on']) .card { outline: 1px dashed var(--line-2); outline-offset: -1px; }
+.pillar.is-luck[data-luck-state='none'] .pillar-chars { visibility: hidden; }
+/* Hidden, the stem's room says what brings it back. */
+.luck-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-3);
+  font-size: var(--text-1);
+  text-align: center;
+  color: var(--ink-2);
+  pointer-events: none;
+}
+/* In the stem phase the stem leads and the branch acts too; in the branch phase the
+   branch leads, and the stem is set aside. */
+.card[data-luck-part='leading']::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border: 2px solid var(--ink-1);
+  border-radius: inherit;
+  pointer-events: none;
+}
+.card.metal[data-luck-part='resting'] .card-face { background: var(--metal-tint); }
+.card.fire[data-luck-part='resting'] .card-face { background: var(--fire-tint); }
+.card.wood[data-luck-part='resting'] .card-face { background: var(--wood-tint); }
+.card.earth[data-luck-part='resting'] .card-face { background: var(--earth-tint); }
+.card.water[data-luck-part='resting'] .card-face { background: var(--water-tint); }
+.luck-set-aside {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-3);
+  z-index: 1;
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 600;
+  letter-spacing: var(--tracking-1);
 }
 
 /* The stem, branch and hidden-stem rows of the pillar's subgrid, below the
@@ -2528,6 +2590,19 @@ kbd {
   }
   /* The second row of pillars. */
   .pillar:nth-child(n + 3) { margin-top: var(--space-5); }
+  /* The luck pillar stands above the two-by-two chart, its stem and branch side by side. */
+  .pillars.has-luck { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .pillars.has-luck .pillar.is-luck { grid-column: 1 / -1; order: -1; margin: 0 0 var(--space-5); }
+  .pillar.is-luck .pillar-cards {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto auto;
+    column-gap: var(--pillar-gap);
+  }
+  .pillar.is-luck .card.stem { grid-area: 1 / 1; }
+  .pillar.is-luck .card.branch { grid-area: 1 / 2; margin-top: 0; }
+  .pillar.is-luck .hidden-stems-panel { grid-area: 2 / 2; }
+  .pillar.is-luck .card { border-radius: 14px; }
+  .pillar.is-luck .card.branch.is-expanded { border-radius: 14px 14px 0 0; }
   /* Two pillars to a row leave no line for the arcs to span; the relationships
      are listed in the sheet. Their rows are left empty, so they take no room,
      and the headers keep their own room above the cards. */
@@ -2667,6 +2742,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 
   .chart-container,
   .chart-container.has-panel { display: block; max-width: none; padding-bottom: 0; }
+  /* A hidden luck pillar is not printed, and leaves the chart its four columns. */
+  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']),
+  .pillars.has-luck:has(> .pillar.is-luck[data-luck-state='off']) .relationship-arcs { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .pillar.is-luck[data-luck-state='off'] { display: none; }
   .pillars { break-inside: avoid; }
   .chart-bar,
   .chart-topics { break-after: avoid; }
@@ -2710,5 +2789,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .pillar:nth-child(2) { grid-column: 2; }
   .pillar:nth-child(3) { grid-column: 3; }
   .pillar:nth-child(4) { grid-column: 4; }
+  .pillar.is-luck { grid-column: 5; }
   .relationship-arcs { position: relative; inset: auto; }
 }

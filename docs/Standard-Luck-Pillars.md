@@ -5,6 +5,10 @@ cycles that follow the birth, each read against the natal chart. How the engine
 calculates them, and what it says of each decade, is in
 [Ten-year luck pillars](Luck-Pillars.md).
 
+One choice drives them all: a period, either the years before the first decade or one
+of a decade's two phases. The ribbon marks it, the chart can show it as a fifth
+pillar, and the panel can show its page.
+
 ## Asking for them
 
 The form's Gender is optional: Not given (the default), Female or Male. Only the luck
@@ -41,14 +45,41 @@ page, and keeps the open decade, or today's, in sight. On a phone, the ribbon's 
 and Today stand above it.
 
 What the ribbon does:
-- **A chip** opens its decade's page in the panel: at today's phase when today falls in
-  that decade, and at its stem phase otherwise. Pressed again, it closes the page.
-- **‹ and ›** step one phase back or forward. They go through the years before the
-  decades, then each decade's stem phase and branch phase, and stop at either end. With
-  nothing open, they start from today's phase: before a birth still to come, from just
-  before the first; past the last decade, from just after the last.
-- **Today** opens today's phase. It is spent while today's phase is open, and while
-  today falls outside the ribbon.
+- **A chip** chooses its decade, shows it in the chart and opens its page: at today's
+  phase when today falls in that decade, and at its stem phase otherwise. Pressed again,
+  it closes the page; the decade stays in the chart.
+- **‹ and ›** step the luck pillar one phase back or forward. They go through the
+  years before the decades, then each decade's stem phase and branch phase, and stop at
+  either end. An open page follows them; a closed one stays closed. With the luck pillar
+  hidden, they start from today's phase: before a birth still to come, from just before
+  the first; past the last decade, from just after the last.
+- **Today** chooses today's phase and opens its page. It is spent while today's phase
+  is open, and while today falls outside the ribbon.
+
+## The fifth pillar
+
+A chart with a gender has a fifth column beside the Year: the luck pillar's. The chart
+opens natal, the column kept but empty, with only its note: "L shows the luck pillar".
+**L**, or the Natal / With luck switch among the chart's controls, shows the chosen
+period there and hides it again. Choosing a period, on the ribbon or with the keys,
+shows it.
+
+Showing the luck pillar moves nothing on the chart. Hidden, its cards keep their room
+unseen, in every display and at every width, so a natal card or arc never shifts.
+
+Shown, the luck pillar reads as the natal pillars do: its name, the decade's place and
+years, its characters, and its stem and branch cards. Its mark says the phase and when it
+ends, such as "Stem phase until 2028". In the stem phase the stem leads, ringed, and
+the branch acts too. In the branch phase the branch leads, ringed, and the stem is set
+aside: it turns to its element's tint and says "Set aside". Before the first decade the
+column says when the first starts, and its cards stay empty.
+
+Its cards take the chart's display: characters, Ten Gods (read from the natal Day
+Master) or hidden stems. A long press turns one, and a click opens the branch's hidden
+stems, as on the natal cards. Its name opens the decade's page.
+
+On a phone the luck pillar stands above the two-by-two chart, its stem beside its
+branch.
 
 ## A decade's page
 
@@ -71,10 +102,9 @@ The page shows:
   pillars, named as the relationships list names them, with the luck pillar as Luck.
   Each says when it acts: a stem's relationship in the stem phase only, a branch's in
   both. A relationship that completes a natal half into a whole names the half it takes
-  in for the decade. Resting the pointer on a line, or clicking it, rings the natal
-  cards it names, as the panel's other lines do (see
-  [Relationships](Standard-Relationships.md)). The luck pillar has no card on the
-  chart.
+  in for the decade. Resting the pointer on a line, or clicking it, rings the cards it
+  names, the natal ones and the luck pillar's, as the panel's other lines do (see
+  [Relationships](Standard-Relationships.md)).
 - **Elements.** Each element's count with the luck pillar: the natal chart's eight
   characters, and the luck pillar's that act in the phase, which makes ten in the stem
   phase and nine in the branch phase. Counts are tallies, not strength.
@@ -82,24 +112,33 @@ The page shows:
 The years before the first decade have a page of their own: their dates and ages, and
 that no luck pillar falls there.
 
-Opening a decade replaces any other open topic, and another topic replaces it. Nothing
-on the chart moves, opens or changes colour. Nothing weighs strength, applies a
-transformation or predicts.
+Opening a decade replaces any other open topic, and another topic replaces it; the
+luck pillar stays in the chart. Nothing weighs strength, applies a transformation or
+predicts.
 
 ## Keyboard, commands and links
 
-- The chips take one tab stop: the open decade's chip, else today's. Left and Right
-  move between them, and Home and End go to either end, opening nothing. Enter or Space
-  opens one. See [Keyboard](Standard-Keyboard.md).
+- While the chart has focus, **L** shows and hides the luck pillar, **[** and **]**
+  step it a phase, **{** and **}** a decade, and **N** chooses today's phase and opens
+  its page.
+- The chips take one tab stop: the chosen decade's chip while the luck pillar shows,
+  else today's. Left and Right move between them, and Home and End go to either end,
+  opening nothing. Enter or Space opens one.
+- The luck pillar's cards follow the Year's in the cards' arrows while it shows. Enter or
+  Space opens its branch's hidden stems, T turns a card, and R opens the decade's page.
+  Hidden, its cards take no focus. See [Keyboard](Standard-Keyboard.md).
 - Escape closes the page and gives focus back to its chip, as Close does.
-- The commands (⌘K or Ctrl+K) offer the years before the decades and each decade,
-  named as their chips are.
-- The address names the open phase: `topic=luck/before`, or
-  `topic=luck/<decade>/<stem|branch>`, such as `luck/5/stem`.
+- The commands (⌘K or Ctrl+K) offer the years before the decades, each decade named as
+  its chip is, and the switch's other side.
+- The address names the period standing in the chart, `luck=before` or
+  `luck=<decade>/<stem|branch>` such as `luck=5/stem`, and the open page,
+  `topic=luck/before` or `topic=luck/<decade>/<stem|branch>`. A page shows the period
+  standing in the chart. A change of language keeps the luck pillar shown.
 
 ## Printing and comparing
 
-Print leaves the ribbon out; an open decade's page prints below the chart, as any open
+Print leaves the ribbon out. A luck pillar shown prints in the chart; hidden, it is
+left out with its column. An open decade's page prints below the chart, as any open
 topic does (see [Copying and printing](Standard-Copy-and-Print.md)). In a comparison,
 a chart whose link has a gender shows its own ribbon; the second birth starts without
 one (see [Comparing two charts](Standard-Compare.md)).
@@ -116,9 +155,10 @@ nominal. See [Uncertainty](Luck-Pillars.md#uncertainty-and-reference-comparison)
 
 ## When the page refuses
 
-The page checks the API's luck pillars and their context as it reads them: the
-decades in sequence and meeting end to end, two phases each that meet, each
-relationship naming the luck pillar, and counts that add up. A chart whose luck pillars
+The page checks the API's luck pillars, their context and their cards as it reads
+them: the decades in sequence and meeting end to end, two phases each that meet, each
+relationship naming the luck pillar and acting by the phase rule, counts that add up,
+and cards drawn for the decade's own characters. A chart whose luck pillars
 do not hold together is not drawn: the form says so.
 
 See [browser regression tests](../tests/browser/README.md): `luck.test.mjs`.

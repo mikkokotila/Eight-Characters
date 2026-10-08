@@ -296,6 +296,14 @@ The compare suite checks two charts side by side (#20).
 
 The luck pillars suite checks a chart asked for with a gender. It runs with the clock
 at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, female).
+- **The fifth pillar.** The chart opens natal, the luck pillar's column kept but
+  empty. L and the switch show the chosen period there and hide it. Every card, panel
+  and arc stands where it stood, in all three displays, at widths from 1440px to 700px
+  and on phones. The stem leads in the stem phase, and the branch in the branch phase
+  with the stem set aside. Its cards take the display, the cards' arrows, Enter, T and
+  R; hidden, they take no focus. On a phone it stands above the two-by-two chart.
+- **Keys.** [ ] { } N and L act only while the chart has focus; ? lists them, and a
+  chart without a gender has none.
 - **Asking.** The gender is optional, in both languages. A chart without one asks for
   no luck pillars, shows no ribbon, and its link names no gender.
 - **The ribbon.** Each decade by its characters, names, years and starting age, and the
@@ -307,17 +315,20 @@ at 7 October 2026, on the design's sample (14 August 1975, 07:45, Helsinki, fema
   the natal chart and when they act, and the elements counted with it. The branch
   phase sets the stem aside. A relationship rings its natal cards, a whole names the
   natal half it takes in, and the pillars do not move.
-- **Moving.** The steps walk the phases in order and stop at the ends. A chip opens its
-  decade and closes it, and another topic replaces it. Escape and Close give focus back
-  to the chip. The chips take one tab stop, and arrows move between them.
+- **Moving.** The steps walk the luck pillar through the phases in order, stop at the
+  ends, and an open page follows them. A chip opens its decade and closes its page, the
+  decade staying in the chart, and another topic replaces the page. Escape and Close
+  give focus back to the chip. The chips take one tab stop, and arrows move between
+  them.
 - **Edges.** A child's chart is before its first decade today, an old one is past its
   last, and a birth still to come has no today. A birth seconds from Jingzhe or Lichun,
   within the luck pillars' allowance but not the natal one, has a notice and nominal
   dates.
-- **Links, language and commands.** A link opens the decade and phase it names. Edit
-  keeps the gender and New chart clears it. A link to a decade the chart lacks, or to an
-  unknown gender, says why. Finnish works, and a change of language keeps the luck
-  pillars. The commands offer each decade.
+- **Links, language and commands.** A link names the luck pillar standing in the chart
+  and opens the page it names. Edit keeps the gender and New chart clears it. A link to
+  a decade the chart lacks, to an unknown gender, or to a page other than the luck
+  pillar's, says why. Finnish works, and a change of language keeps the luck pillar
+  shown. The commands offer each decade.
 - **Refusal.** Luck pillars that do not hold together stop the chart with a message.
 
 The explorer parameters suite checks the explorer's parameter pane (PR #7):

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.40.0
+## 0.41.0
 
 Charts need an account; the start page does not. Creating a chart while signed out asks for an account first, made or signed in with a code sent by email, free and without a password.
 
@@ -34,6 +34,48 @@ Charts need an account; the start page does not. Creating a chart while signed o
 - The API tests sign in as the page does.
 - The browser suites sign in to accounts of their own through the API, reading codes from the app's mail folder (`EC_MAIL_DIRECTORY`). The new account suite and the foundations audit of the dialog run in both engines, on desktop and mobile; Cloudflare's widget is stubbed.
 - Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
+## 0.40.0
+
+The luck pillar stands in the chart. This is the fourth slice of the luck pillar design, in its first part: the fifth pillar, its keys and its link. The luck pillar's arcs, and the topics with luck, come next.
+
+### Added
+- **The fifth pillar.** A chart with a gender keeps a fifth column beside the Year. It opens natal: the column is kept, empty but for its note. L, or the Natal / With luck switch among the chart's controls, shows the chosen period there and hides it again. Choosing a period, on the ribbon or with the keys, shows it.
+  - Showing it moves nothing. Hidden, its cards keep their room unseen, in every display and at every width.
+  - It reads as the natal pillars do: its name, the decade's place and years, its characters, and its stem and branch cards. Its mark says the phase and when it ends.
+  - In the stem phase the stem leads, ringed, and the branch acts too. In the branch phase the branch leads, and the stem is set aside in its element's tint.
+  - Before the first decade, the column says when the first starts.
+  - Its cards take the chart's display. A long press turns one, and a click opens the branch's hidden stems. Its name opens the decade's page.
+  - On a phone it stands above the two-by-two chart, its stem beside its branch.
+- **One choice.** The ribbon, the fifth pillar, the decade's page and the keys show and move the same period.
+- **Keys**, while the chart has focus:
+  - L shows and hides the luck pillar;
+  - [ and ] step a phase, and { and } a decade;
+  - N chooses today's phase and opens its page.
+
+  The luck pillar's cards follow the Year's in the cards' arrows. Enter, Space and T work on them, and R opens the decade's page. ? lists the keys.
+- **Its link.** `luck=before` or `luck=<decade>/<stem|branch>` names the period standing in the chart. A change of language keeps it.
+- **API: `luck_chart`.** With `include_chart` and `include_luck_pillars`, each luck pillar's cards come drawn as `chart` draws the natal pillars', in the request's language.
+- **Finnish, provisional until confirmed:** Onnenpilari, Syntymäkartta, Onnen kanssa (the switch); Rungon vaihe vuoteen {year}, Haaran vaihe vuoteen {year}, Ei onnenpilaria ennen ikää {age}, L näyttää onnenpilarin, Sivussa (the fifth pillar); Näyttää ja piilottaa onnenpilarin, Vaihe taakse tai eteen, Vuosikymmen taakse tai eteen, Onnenpilari nyt (the keys).
+
+### Changed
+- ‹ and › no longer open the decade's page. They move the luck pillar; an open page follows them, and a closed one stays closed.
+- A chip pressed again closes its page and leaves the decade in the chart.
+- A relationship on the decade's page rings the luck pillar's card as well as the natal ones.
+
+### Fixed
+- Opened hidden stems keep their content's height at any width. Opening them set a fixed height that a later change of width left in place, so the panel clipped its rows or left a gap. The listener meant to free the height took the opacity's end for the height's.
+
+### Tests
+- `tests/browser/luck.test.mjs`:
+  - the fifth pillar's invariance: every card, panel and arc stays in place as L shows and hides it, in all three displays, at 1440, 1024, 900 and 700px and on phones;
+  - its phases and states, the keys and the focus they need, and the cards' keys;
+  - the luck part of links, and bad ones;
+  - a phone's layout, and a change of language.
+
+  The earlier tests follow the steps and chips as they now behave.
+- `tests/test_api_luck_pillars.py`: `luck_chart` in both languages, checked against the natal chart's own drawing of a character the two share; absent without the chart or the luck pillars.
+- Version bumped to `0.40.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`. (0.38.0 is held by the open PR #48.)
 
 ## 0.39.0
 
