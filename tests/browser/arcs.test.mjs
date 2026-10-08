@@ -250,6 +250,13 @@ for (const profile of profiles) {
         assert.deepEqual(await inks(), { ...everyArc(INK.receded), [chosen.id]: INK.chosen });
         await page.keyboard.press('Escape');
         await settled(page);
+        assert.equal(await page.locator('.relationship-chip.is-active, .relationship-arc.is-active, .relationship-arcs.has-selection').count(), 0);
+        assert.equal(await page.locator('.relationship-chip').nth(2).getAttribute('aria-expanded'), 'false');
+        assert.equal(await page.locator('.relationship-chip').nth(2).evaluate(node => node === document.activeElement), true);
+        // Returning keyboard focus can spotlight the cleared relationship. Once
+        // focus leaves that line, every arc returns to its resting ink.
+        await page.locator('#copy-link-btn').focus();
+        await settled(page);
         assert.deepEqual(await inks(), everyArc(INK.rest));
       });
 

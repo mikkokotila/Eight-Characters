@@ -685,7 +685,8 @@ for (const profile of profiles) {
       });
       assert.equal(await linkPart(page, 'luck'), '5/stem');
       assert.equal(await page.locator('#luck-status').textContent(), 'Luck pillar shown.');
-      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck', ['luck-ribbon']]);
+      // Shown, the natal arcs recede for the luck pillar's (is-luck-shown).
+      assert.deepEqual(await chartLayout(page).then(({ classes, between }) => [classes, between]), ['pillars has-luck is-luck-shown', ['luck-ribbon']]);
       assert.equal(await focused(page), 'year stem');
       // L again hides them, and the chart is drawn as it was.
       await page.keyboard.press('l');
@@ -1040,14 +1041,22 @@ for (const profile of profiles) {
     });
 
     check('the topics carry what the luck pillar adds while it shows, and natal read as a chart\'s without one', async (page) => {
-      const topics = () => page.evaluate(() => [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
-        const box = button.getBoundingClientRect();
-        return {
-          text: button.textContent.replace(/\s+/g, ' ').trim(),
-          label: button.getAttribute('aria-label'),
-          box: `${Math.round(box.x)},${Math.round(box.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
-        };
-      }));
+      // Each topic as it reads, and its box within the topics' row: a chart with a gender has
+      // the Natal / With luck switch in its header, above the row.
+      const topics = () => page.evaluate(() => {
+        const row = document.getElementById('day-master-context').getBoundingClientRect();
+        return [...document.querySelectorAll('#context-controls button, #relationships-topic')].map((button) => {
+          const box = button.getBoundingClientRect();
+          return {
+            text: button.textContent.replace(/\s+/g, ' ').trim(),
+            label: button.getAttribute('aria-label'),
+            box: `${Math.round(box.x - row.x)},${Math.round(box.y - row.y)} ${Math.round(box.width)}x${Math.round(box.height)}`,
+          };
+        });
+      });
+      // Each topic's icon badge (controls.js), by topic.
+      const badges = () => page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#context-controls button, #relationships-topic')]
+        .map((button) => [button.dataset.context ?? 'relationships', button.querySelector('.control-caption')?.dataset.caption ?? null])));
       // The same birth without a gender, then with one: natal, its topics are the same.
       await openSample(page, { gender: null });
       const plain = await topics();
@@ -1055,23 +1064,29 @@ for (const profile of profiles) {
       const natal = await topics();
       assert.deepEqual(natal.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches', 'Roles', 'Relationships (3)']);
       assert.deepEqual(natal, plain);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
       await page.locator('.card.stem[data-pillar="year"]').focus();
       await page.keyboard.press('l');
       await settled(page);
       const shown = await topics();
-      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem combinations.
+      // 己丑 Ji Chou's stem phase: a root on Chou, two roles new to the chart, two stem
+      // combinations; the badges say so too.
       assert.deepEqual(shown.map((topic) => topic.text), ['Shen month', 'Roots in 3 branches + luck', 'Roles + 2 new', 'Relationships (3 + 2)']);
+      assert.deepEqual(await badges(), { season: null, roots: '3+1', roles: '+2', relationships: '3+2' });
       assert.equal(await page.locator('button[data-context="roots"]').getAttribute('aria-label'), 'Roots · Roots in 3 branches + luck');
-      // Hidden again, the topics are natal again.
+      // Hidden again, the topics are natal again, badges too.
       await page.keyboard.press('l');
       await settled(page);
       assert.deepEqual(await topics(), natal);
+      assert.deepEqual(await badges(), { season: null, roots: '3', roles: null, relationships: '3' });
       await page.keyboard.press('l');
       await settled(page);
       // The Roots page adds the luck branch's root, and points at it.
       await click(page, 'button[data-context="roots"]');
       const luckRoot = page.locator('#context-detail .relationship-member').last();
-      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'Luck Chou 丑 Yin Earth Gui 癸 · Yin Water Mid Rob Wealth · Same element, opposite polarity');
+      // As it reads on screen: the position in capitals and the qi in lower case, as the
+      // natal members read.
+      assert.equal((await luckRoot.innerText()).replace(/\s+/g, ' ').trim(), 'LUCK Chou 丑 Yin Earth Gui 癸 · Yin Water mid Rob Wealth · Same element, opposite polarity');
       assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-context-source')), true);
       // The Roles page adds what the luck pillar brings in the phase.
       await click(page, 'button[data-context="roles"]');
@@ -1130,7 +1145,52 @@ for (const profile of profiles) {
       await page.clock.setFixedTime(TODAY);
       await openLink(page, sampleLink({ luck: '4/branch', topic: 'relationships/punishment:34:year-luck' }), { place: HELSINKI });
       assert.equal(await page.locator('#relationship-detail-title').textContent(), 'Year–Luck · Punishment');
+      // A choice that still acts stays in the ink as the period moves and the luck pillar's
+      // arcs are drawn anew, and every other arc recedes. The punishment acts in both phases.
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('[');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '4/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'harmony_frame:18:month-day-luck': 'receded', 'harmony_frame:18:month-hour-luck': 'receded', 'punishment:34:year-luck': 'ink',
+      });
+      assert.equal(await page.locator('.card.branch[data-pillar="luck"]').evaluate((node) => node.classList.contains('is-related')), true);
+      // A natal relationship chosen stays so into the next decade, whose arcs recede.
+      await page.locator('.relationship-chip[data-relationship="self_punishment:35:day-hour"]').click();
+      await page.mouse.move(0, 0);
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('}');
+      await settled(page);
+      assert.equal(await linkPart(page, 'luck'), '5/stem');
+      assert.deepEqual(await inks(), {
+        ...natalArcs, 'self_punishment:35:day-hour': 'ink', 'stem_combination:1:month-luck': 'receded', 'stem_combination:1:hour-luck': 'receded',
+      });
       await screenshot(page, `${profile.name}-luck-topics`);
+    });
+
+    check('with no natal root, the luck branch\'s root names the Roots topic and its page', async (page) => {
+      // 15 April 1975, 12:00, Helsinki, female: Day Master 辛 Xin, whose Metal no natal branch
+      // holds. The fourth decade, 甲申 Jia Shen, roots it in Shen's 庚 Geng.
+      await page.clock.setFixedTime(TODAY);
+      await openLink(page, `/#chart?${new URLSearchParams({
+        date: '1975-04-15', time: '12:00', place: HELSINKI.display, city: HELSINKI.city,
+        latitude: String(HELSINKI.latitude), longitude: String(HELSINKI.longitude), timezone: HELSINKI.timezone,
+        lang: 'en', gender: 'female', luck: '4/stem',
+      })}`, { place: HELSINKI });
+      const roots = page.locator('button[data-context="roots"]');
+      const read = async () => [(await roots.textContent()).replace(/\s+/g, ' ').trim(), await roots.getAttribute('aria-label')];
+      assert.deepEqual(await read(), ['Root in the luck pillar’s branch', 'Roots · Root in the luck pillar’s branch']);
+      await click(page, 'button[data-context="roots"]');
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'Root in the luck pillar’s branch');
+      assert.deepEqual(await page.locator('#context-detail .relationship-member .relationship-identity').allTextContents(), ['Shen 申']);
+      // Natal, there is none, and the topic and its page say so.
+      await page.locator('.card.stem[data-pillar="year"]').focus();
+      await page.keyboard.press('l');
+      await settled(page);
+      assert.deepEqual(await read(), ['No roots detected', 'Roots · No roots detected']);
+      assert.equal(await page.locator('#context-detail .relationship-meta').textContent(), 'No roots detected');
+      assert.equal(await page.locator('#context-detail .relationship-member').count(), 0);
     });
 
     check('on paper a luck pillar shown stands fifth, and a natal chart has its four columns', async (page) => {
