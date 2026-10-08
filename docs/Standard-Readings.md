@@ -35,7 +35,7 @@ points at the cards it reads, as the panel's other lines do.
   - its lens on each pillar;
   - where it is in its cycle, as one sentence (each clause opens its pillar at
     its stage) and as a ring of the twelve stages with this chart's branches on
-    it;
+    it (see [the ring](#the-ring));
   - the twelve stages;
   - the pattern of reconception.
 - **Relationships:**
@@ -83,6 +83,24 @@ points at the cards it reads, as the panel's other lines do.
 
 A reading's links open the page they name at the line they name, open, in one
 step of the history, as the commands do.
+
+## The ring
+
+The Day Master's twelve stages stand around a ring, from Birth at the top,
+clockwise. Each point's label reads away from the ring, one line under another:
+- the stage, such as "Tomb";
+- the branch the Day Master meets it on, by pinyin and character: "Chen 辰";
+- the pillars whose branch that is, one to a line: "YEAR".
+
+A point a pillar stands on is drawn larger, and its stage and branch are bold. The
+Day Master stands in the centre, its character over its pinyin. No character on
+the ring stands without its pinyin, and the pinyin has no tone marks.
+
+Where several pillars share a branch, each takes its own line. The labels down
+each side of the ring then move apart as far as they need to, so that none meets
+another, the ring or a point, and the figure grows as tall as its labels need.
+The page refuses a reading whose ring lacks a branch's pinyin, or names one of the
+chart's branches by another pinyin than the chart does.
 
 ## Keys
 

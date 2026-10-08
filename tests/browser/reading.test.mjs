@@ -14,6 +14,17 @@ const JIA_JI_WITH_THE_DAY_MASTER = { lang: 'en', place: HELSINKI, date: '1990-01
 const YI_GENG_YEAR_AND_HOUR = { lang: 'en', place: HELSINKI, date: '1990-02-11', time: '10:40' };
 const METAL_FRAME = { lang: 'en', place: HELSINKI, date: '1990-01-09', time: '18:40' };
 const ZI_WU_IN_WINTER = { lang: 'en', place: HELSINKI, date: '1990-12-11', time: '06:40' };
+// All four pillars on the Rat, 甲子 丙子 戊子 壬子, half an hour from the day's change and
+// the hour's.
+const FOUR_ON_THE_RAT = { lang: 'en', place: HELSINKI, date: '1984-12-20', time: '00:48' };
+// Ten days in a row from the canon's example: each of the ten Day Masters, Ren to Xin.
+const TEN_DAY_MASTERS = ['1976-06-29', '1976-06-30', '1976-07-01', '1976-07-02', '1976-07-03',
+  '1976-07-04', '1976-07-05', '1976-07-06', '1976-07-07', '1976-07-08'];
+// The stems' and branches' pinyin as the app writes them, without diacritics.
+const PINYIN = {
+  甲: 'Jia', 乙: 'Yi', 丙: 'Bing', 丁: 'Ding', 戊: 'Wu', 己: 'Ji', 庚: 'Geng', 辛: 'Xin', 壬: 'Ren', 癸: 'Gui',
+  子: 'Zi', 丑: 'Chou', 寅: 'Yin', 卯: 'Mao', 辰: 'Chen', 巳: 'Si', 午: 'Wu', 未: 'Wei', 申: 'Shen', 酉: 'You', 戌: 'Xu', 亥: 'Hai',
+};
 
 const PILLAR_PARTS = ['lens', 'stem', 'own-stage', 'ground', 'ground-about', 'meets', 'stage', 'about-pillar'];
 const DAY_MASTER_PARTS = ['dm-core', 'dm-grounds', 'dm-lens-hour', 'dm-lens-day', 'dm-lens-month', 'dm-lens-year',
@@ -59,6 +70,78 @@ async function openAll(page, section) {
     if (await button.getAttribute('aria-expanded') === 'false') await button.click();
   }
 }
+
+// In the page, before its own scripts: the ring's labels as a reader meets them, and what
+// in the ring meets anything else.
+const RING = () => {
+  // The lines of each point, and the centre's character and pinyin.
+  const labels = (svg) => ({
+    points: [...svg.querySelectorAll('.canon-ring-point')].map((point) => [...point.querySelectorAll('text')]
+      .map((text) => text.textContent)),
+    center: [...svg.querySelector('.canon-ring-center').children].map((part) => part.textContent),
+  });
+  // Every text that shows a character: the character, and the pinyin beside it.
+  const pairs = (svg) => [...svg.querySelectorAll('text')]
+    .filter((text) => /\p{Script=Han}/u.test(text.textContent))
+    .map((text) => ({
+      han: text.textContent.match(/\p{Script=Han}/gu).join(''),
+      char: text.querySelector('.canon-ring-char')?.textContent ?? null,
+      pinyin: text.querySelector('.canon-ring-pinyin')?.textContent ?? null,
+    }));
+  // A line's ink, in the ring's own units: its run's extent across, and up and down the
+  // ink its parts' fonts draw about its baseline (the browsers' boxes for text run
+  // taller). The centre's two lines are taken whole, as the box the browser gives them.
+  const context = document.createElement('canvas').getContext('2d');
+  const drawn = new Map();
+  const extent = (element) => {
+    const style = getComputedStyle(element);
+    const font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    const key = `${font}|${element.textContent}`;
+    if (!drawn.has(key)) {
+      context.font = font;
+      const metrics = context.measureText(element.textContent);
+      drawn.set(key, [metrics.actualBoundingBoxAscent, metrics.actualBoundingBoxDescent]);
+    }
+    return drawn.get(key);
+  };
+  const ink = (text) => {
+    const box = text.getBBox();
+    if (text.classList.contains('canon-ring-center')) return [box.x, box.y, box.x + box.width, box.y + box.height];
+    const parts = text.children.length ? [...text.children] : [text];
+    const y = Number(text.getAttribute('y'));
+    return [box.x, y - Math.max(...parts.map((part) => extent(part)[0])),
+      box.x + box.width, y + Math.max(...parts.map((part) => extent(part)[1]))];
+  };
+  // Where a line meets another line, the ring, a point or the figure's edge, with a unit
+  // to spare each time.
+  const meetings = (svg) => {
+    const found = [];
+    const [vx, vy, vw, vh] = svg.getAttribute('viewBox').split(/\s+/).map(Number);
+    const circle = (node) => ['cx', 'cy', 'r'].map((name) => Number(node.getAttribute(name)));
+    const [cx, cy, r] = circle(svg.querySelector('.canon-ring-track'));
+    const points = [...svg.querySelectorAll('.canon-ring-point circle')].map(circle);
+    const lines = [...svg.querySelectorAll('text')].map((text) => ({ name: text.textContent, box: ink(text) }));
+    const distance = ([x1, y1, x2, y2], x, y) => Math.hypot(Math.max(x1 - x, 0, x - x2), Math.max(y1 - y, 0, y - y2));
+    lines.forEach(({ name, box }, i) => {
+      const [x1, y1, x2, y2] = box;
+      if (x1 < vx || y1 < vy || x2 > vx + vw || y2 > vy + vh) found.push(`${name}: the edge`);
+      const far = Math.hypot(Math.max(Math.abs(x1 - cx), Math.abs(x2 - cx)), Math.max(Math.abs(y1 - cy), Math.abs(y2 - cy)));
+      if (distance(box, cx, cy) <= r + 1 && far >= r - 1) found.push(`${name}: the ring`);
+      points.forEach(([x, y, radius]) => { if (distance(box, x, y) <= radius + 1) found.push(`${name}: the point at ${x}, ${y}`); });
+      lines.slice(i + 1).forEach((other) => {
+        const [u1, v1, u2, v2] = other.box;
+        if (!(x2 + 1 <= u1 || u2 + 1 <= x1 || y2 + 1 <= v1 || v2 + 1 <= y1)) found.push(`${name}: ${other.name}`);
+      });
+    });
+    return found;
+  };
+  window.__ecRing = { labels, pairs, meetings };
+};
+const ringOf = (page) => page.locator('#context-detail .canon-ring').evaluate((svg) => ({
+  ...window.__ecRing.labels(svg), pairs: window.__ecRing.pairs(svg), meetings: window.__ecRing.meetings(svg),
+}));
+// Every character on the ring stands with its own pinyin, on its own line.
+const unpaired = (pairs) => pairs.filter(({ han, char, pinyin }) => han.length !== 1 || char !== han || pinyin !== PINYIN[han]);
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / readings`, { concurrency: false }, () => {
@@ -156,6 +239,7 @@ for (const profile of profiles) {
     });
 
     check('the Day Master line opens the Day Master\'s own page, which its link keeps', async (page) => {
+      await page.addInitScript(RING);
       const { reading } = await openChart(page, EXAMPLE);
       const line = page.locator('.canon-day-master-line');
       assert.equal(await line.textContent(), 'Day Master · Ren — Yang Water');
@@ -172,6 +256,18 @@ for (const profile of profiles) {
         ['year', 'month', 'day', 'hour'].map((name) => plain(firstSentence(reading.pillars[name].stage.paragraphs[0].text))));
       assert.equal(await page.locator('.canon-ring .canon-ring-on').count(), 4);
       assert.deepEqual((await page.locator('.canon-ring-pillar').allTextContents()).sort(), ['DAY', 'HOUR', 'MONTH', 'YEAR']);
+      // Each point of the ring names its stage, its branch by pinyin and character, and the
+      // pillars on it; Ren stands in the centre over its pinyin. Nothing meets anything.
+      const ring = await ringOf(page);
+      assert.deepEqual(ring.points, [
+        ['Birth', 'Shen 申'], ['Bathing', 'You 酉'], ['Capping', 'Xu 戌'], ['Office', 'Hai 亥'],
+        ['Peak', 'Zi 子', 'DAY'], ['Decline', 'Chou 丑'], ['Sickness', 'Yin 寅'], ['Death', 'Mao 卯', 'HOUR'],
+        ['Tomb', 'Chen 辰', 'YEAR'], ['Extinction', 'Si 巳'], ['Embryo', 'Wu 午', 'MONTH'], ['Nurture', 'Wei 未'],
+      ]);
+      assert.deepEqual(ring.center, ['壬', 'Ren']);
+      assert.equal(ring.pairs.length, 13);
+      assert.deepEqual(unpaired(ring.pairs), []);
+      assert.deepEqual(ring.meetings, []);
       assert.equal(await readOf(page, '#context-detail', 'dm-core'), words(reading.day_master.core));
       await screenshot(page, `${profile.name}-reading-day-master`);
 
@@ -188,6 +284,87 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => document.activeElement.matches('.canon-day-master-line')), true);
       assert.equal(await topicOf(page), null);
     });
+
+    check('a branch all four pillars stand on names each of them on the ring, and nothing there meets anything', async (page) => {
+      await page.addInitScript(RING);
+      await openChart(page, FOUR_ON_THE_RAT);
+      await page.locator('.canon-day-master-line').click();
+      await toggle(page, '#context-detail', 'dm-cycle');
+      const ring = await ringOf(page);
+      assert.deepEqual(ring.points, [
+        ['Birth', 'Yin 寅'], ['Bathing', 'Mao 卯'], ['Capping', 'Chen 辰'], ['Office', 'Si 巳'], ['Peak', 'Wu 午'],
+        ['Decline', 'Wei 未'], ['Sickness', 'Shen 申'], ['Death', 'You 酉'], ['Tomb', 'Xu 戌'], ['Extinction', 'Hai 亥'],
+        ['Embryo', 'Zi 子', 'YEAR', 'MONTH', 'DAY', 'HOUR'], ['Nurture', 'Chou 丑'],
+      ]);
+      assert.deepEqual(ring.center, ['戊', 'Wu']);
+      assert.deepEqual(unpaired(ring.pairs), []);
+      assert.deepEqual(ring.meetings, []);
+      await screenshot(page, `${profile.name}-reading-ring-four-pillars-on-one-branch`);
+    });
+
+    if (profile.name === 'desktop') {
+      // The ring's layout depends only on where the pillars stand and on the Day Master,
+      // whose branches stand around it: here every Day Master's ring is drawn with the
+      // four pillars everywhere they can stand together, 1,365 ways, in the page's fonts.
+      it('the ring pairs every character with its pinyin and its labels meet nothing, wherever the pillars stand, for every Day Master', {
+        timeout: 300000,
+      }, () => withPage(profile, async (page) => {
+        await page.addInitScript(RING);
+        await openChart(page, EXAMPLE);
+        const location = { timezone: HELSINKI.timezone, longitude: HELSINKI.longitude, latitude: HELSINKI.latitude };
+        const drawn = await page.evaluate(async ({ dates, location }) => {
+          const escape = (value) => { const span = document.createElement('span'); span.textContent = String(value); return span.innerHTML; };
+          const root = document.createElement('div');
+          root.innerHTML = '<div id="chart-panel"></div>';
+          const readings = window.EC_READINGS.create({ root, escape, spot: { attr: () => '' }, roleName: (name) => name, go: () => {} });
+          const host = document.createElement('div');
+          host.style.width = '360px';
+          document.body.append(host);
+          const result = { rings: 0, meetings: [], pairs: [] };
+          for (const date of dates) {
+            const response = await fetch('/api/four_pillars', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                date, time: '07:02', location, lang: 'en', include_chart: true, include_hidden_stems: true, include_ten_gods: true,
+                include_interactions: true, include_day_master_context: true, include_role_profile: true, include_reading: true,
+              }),
+            });
+            const payload = await response.json();
+            readings.render(payload.reading, payload.chart, payload.ten_gods, (id) => id);
+            const { stages } = payload.reading.day_master.cycle;
+            for (let year = 1; year <= 12; year += 1) {
+              for (let month = year; month <= 12; month += 1) {
+                for (let day = month; day <= 12; day += 1) {
+                  for (let hour = day; hour <= 12; hour += 1) {
+                    Object.assign(stages, { year, month, day, hour });
+                    host.innerHTML = readings.dayMaster().match(/<svg class="canon-ring"[\s\S]*?<\/svg>/)[0];
+                    const svg = host.querySelector('svg');
+                    if (result.rings % 1365 === 0) {
+                      result.pairs.push({ center: payload.reading.day_master.stem, pairs: window.__ecRing.pairs(svg) });
+                    }
+                    result.meetings.push(...window.__ecRing.meetings(svg)
+                      .map((meeting) => `${payload.reading.day_master.stem} ${[year, month, day, hour]}: ${meeting}`));
+                    result.rings += 1;
+                  }
+                }
+              }
+            }
+          }
+          host.remove();
+          return { ...result, meetings: result.meetings.slice(0, 20) };
+        }, { dates: TEN_DAY_MASTERS, location });
+        assert.equal(drawn.rings, 10 * 1365);
+        assert.deepEqual(drawn.meetings, []);
+        // Each ring names the twelve branches around it and its own Day Master in the centre,
+        // each character with its pinyin.
+        assert.deepEqual(drawn.pairs.map(({ center }) => center).sort(), [...'甲乙丙丁戊己庚辛壬癸'].sort());
+        for (const { center, pairs } of drawn.pairs) {
+          assert.deepEqual(unpaired(pairs), [], center);
+          assert.deepEqual(pairs.map(({ han }) => han).sort(), [...'子丑寅卯辰巳午未申酉戌亥', center].sort(), center);
+        }
+      }));
+    }
 
     check('a reading\'s link opens the page it names at the line it names, a step in the history', async (page) => {
       await openChart(page, EXAMPLE);
@@ -358,15 +535,19 @@ for (const profile of profiles) {
     });
 
     check('a reading that does not match its chart is refused', async (page) => {
-      const refusals = {
-        'The chart\'s reading is incomplete: the hour pillar.': (payload) => { payload.reading.pillars.hour.stem = '甲'; },
-        'The chart\'s reading is incomplete: its policy.': (payload) => { payload.reading.policy = 'canon_taxonomy_v0'; },
-        'The chart\'s reading is incomplete: the year stem\'s role.': (payload) => {
+      const refusals = [
+        ['The chart\'s reading is incomplete: the hour pillar.', (payload) => { payload.reading.pillars.hour.stem = '甲'; }],
+        ['The chart\'s reading is incomplete: its policy.', (payload) => { payload.reading.policy = 'canon_taxonomy_v0'; }],
+        ['The chart\'s reading is incomplete: the year stem\'s role.', (payload) => {
           payload.reading.pillars.year.stem_reading.ten_god = 'friend';
-        },
-        'Chart rendering failed.': (payload) => { delete payload.reading; },
-      };
-      for (const [message, mutate] of Object.entries(refusals)) {
+        }],
+        // The ring names no character without its pinyin, and none by another pinyin than
+        // the chart's.
+        ['The chart\'s reading is incomplete: the ring.', (payload) => { delete payload.reading.day_master.cycle.ring[0].pinyin; }],
+        ['The chart\'s reading is incomplete: the ring.', (payload) => { payload.reading.day_master.cycle.ring[4].pinyin = 'Zhi'; }],
+        ['Chart rendering failed.', (payload) => { delete payload.reading; }],
+      ];
+      for (const [message, mutate] of refusals) {
         await openChart(page, { ...EXAMPLE, success: false }, mutate);
         assert.equal(await page.locator('#form-error').textContent(), message);
         assert.equal(await page.locator('#chart-view').isHidden(), true);

@@ -931,18 +931,17 @@ document.addEventListener('DOMContentLoaded', () => {
     onShown: renderNotices,
     keyCard: () => cardAt(keyCard),
     // What the luck pillar's period adds to the topics while it shows: Roots, Roles and
-    // Relationships. Natal (null), nothing. Their words can rewrap the topics' row, and
-    // move the chart under the hint.
+    // Relationships. Natal (null), nothing.
     onPeriod: (period) => {
       luckPeriod = period;
       dayMasterContext.setLuck(period);
       relationships.setLuck(period);
       showRelationshipsTopic();
-      followCardHint();
     },
   });
   // The relationships topic names their count, and, while the luck pillar shows, the
-  // luck pillar's that act in its phase beside it.
+  // luck pillar's that act in its phase beside it. Its icon's badge (controls.js) counts
+  // them the same way, as 3, or 3+2.
   let natalRelationships = 0;
   let luckPeriod = null;
   const showRelationshipsTopic = () => {
@@ -950,6 +949,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const count = luckPeriod === null ? 0 : luckPeriod.relationships.length;
     const word = count > 0 ? requiredTranslation('topic_luck_relationships', { count }) : '';
     relationshipsTopic.innerHTML = `${esc(before)}${word === '' ? '' : `<span class="topic-delta">${esc(word)}</span>`}${esc(after)}`;
+    relationshipsTopic.dataset.controlCount = String(natalRelationships);
+    if (count > 0) relationshipsTopic.dataset.controlLuck = `+${count}`;
+    else delete relationshipsTopic.dataset.controlLuck;
   };
   const closePanel = () => {
     relationships.clear();
@@ -1163,15 +1165,19 @@ document.addEventListener('DOMContentLoaded', () => {
     hintedCard = null;
     cardHint.classList.add('hidden');
   };
-  // The chart moves under the hint as the page scrolls, as the luck pillar comes or goes
-  // (fitCards) and its words rewrap the topics (onPeriod), and as the panel opens or
-  // closes beside it (syncPanel). A card taken away, the luck pillar's as it is hidden,
-  // takes its hint with it.
+  // The chart moves under the hint as the page scrolls; as the luck pillar comes or goes
+  // (fitCards); as what stands above the cards changes its size, the header, the topics
+  // (whose badges controls.js draws a moment later) or the ribbon; and as the panel opens
+  // or closes beside the chart (syncPanel). A card taken away, the luck pillar's as it is
+  // hidden, takes its hint with it.
   const followCardHint = () => {
     if (hintedCard === null) return;
     if (hintedCard.isConnected) placeCardHint();
     else hideCardHint();
   };
+  const aboveCards = new ResizeObserver(followCardHint);
+  ['.chart-bar', '#day-master-context', '#luck-ribbon'].forEach((selector) => aboveCards.observe(chartView.querySelector(selector)));
+  aboveCards.observe(pillarsContainer);
   pillarsContainer.addEventListener('pointerover', (event) => {
     const card = event.target.closest('.card');
     if (!card || event.pointerType !== 'mouse' || activePress) return;
@@ -1882,12 +1888,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // What the chart offers now, named as its controls name it.
   const chartCommands = () => {
     const commands = [];
-    const add = (group, label, run) => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run });
+    const add = (group, label, run, icon = 'chevron-right') => commands.push({ group, label: label.replace(/\s+/g, ' ').trim(), run, icon });
     const topics = requiredTranslation('palette_topics');
     chartView.querySelectorAll('#day-master-context button[data-context]').forEach((button) => {
-      add(topics, button.textContent, () => goToTopic(button.dataset.context));
+      add(topics, button.textContent, () => goToTopic(button.dataset.context), window.EC_CONTROLS.icon(button));
     });
-    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'));
+    add(topics, relationshipsTopic.textContent, () => goToTopic('relationships'), 'waypoints');
     // A relationship by its name, as the list names it: in English a chip also reads the
     // canon's first sentence for it.
     relationshipsSection.querySelectorAll('.relationship-chip').forEach((chip) => {
@@ -1900,37 +1906,37 @@ document.addEventListener('DOMContentLoaded', () => {
     chartView.querySelectorAll('.pillar-identity').forEach((button) => {
       add(requiredTranslation('palette_pillars'),
         `${requiredTranslation('pillar_' + button.dataset.pillar)} · ${button.textContent}`,
-        () => goToTopic(`pillar/${button.dataset.pillar}`));
+        () => goToTopic(`pillar/${button.dataset.pillar}`), 'chevron-down');
     });
     // A chart with luck pillars: the period before them and each decade, as the ribbon
     // names them.
     luck.choices().forEach(({ label, topic }) => {
-      add(requiredTranslation('luck_ribbon_label'), label, () => goToTopic(topic));
+      add(requiredTranslation('luck_ribbon_label'), label, () => goToTopic(topic), 'calendar-range');
     });
     displaySwitch.querySelectorAll('button[data-display]').forEach((button) => {
-      add(requiredTranslation('display_label'), button.textContent, () => button.click());
+      add(requiredTranslation('display_label'), button.textContent, () => button.click(), window.EC_CONTROLS.icon(button));
     });
     if (luck.has()) {
       chartView.querySelectorAll('#luck-switch button[aria-pressed="false"]').forEach((button) => {
-        add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click());
+        add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click(), window.EC_CONTROLS.icon(button));
       });
     }
     // Embedded, the comparison's page holds the language, the view and the chart's
     // other actions.
     if (!embedded) {
       chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
-        add(requiredTranslation('language_label'), button.textContent, () => button.click());
+        add(requiredTranslation('language_label'), button.textContent, () => button.click(), null);
       });
       const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
-      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click());
+      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click(), 'workflow');
     }
     const chart = requiredTranslation('palette_chart');
     (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn, compareBtn])
-      .forEach((button) => add(chart, button.textContent, () => button.click()));
+      .forEach((button) => add(chart, button.textContent, () => button.click(), window.EC_CONTROLS.icon(button)));
     // The page's own print, whose stylesheet prints the chart and its open topic.
-    add(chart, requiredTranslation('print'), () => window.print());
-    if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus);
-    add(chart, requiredTranslation('keys_title'), openKeys);
+    add(chart, requiredTranslation('print'), () => window.print(), 'printer');
+    if (currentTopic() !== null) add(chart, requiredTranslation('panel_close'), closePanelAndReturnFocus, 'x');
+    add(chart, requiredTranslation('keys_title'), openKeys, 'keyboard');
     if (!embedded) add(chart, requiredTranslation(account.signedIn() ? 'account_title' : 'account_sign_in'), account.open);
     return commands;
   };

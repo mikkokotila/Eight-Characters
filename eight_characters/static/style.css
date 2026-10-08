@@ -189,6 +189,73 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* One control vocabulary: the page's ink, local Lucide outlines, and original labels. */
+.control-icon {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  vertical-align: -0.2em;
+  margin-inline-end: var(--space-2);
+  pointer-events: none;
+}
+.icon-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 36px;
+  min-height: 36px;
+  padding: var(--space-2);
+}
+.icon-control > .control-icon { margin: 0; }
+.control-caption::before { content: attr(data-caption); }
+.control-caption { font-family: var(--font-sans); font-size: var(--text-1); font-weight: 500; }
+.pillar-identity.has-control-icon, .luck-identity.has-control-icon { position: relative; padding-inline: var(--space-5); }
+.pillar-identity > .control-icon, .luck-identity > .control-icon {
+  position: absolute;
+  inset-inline-end: 0;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  transform: translateY(-50%);
+}
+.role-choice-name > .control-icon { width: 14px; height: 14px; margin-inline-end: var(--space-1); }
+.roles-back.has-control-icon::before { display: none; }
+.canon-line-chevron, .branch-expand-hint { stroke-width: 1.5; }
+.control-tooltip {
+  position: fixed;
+  pointer-events: none;
+  inset: auto;
+  margin: 0;
+  max-width: min(280px, calc(100vw - var(--space-4)));
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink-1);
+  box-shadow: var(--shadow-2);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  line-height: 1.5;
+  text-align: start;
+  overflow-wrap: break-word;
+  opacity: 0;
+  transform: translateY(2px);
+  transition: opacity 90ms ease, transform 90ms ease;
+}
+.control-tooltip.is-visible { opacity: 1; transform: translateY(0); transition-duration: 120ms; }
+.control-tooltip strong { font-weight: 600; }
+@media (pointer: coarse) {
+  .icon-control { min-width: 44px; min-height: 44px; }
+  .luck-step.has-control-icon { min-width: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .control-tooltip, .control-tooltip.is-visible { transition: none; transform: none; }
+}
+@media print { .control-tooltip { display: none; } }
+
 /* Browsers draw form controls in a system font unless told to take the page's. */
 button, input, select, textarea { font-family: inherit; }
 
@@ -2913,9 +2980,14 @@ kbd {
 .canon-ring { display: block; width: 100%; max-width: 340px; margin: 0 auto var(--space-4); }
 .canon-ring text { font-family: var(--font-sans); font-size: var(--text-1); fill: var(--ink-2); }
 .canon-ring .canon-ring-stage.is-on { fill: var(--ink-1); font-weight: 700; }
-.canon-ring .canon-ring-branch { font-family: var(--font-glyph); }
+/* A character always comes with its pinyin: a branch's on one line, the Day Master's
+   beneath it. */
+.canon-ring .canon-ring-char { font-family: var(--font-glyph); }
+.canon-ring .canon-ring-branch.is-on { fill: var(--ink-1); font-weight: 700; }
 .canon-ring .canon-ring-pillar { font-weight: 500; letter-spacing: var(--tracking-2); fill: var(--ink-1); }
-.canon-ring .canon-ring-center { font-family: var(--font-glyph); font-size: var(--text-5); fill: var(--ink-1); }
+.canon-ring .canon-ring-center { fill: var(--ink-1); }
+.canon-ring .canon-ring-center .canon-ring-char { font-size: var(--text-5); }
+.canon-ring .canon-ring-center .canon-ring-pinyin { font-size: var(--text-2); font-weight: 500; }
 .canon-ring-track { fill: none; stroke: var(--line-2); }
 .canon-ring-off { fill: var(--ink-2); }
 .canon-ring-on { fill: var(--ink-1); }
@@ -3160,4 +3232,41 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .pillar:nth-child(4) { grid-column: 4; }
   .pillar.is-luck { grid-column: 5; }
   :is(.relationship-arcs, .luck-arcs) { position: relative; inset: auto; }
+}
+
+/* Icon controls keep the existing component states with one consistent hit area. */
+.segmented button.icon-control,
+.bar-action.icon-control,
+.topic-button.icon-control,
+.chart-topics .context-toggle.icon-control,
+.panel-close.icon-control,
+.luck-today.icon-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-width: 36px;
+  min-height: 36px;
+  padding: var(--space-2);
+  border-radius: 999px;
+}
+@media screen and (max-width: 640px), screen and (pointer: coarse) {
+  .segmented button.icon-control,
+  .bar-action.icon-control,
+  .topic-button.icon-control,
+  .chart-topics .context-toggle.icon-control,
+  .panel-close.icon-control,
+  .luck-today.icon-control { min-width: 44px; min-height: 44px; }
+}
+@media print {
+  .control-icon, .control-caption { display: none !important; }
+  .zi-switch-options .control-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
 }

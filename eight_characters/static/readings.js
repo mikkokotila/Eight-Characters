@@ -211,31 +211,72 @@
     // stages as a ring with this chart's branches on it.
     const ring = () => {
       const cycle = reading.day_master.cycle;
-      const width = 360; const cx = width / 2; const r = 96;
-      // Room for a stage's name and its pillars, above the ring and below it.
-      const cy = r + 44; const height = 2 * cy;
+      const width = 360; const cx = width / 2; const cy = 0; const r = 96;
       const at = {};
       ORDER.forEach((name) => { const n = cycle.stages[name]; at[n] = [...(at[n] || []), name]; });
       const fixed = (value) => value.toFixed(1);
-      const marksOnRing = cycle.ring.map((stage) => {
+      // Each point's label reads away from the ring: its stage, its branch's pinyin and
+      // character, and the pillars on it, one to a line. The measures suit the ring's
+      // type, --text-1: a line's box runs `up` above its baseline and `down` below it.
+      const line = 17; const up = 12; const down = 5; const gap = 4;
+      // A label stands `off` from the centre: above its point at the top of the ring,
+      // below it at the bottom, level with it on the sides.
+      const off = r + 12;
+      const labels = cycle.ring.map((stage) => {
         const angle = (-90 + (stage.stage - 1) * 30) * Math.PI / 180;
         const cos = Math.cos(angle); const sin = Math.sin(angle);
-        const on = at[stage.stage];
+        const on = at[stage.stage] || [];
         const name = stage.name.replace("Emperor's ", '').replace('Approaching ', '');
-        // The name beside its point, reading away from the ring; the pillars on it
-        // further out, above the name at the top of the ring and below it elsewhere.
-        const anchor = cos > 0.3 ? 'start' : cos < -0.3 ? 'end' : 'middle';
-        const x = fixed(cx + (r + 12) * cos);
-        const y = cy + (r + 12) * sin + 4 + 6 * sin;
-        const pillarsY = sin < -0.5 ? y - 16 : y + 16;
-        return `<circle cx="${fixed(cx + r * cos)}" cy="${fixed(cy + r * sin)}" r="${on ? 7 : 3.5}" class="${on ? 'canon-ring-on' : 'canon-ring-off'}"/>
-          <text class="canon-ring-stage${on ? ' is-on' : ''}" x="${x}" y="${fixed(y)}" text-anchor="${anchor}">${esc(name)}</text>
-          <text class="canon-ring-branch" x="${fixed(cx + (r - 20) * cos)}" y="${fixed(cy + (r - 20) * sin + 5)}" text-anchor="middle">${esc(stage.branch)}</text>
-          ${on ? `<text class="canon-ring-pillar" x="${x}" y="${fixed(pillarsY)}" text-anchor="${anchor}">${esc(on.map((p) => PLAIN[p].toUpperCase()).join(' · '))}</text>` : ''}`;
+        const lines = [
+          { kind: `canon-ring-stage${on.length ? ' is-on' : ''}`, markup: esc(name) },
+          { kind: `canon-ring-branch${on.length ? ' is-on' : ''}`, markup: `<tspan class="canon-ring-pinyin">${esc(stage.pinyin)}</tspan> <tspan class="canon-ring-char">${esc(stage.branch)}</tspan>` },
+          ...on.map((p) => ({ kind: 'canon-ring-pillar', markup: esc(PLAIN[p].toUpperCase()) })),
+        ];
+        const height = line * (lines.length - 1) + up + down;
+        const ideal = cy + off * sin - height * (1 - sin) / 2;
+        return { cos, sin, on, lines, height, ideal, top: ideal, side: cos > 0.3 ? 'right' : cos < -0.3 ? 'left' : 'middle' };
+      });
+      // The labels down each side settle without overlapping, in the ring's order: each as
+      // near its ideal as its neighbours allow. Labels that would overlap stack as a run,
+      // touching, centred on their ideals.
+      const stack = (run) => {
+        const offsets = run.map((l, i) => run.slice(0, i).reduce((sum, above) => sum + above.height + gap, 0));
+        const top = run.reduce((sum, l, i) => sum + l.ideal - offsets[i], 0) / run.length;
+        run.forEach((l, i) => { l.top = top + offsets[i]; });
+        return run;
+      };
+      const settle = (side) => {
+        const runs = [];
+        side.sort((a, b) => a.sin - b.sin).forEach((label) => {
+          let run = [label];
+          while (runs.length && runs.at(-1).at(-1).top + runs.at(-1).at(-1).height + gap > run[0].top) {
+            run = stack([...runs.pop(), ...run]);
+          }
+          runs.push(run);
+        });
+      };
+      settle(labels.filter((l) => l.side === 'right'));
+      settle(labels.filter((l) => l.side === 'left'));
+      // A label on a side keeps its nearest corner `off` from the centre, and keeps clear
+      // of the labels at the top and the bottom of the ring.
+      const aside = 36;
+      const reach = (l) => {
+        const near = Math.max(0, l.top - cy, cy - l.top - l.height);
+        return Math.max(aside, Math.sqrt(Math.max(0, off ** 2 - near ** 2)));
+      };
+      const marksOnRing = labels.map((l) => {
+        const x = { middle: cx, right: cx + reach(l), left: cx - reach(l) }[l.side];
+        const anchor = { middle: 'middle', right: 'start', left: 'end' }[l.side];
+        return `<g class="canon-ring-point"><circle cx="${fixed(cx + r * l.cos)}" cy="${fixed(cy + r * l.sin)}" r="${l.on.length ? 7 : 3.5}" class="${l.on.length ? 'canon-ring-on' : 'canon-ring-off'}"/>
+          ${l.lines.map((ln, i) => `<text class="${ln.kind}" x="${fixed(x)}" y="${fixed(l.top + up + line * i)}" text-anchor="${anchor}">${ln.markup}</text>`).join('')}</g>`;
       }).join('');
-      return `<svg class="canon-ring" viewBox="0 0 ${width} ${height}" role="img" aria-label="${esc(`The twelve stages of ${element()}, with this chart's branches on them`)}">
+      // As tall as its labels need.
+      const top = Math.min(...labels.map((l) => l.top)) - gap;
+      const bottom = Math.max(...labels.map((l) => l.top + l.height)) + gap;
+      // The Day Master in the centre: its character over its pinyin, as a pillar is named.
+      return `<svg class="canon-ring" viewBox="0 ${fixed(top)} ${width} ${fixed(bottom - top)}" role="img" aria-label="${esc(`The twelve stages of ${element()}, with this chart's branches on them`)}">
         <circle cx="${cx}" cy="${cy}" r="${r}" class="canon-ring-track"/>
-        <text x="${cx}" y="${cy + 11}" text-anchor="middle" class="canon-ring-center">${esc(reading.day_master.stem)}</text>${marksOnRing}</svg>`;
+        <text class="canon-ring-center" x="${cx}" y="${cy + 3}" text-anchor="middle"><tspan class="canon-ring-char">${esc(reading.day_master.stem)}</tspan><tspan class="canon-ring-pinyin" x="${cx}" dy="22">${esc(chart.day.stem.pinyin)}</tspan></text>${marksOnRing}</svg>`;
     };
     const dayMaster = () => {
       if (!reading) return '';
@@ -351,11 +392,18 @@
     const validate = (data, chartData, gods) => {
       if (!data || data.policy !== 'canon_taxonomy_v1' || data.language !== 'en') fail('its policy');
       if (!ORDER.every((name) => data.pillars?.[name])) fail('its pillars');
+      // The ring names each of the twelve branches by its pinyin, as the chart names its own.
+      const ring = data.day_master?.cycle?.ring;
+      if (!Array.isArray(ring) || ring.length !== 12 || !ring.every((s, i) => s.stage === i + 1
+        && typeof s.branch === 'string' && s.branch && typeof s.pinyin === 'string' && s.pinyin)) {
+        fail('the ring');
+      }
       DISPLAY.forEach((name, index) => {
         const p = chartData.pillars[index];
         const r = data.pillars[name];
         if (r.stem !== p.stem.char || r.branch !== p.branch.char) fail(`the ${name} pillar`);
         if (name !== 'day' && r.stem_reading.ten_god !== gods[name].stem.ten_god) fail(`the ${name} stem's role`);
+        if (ring.find((s) => s.branch === p.branch.char)?.pinyin !== p.branch.pinyin) fail('the ring');
       });
       if (data.day_master.stem !== chartData.pillars[1].stem.char) fail('the Day Master');
     };

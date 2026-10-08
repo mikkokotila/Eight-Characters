@@ -28,6 +28,7 @@ eight_characters = [
   'templates/*.html',
   'static/*.css',
   'static/*.js',
+  'static/*.LICENSE',
   'static/*.svg',
   'static/*.ico',
   'static/fonts/*',
