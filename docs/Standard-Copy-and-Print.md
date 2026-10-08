@@ -38,7 +38,8 @@ The browser's own print (or Print among the commands) prints the chart:
 - the open topic, below the chart at the page's width, whatever the screen's width.
 
 The controls are left out: the display, view and language switches, the bar's
-actions, the topics' buttons, the luck pillars' ribbon, and Close. A luck pillar shown
+actions, the topics' buttons, the luck pillars' ribbon, the life grid's view switch,
+and Close. A luck pillar shown
 prints as the chart's fifth pillar; a natal chart prints its four. An open decade's
 page prints as the open topic. The page's tone is left out too, so the
 paper stays white. A Zi-hour chart prints the convention it was read with, as text.

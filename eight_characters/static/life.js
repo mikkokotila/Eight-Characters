@@ -109,7 +109,7 @@
         const label = nameOf(r);
         const attrs = `data-kind="${esc(r.kind)}" data-lane="${r.component}" data-relationship="${esc(r.id)}" data-phases="${r.phases.join(' ')}"`;
         natal.forEach((m, index) => {
-          cells[m.pillar].bars.add(`<span class="life-bar" data-lane="${r.component}" style="--to: ${to}"></span>`);
+          cells[m.pillar].bars.add(`<span class="life-run" data-lane="${r.component}" style="--to: ${to}"></span>`);
           // The first natal member's mark names the characters, in the chart's order.
           cells[m.pillar].marks += `<span class="life-mark" ${attrs} style="--at: ${at}" title="${esc(label)}">
               <span class="relationship-mark"></span>${index === 0 ? `<b>${esc(ordered(r).map((x) => x.pinyin).join('-'))}</b>` : ''}</span>`;

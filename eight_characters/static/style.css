@@ -1324,15 +1324,15 @@ body {
 }
 .life-cell::before { left: 25%; }
 .life-cell::after { left: 75%; }
-.life-bar {
+.life-run {
   position: absolute;
   top: var(--space-2);
   height: calc(var(--to) * var(--height) - 2 * var(--space-2));
   border-left: 2px solid var(--line-2);
   transform: translateX(-1px);
 }
-:is(.life-bar, .life-mark)[data-lane='stem'] { left: 25%; }
-:is(.life-bar, .life-mark)[data-lane='branch'] { left: 75%; }
+:is(.life-run, .life-mark)[data-lane='stem'] { left: 25%; }
+:is(.life-run, .life-mark)[data-lane='branch'] { left: 75%; }
 .life-mark {
   position: absolute;
   top: calc(var(--at) * var(--height));
@@ -3161,6 +3161,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .context-controls,
   #relationships-topic,
   .luck-ribbon,
+  #life-view,
   .chart-panel-bar,
   .toast,
   .card-hint,
