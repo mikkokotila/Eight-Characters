@@ -590,7 +590,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const luckParts = [pillarsData.luck_pillars, pillarsData.luck_context, pillarsData.luck_chart];
     if (luckParts.some((part) => Boolean(part) !== Boolean(request.gender))) throw new Error(t('luck_error'));
     luck.render(pillarsData.luck_pillars ?? null, pillarsData.luck_context ?? null, pillarsData.luck_chart ?? null,
-      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge }, request.location.timezone);
+      { relationshipLabel: relationships.labelOf, feetEdge: relationships.feetEdge, natal: chartData.pillars }, request.location.timezone);
     luckKeys.forEach((row) => row.classList.toggle('hidden', !luck.has()));
     showRelationshipsTopic();
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
@@ -868,9 +868,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const panelObserver = new MutationObserver(syncPanel);
   panelSections.forEach((section) => panelObserver.observe(section, { attributes: true, attributeFilter: ['class'] }));
 
-  // Closing returns focus to the chart control whose topic was open.
+  // Closing returns focus to the chart control whose topic was open; the luck pillar's
+  // page names its own, as it opens from the ribbon or from the life grid.
   const closePanelAndReturnFocus = () => {
-    const opener = chartView.querySelector('.chart-column [aria-expanded="true"]');
+    const opener = luck.opener() ?? chartView.querySelector('.chart-column [aria-expanded="true"]');
     closePanel();
     if (opener) opener.focus();
   };

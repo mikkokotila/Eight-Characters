@@ -141,6 +141,17 @@
     <span id="pillars-label" class="sr-only" data-i18n="pillars_label">Pilarit</span>
     <p id="pillars-keys" class="sr-only" data-i18n="pillars_keys"></p>
     <div class="pillars" id="pillars" role="group" aria-labelledby="pillars-label" aria-describedby="pillars-keys"></div>
+
+    <!-- The life grid of a chart with a gender: the chart's columns run on through the
+         life, five years to a row (life.js). -->
+    <section id="life" class="life hidden" aria-labelledby="life-title">
+      <div class="life-bar">
+        <h2 id="life-title" class="life-title" data-i18n="life_title">Elämä</h2>
+        <p id="life-meta" class="life-meta"></p>
+      </div>
+      <div id="life-head" class="life-head" aria-hidden="true"></div>
+      <div id="life-body" class="life-body"></div>
+    </section>
   </div>
 
   <aside id="chart-panel" class="chart-panel hidden" aria-labelledby="chart-panel-title">
@@ -212,6 +223,11 @@
         <dt><kbd>N</kbd></dt>
         <dd data-i18n="key_luck_now">Onnenpilari nyt</dd>
       </div>
+      <div class="key-row key-row-luck hidden">
+        <dt><kbd class="key-arrow is-up"><span class="sr-only" data-i18n="key_up">Ylänuoli</span></kbd>
+          <kbd class="key-arrow is-down"><span class="sr-only" data-i18n="key_down">Alanuoli</span></kbd></dt>
+        <dd data-i18n="key_life_rows">Elämän vaiheesta toiseen</dd>
+      </div>
       <div class="key-row">
         <dt><kbd>Esc</kbd></dt>
         <dd data-i18n="key_close">Sulkee avoimen</dd>
@@ -271,6 +287,7 @@
 <script src="/static/roles.js?v={{ app_version }}"></script>
 <script src="/static/day-master-context.js?v={{ app_version }}"></script>
 <script src="/static/pillar-changes.js?v={{ app_version }}"></script>
+<script src="/static/life.js?v={{ app_version }}"></script>
 <script src="/static/luck.js?v={{ app_version }}"></script>
 <script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/compare.js?v={{ app_version }}"></script>

@@ -134,6 +134,11 @@
   --luck-arc-base: 44px;
   --luck-arc-step: 7px;
   --luck-arc-band: 74px;
+  /* The gap between the chart's columns, which the life grid shares. */
+  --pillar-gap: var(--space-5);
+  /* The life grid (life.js): a phase's least height, and the room a mark takes in it. */
+  --life-phase: 66px;
+  --life-slot: 24px;
 
   /* Gua line dimensions */
   --line-w: 54px;
@@ -908,7 +913,6 @@ body {
    in the flow. The arcs' rows keep one height, so the cards stand in the same
    place whatever the chart's relationships. */
 .pillars {
-  --pillar-gap: var(--space-5);
   position: relative;
   /* The arcs lie under the pillars and over the page, nowhere else. */
   isolation: isolate;
@@ -1110,6 +1114,326 @@ body {
 /* Only a branch card answers a click (it opens its hidden stems), so only it lifts. */
 .card.branch:hover {
   transform: translateY(-2px);
+}
+
+/* ── The life grid (life.js): under the chart, its five columns run on through the life,
+   a row for each five years, a decade's stem phase over its branch phase. Its columns are
+   the chart's. In its head each pillar's stem stands beside its branch, and a mark stands
+   under what it touches: a stem's a quarter of the way across its column, a branch's
+   three quarters. ── */
+.life { margin-top: var(--space-7); }
+.life-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-4);
+  padding: var(--space-4) 0 var(--space-3);
+  border-top: 1px solid var(--line-1);
+}
+.life-title { margin: 0; font-family: var(--font-serif); font-size: var(--text-4); font-weight: 500; }
+.life-meta { max-width: 64ch; margin: 0; font-size: var(--text-1); color: var(--ink-2); }
+.life-head,
+.life-body {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  column-gap: var(--pillar-gap);
+}
+/* The head stays in sight while the grid scrolls by. */
+.life-head {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: var(--bg);
+  box-shadow: 0 1px 0 var(--line-1);
+}
+.life-head-cell {
+  display: grid;
+  justify-items: center;
+  align-content: end;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-2) 0;
+}
+.life-head-name,
+.life-head-state {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-1);
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.life-head-state { color: var(--ink-1); }
+.life-mini-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  justify-items: center;
+  width: 100%;
+  min-height: 46px;
+}
+/* A character, small, in its element: in the head, and as a tile in the Luck column. */
+:is(.life-mini, .life-tile).wood { --el-bg: var(--wood-bg); --el-text: var(--wood-text); --el-tint: var(--wood-tint); }
+:is(.life-mini, .life-tile).fire { --el-bg: var(--fire-bg); --el-text: var(--fire-text); --el-tint: var(--fire-tint); }
+:is(.life-mini, .life-tile).earth { --el-bg: var(--earth-bg); --el-text: var(--earth-text); --el-tint: var(--earth-tint); }
+:is(.life-mini, .life-tile).metal { --el-bg: var(--metal-bg); --el-text: var(--metal-text); --el-tint: var(--metal-tint); }
+:is(.life-mini, .life-tile).water { --el-bg: var(--water-bg); --el-text: var(--water-text); --el-tint: var(--water-tint); }
+.life-mini {
+  display: grid;
+  justify-items: center;
+  width: 44px;
+  padding: var(--space-1) 0;
+  border-radius: 9px;
+  background: var(--sheen), var(--el-bg);
+  color: var(--el-text);
+}
+.life-mini-char { font-family: var(--font-glyph); font-size: var(--text-3); line-height: 1.15; }
+.life-mini-name { font-size: var(--text-1); font-weight: 600; line-height: 1.15; }
+/* What the chosen phase's relationships touch, while the luck pillar shows. */
+.life-mini.is-ringed { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink-1); }
+/* The luck pillar's stem, set aside in the branch phase, takes its element's tint. */
+.life-mini.is-resting { background: var(--el-tint); color: var(--ink-1); }
+/* Hidden, the luck pillar's pair waits in outline. */
+.life-head-cell.is-luck.is-hidden .life-mini { background: transparent; box-shadow: inset 0 0 0 1px var(--line-2); color: var(--ink-2); }
+
+.life-body { position: relative; isolation: isolate; }
+/* A row's parts share its grid row. A decade's phase is as tall as its marks need. */
+.life-row {
+  --phase: max(var(--life-phase), calc(var(--need) * var(--life-slot)));
+  --height: calc(2 * var(--phase));
+  display: contents;
+}
+.life-row.is-before { --height: var(--life-phase); }
+.life-row > *,
+.life-group { grid-row: var(--row); }
+/* The Luck column's lane, as behind the fifth pillar. */
+.life-lane {
+  grid-column: 5;
+  z-index: -2;
+  border-radius: 0 0 20px 20px;
+  background: var(--surface-1);
+  box-shadow: inset 1px 0 0 var(--line-1), inset -1px 0 0 var(--line-1), inset 0 -1px 0 var(--line-1);
+}
+.life-block {
+  position: relative;
+  z-index: -1;
+  grid-column: 1 / -1;
+  height: var(--height);
+  border-top: 1px solid var(--line-1);
+}
+.life-half { position: absolute; top: 0; right: 0; left: 0; height: 50%; }
+.life-half + .life-half { top: 50%; border-top: 1px dashed var(--line-1); }
+.life-row.is-before .life-half { height: 100%; }
+.life-half.is-chosen { background: color-mix(in srgb, var(--ink-1) 5%, transparent); }
+.life-group {
+  display: flex;
+  flex-wrap: wrap;
+  grid-column: 1 / 5;
+  align-items: baseline;
+  gap: 0 var(--space-3);
+  padding: var(--space-5) 0 var(--space-2);
+  font-size: var(--text-1);
+  color: var(--ink-2);
+}
+.life-group-name { font-weight: 600; color: var(--ink-1); }
+.life-group-years { font-variant-numeric: tabular-nums; }
+
+/* Under each natal character, a dotted guide; a mark's line runs down it for as long as
+   the relationship acts, and its mark names it. */
+.life-cell { position: relative; min-width: 0; }
+.life-cell[data-pillar='hour'] { grid-column: 1; }
+.life-cell[data-pillar='day'] { grid-column: 2; }
+.life-cell[data-pillar='month'] { grid-column: 3; }
+.life-cell[data-pillar='year'] { grid-column: 4; }
+.life-cell::before,
+.life-cell::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-left: 1px dotted var(--line-1);
+}
+.life-cell::before { left: 25%; }
+.life-cell::after { left: 75%; }
+.life-bar {
+  position: absolute;
+  top: var(--space-2);
+  height: calc(var(--to) * var(--height) - 2 * var(--space-2));
+  border-left: 2px solid var(--line-2);
+  transform: translateX(-1px);
+}
+:is(.life-bar, .life-mark)[data-lane='stem'] { left: 25%; }
+:is(.life-bar, .life-mark)[data-lane='branch'] { left: 75%; }
+.life-mark {
+  position: absolute;
+  top: calc(var(--at) * var(--height));
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  height: 22px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--line-2);
+  border-radius: 999px;
+  background: var(--bg);
+  box-shadow: var(--shadow-1);
+  font-size: var(--text-1);
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+.life-mark b { font-weight: 500; }
+/* A relationship of several natal members: a line from the first to the last. */
+.life-link {
+  --column: calc((100% - (var(--span) - 1) * var(--pillar-gap)) / var(--span));
+  position: relative;
+  z-index: 1;
+  align-self: start;
+  height: 0;
+  margin-top: calc(var(--at) * var(--height));
+  border-top: 1px solid var(--ink-2);
+}
+.life-link[data-lane='stem'] { margin-right: calc(var(--column) * 0.75); margin-left: calc(var(--column) * 0.25); }
+.life-link[data-lane='branch'] { margin-right: calc(var(--column) * 0.25); margin-left: calc(var(--column) * 0.75); }
+.life-link[data-kind='branch_clash'] { border-top-style: dashed; }
+.life-link:is([data-kind='harmony_frame'], [data-kind='half_frame']) { border-top: 3px double var(--ink-2); }
+.life-link[data-kind='directional_combination'] { border-top-width: 2px; }
+.life-link:is([data-kind='punishment'], [data-kind='half_punishment'], [data-kind='self_punishment']) { border-top: 2px dashed var(--ink-2); }
+.life-link[data-kind='harm'] { border-top: 2px dotted var(--ink-2); }
+/* In the chosen decade, what rests until the other phase grows quiet. */
+:is(.life-mark, .life-link).is-quiet { opacity: 0.45; }
+/* Today, across the natal columns, to the Luck column's edge. */
+.life-today {
+  position: relative;
+  z-index: 2;
+  grid-column: 1 / 5;
+  align-self: start;
+  height: 0;
+  margin-top: calc(var(--at) * var(--height));
+  border-top: 2px solid var(--ink-1);
+  pointer-events: none;
+}
+.life-today::after {
+  content: '';
+  position: absolute;
+  top: -5px;
+  right: -4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ink-1);
+}
+
+/* The Luck column: each phase a row to choose, its character's tile meeting the other
+   phase's at the line between them, so each decade stands as a small pillar. */
+.life-rail {
+  display: grid;
+  grid-column: 5;
+  grid-template-rows: repeat(2, var(--phase));
+  min-width: 0;
+}
+.life-row.is-before .life-rail { grid-template-rows: var(--life-phase); }
+.life-phase {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  display: grid;
+  align-content: center;
+  min-width: 0;
+  padding: 0 var(--space-2) 0 calc(var(--space-6) + var(--space-5));
+  border-radius: 12px;
+  cursor: pointer;
+}
+.life-phase:hover { background: color-mix(in srgb, var(--ink-1) 4%, transparent); }
+.life-phase:focus-visible { outline: 2px solid var(--ink-2); outline-offset: -3px; }
+.life-tile {
+  position: absolute;
+  left: var(--space-3);
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 40px;
+  background: var(--sheen), var(--el-bg);
+  color: var(--el-text);
+  font-family: var(--font-glyph);
+  font-size: var(--text-3);
+  font-weight: 500;
+}
+.life-phase[data-part='stem'] .life-tile { bottom: 1px; border-radius: 10px 10px 3px 3px; }
+.life-phase[data-part='branch'] .life-tile { top: 1px; border-radius: 3px 3px 10px 10px; }
+.life-phase.is-before .life-tile {
+  top: 50%;
+  height: 30px;
+  border-radius: 10px;
+  background: transparent;
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  transform: translateY(-50%);
+}
+.life-phase.is-resting .life-tile { background: var(--el-tint); color: var(--ink-1); }
+.life-phase.is-chosen .life-tile { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--ink-1); }
+.life-phase-name {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  font-weight: 500;
+  line-height: 1.15;
+}
+.life-phase.is-chosen .life-phase-name { font-weight: 700; }
+.life-now {
+  display: none;
+  padding: 0 var(--space-2);
+  border-radius: 999px;
+  background: var(--ink-1);
+  color: var(--bg);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 600;
+  line-height: 1.5;
+}
+.life-phase.is-now .life-now { display: inline-block; }
+.life-phase-role,
+.life-phase-years {
+  overflow: hidden;
+  font-size: var(--text-1);
+  line-height: 1.3;
+  color: var(--ink-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.life-new { font-weight: 600; color: var(--ink-1); }
+.life-phase-years { font-variant-numeric: tabular-nums; }
+
+/* On a phone the grid keeps its five narrow columns. In the head each pillar's stem stands
+   over its branch, each character beside its name; the marks are drawn as lines only, and
+   the Luck column gives each phase its tile, its name and the year it starts. */
+@media (max-width: 640px) {
+  .life { --pillar-gap: var(--space-1); }
+  .life-head-state { display: none; }
+  .life-mini-pair { grid-template-columns: minmax(0, 1fr); gap: var(--space-1); min-height: 0; }
+  .life-mini {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: var(--space-1);
+    width: 100%;
+    padding: var(--space-1) 0;
+    border-radius: 6px;
+  }
+  .life-mini-char { font-size: var(--text-1); }
+  .life-mark { display: none; }
+  .life-phase { padding: 0 0 0 calc(var(--space-5) + var(--space-2)); border-radius: 8px; }
+  .life-tile { left: var(--space-1); width: 24px; height: 32px; font-size: var(--text-1); }
+  .life-phase.is-before .life-tile { height: 24px; }
+  .life-phase-name { font-size: var(--text-1); }
+  :is(.life-now, .life-phase-role, .life-phase-to, .life-group-years) { display: none; }
+  .life-phase.is-now .life-now { display: none; }
+}
+
+/* On paper the grid follows the chart, its head printed once, where it stands. */
+@media print {
+  .life-head { position: static; box-shadow: none; }
 }
 
 /* ── Card flip: a long press turns the card over to its ten gods ── */
@@ -1698,14 +2022,14 @@ body {
   border-top: 1px solid currentColor;
   opacity: 0.7;
 }
-:is(.relationship-chip, .luck-relationship)[data-kind="branch_clash"] .relationship-mark { border-top-style: dashed; }
-:is(.relationship-chip, .luck-relationship)[data-kind="harmony_frame"] .relationship-mark,
-:is(.relationship-chip, .luck-relationship)[data-kind="half_frame"] .relationship-mark { border-top: 3px double currentColor; }
-:is(.relationship-chip, .luck-relationship)[data-kind="directional_combination"] .relationship-mark { border-top-width: 2px; }
-:is(.relationship-chip, .luck-relationship)[data-kind="punishment"] .relationship-mark,
-:is(.relationship-chip, .luck-relationship)[data-kind="half_punishment"] .relationship-mark,
-:is(.relationship-chip, .luck-relationship)[data-kind="self_punishment"] .relationship-mark { border-top: 2px dashed currentColor; }
-:is(.relationship-chip, .luck-relationship)[data-kind="harm"] .relationship-mark { border-top: 2px dotted currentColor; }
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="branch_clash"] .relationship-mark { border-top-style: dashed; }
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="harmony_frame"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="half_frame"] .relationship-mark { border-top: 3px double currentColor; }
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="directional_combination"] .relationship-mark { border-top-width: 2px; }
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="punishment"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="half_punishment"] .relationship-mark,
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="self_punishment"] .relationship-mark { border-top: 2px dashed currentColor; }
+:is(.relationship-chip, .luck-relationship, .life-mark)[data-kind="harm"] .relationship-mark { border-top: 2px dotted currentColor; }
 
 .card.is-related {
   outline: 1px solid var(--ink-2);

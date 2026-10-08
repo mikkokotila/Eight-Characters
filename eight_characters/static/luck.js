@@ -58,6 +58,9 @@
     let shown = false;
     let open = false;
     let column = null;
+    // Whether the open page was opened from the life grid: closing it gives focus back to
+    // the chosen period's row there, not to its chip far above.
+    let fromLife = false;
 
     const fail = () => { throw new Error(t('luck_error')); };
     const require = (condition) => { if (!condition) fail(); };
@@ -242,6 +245,7 @@
         });
       });
       ribbon.querySelector('[data-luck-today]').disabled = now === null || (open && same(now, cursor));
+      life.sync({ cursor, shown, open, now, stop: shown ? cursor : home() });
       switcher.querySelectorAll('[data-luck-show]').forEach((button) => {
         button.setAttribute('aria-pressed', String((button.dataset.luckShow === 'on') === shown));
       });
@@ -627,6 +631,25 @@
         <p class="relationship-note">${esc(t('luck_note'))}</p>`;
     };
 
+    // ── The life grid (life.js) ──
+    // Its rows choose as the chips do: a period's row opens its page, and pressed again
+    // closes it, leaving the period standing in the chart.
+    const life = window.EC_LIFE.create({
+      root, translate: t, escape: esc,
+      onChoose: (path) => {
+        const choice = choiceOf(path);
+        require(choice !== null);
+        if (open && same(choice, cursor)) {
+          close();
+          return;
+        }
+        go(choice, { page: true });
+        fromLife = true;
+      },
+    });
+    // Where focus goes back to as the page closes: the row it was opened from, or the chip.
+    const opener = () => (fromLife ? life.rowOf(cursor) : ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`));
+
     // ── Moving the choice ──
     // Everything follows the choice: the ribbon, the fifth pillar, and the page when open.
     const sync = () => {
@@ -647,7 +670,10 @@
     };
     // Choosing a period shows it in the chart; `page` opens its page too.
     const go = (choice, { page = false } = {}) => {
-      if (page && !open) beforeSelect();
+      if (page && !open) {
+        beforeSelect();
+        fromLife = life.holds(document.activeElement);
+      }
       cursor = choice;
       shown = true;
       if (page) open = true;
@@ -666,7 +692,7 @@
       status.textContent = '';
       syncRibbon();
       drawColumn();
-      if (pageFocus) ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`).focus({ preventScroll: true });
+      if (pageFocus) opener().focus({ preventScroll: true });
     };
     // Shows or hides the luck pillar. Hiding it closes its page.
     const setShown = (on) => {
@@ -765,8 +791,9 @@
     document.addEventListener('keydown', (event) => {
       if (event.key === 'Escape' && open && !event.defaultPrevented) {
         event.preventDefault();
+        const back = opener();
         close();
-        ribbon.querySelector(`[data-luck="${keyOf(cursor)}"]`).focus();
+        back.focus();
       }
     });
 
@@ -787,6 +814,7 @@
         ribbon.innerHTML = '';
         ribbon.classList.add('hidden');
         switcher.classList.add('hidden');
+        life.render(null);
         removeColumn();
         onPeriod(null);
         return;
@@ -799,6 +827,9 @@
       pillars.classList.add('has-luck');
       switcher.classList.remove('hidden');
       drawRibbon();
+      life.render({
+        decades: luck.decades, before: luck.before, startAge: luck.startAge.years, natal: luck.chart.natal, year, names,
+      });
       syncRibbon();
       drawColumn();
     };
@@ -850,6 +881,8 @@
     };
     return {
       render, close, select, stand, has, topic, standing, cardsActive, choices,
+      // The control the open page gives focus back to, or null while none is open.
+      opener: () => (luck !== null && open ? opener() : null),
       shown: () => shown,
       setShown,
       toggle: keeping(() => setShown(!shown)),
