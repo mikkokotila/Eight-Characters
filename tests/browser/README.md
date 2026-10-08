@@ -57,14 +57,28 @@ The account suite (`account.test.mjs`) checks:
 - the account: its address and plan, its language (the page follows it), Download my
   data, Sign out, Sign out on every device (from the commands, on a chart), and Delete
   account, which needs the address typed again;
-- that a session ended elsewhere asks for a sign-in once, and the chart is drawn again;
 - that a chart link and a comparison opened signed out ask first, the comparison
-  before its frames, in the account's language, and that a comparison started after
-  the session ended elsewhere asks too;
+  before its frames, in the account's language;
 - that a code is described as it was asked for, even if the dialog changes side
   while the answer is on its way;
 - that the explorer links a visitor to the start page;
 - that the dialog fits a phone's screen.
+
+The account sessions suite (`account-sessions.test.mjs`) checks:
+- that a session ended elsewhere asks for a sign-in once, and the chart, or a
+  comparison before its frames, is asked for again;
+- that an answer arriving late changes nothing it should not: a refusal for a chart
+  or a comparison no longer wanted, a comparison's check after a sign-out and a new
+  sign-in or a language set meanwhile, and a menu action answered after the page took
+  another session (signing out everywhere still signs the page out);
+- that tabs, which share the session cookie, are followed: another tab signing in to
+  another account is named by the menu (and by Download my data, refused for the
+  account left), taken by a comparison's check, and kept when a refusal crosses it;
+  a language set in another tab shows in the menu.
+
+Their pages are shared through `account-page.mjs`. The two are separate files, so each
+runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
+one browser (the 64th, a phone's 32nd, never loaded).
 
 The foundations suite also audits the account dialog's fonts and contrast, signed in
 and signed out, in both languages and both themes.
