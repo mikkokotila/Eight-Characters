@@ -187,6 +187,25 @@ for (const profile of profiles) {
         assert.match(await page.locator('.card-hint').textContent(), /Press and hold/);
       });
     } else {
+      check('holding either luck arrow describes its phase without navigating, while tapping still navigates', async (page) => {
+        await openChart(page, { place: HELSINKI, date: '1975-08-14', time: '23:50', gender: 'female' });
+        await page.locator('.luck-chip[data-luck="5"]').tap(); await settled(page);
+        const phase = () => page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('luck'));
+        const point = { pointerType: 'touch', pointerId: 42, isPrimary: true, clientX: 100, clientY: 100, bubbles: true };
+        for (const [direction, label] of [['-1', 'Previous phase'], ['1', 'Next phase']]) {
+          const arrow = page.locator(`[data-luck-step="${direction}"]`);
+          const before = await phase();
+          await arrow.dispatchEvent('pointerdown', point); await tipOpen(page);
+          assert.equal(await page.locator(tipSelector + ' strong').textContent(), label);
+          assert.equal(await arrow.getAttribute('aria-describedby'), 'control-tooltip');
+          await arrow.dispatchEvent('pointerup', point); await arrow.dispatchEvent('click');
+          assert.equal(await phase(), before, 'a held arrow only opens help');
+          await page.waitForTimeout(650); await arrow.tap(); await settled(page);
+          assert.notEqual(await phase(), before, 'a quick tap moves to the adjacent phase');
+          await tipClosed(page);
+        }
+      });
+
       check('a touch hold reveals the action without running it, while a quick tap still selects', async (page) => {
         await openChart(page);
         const gods = page.locator('[data-display="ten-gods"]');

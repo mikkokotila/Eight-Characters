@@ -70,7 +70,7 @@
       key = node.getAttribute('aria-expanded') === 'true' ? 'collapse' : 'expand'; label = node.querySelector('.canon-line-key').textContent.trim();
     } else if (node.matches('.canon-link, .canon-clause')) { icon = 'arrow-up-right'; key = 'reading'; }
     else if (node.matches('.luck-step')) {
-      [icon, key] = node.dataset.luckStep === '-1' ? ['chevron-left', 'previous'] : ['chevron-right', 'next']; label = node.getAttribute('aria-label');
+      [icon, key] = node.dataset.luckStep === '-1' ? ['chevron-left', 'previous'] : ['chevron-right', 'next']; label = node.getAttribute('aria-label'); only = true;
     } else if (node.matches('.luck-today')) { icon = 'calendar-check'; key = 'today'; only = true; }
     else if (node.matches('.luck-chip')) {
       key = node.dataset.luck === 'before' ? 'before' : 'decade';
