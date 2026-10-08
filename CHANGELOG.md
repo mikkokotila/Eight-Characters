@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.42.0
+
+The life grid: under the chart, its five columns run on through the whole life. This is the luck pillar design's fifth slice, in its first part; Pillars only, the grid's list of the decades alone, comes next.
+
+### Added
+- **The life grid.** Under a chart with a gender, a row for each five years: the years before the first decade, then each decade's stem phase over its branch phase, grouped by the direction their branch travels, as on the ribbon. Its columns are the chart's.
+  - The Luck column holds the decades, each a small pillar: its stem's tile over its branch's. Each phase's row names its character, the role it brings (a branch's by its main qi), "new" when no natal stem has that role, and its years. Today's row is marked.
+  - Under each natal character a mark shows each relationship the luck pillar forms with it, in its kind's line: a stem's under the stem, for the stem phase; a branch's under the branch, for the decade. The first natal member's mark names the characters, and a line joins the natal members.
+  - Today is a line across the natal columns, where it falls in its phase.
+  - A compact copy of the chart heads the grid, each pillar's stem beside its branch, and stays at the top while the grid scrolls by. Its Luck column holds the period chosen, and while the luck pillar shows, each natal character the chosen phase's relationships touch is ringed.
+- **Choosing in the grid.** A phase's row chooses it as a chip does: it stands in the chart and its page opens; pressed again, the page closes. The chosen row is shaded, and in its decade's branch phase the stem is set aside and the marks of what rests grow quiet. Showing and hiding the luck pillar moves nothing in the grid.
+- **Keys.** The rows take one tab stop; Up and Down move between them, Home and End go to either end, and the chart's keys act from them. A page opened from the grid gives focus back to its row on Escape and Close. ? lists the arrows.
+- **Phones** keep the grid's five narrow columns: the head stands each stem over its branch, and the marks are drawn as lines only.
+- **Paper.** The grid prints after the chart.
+- **Finnish, provisional until confirmed:** Elämä (the grid's title), Onni (its Luck column), Ei onnenpilaria, uusi, Piilossa, Elämän vaiheesta toiseen (the keys), and the grid's description.
+
+### Changed
+- The gap between the chart's columns is a token, `--pillar-gap`, which the chart and the grid share.
+
+### Tests
+- `tests/browser/life.test.mjs`, desktop and mobile: the rows and their groups; the columns and the marks under what they touch, at widths from 1440px to 700px; choosing from the grid, and focus coming back to a row; the rows' keys; today, L, the sticky head and Finnish; paper.
+- `tests/browser/luck-helpers.mjs` holds the sample chart, its link and its clock, for the luck pillars and life grid suites.
+- `tests/test_api_index_route.py`: life.js is served, versioned, and loaded before luck.js.
+- Version bumped to `0.42.0`; the static assets' cache keys follow it. The regression fixture changes only in `engine.version`.
+
 ## 0.41.0
 
 The luck pillar's relationships stand on the chart as arcs, and the topics take what it adds. This is the luck pillar design's fourth slice, in its second part. The life grid comes next.
