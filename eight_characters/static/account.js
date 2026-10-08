@@ -262,12 +262,17 @@
     const signedIn = (value) => {
       account = accountOf(value);
       held += 1;
+      // The account's language is the page's from now on, until the reader changes it.
+      onLanguage(account.language);
+      closeSignedIn();
+    };
+    // The dialog closes, signed in, and what waited for a sign-in goes on with the
+    // account the page holds.
+    const closeSignedIn = () => {
       asked = null;
       noticeKey = null;
       step = 'start';
       code.value = '';
-      // The account's language is the page's from now on, until the reader changes it.
-      onLanguage(account.language);
       const pending = waiting;
       waiting = null;
       dialog.close();
@@ -359,20 +364,15 @@
         }
         if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
         const value = await response.json();
-        if (session === held) {
-          signedIn(value);
+        // The page took, or ended, a session while this answer was on its way. One it
+        // holds now (another tab's, found after this answer set its cookie) is the
+        // newer: the dialog closes signed in to it, and nothing more is asked, which
+        // could itself be overtaken. Holding none, the browser's session is this one.
+        if (session !== held && account !== null) {
+          closeSignedIn();
           return;
         }
-        // The page took, or ended, a session while this answer was on its way: the
-        // browser may hold another tab's session now, set after this one. The server
-        // says whose it is, and the page signs in as that account.
-        const now = await call('GET', '/api/account');
-        if (now.status === 401) {
-          ended();
-          return;
-        }
-        if (!now.ok) throw new Error(t('account_server_error', { status: now.status }));
-        signedIn(await now.json());
+        signedIn(value);
       } catch (err) {
         console.error(err);
         setStatus(codeStatus, err.message);

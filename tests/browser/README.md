@@ -75,7 +75,7 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
   another account is named by the menu (and by Download my data, refused for the
   account left), taken by a comparison's check, and kept when a refusal crosses it;
   a language set in another tab shows in the menu, and a sign-in answered after the
-  page took another tab's session signs in as that one.
+  page took another tab's session keeps that one.
 
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
