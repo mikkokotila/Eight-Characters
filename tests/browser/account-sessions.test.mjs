@@ -418,8 +418,17 @@ for (const profile of profiles) {
       await page.locator('#location').fill(CHENGDU.city);
       await page.locator('.location-suggestion').click();
       await page.locator('#create-chart-btn').click();
-      // Taken as a sign-in here: the page speaks the account's language.
+      // Taken as a sign-in here: the page speaks the account's language, and so do both
+      // charts, and the address that names them.
       await page.waitForFunction(() => document.documentElement.lang === 'fi');
+      await page.locator('#compare-view').waitFor({ state: 'visible' });
+      const address = new URLSearchParams(new URL(page.url()).hash.slice('#compare?'.length));
+      assert.equal(new URLSearchParams(address.get('a')).get('lang'), 'fi');
+      assert.equal(new URLSearchParams(address.get('b')).get('lang'), 'fi');
+      for (const side of ['a', 'b']) {
+        const frame = page.frameLocator(`#compare-charts .compare-frame[data-side="${side}"]`);
+        await frame.locator('#chart-view:not(.hidden) #pillars .card').first().waitFor({ state: 'attached' });
+      }
     });
 
     check("a menu action's late refusal leaves an account taken meanwhile", async (page) => {

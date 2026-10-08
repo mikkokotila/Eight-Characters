@@ -1576,7 +1576,9 @@ document.addEventListener('DOMContentLoaded', () => {
       askForChart();
       // The frames cannot ask for a sign-in themselves, so the page makes sure of the
       // session first, with the server: one that ended since the page was served asks
-      // here, before the frames ask for their charts.
+      // here, before the frames ask for their charts. Signing in here, or another tab's
+      // account taken by the check, sets the page to the account's language.
+      const languageBefore = currentLanguage;
       let signedInHere = false;
       try {
         const holds = await account.stillSignedIn(() => arrival === arrivals);
@@ -1593,8 +1595,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       if (arrival !== arrivals) return;
-      if (signedInHere) {
-        // Signing in set the account's language, which both charts take.
+      if (signedInHere || currentLanguage !== languageBefore) {
+        // The account's language, set by signing in or by the account taken, is both
+        // charts'.
         const inLanguage = (params) => {
           const next = new URLSearchParams(params);
           next.set('lang', currentLanguage);
