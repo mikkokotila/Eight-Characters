@@ -4,7 +4,7 @@ A date alone, a date and a place, or a date, a place and a time. Each settles mo
 
 - **A date alone** settles the year and month pillars wherever on Earth the birth was,
   unless the year or month changes at some moment of that date in some time zone
-  (UTC−12 to UTC+14). Those are left out, and listed in `changes` with the instant
+  (UTC-12 to UTC+14). Those are left out, and listed in `changes` with the instant
   in UTC at which they change.
 - **A date and a place** give the year, month and day pillars at noon on that date,
   local time. Each that changes during that local day is listed in `changes`, with
@@ -48,7 +48,7 @@ PILLAR_NAMES: Final[tuple[PillarName, ...]] = ('year', 'month', 'day', 'hour')
 DATE_PILLARS: Final[tuple[PillarName, ...]] = ('year', 'month')
 DAY_PILLARS: Final[tuple[PillarName, ...]] = ('year', 'month', 'day')
 # The widest offsets a civil clock has kept from UTC: a date runs from its midnight at
-# UTC+14 to its next midnight at UTC−12.
+# UTC+14 to its next midnight at UTC-12.
 EARLIEST_OFFSET: Final = timezone(timedelta(hours=14))
 LATEST_OFFSET: Final = timezone(timedelta(hours=-12))
 NOON: Final = time(12)

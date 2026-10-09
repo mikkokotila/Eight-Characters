@@ -6,7 +6,7 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 
 from fastapi.testclient import TestClient
 
@@ -52,7 +52,9 @@ def change(chart: dict[str, Any]) -> list[tuple[str, str, str, str]]:
 class FirstChartTestCase(unittest.TestCase):
     """Account services of the test's own, and a client with no account."""
 
-    settings: dict[str, str] = {'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '1000'}
+    settings: ClassVar[dict[str, str]] = {
+        'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '1000'
+    }
 
     def setUp(self) -> None:
         directory = Path(tempfile.mkdtemp())
@@ -165,8 +167,8 @@ class TestWhatABirthSettles(FirstChartTestCase):
         self.assertNotIn('day_master', chart)
 
     def test_a_date_on_which_the_year_changes_somewhere_leaves_it_out(self) -> None:
-        # Lichun 2027 is at 01:46:18 UTC on 4 February: still 3 February west of
-        # UTC−1, and 4 February everywhere else that day.
+        # Lichun 2027 is at 01:46:18 UTC on 4 February: still 3 February in zones
+        # at UTC-2 and further west, so a birth on either date may fall either side.
         for date in ('2027-02-03', '2027-02-04'):
             with self.subTest(date):
                 chart = self.chart(date=date)
@@ -277,7 +279,7 @@ class TestWhatItIsSent(FirstChartTestCase):
 
 
 class TestTheHourlyLimit(FirstChartTestCase):
-    settings = {'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '2'}
+    settings: ClassVar[dict[str, str]] = {'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '2'}
 
     def test_a_client_may_ask_for_its_limit_an_hour(self) -> None:
         self.chart(date='1990-03-14')
@@ -297,7 +299,7 @@ class TestTheHourlyLimit(FirstChartTestCase):
 
 
 class TestThroughATrustedProxy(FirstChartTestCase):
-    settings = {
+    settings: ClassVar[dict[str, str]] = {
         'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '1',
         'EC_PROXY_SECRET': PROXY_SECRET,
     }
