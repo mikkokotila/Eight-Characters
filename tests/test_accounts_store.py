@@ -109,6 +109,25 @@ class TestCreateAndOpen(StoreTestCase):
         )
         self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM later'), [(0,)])
 
+    def test_a_database_of_schema_2_gains_the_chart_requests_and_keeps_its_users(
+        self,
+    ) -> None:
+        older = self.directory / 'schema-2.sqlite3'
+        with (
+            patch.object(store_module, 'MIGRATIONS', store_module.MIGRATIONS[:2]),
+            patch.object(store_module, 'SCHEMA_VERSION', 2),
+        ):
+            AccountStore.create(older)
+            AccountStore.open(older).create_user('kept@example.com', 'en')
+        store = AccountStore.open(older)
+        self.assertEqual(_sql(older, 'PRAGMA user_version'), [(SCHEMA_VERSION,)])
+        self.assertIsNotNone(store.user_by_email('kept@example.com'))
+        self.assertTrue(
+            store.allow_chart_request(
+                'client', '2026-10-07T12:00:00Z', '2026-10-07T11:00:00Z', 1
+            )
+        )
+
     def test_a_migration_already_run_by_another_process_is_not_run_again(self) -> None:
         # What a second process finds if it read the version before the first one
         # finished: the version is read again under the write lock.
@@ -563,13 +582,20 @@ class TestSessionsAndCodes(StoreTestCase):
                 20,
             )
         )
+        self.assertTrue(
+            self.store.allow_chart_request(
+                'client', '2026-10-07T12:00:00Z', '2026-10-07T11:00:00Z', 30
+            )
+        )
         self.store.delete_expired('2026-10-07T12:10:00Z', '2026-10-07T11:10:00Z')
         self.assertIsNone(self.store.code('reader@example.com'))
         self.assertIsNotNone(self.store.session('a'))
         self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(1,)])
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM chart_requests'), [(1,)])
         self.store.delete_expired('2026-11-06T12:00:00Z', '2026-10-07T12:00:01Z')
         self.assertIsNone(self.store.session('a'))
         self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(0,)])
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM chart_requests'), [(0,)])
 
     def test_code_requests_are_limited_per_address_and_per_client(self) -> None:
         def ask(email: str, client: str, now: str = '2026-10-07T12:00:00Z') -> bool:
@@ -603,6 +629,31 @@ class TestSessionsAndCodes(StoreTestCase):
             )
         )
         self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM code_requests'), [(1,)])
+
+    def test_chart_requests_are_limited_per_client(self) -> None:
+        def ask(client: str, now: str = '2026-10-07T12:00:00Z') -> bool:
+            return self.store.allow_chart_request(
+                client, now, '2026-10-07T11:00:00Z', 2
+            )
+
+        self.assertTrue(ask('one'))
+        self.assertTrue(ask('one'))
+        self.assertFalse(ask('one'))
+        # A refused request is not counted, and another client has its own count.
+        self.assertTrue(ask('two'))
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM chart_requests'), [(3,)])
+
+    def test_chart_requests_older_than_the_window_no_longer_count(self) -> None:
+        for _ in range(2):
+            self.store.allow_chart_request(
+                'one', '2026-10-07T10:00:00Z', '2026-10-07T09:00:00Z', 2
+            )
+        self.assertTrue(
+            self.store.allow_chart_request(
+                'one', '2026-10-07T12:00:00Z', '2026-10-07T11:00:00Z', 2
+            )
+        )
+        self.assertEqual(_sql(self.path, 'SELECT COUNT(*) FROM chart_requests'), [(1,)])
 
 
 class TestRestore(StoreTestCase):

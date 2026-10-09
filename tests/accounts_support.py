@@ -113,6 +113,7 @@ def account_environment(directory: Path, **changes: str) -> dict[str, str]:
         'EC_CLIENT_IP_HEADER': 'peer',
         'EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS': '5',
         'EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT': '20',
+        'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '30',
     }
     env.update(changes)
     return env
@@ -135,12 +136,12 @@ def code_in(message: EmailMessage) -> str:
     return match.group(1) + match.group(2)
 
 
-def install_accounts(case: type[unittest.TestCase]) -> Accounts:
+def install_accounts(case: type[unittest.TestCase], **changes: str) -> Accounts:
     """A fresh account database and services, in place of the app's own for as long
-    as the test class runs."""
+    as the test class runs; `changes` alter its settings."""
     directory = Path(tempfile.mkdtemp())
     case.addClassCleanup(shutil.rmtree, directory)
-    config = load_config(account_environment(directory))
+    config = load_config(account_environment(directory, **changes))
     AccountStore.create(config.database)
     accounts = Accounts.open(config, person_check=FakePersonCheck(), clock=Clock())
     app.dependency_overrides[get_accounts] = lambda: accounts

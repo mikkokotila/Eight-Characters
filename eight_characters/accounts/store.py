@@ -100,6 +100,18 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         'CREATE INDEX code_requests_by_email ON code_requests (email, requested_at)',
         'CREATE INDEX code_requests_by_client ON code_requests (client, requested_at)',
     ),
+    # 3: the requests for a first chart, made without an account, kept for the hourly
+    # limit per client. Not backed up, like the requests for codes.
+    (
+        """
+        CREATE TABLE chart_requests (
+            id INTEGER PRIMARY KEY,
+            client TEXT NOT NULL,
+            requested_at TEXT NOT NULL
+        ) STRICT
+        """,
+        'CREATE INDEX chart_requests_by_client ON chart_requests (client, requested_at)',
+    ),
 )
 SCHEMA_VERSION: Final = len(MIGRATIONS)
 # SQLite's own field for telling an application's files from others ('E8CH').
@@ -664,8 +676,9 @@ class AccountStore:
             ).rowcount
 
     def delete_expired(self, now: str, requests_before: str) -> None:
-        """Drops sessions and codes past their time, and the record of codes asked
-        for before `requests_before`, the start of the hourly limits' window."""
+        """Drops sessions and codes past their time, and the record of codes and
+        charts asked for before `requests_before`, the start of the hourly limits'
+        window."""
         with self._write() as connection:
             connection.execute('DELETE FROM sessions WHERE expires_at <= ?', (now,))
             connection.execute(
@@ -673,6 +686,9 @@ class AccountStore:
             )
             connection.execute(
                 'DELETE FROM code_requests WHERE requested_at < ?', (requests_before,)
+            )
+            connection.execute(
+                'DELETE FROM chart_requests WHERE requested_at < ?', (requests_before,)
             )
 
     def account_data(self, user_id: str) -> dict[str, Any]:
@@ -825,6 +841,29 @@ class AccountStore:
                 'INSERT INTO code_requests (email, client, requested_at) '
                 'VALUES (?, ?, ?)',
                 (email, client, now),
+            )
+        return True
+
+    def allow_chart_request(
+        self, client: str, now: str, window_start: str, per_client: int
+    ) -> bool:
+        """Records a request for a first chart unless the client has made its limit
+        of requests since `window_start`. Refused requests are not counted, so asking
+        again cannot lengthen a wait."""
+        with self._write() as connection:
+            connection.execute(
+                'DELETE FROM chart_requests WHERE requested_at < ?', (window_start,)
+            )
+            made = _scalar(
+                connection,
+                'SELECT COUNT(*) FROM chart_requests WHERE client = ?',
+                client,
+            )
+            if made >= per_client:
+                return False
+            connection.execute(
+                'INSERT INTO chart_requests (client, requested_at) VALUES (?, ?)',
+                (client, now),
             )
         return True
 
