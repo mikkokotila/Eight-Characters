@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.46.0
+
+The first chart, for someone without an account: what a birth settles, from its date
+alone, with its place, or with its place and time. For a front end that shows a visitor
+her chart before she signs up, and for births whose time is not known (#61).
+
+### Added
+- **API: `POST /api/first_chart`**, without an account. A date alone gives the year and
+  month pillars when they are the same wherever on Earth the birth was that date; a
+  date and a place give the year, month and day pillars at noon that date, local time;
+  with the time, all four and the engine's flags. Without a time, each pillar that
+  changes during the date is named in `changes`, with when (the clock time with a
+  place, the instant in UTC without one) and the pillar before and after, so that a
+  front end can say for whom a pillar holds rather than show one that may be wrong.
+  With a place, the Day Master and the canon's passage for it, word for word. Each
+  pillar carries its English name and its branch's sign.
+- **Its input is checked**, before it is counted against the limit: a date that exists,
+  from 1949 to 2100, named as such when it does not; a time exactly `HH:MM` or
+  `HH:MM:SS`, and only with a place; coordinates finite and in range; a zone the engine
+  knows; `fold` 0 or 1. An unknown field, or a string or a boolean where a number
+  belongs, is refused. A time the clocks skipped, or repeated without a `fold`, is
+  refused too, with a message that says which; that one is found while charting, so it
+  counts.
+- **A limit per client**: `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` first charts an hour,
+  then `429` with `Retry-After`. The requests are kept in the account database for the
+  hour (schema 3, `chart_requests`), outside the backup, as the requests for codes are.
+  The setting is required: set it on the server before deploying.
+- **A trusted proxy names the client.** A server that passes requests on for many
+  visitors shows `EC_PROXY_SECRET` in `X-EC-Proxy-Secret` and names each visitor in
+  `X-EC-Client`, and the limits per client, for codes and first charts, count that
+  visitor. A request with either header that does not show the secret is refused
+  (`403`), and one that shows it without a client (`400`). Without `EC_PROXY_SECRET`,
+  optional, no proxy is trusted.
+
+### Tests
+- `tests/test_api_first_chart_endpoint.py`: a chart with its place and time, without an
+  account, its pillars' names and signs, and its Day Master's passage against the
+  canon; without a time, the day's change at true solar midnight in Chicago and in
+  Detroit under summer time, and the month's at Lidong in New York; a date alone, and
+  the dates either side of Lichun 2027 on which the year is not the same everywhere; a
+  time the clocks skip or repeat; every refused input; the hourly limit, and a request
+  refused for what it holds left uncounted; a trusted proxy's visitors, each with a
+  limit of their own, and a proxy without the secret refused.
+- `tests/test_accounts_store.py`: the chart requests limited per client, dropped after
+  the hour, and a database of schema 2 gaining them while keeping its users.
+- `tests/test_accounts_web.py`: the two settings, and a proxy naming the client for a
+  code, or refused.
+- `tests/test_accounts_app.py`: the first chart is on the list of open requests.
+- The API integration gate runs the new suite.
+- Version bumped to `0.46.0`; the static assets' cache keys follow it. The regression
+  fixture changes only in `engine.version`.
+
 ## 0.45.0
 
 The luck pillar's readings: what the canon says of each decade, and the canon's sentences it settles. This is the luck pillar design's sixth and last slice.
