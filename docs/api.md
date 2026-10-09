@@ -11,7 +11,8 @@
 Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
 `POST /api/hidden_stems` and `POST /api/evolution_explorer` answer `401`
 (`{"detail": "Sign in to continue."}`) without one, before the request is validated. The
-place search and `GET /api/evolution_controls` need none.
+first chart, `POST /api/first_chart`, is for someone without one, a limited number an
+hour per client. The place search and `GET /api/evolution_controls` need none.
 
 A session is the cookie the page gets when signing in (`__Host-ec_session` over HTTPS,
 `ec_session` on a laptop's plain HTTP). Signing in, and the account itself, are
@@ -385,6 +386,87 @@ seat. Its `decades` follow the luck pillars, each with:
 
 See [Readings](Standard-Readings.md).
 
+### `POST /api/first_chart`
+
+The first chart, for someone without an account: what a birth settles. It needs no
+session. Each client may ask for `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` an hour
+([Accounts](Developer/Accounts.md#settings)); past that the answer is `429`
+(`{"detail": "Too many charts asked for. Try again within an hour."}`) with
+`Retry-After: 3600`. A server that passes requests on for many visitors names each one
+as [a trusted proxy](Developer/Accounts.md#a-trusted-proxy).
+
+Request: a `date`, alone, with its `location`, or with its `location` and `time`.
+
+```json
+{
+  "date": "1990-03-14",
+  "time": "07:40",
+  "location": {
+    "timezone": "America/Chicago",
+    "latitude": 41.8781,
+    "longitude": -87.6298
+  }
+}
+```
+
+- `date`: `YYYY-MM-DD`, a date that exists, from 1949 to 2100.
+- `time` (optional; needs `location`): `HH:MM` or `HH:MM:SS` on the place's clock.
+- `location` (optional): a place as `POST /api/location_suggest` gives it, its
+  `timezone`, `latitude` and `longitude`, and `fold` (`0` or `1`) for a time the clocks
+  repeat. A time the clocks skipped, or repeated when no `fold` is given, is refused
+  with `400`, saying which.
+
+Nothing else is taken: an unknown field, a string where a number belongs, a coordinate
+that is not finite or is out of range, or a `fold` other than `0` or `1` is refused with
+`400`.
+
+What each birth settles:
+
+| Sent | `pillars` | `changes` | `day_master` | `flags` |
+|---|---|---|---|---|
+| `date` | `year` and `month`, when they are the same wherever on Earth the birth was that date | a change of either at some moment of that date in some time zone (UTC−12 to UTC+14), with its instant, `at_utc`; that pillar is left out of `pillars` | — | — |
+| `date`, `location` | `year`, `month` and `day` at noon that date, local time | each of them that changes during that local date, with the clock time, `at`, to the second rounded down | from `day` | — |
+| `date`, `location`, `time` | all four | `[]` | from `day` | the engine's, as `POST /api/four_pillars` gives them |
+
+A change names the `pillar`, when it changes, and the pillar `before` and `after`, so
+that a front end can say for whom a pillar holds rather than show one that may be
+wrong. Under the default conventions the day pillar changes at true solar midnight,
+which on most dates falls within the clock's day: in Chicago on 14 March 1990 at
+23:59:34, and in Detroit on 1 July 1990, under summer time, at 01:35:54. The month
+changes at a jie (in New York on 7 November 2026 at 04:52:04, Lidong), and the year at
+Lichun.
+
+Success response (Chicago, 14 March 1990, without a time; the month and day pillars
+and the rest of the passage cut):
+
+```json
+{
+  "pillars": {
+    "year": {
+      "name": "Life field",
+      "stem": {"chinese": "庚", "pinyin": "Geng", "element": "metal", "polarity": "Yang"},
+      "branch": {"chinese": "午", "pinyin": "Wu", "sign": "Horse", "element": "fire", "polarity": "Yang"}
+    }
+  },
+  "changes": [
+    {"pillar": "day", "at": "23:59:34", "before": {"name": "Inner light", "…": "戊寅"}, "after": {"name": "Inner light", "…": "己卯"}}
+  ],
+  "day_master": {
+    "stem": "戊",
+    "pinyin": "Wu",
+    "polarity": "Yang",
+    "element": "earth",
+    "title": "戊 Wu — Yang Earth",
+    "passage": ["The mountain, the plateau, the great wall. …"]
+  },
+  "engine": {"version": "0.46.0", "…": "…"}
+}
+```
+
+Each pillar carries its English name (`PILLAR_LABELS`), and each branch its sign
+(`animal` in `eight_characters/data.py`). `day_master.passage` is the canon's passage for
+the Day Master, word for word, as the reading gives it.
+
 ### `POST /api/evolution_explorer`
 
 Builds the evolution explorer's graph data for a birth. The place is given
@@ -666,6 +748,8 @@ Common status codes:
 
 - `400` invalid input, request schema validation errors, invalid stem/branch characters, unresolved city, DST ambiguity without `fold`, nonexistent local time, or convention validation errors
 - `401` no signed-in account, for the requests that need one
+- `403` a request naming its client that does not come from a proxy the app trusts
+- `429` past the hourly limit, for codes and first charts, with `Retry-After`
 - `500` unexpected internal errors
 
 ## Example curl
