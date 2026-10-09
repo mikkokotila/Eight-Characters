@@ -43,7 +43,8 @@ not exactly those bytes is refused.
 Every change to a backed-up record is logged in the `changes` table in the same
 transaction. Sessions, sign-in codes and the record of codes asked for are kept in the
 database too (schema 2) but stay out of the backup: after a restore, people sign in
-again.
+again. So does the record of first charts asked for (schema 3), kept for an hour for
+the limit per client.
 
 ## Signing in
 
@@ -109,6 +110,7 @@ birth. Creating the chart asks for an account first.
 | Request | Needs an account |
 |---|---|
 | `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is validated |
+| `POST /api/first_chart` | no: it is for someone without one, and each client may ask for `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` an hour |
 | `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls` | no |
 
 `tests/test_accounts_app.py` holds both lists, so a new request fails it until it is
@@ -207,11 +209,26 @@ or a database it cannot open, stops it with the reason.
 | `EC_CLIENT_IP_HEADER` | `X-Real-IP` | `peer` (the socket's address) |
 | `EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS` | `5` | as needed |
 | `EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT` | `20` | as needed |
+| `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` | `60` | as needed |
+| `EC_PROXY_SECRET` (optional) | 32 bytes or more, random, shared with the one proxy that passes requests on; not set while none does | not set |
 
 SMTP is used with TLS from the first byte (port 465). Cloudflare publishes test keys
 for Turnstile: site key `1x00000000000000000000AA` and secret
 `1x0000000000000000000000000000000AA` always pass (the secret is still checked with
 Cloudflare, so asking for a code needs the network).
+
+### A trusted proxy
+
+The limits per client count the address `EC_CLIENT_IP_HEADER` names. A server that
+passes requests on to the app for many visitors, such as another site's Worker, comes
+from one address for all of them. So that each visitor still has limits of their own,
+that server shows `EC_PROXY_SECRET` in `X-EC-Proxy-Secret` and names the visitor in
+`X-EC-Client`, and the app counts the visitor it names.
+
+A request with either header that does not show the secret is refused with `403`, and
+one that shows it without naming a client with `400`. A misconfigured proxy so fails at
+once, instead of counting all its visitors as one, and nobody else can choose the
+client they are counted as. Without `EC_PROXY_SECRET` no proxy is trusted.
 
 ### On a laptop
 
@@ -230,6 +247,7 @@ export EC_TURNSTILE_SECRET=1x0000000000000000000000000000000AA
 export EC_CLIENT_IP_HEADER=peer
 export EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS=5
 export EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT=20
+export EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT=60
 uvicorn eight_characters.main:app
 ```
 

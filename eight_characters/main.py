@@ -24,6 +24,7 @@ from eight_characters.accounts.web import (
     SessionDependency,
     account_view,
     accounts_from_environment,
+    count_chart_request,
     require_account,
 )
 from eight_characters.accounts.web import router as account_router
@@ -57,6 +58,13 @@ from eight_characters.explorer_controls import (
     catalogue,
     describe_model,
     resolve_model_parameters,
+)
+from eight_characters.first_chart import (
+    FirstChart,
+    FirstChartInputError,
+    Place,
+    build_first_chart,
+    parse_first_birth,
 )
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_context import build_luck_context
@@ -116,8 +124,8 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(title='Eight Characters', lifespan=lifespan)
 app.include_router(account_router)
-# Charts need an account. The start page, place search and the explorer's sample
-# and settings stay open.
+# Charts need an account, but for the first chart (/api/first_chart). The start page,
+# place search and the explorer's sample and settings stay open.
 ACCOUNT_REQUIRED = [Depends(require_account)]
 app.mount('/static', StaticFiles(directory=BASE_DIR / 'static'), name='static')
 templates = Jinja2Templates(directory=BASE_DIR / 'templates')
@@ -253,6 +261,27 @@ class LocationSearchRequest(BaseModel):
 class LocationSuggestRequest(BaseModel):
     query: str
     limit: int = 6
+
+
+class FirstChartPlace(BaseModel):
+    # A place as /api/location_suggest gives it: its zone and coordinates.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    timezone: str
+    latitude: float = Field(ge=-90.0, le=90.0, allow_inf_nan=False)
+    longitude: float = Field(ge=-180.0, le=180.0, allow_inf_nan=False)
+    # Which pass of a time the clocks repeat: 0 the first, 1 the second.
+    fold: int | None = Field(default=None, ge=0, le=1)
+
+
+class FirstChartRequest(BaseModel):
+    # Asked without an account, so a misspelt or unknown field is refused, never
+    # dropped without a word.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    date: str
+    time: str | None = None
+    location: FirstChartPlace | None = None
 
 
 class HiddenStemsRequest(BaseModel):
@@ -1151,6 +1180,37 @@ async def calculate_four_pillars(payload: FourPillarsRequest) -> dict[str, Any]:
         raise HTTPException(status_code=500, detail='Internal engine error.') from exc
 
     return response
+
+
+@app.post('/api/first_chart')
+def first_chart(
+    payload: FirstChartRequest, request: Request, accounts: AccountsDependency
+) -> FirstChart:
+    """The first chart, without an account: what a date settles, alone or with its
+    place and time (eight_characters/first_chart.py). Each client may ask for a
+    limited number an hour."""
+    place = payload.location
+    try:
+        birth = parse_first_birth(
+            payload.date,
+            payload.time,
+            None
+            if place is None
+            else Place(
+                timezone=place.timezone,
+                latitude=place.latitude,
+                longitude=place.longitude,
+                fold=place.fold,
+            ),
+        )
+    except FirstChartInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    count_chart_request(request, accounts)
+    try:
+        return build_first_chart(birth)
+    except FirstChartInputError as exc:
+        # A clock time the place skipped, or repeated without a fold.
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @app.get('/api/evolution_controls')

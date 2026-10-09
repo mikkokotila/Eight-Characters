@@ -7,6 +7,7 @@ origin, and the session lives in an HttpOnly cookie the page's scripts cannot re
 """
 
 import hashlib
+import hmac
 import logging
 import os
 import re
@@ -64,6 +65,12 @@ ACCOUNT_CHANGED: Final = 'This browser is signed in to another account now.'
 # names ends on the server 30 days after it was made or last extended, and is
 # extended there when used in its second half.
 SESSION_COOKIE_LIFETIME: Final = timedelta(days=400)
+# A proxy the app trusts, such as another site's server passing requests on, names
+# the visitor in PROXY_CLIENT_HEADER and proves itself with EC_PROXY_SECRET in
+# PROXY_SECRET_HEADER. Its own address is the same for every visitor it serves.
+PROXY_SECRET_HEADER: Final = 'X-EC-Proxy-Secret'
+PROXY_CLIENT_HEADER: Final = 'X-EC-Client'
+TOO_MANY_CHARTS: Final = 'Too many charts asked for. Try again within an hour.'
 _HEADER_NAME = re.compile(r'[A-Za-z0-9-]+')
 _LOCAL_HOSTS: Final = frozenset({'localhost', '127.0.0.1', '::1'})
 
@@ -86,6 +93,10 @@ class AccountsConfig:
     # The request header that carries the visitor's address; None for the socket's.
     client_ip_header: str | None
     limits: Limits
+    # How many first charts a client may ask for in an hour, without an account.
+    chart_requests_per_client: int
+    # The secret a trusted proxy shows (see PROXY_SECRET_HEADER); None trusts none.
+    proxy_secret: bytes | None
 
     @property
     def secure(self) -> bool:
@@ -139,6 +150,7 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
         'EC_CLIENT_IP_HEADER',
         'EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS',
         'EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT',
+        'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT',
     )
     transport = env.get('EC_MAIL_TRANSPORT', '')
     if transport == 'smtp':
@@ -191,6 +203,13 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
         errors.append('EC_CLIENT_IP_HEADER must be a header name, or peer.')
     per_address = _positive(env, 'EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS', errors)
     per_client = _positive(env, 'EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT', errors)
+    charts_per_client = _positive(env, 'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT', errors)
+    # Optional: without it, no proxy is trusted, and one that names a client is refused.
+    proxy_secret: bytes | None = None
+    if 'EC_PROXY_SECRET' in env:
+        proxy_secret = env['EC_PROXY_SECRET'].encode()
+        if len(proxy_secret) < 32:
+            errors.append('EC_PROXY_SECRET must be at least 32 bytes, or not set.')
     if errors:
         raise ConfigError(' '.join(errors))
     return AccountsConfig(
@@ -205,6 +224,8 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
         turnstile_secret=env['EC_TURNSTILE_SECRET'],
         client_ip_header=None if header == 'peer' else header,
         limits=Limits(per_address=per_address, per_client=per_client),
+        chart_requests_per_client=charts_per_client,
+        proxy_secret=proxy_secret,
     )
 
 
@@ -320,7 +341,34 @@ def _same_origin(request: Request, accounts: Accounts) -> None:
         )
 
 
-def _client(request: Request, accounts: Accounts) -> str:
+def client_of(request: Request, accounts: Accounts) -> str:
+    """Who a request is from, for the limits per visitor.
+
+    A proxy the app trusts names the visitor in PROXY_CLIENT_HEADER and shows the
+    secret in PROXY_SECRET_HEADER. A request with either header that does not come
+    from one is refused, so a misconfigured proxy fails at once instead of counting
+    all its visitors as one, and nobody else can name a client of their choosing.
+    Otherwise the address is the configured header's, or the socket's.
+    """
+    shown = request.headers.get(PROXY_SECRET_HEADER)
+    named = request.headers.get(PROXY_CLIENT_HEADER)
+    if shown is not None or named is not None:
+        secret = accounts.config.proxy_secret
+        if (
+            shown is None
+            or secret is None
+            or not hmac.compare_digest(shown.encode(), secret)
+        ):
+            raise HTTPException(
+                status_code=403,
+                detail='Only a proxy this app trusts may name the client.',
+            )
+        if named is None or not named.strip():
+            raise HTTPException(
+                status_code=400,
+                detail=f'A proxy must name the client in {PROXY_CLIENT_HEADER}.',
+            )
+        return named.strip()
     header = accounts.config.client_ip_header
     if header is None:
         if request.client is None:
@@ -332,6 +380,25 @@ def _client(request: Request, accounts: Accounts) -> str:
         # limits per visitor would not hold.
         raise RuntimeError(f'The {header} header is missing.')
     return value
+
+
+def count_chart_request(request: Request, accounts: Accounts) -> None:
+    """Counts a request for a first chart against its client's hourly limit, or
+    refuses it with 429 when the client has made its limit."""
+    client = client_of(request, accounts)
+    now = accounts.clock()
+    allowed = accounts.store.allow_chart_request(
+        client,
+        timestamp(now),
+        timestamp(now - REQUEST_WINDOW),
+        accounts.config.chart_requests_per_client,
+    )
+    if not allowed:
+        raise HTTPException(
+            status_code=429,
+            detail=TOO_MANY_CHARTS,
+            headers={'Retry-After': str(int(REQUEST_WINDOW.total_seconds()))},
+        )
 
 
 class AccountView(TypedDict):
@@ -430,7 +497,7 @@ def request_code(
     """Sends a code, or word that the address has no account. The reply is the same
     either way."""
     _same_origin(request, accounts)
-    client = _client(request, accounts)
+    client = client_of(request, accounts)
     try:
         person = accounts.person_check.verify(payload.turnstile, client)
     except PersonCheckUnavailable as exc:

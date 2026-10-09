@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m unittest \
             tests.test_api_four_pillars_endpoint \
+            tests.test_api_first_chart_endpoint \
             tests.test_api_luck_pillars \
             tests.test_api_luck_context \
             tests.test_api_bazi_endpoint \

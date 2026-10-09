@@ -33,6 +33,7 @@ from tests.accounts_support import (
 )
 
 ELSEWHERE = {'Origin': 'https://elsewhere.example'}
+PROXY_SECRET = 'a proxy secret that is at least 32 bytes long'
 CODE_REQUEST: dict[str, Any] = {
     'email': 'reader@example.com',
     'purpose': 'create',
@@ -54,7 +55,13 @@ class TestConfig(unittest.TestCase):
         self.assertEqual(config.cookie_name, '__Host-ec_session')
         limits = (config.limits.per_address, config.limits.per_client)
         self.assertEqual(limits, (5, 20))
+        self.assertEqual(config.chart_requests_per_client, 30)
         self.assertIsNone(config.client_ip_header)
+        self.assertIsNone(config.proxy_secret)
+
+    def test_a_trusted_proxy(self) -> None:
+        env = account_environment(self.directory, EC_PROXY_SECRET=PROXY_SECRET)
+        self.assertEqual(load_config(env).proxy_secret, PROXY_SECRET.encode())
 
     def test_smtp(self) -> None:
         env = account_environment(
@@ -83,10 +90,12 @@ class TestConfig(unittest.TestCase):
     def test_missing_settings_are_named_together(self) -> None:
         env = account_environment(self.directory)
         del env['EC_SECRET_KEY'], env['EC_TURNSTILE_SECRET']
+        del env['EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT']
         with self.assertRaises(ConfigError) as caught:
             load_config(env)
         self.assertIn('EC_SECRET_KEY', str(caught.exception))
         self.assertIn('EC_TURNSTILE_SECRET', str(caught.exception))
+        self.assertIn('EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT', str(caught.exception))
         smtp = account_environment(self.directory, EC_MAIL_TRANSPORT='smtp')
         with self.assertRaises(ConfigError) as caught:
             load_config(smtp)
@@ -105,6 +114,9 @@ class TestConfig(unittest.TestCase):
             ('EC_CLIENT_IP_HEADER', 'X Real IP'),
             ('EC_CODE_REQUESTS_PER_HOUR_PER_ADDRESS', '0'),
             ('EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT', 'many'),
+            ('EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT', '0'),
+            ('EC_PROXY_SECRET', 'too short'),
+            ('EC_PROXY_SECRET', ''),
         ):
             with self.subTest(name=name, value=value), self.assertRaises(ConfigError):
                 load_config(account_environment(self.directory, **{name: value}))
@@ -238,6 +250,45 @@ class TestAskingForACode(AccountApiTestCase):
         self.assertEqual(self.person.asked[-1], ('token', '198.51.100.7'))
         with self.assertRaises(RuntimeError):
             self.ask()
+
+    def test_a_trusted_proxy_names_the_client(self) -> None:
+        self.open_accounts(
+            EC_CLIENT_IP_HEADER='X-Real-IP', EC_PROXY_SECRET=PROXY_SECRET
+        )
+        # The proxy's own address is the same for everyone it serves.
+        through = {
+            'X-Real-IP': '192.0.2.1',
+            'X-EC-Proxy-Secret': PROXY_SECRET,
+            'X-EC-Client': '198.51.100.7',
+        }
+        reply = self.client.post(
+            '/api/account/code', json=CODE_REQUEST, headers=through
+        )
+        self.assertEqual(reply.status_code, 202)
+        self.assertEqual(self.person.asked[-1], ('token', '198.51.100.7'))
+
+    def test_only_a_trusted_proxy_may_name_the_client(self) -> None:
+        self.open_accounts(EC_PROXY_SECRET=PROXY_SECRET)
+        for headers, status in (
+            ({'X-EC-Client': '198.51.100.7'}, 403),
+            ({'X-EC-Proxy-Secret': 'not the secret', 'X-EC-Client': '1.2.3.4'}, 403),
+            ({'X-EC-Proxy-Secret': PROXY_SECRET}, 400),
+            ({'X-EC-Proxy-Secret': PROXY_SECRET, 'X-EC-Client': ' '}, 400),
+        ):
+            with self.subTest(headers=headers):
+                reply = self.client.post(
+                    '/api/account/code', json=CODE_REQUEST, headers=headers
+                )
+                self.assertEqual(reply.status_code, status)
+        self.assertEqual(self.person.asked, [])
+
+    def test_without_a_proxy_secret_no_proxy_is_trusted(self) -> None:
+        through = {'X-EC-Proxy-Secret': PROXY_SECRET, 'X-EC-Client': '198.51.100.7'}
+        reply = self.client.post(
+            '/api/account/code', json=CODE_REQUEST, headers=through
+        )
+        self.assertEqual(reply.status_code, 403)
+        self.assertEqual(self.person.asked, [])
 
 
 class TestSigningIn(AccountApiTestCase):

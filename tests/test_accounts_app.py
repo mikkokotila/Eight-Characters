@@ -39,7 +39,8 @@ from tests.accounts_support import (
 SESSION_COOKIE = '__Host-ec_session'
 
 # Every API request but the account's own: the charts, which need an account, and
-# what the start page and the explorer use before anyone signs in.
+# what the start page and the explorer use before anyone signs in, and the first
+# chart, which is for someone without one.
 NEEDS_ACCOUNT = {
     ('POST', '/api/chart'),
     ('POST', '/api/four_pillars'),
@@ -47,6 +48,7 @@ NEEDS_ACCOUNT = {
     ('POST', '/api/hidden_stems'),
 }
 OPEN = {
+    ('POST', '/api/first_chart'),
     ('POST', '/api/location_search'),
     ('POST', '/api/location_suggest'),
     ('GET', '/api/evolution_controls'),
