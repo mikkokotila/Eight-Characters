@@ -8,7 +8,8 @@ A date alone, a date and a place, or a date, a place and a time. Each settles mo
   in UTC at which they change.
 - **A date and a place** give the year, month and day pillars at noon on that date,
   local time. Each that changes during that local day is listed in `changes`, with
-  the clock time at which it changes and the pillar on either side, so that a front
+  the clock time and its UTC offset at which it changes (the offset tells apart the
+  two passes of an hour the clocks repeat) and the pillar on either side, so that a front
   end can say for whom the pillar holds rather than show one that may be wrong. With
   the engine's default conventions the day pillar changes at true solar midnight,
   which on most dates falls on the clock day; the month changes at a jie, and the
@@ -54,8 +55,9 @@ LATEST_OFFSET: Final = timezone(timedelta(hours=-12))
 NOON: Final = time(12)
 SECONDS_PER_DAY: Final = 86400.0
 
-_DATE = re.compile(r'\d{4}-\d{2}-\d{2}')
-_TIME = re.compile(r'(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d)?')
+# ASCII digits only: \d would take any script's digits, which the parsers below refuse.
+_DATE = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
+_TIME = re.compile(r'(?:[01][0-9]|2[0-3]):[0-5][0-9](?::[0-5][0-9])?')
 
 
 class FirstChartInputError(ValueError):
@@ -100,8 +102,8 @@ class ChartPillar(TypedDict):
 
 class PillarChange(TypedDict):
     pillar: PillarName
-    # The clock time on that date, to the second (rounded down), with a place;
-    # the instant in UTC without one.
+    # With a place, the clock time on that date and its UTC offset, to the second
+    # (rounded down), such as 01:15:45-04:00; without one, the instant in UTC.
     at: NotRequired[str]
     at_utc: NotRequired[str]
     before: ChartPillar
@@ -203,7 +205,7 @@ def _changes_within(
     once on either side of that moment within a day."""
     moment = float(payload['intermediate']['tt_julian_date'])
     first, last = _jd_tt(start), _jd_tt(end)
-    found: list[PillarChange] = []
+    found: list[tuple[float, PillarChange]] = []
     for name in names:
         here = _engine_pillar(name, payload)
         for side in ('previous', 'next'):
@@ -226,10 +228,13 @@ def _changes_within(
             if zone is None:
                 entry['at_utc'] = instant.strftime('%Y-%m-%dT%H:%M:%SZ')
             else:
-                entry['at'] = instant.astimezone(zone).strftime('%H:%M:%S')
-            found.append(entry)
-    found.sort(key=lambda entry: entry.get('at') or entry.get('at_utc') or '')
-    return found
+                # The offset places a change in an hour the clocks repeat on its pass.
+                entry['at'] = instant.astimezone(zone).isoformat(timespec='seconds')[
+                    11:
+                ]
+            found.append((jd, entry))
+    found.sort(key=lambda item: item[0])
+    return [entry for _, entry in found]
 
 
 def _day_master(stem: str) -> DayMaster:

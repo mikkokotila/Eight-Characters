@@ -425,12 +425,15 @@ What each birth settles:
 | Sent | `pillars` | `changes` | `day_master` | `flags` |
 |---|---|---|---|---|
 | `date` | `year` and `month`, when they are the same wherever on Earth the birth was that date | a change of either at some moment of that date in some time zone (UTC−12 to UTC+14), with its instant, `at_utc`; that pillar is left out of `pillars` | — | — |
-| `date`, `location` | `year`, `month` and `day` at noon that date, local time | each of them that changes during that local date, with the clock time, `at`, to the second rounded down | from `day` | — |
+| `date`, `location` | `year`, `month` and `day` at noon that date, local time | each of them that changes during that local date, with the clock time and its UTC offset, `at`, to the second rounded down | from `day` | — |
 | `date`, `location`, `time` | all four | `[]` | from `day` | the engine's, as `POST /api/four_pillars` gives them |
 
 A change names the `pillar`, when it changes, and the pillar `before` and `after`, so
 that a front end can say for whom a pillar holds rather than show one that may be
-wrong. Under the default conventions the day pillar changes at true solar midnight,
+wrong. Changes come in the order they happen. The offset places a change in an hour
+the clocks repeat on its pass: in Detroit on 1 November 2026 the day changes at
+`01:15:45-04:00`, on the first pass, so a birth at 01:10 on the second (`fold` 1) has
+the new day. Under the default conventions the day pillar changes at true solar midnight,
 which on most dates falls within the clock's day: in Chicago on 14 March 1990 at
 23:59:34, and in Detroit on 1 July 1990, under summer time, at 01:35:54. The month
 changes at a jie (in New York on 7 November 2026 at 04:52:04, Lidong), and the year at
@@ -449,7 +452,7 @@ and the rest of the passage cut):
     }
   },
   "changes": [
-    {"pillar": "day", "at": "23:59:34", "before": {"name": "Inner light", "…": "戊寅"}, "after": {"name": "Inner light", "…": "己卯"}}
+    {"pillar": "day", "at": "23:59:34-06:00", "before": {"name": "Inner light", "…": "戊寅"}, "after": {"name": "Inner light", "…": "己卯"}}
   ],
   "day_master": {
     "stem": "戊",

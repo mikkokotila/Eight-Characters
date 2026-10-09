@@ -11,14 +11,16 @@ her chart before she signs up, and for births whose time is not known (#61).
   month pillars when they are the same wherever on Earth the birth was that date; a
   date and a place give the year, month and day pillars at noon that date, local time;
   with the time, all four and the engine's flags. Without a time, each pillar that
-  changes during the date is named in `changes`, with when (the clock time with a
-  place, the instant in UTC without one) and the pillar before and after, so that a
-  front end can say for whom a pillar holds rather than show one that may be wrong.
+  changes during the date is named in `changes`, in order, with when (with a place,
+  the clock time and its UTC offset, which places a change in an hour the clocks
+  repeat on its pass; without one, the instant in UTC) and the pillar before and
+  after, so that a front end can say for whom a pillar holds rather than show one that
+  may be wrong.
   With a place, the Day Master and the canon's passage for it, word for word. Each
   pillar carries its English name and its branch's sign.
 - **Its input is checked**, before it is counted against the limit: a date that exists,
   from 1949 to 2100, named as such when it does not; a time exactly `HH:MM` or
-  `HH:MM:SS`, and only with a place; coordinates finite and in range; a zone the engine
+  `HH:MM:SS`, in ASCII digits, and only with a place; coordinates finite and in range; a zone the engine
   knows; `fold` 0 or 1. An unknown field, or a string or a boolean where a number
   belongs, is refused. A time the clocks skipped, or repeated without a `fold`, is
   refused too, with a message that says which; that one is found while charting, so it
@@ -38,9 +40,11 @@ her chart before she signs up, and for births whose time is not known (#61).
 - `tests/test_api_first_chart_endpoint.py`: a chart with its place and time, without an
   account, its pillars' names and signs, and its Day Master's passage against the
   canon; without a time, the day's change at true solar midnight in Chicago and in
-  Detroit under summer time, and the month's at Lidong in New York; a date alone, and
-  the dates either side of Lichun 2027 on which the year is not the same everywhere; a
-  time the clocks skip or repeat; every refused input; the hourly limit, and a request
+  Detroit under summer time, and the month's at Lidong in New York; a change in the
+  hour Detroit's clocks repeat, placed on its pass; a date alone, and the dates either
+  side of Lichun 2027 on which the year is not the same everywhere; a time the clocks
+  skip or repeat; every refused input, digits of another script among them; the hourly
+  limit, and a request
   refused for what it holds left uncounted; a trusted proxy's visitors, each with a
   limit of their own, and a proxy without the secret refused.
 - `tests/test_accounts_store.py`: the chart requests limited per client, dropped after

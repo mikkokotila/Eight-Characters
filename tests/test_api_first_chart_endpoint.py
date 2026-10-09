@@ -126,7 +126,7 @@ class TestWhatABirthSettles(FirstChartTestCase):
         self.assertEqual(four(chart), ['庚午', '己卯', '戊寅'])
         self.assertNotIn('flags', chart)
         # True solar midnight in Chicago that night is 26 seconds before the clock's.
-        self.assertEqual(change(chart), [('day', '23:59:34', '戊寅', '己卯')])
+        self.assertEqual(change(chart), [('day', '23:59:34-06:00', '戊寅', '己卯')])
         self.assertEqual(chart['day_master']['stem'], '戊')
 
     def test_the_day_follows_the_sun_where_she_was_born_not_the_clock(self) -> None:
@@ -140,7 +140,7 @@ class TestWhatABirthSettles(FirstChartTestCase):
         # comes an hour and a half after the clock's: a birth before then has the
         # day before's pillar.
         self.assertEqual(four(chart), ['庚午', '壬午', '丁卯'])
-        self.assertEqual(change(chart), [('day', '01:35:54', '丙寅', '丁卯')])
+        self.assertEqual(change(chart), [('day', '01:35:54-04:00', '丙寅', '丁卯')])
 
     def test_a_month_that_changes_on_the_day_is_named_at_its_clock_time(self) -> None:
         new_york = {
@@ -154,10 +154,26 @@ class TestWhatABirthSettles(FirstChartTestCase):
         self.assertEqual(
             change(chart),
             [
-                ('month', '04:52:04', '戊戌', '己亥'),
-                ('day', '23:39:44', '乙酉', '丙戌'),
+                ('month', '04:52:04-05:00', '戊戌', '己亥'),
+                ('day', '23:39:44-05:00', '乙酉', '丙戌'),
             ],
         )
+
+    def test_a_change_in_an_hour_the_clocks_repeat_is_placed_on_its_pass(self) -> None:
+        detroit = {
+            'timezone': 'America/Detroit',
+            'latitude': 42.3314,
+            'longitude': -83.0458,
+        }
+        # On 1 November 2026 Detroit's clocks run 01:00 to 02:00 twice: the day changes
+        # at 01:15:45 on the first pass, under summer time, so a birth at 01:10 on the
+        # second (05:10 standard time, 06:10 UTC) has the new day's pillar.
+        chart = self.chart(date='2026-11-01', location=detroit)
+        self.assertEqual(change(chart), [('day', '01:15:45-04:00', '戊寅', '己卯')])
+        late = self.chart(
+            date='2026-11-01', time='01:10', location={**detroit, 'fold': 1}
+        )
+        self.assertEqual(four(late)[2], '己卯')
 
     def test_a_date_alone_gives_the_year_and_month_wherever_she_was_born(self) -> None:
         chart = self.chart(date='1990-03-14')
@@ -245,6 +261,18 @@ class TestWhatItIsSent(FirstChartTestCase):
                 },
                 'Unrecognized timezone identifier.',
             ),
+        ):
+            with self.subTest(body=body):
+                self.refused(body, detail)
+
+    def test_only_ascii_digits_are_taken(self) -> None:
+        # A pattern's \d takes any script's digits; only ASCII ones are taken.
+        for body, detail in (
+            (
+                {'date': '1990-03-14', 'time': '0\u0667:40', 'location': CHICAGO},
+                'time must be in HH:MM or HH:MM:SS format.',
+            ),
+            ({'date': '199\u0660-03-14'}, 'date must be in YYYY-MM-DD format.'),
         ):
             with self.subTest(body=body):
                 self.refused(body, detail)
