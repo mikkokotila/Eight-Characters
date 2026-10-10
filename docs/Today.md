@@ -151,21 +151,24 @@ Qiong Tong Bao Jian names, for each Day Master born in each month, the stems tha
 month's climate calls for. Its copy is prose, Wikisource's 穷通宝鉴 at revision
 2294674 (14 June 2023), and the table the app keeps from it is data
 (`eight_characters/qiong_tong_bao_jian.py`): one entry per Day Master and month, with
-the stems in the text's order of use, the heading they stand under and the sentence
+the stems in the text's order of use, the heading they stand under and the passage
 they are taken from, word for word. `tests/fixtures/qiong_tong_bao_jian_2294674.txt`
 holds the revision, and the tests find every sentence in it. The reduction:
 
-- The text's words of order decide it: 先…后…, …为尊…佐之, …为用…次之, 专用, 耑用.
-- A month's own sentence comes first. Where it states no use, its season's summary
-  (三春…, 总之…) for that month; where neither does, the stems it names in 用…者.
+- What the text says to use for the month, unconditionally, in the order it ranks
+  them: 先…后…, …为尊/为用/为主/为要…, …次之/佐之/为佐/为助/为辅. A season's
+  passage (三春…, 总之…) counts for a month it names.
+- Where the month's use is stated more than once, a statement that ranks its stems
+  wins over one that only lists them (专用 X Y, 并用, 兼用, 齐用), then the fullest,
+  and of two as full, the later, usually the month's own summary. A statement that
+  disclaims its order (四月庚金: 非拘执先后) does not rank.
+- A stem the text names only under a condition (或…, 若…, 如无…, 凡…者) or as a
+  fallback is left out, and so is a role named without a stem (比劫, 财).
 - Where the text treats months together (正二月, 五六月, 三冬), each takes the shared
   entry.
-- A stem the text names only under a condition (或…, 若…, 如无…) or as a fallback is
-  left out, and so is a role named without a stem (比劫, 财).
 - Where the text divides a month at its middle term (乙 Yi in 午 Wu and 酉 You, 壬 Ren
   in 丑 Chou, 癸 Gui in 辰 Chen), a birth after the middle term takes the second
   half's stems.
-- Where an entry gives two orders (六月壬水), the first is taken.
 
 The weights then follow:
 

@@ -3,18 +3,20 @@ for, as the Climate school (调候 Tiao Hou) reads them (docs/Today.md, Climate)
 
 The text is prose, not a table. The copy is Wikisource's 穷通宝鉴, revision 2294674
 (14 June 2023): https://zh.wikisource.org/w/index.php?oldid=2294674. Each entry keeps
-the stems in the text's order of use and the sentence they are taken from, word for
+the stems in the text's order of use and the passage they are taken from, word for
 word, with the heading it stands under; tests/fixtures holds the revision, and the
-tests find every sentence in it. The reduction:
+tests find every passage in it, line breaks aside. The reduction:
 
-- The text's words of order decide it: 先…后…, …为尊…佐之, …为用…次之, 专用 and 耑用.
-- A month's own sentence comes first; where it states no use, its season's summary
-  (三春…, 总之…) for that month; where neither does, the stems it names in 用…者.
-- Where the text treats months together, each takes the shared entry.
-- A stem named only under a condition (或…, 若…, 如无…) or as a fallback is left out;
-  so are roles named without a stem (比劫, 财).
+- What the text says to use for the month, unconditionally, in the order it ranks
+  them: 先…后…, …为尊/为用/为主/为要…, …次之/佐之/为佐/为助/为辅. A season's
+  passage counts for a month it names.
+- Where the month's use is stated more than once, a statement that ranks its stems
+  over one that only lists them (专用 X Y, 并用, 兼用, 齐用), then the fullest, and
+  of two as full, the later, which is usually the month's own summary. A statement
+  that disclaims its order (非拘执先后) does not rank.
+- A stem named only under a condition (或…, 若…, 如无…, 凡…者) or as a fallback is
+  left out, and so is a role named without a stem (比劫, 财).
 - Where the text divides a month at its middle term, the entry gives both halves.
-- Where an entry gives two orders, the first is taken.
 """
 
 from dataclasses import dataclass
@@ -169,18 +171,21 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='乙',
         months='巳',
-        stems=('癸',),
+        stems=('癸', '丙', '庚', '辛'),
         heading='四月乙木',
-        sentence='四月乙木，自有丙火，耑取癸水为尊。',
+        sentence='四月乙木专用癸水，丙火酌用，虽以庚辛佐癸，须辛透为清。',
         later=None,
     ),
     ClimateEntry(
         day_master='乙',
         months='午',
         stems=('癸',),
-        heading='三夏乙木',
-        sentence='五六月先丙后癸，夏至前仍用癸水。',
-        later=Later(stems=('丙', '癸'), sentence='五六月先丙后癸，夏至前仍用癸水。'),
+        heading='五月乙木',
+        sentence='上半月属阳，仍用癸水。',
+        later=Later(
+            stems=('癸', '丙'),
+            sentence='下半月属阴，三伏生寒，丙癸齐用。柱多金水，丙火为先，余皆用癸水为先。',
+        ),
     ),
     ClimateEntry(
         day_master='乙',
@@ -244,9 +249,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='丙',
         months='寅',
-        stems=('壬', '庚'),
-        heading='正月丙火',
-        sentence='正月丙火，三阳开泰，火气渐炎，取壬为尊，庚金佐之。',
+        stems=('壬', '庚', '辛'),
+        heading='三春丙火',
+        sentence='正月用壬，庚辛为助。',
         later=None,
     ),
     ClimateEntry(
@@ -260,9 +265,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='丙',
         months='辰',
-        stems=('壬',),
-        heading='三月丙火',
-        sentence='三月丙火，气渐炎升，用壬水。',
+        stems=('壬', '甲'),
+        heading='三春丙火',
+        sentence='耑用壬水为扶阳，名曰天和地润，既济功成。正月用壬，庚辛为助。二月耑用壬水。三月土重晦光，取甲佐之为妙。',
         later=None,
     ),
     ClimateEntry(
@@ -388,9 +393,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='丁',
         months='申',
-        stems=('甲', '丙'),
-        heading='三秋丁火',
-        sentence='七月甲丙，申中有庚',
+        stems=('甲', '庚'),
+        heading='七月丁火',
+        sentence='七月丁火，退气柔弱，端用甲木，金虽乘旺司权，无伤丁之理，仍取庚劈甲',
         later=None,
     ),
     ClimateEntry(
@@ -412,9 +417,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='丁',
         months='亥子丑',
-        stems=('甲', '庚'),
+        stems=('甲', '庚', '癸', '戊'),
         heading='三冬丁火',
-        sentence='三冬丁火，甲木为尊，庚金佐之，',
+        sentence='三冬丁火，甲木为尊，庚金佐之，癸戊权宜酌用可也。',
         later=None,
     ),
     ClimateEntry(
@@ -547,7 +552,15 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ),
     ClimateEntry(
         day_master='己',
-        months='亥子丑',
+        months='亥',
+        stems=('丙', '甲', '戊'),
+        heading='三冬己土',
+        sentence='非丙暖不生，取丙为尊，甲木参酌。戊土癸水不用。惟初冬壬旺，取戊制之。',
+        later=None,
+    ),
+    ClimateEntry(
+        day_master='己',
+        months='子丑',
         stems=('丙', '甲'),
         heading='三冬己土',
         sentence='非丙暖不生，取丙为尊，甲木参酌。',
@@ -652,9 +665,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='辛',
         months='寅',
-        stems=('己', '壬'),
+        stems=('己', '壬', '庚'),
         heading='正月辛金',
-        sentence='取己土为生身之本，欲得辛金发现，全赖壬水之功',
+        sentence='故正月辛金，先己后壬。己为君，庚为佐。',
         later=None,
     ),
     ClimateEntry(
@@ -684,9 +697,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='辛',
         months='午',
-        stems=('己', '壬'),
+        stems=('壬', '己'),
         heading='五月辛金',
-        sentence='须己壬兼用',
+        sentence='故壬己并用。',
         later=None,
     ),
     ClimateEntry(
@@ -740,9 +753,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='辛',
         months='丑',
-        stems=('丙', '壬'),
+        stems=('丙', '壬', '戊', '己'),
         heading='十二月辛金',
-        sentence='十二月辛金，寒冻之极，先丙后壬',
+        sentence='十二月辛金，丙先壬后，戊己次之。',
         later=None,
     ),
     ClimateEntry(
@@ -788,9 +801,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='壬',
         months='未',
-        stems=('辛', '癸', '甲'),
+        stems=('辛', '甲', '癸'),
         heading='六月壬水',
-        sentence='六月壬水，己土当权，丁火退气，先用辛金癸水，次用甲木噼土。',
+        sentence='六月壬水，先辛后甲，次取癸水。',
         later=None,
     ),
     ClimateEntry(
@@ -804,9 +817,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='壬',
         months='酉',
-        stems=('甲',),
+        stems=('甲', '庚'),
         heading='八月壬水',
-        sentence='忌戊土为病，专用甲木。',
+        sentence='八月壬水，专用甲木，庚金次之。',
         later=None,
     ),
     ClimateEntry(
@@ -820,9 +833,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='壬',
         months='亥',
-        stems=('戊', '庚'),
+        stems=('戊', '丙', '庚'),
         heading='十月壬水',
-        sentence='戊庚两全，定主豋科乃第',
+        sentence='十月壬水、专用戊丙，次取庚金。',
         later=None,
     ),
     ClimateEntry(
@@ -840,15 +853,16 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
         heading='十二月壬水',
         sentence='上半月癸辛主事，故旺，专用丙火。',
         later=Later(
-            stems=('丙', '甲'), sentence='下半月己土主事，故衰。亦用丙火，甲木佐之。'
+            stems=('丙', '甲'),
+            sentence='下半月己土主事，故衰。亦用丙火，甲木佐之。',
         ),
     ),
     ClimateEntry(
         day_master='癸',
         months='寅',
-        stems=('辛', '丙'),
+        stems=('辛', '庚', '丙'),
         heading='正月癸水',
-        sentence='先用辛金，生癸水之源，次用丙火照暖',
+        sentence='正月癸水，辛金为主，庚金次之，丙亦不可少。',
         later=None,
     ),
     ClimateEntry(
@@ -866,7 +880,8 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
         heading='三月癸水',
         sentence='清明后、火气未炽，专用丙火，为阴阳合谐。',
         later=Later(
-            stems=('丙', '辛', '甲'), sentence='谷雨后，虽用丙火，尚宜辛甲佐之。'
+            stems=('丙', '辛', '甲'),
+            sentence='谷雨后，虽用丙火，尚宜辛甲佐之。',
         ),
     ),
     ClimateEntry(

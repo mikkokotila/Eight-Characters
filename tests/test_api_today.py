@@ -226,6 +226,15 @@ class TestToday(unittest.TestCase):
                 for relationship in marriage['spouse_palace']['relationships']
             )
         )
+        partner_luck = marriage['partner']['luck']
+        if partner_luck is not None:
+            # The partner's relationships carry the canon's lines in English too.
+            self.assertTrue(
+                all(isinstance(r['line'], str) for r in partner_luck['relationships'])
+            )
+        self.assertTrue(
+            all(isinstance(r['line'], str) for r in marriage['partner_chart'])
+        )
         as_partner = self.client.get(
             '/api/today', params={'date': DAY, 'lang': 'en', 'chart': 'partner'}
         ).json()

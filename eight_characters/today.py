@@ -767,7 +767,7 @@ def build_today(
                 partner_weights,
                 season,
                 schools,
-                False,
+                english,
                 luck=partner_in_force[1],
             )[0]
         own_score = day_layer['pull']['score']

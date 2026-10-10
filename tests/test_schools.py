@@ -297,14 +297,16 @@ class TestSupportAndRestrain(unittest.TestCase):
 
 class TestClimate(unittest.TestCase):
     def test_every_cell_has_an_entry_from_the_text(self) -> None:
-        source = FIXTURE.read_text(encoding='utf-8').replace("'''", '')
+        # The revision's own words, without its bold marks and line breaks.
+        source = re.sub(r'\s+', '', FIXTURE.read_text(encoding='utf-8'))
+        source = source.replace("'''", '')
         self.assertEqual(len(ENTRIES), 120)
         for entry in TABLE:
             with self.subTest(heading=entry.heading, months=entry.months):
                 self.assertIn(entry.heading, source)
-                self.assertIn(entry.sentence, source)
+                self.assertIn(re.sub(r'\s+', '', entry.sentence), source)
                 if entry.later is not None:
-                    self.assertIn(entry.later.sentence, source)
+                    self.assertIn(re.sub(r'\s+', '', entry.later.sentence), source)
 
     def test_entries_as_the_text_gives_them(self) -> None:
         self.assertEqual(climate_stems('甲', '寅', False), ['丙', '癸'])
@@ -312,8 +314,14 @@ class TestClimate(unittest.TestCase):
         # 乙 Yi in the 酉 You month: 癸 before 秋分, 丙 then 癸 after it.
         self.assertEqual(climate_stems('乙', '酉', False), ['癸'])
         self.assertEqual(climate_stems('乙', '酉', True), ['丙', '癸'])
-        self.assertEqual(climate_stems('丁', '子', False), ['甲', '庚'])
+        self.assertEqual(climate_stems('丁', '子', False), ['甲', '庚', '癸', '戊'])
         self.assertEqual(climate_stems('壬', '丑', True), ['丙', '甲'])
+        # The month's closing summary ranks three stems: 十月壬水、专用戊丙，次取庚金.
+        self.assertEqual(climate_stems('壬', '亥', False), ['戊', '丙', '庚'])
+        # Of two orders as full, the later: 六月壬水，先辛后甲，次取癸水.
+        self.assertEqual(climate_stems('壬', '未', False), ['辛', '甲', '癸'])
+        # A ranked statement wins over a listing: 丁先庚后 over 耑取庚丁.
+        self.assertEqual(climate_stems('甲', '子', False), ['丁', '庚', '丙'])
 
     def test_the_order_from_the_stems(self) -> None:
         # 丙 Fire useful, 癸 Water favourable. What controls Fire is Water, taken; so
