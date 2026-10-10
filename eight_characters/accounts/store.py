@@ -652,17 +652,19 @@ class AccountStore:
     # an account that had none: a change made from settings that have changed since
     # raises SettingsChanged and changes nothing, so one tab never undoes another's.
 
-    def put_partner(self, user_id: str, birth: Birth, read: str | None) -> Settings | None:
+    def put_partner(
+        self, user_id: str, birth: Birth, read: str | None
+    ) -> Settings | None:
         """Keeps a birth as the account's partner's chart, replacing the one before."""
-        return self._update_settings(
-            user_id, read, lambda s: replace(s, partner=birth)
-        )
+        return self._update_settings(user_id, read, lambda s: replace(s, partner=birth))
 
     def delete_partner(self, user_id: str, read: str | None) -> Settings | None:
         """Removes the partner's chart, if the account keeps one."""
         return self._update_settings(user_id, read, lambda s: replace(s, partner=None))
 
-    def put_place(self, user_id: str, place: Place, read: str | None) -> Settings | None:
+    def put_place(
+        self, user_id: str, place: Place, read: str | None
+    ) -> Settings | None:
         """Keeps where the person is."""
         return self._update_settings(user_id, read, lambda s: replace(s, place=place))
 

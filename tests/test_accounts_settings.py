@@ -319,7 +319,9 @@ class TestSettingsStore(StoreCase):
         self.store.set_schools(
             self.user.id, {'favourable': 'climate', 'transits': 'whole'}, self.read()
         )
-        kept = self.store.set_schools(self.user.id, {'season': 'late_summer'}, self.read())
+        kept = self.store.set_schools(
+            self.user.id, {'season': 'late_summer'}, self.read()
+        )
         assert kept is not None
         self.assertEqual(
             kept.schools,
