@@ -35,7 +35,7 @@ from eight_characters.accounts.records import (
     settings_value,
 )
 from eight_characters.accounts.restore import restore_backup
-from eight_characters.accounts.store import AccountStore, UnknownUser
+from eight_characters.accounts.store import AccountStore, SettingsChanged, UnknownUser
 from eight_characters.accounts.web import Accounts, account_key
 from tests.accounts_support import (
     Clock,
@@ -287,6 +287,11 @@ class StoreCase(unittest.TestCase):
         self.store = AccountStore.create(self.path, clock=self.clock)
         self.user = self.store.create_user('reader@example.com', 'fi')
 
+    def read(self) -> str | None:
+        """The version of the reader's settings a change is made from."""
+        settings = self.store.settings(self.user.id)
+        return None if settings is None else settings.updated_at
+
 
 class TestSettingsStore(StoreCase):
     def test_an_account_starts_with_none(self) -> None:
@@ -294,9 +299,9 @@ class TestSettingsStore(StoreCase):
         self.assertIsNone(self.store.account_data(self.user.id)['settings'])
 
     def test_each_setting_is_kept(self) -> None:
-        self.store.put_partner(self.user.id, PARTNER)
-        self.store.put_place(self.user.id, LISBON)
-        kept = self.store.set_schools(self.user.id, {'season': 'months'})
+        self.store.put_partner(self.user.id, PARTNER, self.read())
+        self.store.put_place(self.user.id, LISBON, self.read())
+        kept = self.store.set_schools(self.user.id, {'season': 'months'}, self.read())
         expected = Settings(
             partner=PARTNER,
             place=LISBON,
@@ -312,16 +317,16 @@ class TestSettingsStore(StoreCase):
 
     def test_a_choice_of_one_school_keeps_the_others(self) -> None:
         self.store.set_schools(
-            self.user.id, {'favourable': 'climate', 'transits': 'whole'}
+            self.user.id, {'favourable': 'climate', 'transits': 'whole'}, self.read()
         )
-        kept = self.store.set_schools(self.user.id, {'season': 'late_summer'})
+        kept = self.store.set_schools(self.user.id, {'season': 'late_summer'}, self.read())
         assert kept is not None
         self.assertEqual(
             kept.schools,
             ChosenSchools(favourable='climate', season='late_summer', transits='whole'),
         )
         # None follows the default again.
-        again = self.store.set_schools(self.user.id, {'favourable': None})
+        again = self.store.set_schools(self.user.id, {'favourable': None}, self.read())
         assert again is not None
         self.assertIsNone(again.schools.favourable)
         self.assertEqual(again.schools.effective().favourable, 'support')
@@ -331,13 +336,13 @@ class TestSettingsStore(StoreCase):
             {'favourable': ''},
         ):
             with self.subTest(chosen=chosen), self.assertRaises(RecordError):
-                self.store.set_schools(self.user.id, chosen)
+                self.store.set_schools(self.user.id, chosen, self.read())
         self.assertEqual(self.store.settings(self.user.id), again)
 
     def test_each_change_is_logged_for_the_backup_and_moves_its_time_on(self) -> None:
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
-        first = self.store.put_partner(self.user.id, BIRTH)
-        second = self.store.put_place(self.user.id, HELSINKI)
+        first = self.store.put_partner(self.user.id, BIRTH, self.read())
+        second = self.store.put_place(self.user.id, HELSINKI, self.read())
         assert first is not None and second is not None
         # Within one second, or with the clock gone back, a change still comes later.
         self.assertEqual(first.updated_at, '2026-10-07T12:00:00Z')
@@ -348,10 +353,10 @@ class TestSettingsStore(StoreCase):
         self.assertEqual(snapshot.changes[0].settings, second)
 
     def test_a_change_that_changes_nothing_writes_nothing(self) -> None:
-        self.store.put_partner(self.user.id, BIRTH)
+        self.store.put_partner(self.user.id, BIRTH, self.read())
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
         self.clock.advance(60)
-        kept = self.store.put_partner(self.user.id, BIRTH)
+        kept = self.store.put_partner(self.user.id, BIRTH, self.read())
         assert kept is not None
         self.assertEqual(kept.updated_at, '2026-10-07T12:00:00Z')
         self.assertEqual(self.store.backup_snapshot().changes, ())
@@ -359,28 +364,48 @@ class TestSettingsStore(StoreCase):
         # no place, or choosing the default schools.
         other = self.store.create_user('other@example.com', 'en')
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
-        self.assertIsNone(self.store.delete_partner(other.id))
-        self.assertIsNone(self.store.delete_place(other.id))
-        self.assertIsNone(self.store.set_schools(other.id, {'favourable': None}))
+        self.assertIsNone(self.store.delete_partner(other.id, None))
+        self.assertIsNone(self.store.delete_place(other.id, None))
+        self.assertIsNone(self.store.set_schools(other.id, {'favourable': None}, None))
         self.assertIsNone(self.store.settings(other.id))
         self.assertEqual(self.store.backup_snapshot().changes, ())
 
     def test_a_partner_is_removed(self) -> None:
-        self.store.put_partner(self.user.id, PARTNER)
-        kept = self.store.delete_partner(self.user.id)
+        self.store.put_partner(self.user.id, PARTNER, self.read())
+        kept = self.store.delete_partner(self.user.id, self.read())
         assert kept is not None
         self.assertIsNone(kept.partner)
         self.assertEqual(self.store.settings(self.user.id), kept)
 
+    def test_a_change_from_settings_changed_since_changes_nothing(self) -> None:
+        # Two tabs read the same settings; the second to save made its change from
+        # settings that are no longer the account's.
+        first = self.store.put_place(self.user.id, HELSINKI, None)
+        assert first is not None
+        later = self.store.put_place(self.user.id, LISBON, first.updated_at)
+        self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
+        for change in (
+            lambda: self.store.put_partner(self.user.id, PARTNER, first.updated_at),
+            lambda: self.store.delete_place(self.user.id, first.updated_at),
+            lambda: self.store.set_schools(
+                self.user.id, {'season': 'months'}, first.updated_at
+            ),
+            lambda: self.store.put_place(self.user.id, HELSINKI, None),
+        ):
+            with self.assertRaises(SettingsChanged):
+                change()
+        self.assertEqual(self.store.settings(self.user.id), later)
+        self.assertEqual(self.store.backup_snapshot().changes, ())
+
     def test_the_place_is_forgotten(self) -> None:
-        self.store.put_place(self.user.id, HELSINKI)
-        kept = self.store.delete_place(self.user.id)
+        self.store.put_place(self.user.id, HELSINKI, self.read())
+        kept = self.store.delete_place(self.user.id, self.read())
         assert kept is not None
         self.assertIsNone(kept.place)
         self.assertEqual(self.store.settings(self.user.id), kept)
 
     def test_settings_go_with_the_account(self) -> None:
-        self.store.put_partner(self.user.id, BIRTH)
+        self.store.put_partner(self.user.id, BIRTH, self.read())
         self.store.delete_user(self.user.id)
         connection = sqlite3.connect(self.path)
         try:
@@ -389,10 +414,10 @@ class TestSettingsStore(StoreCase):
             connection.close()
         self.assertEqual(rows, (0,))
         with self.assertRaises(UnknownUser):
-            self.store.put_place(self.user.id, HELSINKI)
+            self.store.put_place(self.user.id, HELSINKI, self.read())
 
     def test_a_restore_holds_each_account_with_its_settings(self) -> None:
-        self.store.put_partner(self.user.id, BIRTH)
+        self.store.put_partner(self.user.id, BIRTH, self.read())
         other = self.store.create_user('other@example.com', 'en')
         settings = self.store.settings(self.user.id)
         target = self.directory / 'restored.sqlite3'
@@ -414,10 +439,10 @@ class TestSettingsStore(StoreCase):
         kept = store.user_by_email('kept@example.com')
         assert kept is not None
         self.assertIsNone(store.settings(kept.id))
-        self.assertIsNotNone(store.put_partner(kept.id, BIRTH))
+        self.assertIsNotNone(store.put_partner(kept.id, BIRTH, None))
 
     def test_a_corrupt_settings_row_stops_the_store(self) -> None:
-        self.store.put_partner(self.user.id, BIRTH)
+        self.store.put_partner(self.user.id, BIRTH, self.read())
         connection = sqlite3.connect(self.path)
         try:
             connection.execute(
@@ -442,21 +467,21 @@ class TestSettingsBackup(StoreCase):
         return pyrage.decrypt(path.read_bytes(), [self.identity])
 
     def test_the_backup_keeps_the_settings_in_the_account_record(self) -> None:
-        settings = self.store.put_partner(self.user.id, BIRTH)
+        settings = self.store.put_partner(self.user.id, BIRTH, self.read())
         run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(self._record(self.user.id), encode_user(self.user, settings))
-        changed = self.store.put_partner(self.user.id, PARTNER)
+        changed = self.store.put_partner(self.user.id, PARTNER, self.read())
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(result.written, 1)
         self.assertEqual(decode_user(self._record(self.user.id)), (self.user, changed))
 
     def test_a_restore_brings_the_settings_back(self) -> None:
-        self.store.put_partner(self.user.id, BIRTH)
+        self.store.put_partner(self.user.id, BIRTH, self.read())
         run_backup(self.store, self.checkout, self.recipient)
         # A change to the settings alone, after a backup, reaches the next one.
-        self.store.put_place(self.user.id, LISBON)
-        self.store.set_schools(self.user.id, {'season': 'commander'})
-        settings = self.store.put_partner(self.user.id, PARTNER)
+        self.store.put_place(self.user.id, LISBON, self.read())
+        self.store.set_schools(self.user.id, {'season': 'commander'}, self.read())
+        settings = self.store.put_partner(self.user.id, PARTNER, self.read())
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(result.written, 1)
         target = self.directory / 'restored.sqlite3'
@@ -505,6 +530,16 @@ class TestSettingsApi(unittest.TestCase):
         self.user = user
         self.key = account_key(user)
 
+    def read(self) -> str | None:
+        """The version of the settings the page has read."""
+        return self.client.get('/api/account/settings').json()['updated_at']
+
+    def write(self, method: str, path: str, body: dict[str, Any]) -> Any:
+        """A change made from the settings as they are now."""
+        return self.client.request(
+            method, path, json={**body, 'updated_at': self.read()}
+        )
+
     def test_settings_need_an_account(self) -> None:
         signed_out = site_client()
         self.assertEqual(signed_out.get('/api/account/settings').status_code, 401)
@@ -520,7 +555,9 @@ class TestSettingsApi(unittest.TestCase):
             ('PATCH', '/api/account/schools', {'key': self.key}),
         ):
             with self.subTest(method=method, path=path):
-                reply = signed_out.request(method, path, json=body)
+                reply = signed_out.request(
+                    method, path, json={**body, 'updated_at': None}
+                )
                 self.assertEqual(reply.status_code, 401)
 
     def test_an_account_that_has_set_nothing_has_the_defaults(self) -> None:
@@ -547,8 +584,8 @@ class TestSettingsApi(unittest.TestCase):
         late = replace(BIRTH, date='1990-05-18', time='00:47', zi='whole_zi_23')
         for birth in (BIRTH, PARTNER, late):
             with self.subTest(birth=birth):
-                reply = self.client.put(
-                    '/api/account/partner', json=_birth_json(birth, self.key)
+                reply = self.write(
+                    'PUT', '/api/account/partner', _birth_json(birth, self.key)
                 )
                 self.assertEqual(reply.status_code, 200)
                 chart = reply.json()['partner']
@@ -582,12 +619,13 @@ class TestSettingsApi(unittest.TestCase):
                 self.assertEqual(chart['zi'], birth.zi)
                 self.assertEqual(chart['place']['name'], place.name)
         # The Zi-hour convention moves a birth late in the evening to the next day.
-        split = self.client.put(
+        split = self.write(
+            'PUT',
             '/api/account/partner',
-            json=_birth_json(replace(late, zi='split_midnight'), self.key),
+            _birth_json(replace(late, zi='split_midnight'), self.key),
         ).json()['partner']['pillars']['day']
-        whole = self.client.put(
-            '/api/account/partner', json=_birth_json(late, self.key)
+        whole = self.write(
+            'PUT', '/api/account/partner', _birth_json(late, self.key)
         ).json()['partner']['pillars']['day']
         self.assertNotEqual(split, whole)
 
@@ -625,11 +663,11 @@ class TestSettingsApi(unittest.TestCase):
         }
         for name, case in cases.items():
             with self.subTest(name):
-                reply = self.client.put('/api/account/partner', json=case)
+                reply = self.write('PUT', '/api/account/partner', case)
                 self.assertEqual(reply.status_code, 400, reply.text)
         self.assertIsNone(self.accounts.store.settings(self.user.id))
         repeated = {**body, 'date': '2021-10-31', 'time': '03:30', 'fold': 1}
-        reply = self.client.put('/api/account/partner', json=repeated)
+        reply = self.write('PUT', '/api/account/partner', repeated)
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()['partner']['fold'], 1)
 
@@ -637,7 +675,7 @@ class TestSettingsApi(unittest.TestCase):
         # As a time zone update can leave a saved time one the clocks skipped: the
         # settings still answer, and say what is wrong with that chart.
         skipped = replace(BIRTH, date='2021-03-28', time='03:30')
-        self.accounts.store.put_partner(self.user.id, skipped)
+        self.accounts.store.put_partner(self.user.id, skipped, None)
         reply = self.client.get('/api/account/settings')
         self.assertEqual(reply.status_code, 200)
         chart = reply.json()['partner']
@@ -648,19 +686,17 @@ class TestSettingsApi(unittest.TestCase):
         # Today is about the chart the page is on.
         for path in ('/api/account/charts/self', '/api/account/self'):
             with self.subTest(path=path):
-                reply = self.client.put(path, json=_birth_json(BIRTH, self.key))
+                reply = self.write('PUT', path, _birth_json(BIRTH, self.key))
                 self.assertEqual(reply.status_code, 404)
         self.assertIsNone(self.accounts.store.settings(self.user.id))
 
     def test_where_you_are_is_kept_and_forgotten(self) -> None:
-        kept = self.client.put(
-            '/api/account/place', json={'key': self.key, 'place': _place_json(LISBON)}
+        kept = self.write(
+            'PUT', '/api/account/place', {'key': self.key, 'place': _place_json(LISBON)}
         )
         self.assertEqual(kept.status_code, 200)
         self.assertEqual(kept.json()['place'], _place_json(LISBON))
-        forgotten = self.client.request(
-            'DELETE', '/api/account/place', json={'key': self.key}
-        )
+        forgotten = self.write('DELETE', '/api/account/place', {'key': self.key})
         self.assertEqual(forgotten.status_code, 200)
         self.assertIsNone(forgotten.json()['place'])
         self.assertIsNone(self.client.get('/api/account/settings').json()['place'])
@@ -678,7 +714,8 @@ class TestSettingsApi(unittest.TestCase):
             ('PATCH', '/api/account/schools', {'key': self.key, 'season': 'months'}),
         ]
         other_key = 'f' * 64
-        for method, path, body in writes:
+        for method, path, written in writes:
+            body = {**written, 'updated_at': None}
             with self.subTest(path=path):
                 elsewhere = self.client.request(
                     method,
@@ -698,17 +735,48 @@ class TestSettingsApi(unittest.TestCase):
         self.assertIsNone(self.accounts.store.settings(self.user.id))
         for method, path, body in writes:
             with self.subTest(path=path):
-                reply = self.client.request(method, path, json=body)
+                reply = self.write(method, path, body)
                 self.assertEqual(reply.status_code, 200, reply.text)
         settings = self.client.get('/api/account/settings').json()
         self.assertIsNone(settings['partner'])
         self.assertEqual(settings['place'], _place_json(HELSINKI))
         self.assertEqual(settings['schools']['season'], 'months')
 
+    def test_a_write_from_settings_changed_since_is_refused(self) -> None:
+        # Two tabs read the same settings; the second to save is told, and its change
+        # is not made.
+        read = self.read()
+        first = self.client.put(
+            '/api/account/place',
+            json={'key': self.key, 'updated_at': read, 'place': _place_json(LISBON)},
+        )
+        self.assertEqual(first.status_code, 200)
+        for method, path, body in (
+            ('PUT', '/api/account/partner', _birth_json(PARTNER, self.key)),
+            ('DELETE', '/api/account/place', {'key': self.key}),
+            ('PATCH', '/api/account/schools', {'key': self.key, 'season': 'months'}),
+        ):
+            with self.subTest(method=method, path=path):
+                stale = self.client.request(
+                    method, path, json={**body, 'updated_at': read}
+                )
+                self.assertEqual(stale.status_code, 412)
+                self.assertEqual(
+                    stale.json()['detail'],
+                    'Your settings changed elsewhere since this page read them.',
+                )
+        self.assertEqual(self.client.get('/api/account/settings').json(), first.json())
+        # A write must say which settings it was made from.
+        missing = self.client.request(
+            'DELETE', '/api/account/place', json={'key': self.key}
+        )
+        self.assertEqual(missing.status_code, 400)
+
     def test_schools_are_chosen_from_the_presets(self) -> None:
-        reply = self.client.patch(
+        reply = self.write(
+            'PATCH',
             '/api/account/schools',
-            json={'key': self.key, 'favourable': 'climate', 'transits': 'seasoned'},
+            {'key': self.key, 'favourable': 'climate', 'transits': 'seasoned'},
         )
         self.assertEqual(reply.status_code, 200)
         self.assertEqual(
@@ -719,8 +787,8 @@ class TestSettingsApi(unittest.TestCase):
             reply.json()['chosen'],
             {'favourable': 'climate', 'season': None, 'transits': 'seasoned'},
         )
-        back = self.client.patch(
-            '/api/account/schools', json={'key': self.key, 'favourable': None}
+        back = self.write(
+            'PATCH', '/api/account/schools', {'key': self.key, 'favourable': None}
         )
         self.assertEqual(back.json()['chosen']['favourable'], None)
         self.assertEqual(back.json()['schools']['favourable'], 'support')
@@ -731,16 +799,15 @@ class TestSettingsApi(unittest.TestCase):
             {'weights': {'wood': 1.2}},
         ):
             with self.subTest(body=body):
-                refused = self.client.patch(
-                    '/api/account/schools', json={'key': self.key, **body}
+                refused = self.write(
+                    'PATCH', '/api/account/schools', {'key': self.key, **body}
                 )
                 self.assertEqual(refused.status_code, 400)
 
     def test_settings_survive_signing_out_and_go_with_the_account(self) -> None:
-        self.client.put('/api/account/partner', json=_birth_json(BIRTH, self.key))
-        self.client.put(
-            '/api/account/place',
-            json={'key': self.key, 'place': _place_json(LISBON)},
+        self.write('PUT', '/api/account/partner', _birth_json(BIRTH, self.key))
+        self.write(
+            'PUT', '/api/account/place', {'key': self.key, 'place': _place_json(LISBON)}
         )
         before = self.client.get('/api/account/settings').json()
         self.client.delete('/api/account/session')

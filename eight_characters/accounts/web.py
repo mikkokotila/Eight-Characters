@@ -63,7 +63,7 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
-from eight_characters.accounts.store import AccountStore, UnknownUser
+from eight_characters.accounts.store import AccountStore, SettingsChanged, UnknownUser
 from eight_characters.first_chart import (
     ChartPillar,
     FirstChartInputError,
@@ -81,6 +81,8 @@ logger = logging.getLogger(__name__)
 
 SIGN_IN_REQUIRED: Final = 'Sign in to continue.'
 ACCOUNT_CHANGED: Final = 'This browser is signed in to another account now.'
+# A settings write made from settings that changed since (412).
+SETTINGS_CHANGED: Final = 'Your settings changed elsewhere since this page read them.'
 # How long the browser keeps the session cookie: the longest browsers keep one
 # (RFC 6265bis caps Max-Age at 400 days). Only signing in sets it. The session it
 # names ends on the server 30 days after it was made or last extended, and is
@@ -515,6 +517,8 @@ class BirthRequest(BaseModel):
 
     # The account the page names, by its key (see AccountRequest).
     key: str
+    # The settings the page read, by their `updated_at` (null: it read none).
+    updated_at: str | None
     name: str | None = None
     date: str
     time: str
@@ -543,7 +547,16 @@ class HereRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     key: str
+    updated_at: str | None
     place: PlaceRequest
+
+
+class SettingsRequest(BaseModel):
+    # Removing a setting: the account named by its key, and the settings read.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    key: str
+    updated_at: str | None
 
 
 class SchoolsRequest(BaseModel):
@@ -551,6 +564,7 @@ class SchoolsRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     key: str
+    updated_at: str | None
     favourable: FavourableSchool | None = None
     season: SeasonSchool | None = None
     transits: TransitSchool | None = None
@@ -877,6 +891,9 @@ def _changed(user: User, change: Callable[[], Settings | None]) -> SettingsView:
     except UnknownUser as exc:
         # Deleted since the session was found.
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
+    except SettingsChanged as exc:
+        # Changed in another tab or browser: the page reads them again.
+        raise HTTPException(status_code=412, detail=SETTINGS_CHANGED) from exc
 
 
 @router.get('/settings')
@@ -904,12 +921,14 @@ def save_partner(
         birth = birth_of(payload)
     except (RecordError, FirstChartInputError, TodayInputError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _changed(user, lambda: accounts.store.put_partner(user.id, birth))
+    return _changed(
+        user, lambda: accounts.store.put_partner(user.id, birth, payload.updated_at)
+    )
 
 
 @router.delete('/partner')
 def delete_partner(
-    payload: AccountRequest,
+    payload: SettingsRequest,
     request: Request,
     current: SessionDependency,
     accounts: AccountsDependency,
@@ -918,7 +937,9 @@ def delete_partner(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
-    return _changed(user, lambda: accounts.store.delete_partner(user.id))
+    return _changed(
+        user, lambda: accounts.store.delete_partner(user.id, payload.updated_at)
+    )
 
 
 @router.put('/place')
@@ -936,12 +957,14 @@ def save_place(
         place = place_of(payload.place)
     except RecordError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _changed(user, lambda: accounts.store.put_place(user.id, place))
+    return _changed(
+        user, lambda: accounts.store.put_place(user.id, place, payload.updated_at)
+    )
 
 
 @router.delete('/place')
 def delete_place(
-    payload: AccountRequest,
+    payload: SettingsRequest,
     request: Request,
     current: SessionDependency,
     accounts: AccountsDependency,
@@ -950,7 +973,9 @@ def delete_place(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
-    return _changed(user, lambda: accounts.store.delete_place(user.id))
+    return _changed(
+        user, lambda: accounts.store.delete_place(user.id, payload.updated_at)
+    )
 
 
 @router.patch('/schools')
@@ -969,4 +994,7 @@ def choose_schools(
         for name in ('favourable', 'season', 'transits')
         if name in payload.model_fields_set
     }
-    return _changed(user, lambda: accounts.store.set_schools(user.id, chosen))
+    return _changed(
+        user,
+        lambda: accounts.store.set_schools(user.id, chosen, payload.updated_at),
+    )

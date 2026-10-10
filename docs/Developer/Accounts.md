@@ -106,14 +106,21 @@ so the database alone cannot be used to test guesses or take over a session.
 | `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
 | `GET /api/account/settings` | your partner's chart (with its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
-| `PUT /api/account/partner` | keeps a birth as your partner's chart: `{key, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
-| `DELETE /api/account/partner` | removes your partner's chart; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
-| `PUT /api/account/place` | where you are: `{key, place}` | `200` and the settings; `400`, `401`, `403`, `409` |
-| `DELETE /api/account/place` | forgets where you are; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
-| `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409` |
+| `PUT /api/account/partner` | keeps a birth as your partner's chart: `{key, updated_at, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409`, `412` |
+| `DELETE /api/account/partner` | removes your partner's chart; `{"key": …, "updated_at": …}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
+| `PUT /api/account/place` | where you are: `{key, updated_at, place}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
+| `DELETE /api/account/place` | forgets where you are; `{"key": …, "updated_at": …}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
+| `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay. `{key, updated_at, …}` | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409`, `412` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.
+
+A change to the settings names the settings it was made from by their `updated_at`, as
+`GET /api/account/settings` gave it (`null` for an account that has set nothing). If
+the settings have changed since, in another tab or browser, the change is refused with
+`412` (`Your settings changed elsewhere since this page read them.`) and nothing is
+written: the page reads them again. The check and the write are one transaction, so
+one tab never silently undoes another's change.
 
 An action on the account names the account the page shows by its `key`, which every
 account answer carries. Tabs share the session cookie, so another tab may have signed
