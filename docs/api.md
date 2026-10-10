@@ -600,9 +600,10 @@ The answer, by [Today: the rules](Today.md):
   as the first chart lists them;
 - `season`: the school, the ruling element, each element's standing, and for the
   month's commander, the one in command;
-- `favourable`: the school, each element's weight, the useful, favourable and disease
-  elements; for support and restrain the strength and the tally behind it; for climate
-  the stems the text names;
+- `favourable`: the school, each element's weight, and the element each of the five
+  gods is (`gods`: `useful`, `favourable`, `idle`, `enemy`, `unfavourable`); for
+  support and restrain the `disease` (`null` when the chart follows its strongest
+  force), the strength and the tally behind it; for climate the stems the text names;
 - `layers`: `day`, `month`, `year` and `luck` (`null` before the first luck pillar),
   each with its pillar, the Ten Gods of its stem and hidden stems, its `pull` (`score`,
   `band`, `parts`), its relationships with the natal chart (each with the canon's

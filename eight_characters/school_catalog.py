@@ -78,17 +78,20 @@ _FAVOURABLE: Final = [
         {'fi': 'Tue ja hillitse', 'en': 'Support and restrain'},
         {'chinese': '扶抑', 'pinyin': 'Fu Yi'},
         {
-            'fi': 'Mittaa Päivän mestarin voiman syntymän vuodenajassa ja etsii '
-            'vahvimman sitä vastustavan voiman, taudin. Tautia hillitsevästä '
-            'elementistä tulee hyödyllinen elementti. Kartta, jolla ei ole lainkaan '
-            'tukea, seuraa vahvinta voimaansa.',
+            'fi': 'Mittaa Päivän mestarin voiman syntymän vuodenajassa ja etsii sen, '
+            'mikä kartan tasapainoa horjuttaa: taudin. Ren Tieqiaon selitykset Di Tian '
+            'Suihin nimeävät kullekin tapaukselle hyödyllisen elementin, ja muut neljä '
+            'asettuvat sen ympärille: suotuisa, joutilas, vihollinen ja epäsuotuisa. '
+            'Kartta, jolla ei ole lainkaan tukea, seuraa vahvinta voimaansa.',
             'en': "Measures the Day Master's strength in the birth season and finds "
-            'the strongest force against it, the disease. What controls the disease '
-            'becomes the useful element. A chart with no support at all follows its '
-            'strongest force.',
+            "what unbalances the chart, the disease. Ren Tieqiao's notes on Di Tian Sui "
+            'name the useful element for each case, and the other four stand around '
+            'it: favourable, idle, enemy and unfavourable. A chart with no support at '
+            'all follows its strongest force.',
         },
         [
             'Di Tian Sui, 體用 Ti Yong (要在扶之抑之得其宜)',
+            'Ren Tieqiao, Di Tian Sui Chan Wei, 體用 Ti Yong and 閒神 Xian Shen',
             'Zhang Nan, Shen Feng Tong Kao, 病藥說 Bing Yao Shuo',
         ],
     ),

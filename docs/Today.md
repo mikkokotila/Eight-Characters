@@ -102,17 +102,22 @@ solar month, from one jie to the next, as the month pillar's.
 
 ## Favourable elements: each element's weight
 
-A school puts the five elements in order. Down the order they weigh +1.2, +1.0, −1.0,
-−0.8 and −0.6: the useful element, the favourable one, the disease, the next and the
-last. *(The weights are the app's convention, after the daily briefing this page
-replaces. They sum to −0.2, so an average day leans slightly to draining; the bands
-below are not shifted to hide it.)*
+A school names the chart's five gods, as Ren Tieqiao sets them out in his notes on Di
+Tian Sui (滴天髓闡微 Di Tian Sui Chan Wei, 閒神 Xian Shen): the useful element (用神
+yong shen), the favourable one that helps it (喜神 xi shen), an idle one that is
+neither (閒神 xian shen), and two against it, the enemy (仇神 chou shen) and the
+unfavourable (忌神 ji shen). They weigh +1.2, +1.0, 0, −1.0 and −1.2. *(The numbers
+are the app's convention; the balance is the classics'. Di Tian Sui's note weighs
+the favourable and the unfavourable alike, 一喜而十备矣……一忌而十害矣 (one favourable god
+brings every good, one unfavourable every harm), and leaves the idle out:
+不足以为喜，不足以为忌，皆闲神也 (what is not enough to favour or to harm is idle).
+So the weights sum to zero, and a day that brings every element alike is mixed.)*
 
 ### Support and restrain (扶抑 Fu Yi), the default
 
-Di Tian Sui: 要在扶之抑之得其宜, "support or restrain, each where it fits"; and Zhang
-Nan's Shen Feng Tong Kao on disease and medicine (病藥). They give the principle; the
-steps below are the app's.
+Di Tian Sui: 要在扶之抑之得其宜, "support or restrain, each where it fits", with Ren
+Tieqiao's notes, and Zhang Nan's Shen Feng Tong Kao on disease and medicine (病藥 Bing
+Yao). They give the principle and the gods; the counting is the app's.
 
 1. **The tally.** Count the natal chart as above, every count times its element's
    standing at the birth, by the chosen Earth's season school. The Day Master's own
@@ -122,30 +127,42 @@ steps below are the app's.
 3. **Following.** A chart with no Companion and no Resource anywhere but the Day
    Master's own stem, visible or hidden, follows its strongest force.
 
-The order, by case. Elements are named by their role to the Day Master: Companion,
+The gods, by case. Elements are named by their role to the Day Master: Companion,
 Output, Wealth, Officer, Resource.
 
-| Case | Disease | Useful (+1.2) | Favourable (+1.0) | Disease (−1.0) | −0.8 | −0.6 |
+| Case | Disease | Useful (+1.2) | Favourable (+1.0) | Idle (0) | Enemy (−1.0) | Unfavourable (−1.2) |
 | --- | --- | --- | --- | --- | --- | --- |
-| Weak | Output strongest | Resource | Companion | Output | Wealth | Officer |
-| Weak | Wealth strongest | Companion | Resource | Wealth | Output | Officer |
-| Weak | Officer strongest | Resource | Companion | Officer | Wealth | Output |
-| Strong | Companion stronger | Officer | Wealth | Companion | Resource | Output |
-| Strong | Resource stronger | Wealth | Output | Resource | Officer | Companion |
-| Following | — | the strongest of Output, Wealth, Officer | what generates it (Wealth when it is Output) | Resource | Companion | the one left |
+| Weak | Output strongest | Resource | Companion | Officer | Wealth | Output |
+| Weak | Wealth strongest | Companion | Resource | Output | Officer | Wealth |
+| Weak | Officer strongest | Resource | Companion | Output | Officer | Wealth |
+| Strong | Companion stronger | Output | Wealth | Officer | Companion | Resource |
+| Strong | Resource stronger | Wealth | Output | Officer | Companion | Resource |
+| Following | — | the strongest of Output, Wealth, Officer | what generates it (Wealth when it is Output) | the one of those three left | Companion | Resource |
 
-The rule behind the table: weak, the disease is the strongest of Output, Wealth and
-Officer, and the useful element is the one that controls it, except that Officer is
-met by the Resource, which it feeds and which feeds the Day Master; the favourable
-element is the other of the two that support. Strong, the disease is the stronger of
-Companion and Resource, the useful element controls it, and the favourable one
-generates the useful. Next comes what generates the disease, or, where that is
-already placed, what controls the useful element; last, the one left. A tie goes to
-the first named: Output before Wealth before Officer, Companion before Resource.
+The rule behind the table:
 
-The daily briefing's two hand-set weight tables are the weak-with-Wealth and the
-strong-with-Resource cases, and the rule gives both exactly. The other cases have no
-outside reference: their tests hold the code to this table.
+- **The useful element** is the one Ren Tieqiao names for the case (體用 Ti Yong):
+  日主弱，官杀旺，则以印绶为用，日主弱，食伤多，亦以印绶为用；日主弱，财星旺，则以比劫为用
+  (weak, with Officer or Output strong, the Resource; with Wealth strong, the
+  Companions), and 日主旺，印绶多，必要财星为用……日主旺，比劫多……以食伤为用 (strong,
+  with much Resource, the Wealth; with many Companions, the Output).
+- **The other gods** stand around it as Ren sets them out for Wood (閒神 Xian Shen).
+  A useful element that the disease generates has more than enough (木有余, Wood in
+  surplus): what it generates is favourable, what controls it unfavourable, the
+  disease that feeds it the enemy, and what it controls idle. One that must control
+  the disease falls short (木不足, Wood short): what generates it is favourable, the
+  disease unfavourable, what controls it the enemy, and what it generates idle.
+- **A weak chart's favourable element** is always its other support, as Di Tian Sui's
+  note on 體用 Ti Yong has it: 提纲食伤财官太旺，则取年月时上印比为喜神 (where Output,
+  Wealth and Officer are too strong, the Resource and the Companions are favourable).
+  With Output strongest, Ren's pattern would favour the Officer, which generates the
+  Resource; the Officer is idle instead, and the Companion favourable.
+- **Following**, Ren: 弱极者扶之，扶之徒劳而无功，则宜从其弱而抑之 (where the Day
+  Master is weakest, support is wasted: follow its weakness and restrain it). What
+  would revive the Day Master is against it, the Resource most, then the Companion.
+
+A tie goes to the first named: Output before Wealth before Officer, Companion before
+Resource. The tests hold the code to this table, case by case.
 
 ### Climate (调候 Tiao Hou)
 
@@ -180,8 +197,10 @@ The weights then follow:
 
 - The first stem's element is useful, and the next stem's of another element
   favourable; if every stem named shares one element, the element that generates it.
-- The disease is the element that controls the useful one; then what generates the
-  disease; then the one left. A place whose element is taken goes to the first free
+- The unfavourable element is the one that controls the useful one, as Ren Tieqiao
+  defines it: 忌神者，破格损用之神也 (the unfavourable god breaks the structure and
+  harms the useful one). The enemy is what generates the unfavourable element, and
+  the one left is idle. A place whose element is taken goes to the first free
   element in the generating order from the useful one.
 
 ## The pull
@@ -276,8 +295,9 @@ clash, a harm, a punishment and a self-punishment. An hour with the day's own br
 allied, unless the two punish themselves. The **call** weighs the ties against the
 hour's element, its branch's own:
 
-- **Protect**: allied ties only, and the hour's element favourable (weight above zero);
-- **Avoid**: hostile ties only, and the hour's element unfavourable;
+- **Protect**: allied ties only, and the hour's element for the chart (weight above
+  zero);
+- **Avoid**: hostile ties only, and the hour's element against it (weight below zero);
 - **Mixed**: the rest that have a tie;
 - an hour with no tie to the day has no call: it says nothing about the day.
 

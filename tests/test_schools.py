@@ -31,14 +31,25 @@ from eight_characters.solar_term_solver import find_solar_term
 from eight_characters.time_convert import BirthInput, utc_from_jd_tt
 
 FIXTURE = Path(__file__).parent / 'fixtures' / 'qiong_tong_bao_jian_2294674.txt'
-# Weights as the schools give them, by place: useful, favourable, disease, next, last.
-ORDER = (1.2, 1.0, -1.0, -0.8, -0.6)
+# Each of the five gods' weight, in docs/Today.md's order.
+GOD_WEIGHTS = (
+    ('useful', 1.2),
+    ('favourable', 1.0),
+    ('idle', 0.0),
+    ('enemy', -1.0),
+    ('unfavourable', -1.2),
+)
 FIRE_SEASON = standings('fire')
 EVEN = dict.fromkeys(ELEMENTS, 'supported')
 
 
-def _weights(*order: str) -> dict[str, float]:
-    return dict(zip(order, ORDER, strict=True))
+def _gods(*elements: str) -> dict[str, str]:
+    # The elements for the useful, favourable, idle, enemy and unfavourable gods.
+    return dict(zip((god for god, _ in GOD_WEIGHTS), elements, strict=True))
+
+
+def _weights(*elements: str) -> dict[str, float]:
+    return dict(zip(elements, (weight for _, weight in GOD_WEIGHTS), strict=True))
 
 
 def _chart(*pairs: str) -> dict[str, tuple[str, str]]:
@@ -202,72 +213,79 @@ class TestEarthSeason(unittest.TestCase):
 class TestSupportAndRestrain(unittest.TestCase):
     def test_the_canons_worked_example(self) -> None:
         # canon/Background.md's chart, born in a Fire season: weak, Wealth the disease.
-        # The weights match the ones the daily briefing set for it by hand.
+        # The Companion is useful and the Resource favourable; the Output idle, the
+        # Officer the enemy, and the Wealth unfavourable.
         found = support_and_restrain(
             _chart('丙辰', '甲午', '壬子', '癸卯'), FIRE_SEASON
         )
         self.assertEqual(found['strength'], 'weak')
+        self.assertEqual(found['disease'], 'fire')
         self.assertEqual(
-            found['weights'], _weights('water', 'metal', 'fire', 'wood', 'earth')
+            found['weights'], _weights('water', 'metal', 'wood', 'earth', 'fire')
         )
         assert found['tally'] is not None
         self.assertEqual(found['tally']['supported_share'], 0.2)
 
     def test_each_case_of_the_rule(self) -> None:
         # Day Master 甲 Wood: Companion wood, Output fire, Wealth earth, Officer metal,
-        # Resource water. Equal standing, so the tally is the plain count.
+        # Resource water. Equal standing, so the tally is the plain count. The gods in
+        # docs/Today.md's order: useful, favourable, idle, enemy, unfavourable.
         cases = {
             'weak, Output strongest': (
                 ('丙午', '丙午', '甲午', '癸巳'),
                 'weak',
-                ('water', 'wood', 'fire', 'earth', 'metal'),
+                'fire',
+                ('water', 'wood', 'metal', 'earth', 'fire'),
             ),
             'weak, Wealth strongest': (
                 ('戊戌', '己未', '甲戌', '戊辰'),
                 'weak',
-                ('wood', 'water', 'earth', 'fire', 'metal'),
+                'earth',
+                ('wood', 'water', 'fire', 'metal', 'earth'),
             ),
             'weak, Officer strongest': (
                 ('庚申', '辛酉', '甲申', '庚申'),
                 'weak',
-                ('water', 'wood', 'metal', 'earth', 'fire'),
+                'metal',
+                ('water', 'wood', 'fire', 'metal', 'earth'),
             ),
             'strong, Companion stronger': (
                 ('甲寅', '乙卯', '甲寅', '乙卯'),
                 'strong',
-                ('metal', 'earth', 'wood', 'water', 'fire'),
+                'wood',
+                ('fire', 'earth', 'metal', 'wood', 'water'),
             ),
             'strong, Resource stronger': (
                 ('壬子', '癸亥', '甲子', '壬子'),
                 'strong',
-                ('earth', 'fire', 'water', 'metal', 'wood'),
+                'water',
+                ('earth', 'fire', 'metal', 'wood', 'water'),
             ),
         }
-        for name, (pillars, strength, order) in cases.items():
+        for name, (pillars, strength, disease, gods) in cases.items():
             with self.subTest(name):
                 found = support_and_restrain(_chart(*pillars), EVEN)
                 self.assertEqual(found['strength'], strength)
-                self.assertEqual(found['weights'], _weights(*order))
-                self.assertEqual(
-                    (found['useful'], found['favourable'], found['disease']),
-                    order[:3],
-                )
+                self.assertEqual(found['disease'], disease)
+                self.assertEqual(found['gods'], _gods(*gods))
+                self.assertEqual(found['weights'], _weights(*gods))
 
     def test_a_chart_with_no_support_but_its_day_master_follows(self) -> None:
         # 甲 on 午, with no Wood or Water anywhere else, visible or hidden.
+        # The Resource, Water, is unfavourable, and the Companion, Wood, the enemy.
         cases = {
-            'Wealth strongest': (('戊戌', '己巳', '甲戌', '戊午'), 'earth', 'fire'),
-            'Output strongest': (('丙午', '丁巳', '甲午', '丙午'), 'fire', 'earth'),
-            'Officer strongest': (('庚戌', '辛酉', '甲戌', '辛巳'), 'metal', 'earth'),
+            'Wealth strongest': (('戊戌', '己巳', '甲戌', '戊午'), 'earth', 'fire', 'metal'),
+            'Output strongest': (('丙午', '丁巳', '甲午', '丙午'), 'fire', 'earth', 'metal'),
+            'Officer strongest': (('庚戌', '辛酉', '甲戌', '辛巳'), 'metal', 'earth', 'fire'),
         }
-        for name, (pillars, useful, favourable) in cases.items():
+        for name, (pillars, useful, favourable, idle) in cases.items():
             with self.subTest(name):
                 found = support_and_restrain(_chart(*pillars), EVEN)
                 self.assertEqual(found['strength'], 'following')
-                self.assertEqual(found['useful'], useful)
-                self.assertEqual(found['favourable'], favourable)
-                self.assertEqual(found['disease'], 'water')
-                self.assertEqual(found['weights']['wood'], -0.8)
+                self.assertIsNone(found['disease'])
+                self.assertEqual(
+                    found['gods'], _gods(useful, favourable, idle, 'wood', 'water')
+                )
 
     def test_a_review_fixture_follows(self) -> None:
         # 1987-08-01 14:00 UTC at 0, 0: 丁卯 丁未 壬午 丁未. No Water or Metal but the
@@ -276,10 +294,9 @@ class TestSupportAndRestrain(unittest.TestCase):
             _chart('丁卯', '丁未', '壬午', '丁未'), standings('earth')
         )
         self.assertEqual(found['strength'], 'following')
-        self.assertEqual(found['useful'], 'fire')
-        self.assertEqual(found['favourable'], 'wood')
-        self.assertEqual(found['disease'], 'metal')
-        self.assertEqual(sorted(found['weights'].values()), sorted(ORDER))
+        self.assertEqual(
+            found['gods'], _gods('fire', 'wood', 'earth', 'water', 'metal')
+        )
 
     def test_exactly_half_is_strong(self) -> None:
         # Wood 2.4 and Water 2.2 make 4.6 of 9.2: half, so strong; Wood, the larger,
@@ -304,7 +321,10 @@ class TestSupportAndRestrain(unittest.TestCase):
                 pillars = _chart('甲子', '丙寅', day_master + branch, '庚申')
                 for ruler in ELEMENTS:
                     found = support_and_restrain(pillars, standings(ruler))
-                    self.assertEqual(sorted(found['weights'].values()), sorted(ORDER))
+                    self.assertEqual(
+                        sorted(found['weights'].values()),
+                        sorted(weight for _, weight in GOD_WEIGHTS),
+                    )
 
 
 class TestClimate(unittest.TestCase):
@@ -340,9 +360,9 @@ class TestClimate(unittest.TestCase):
 
     def test_the_order_from_the_stems(self) -> None:
         # 丙 Fire useful, 癸 Water favourable. What controls Fire is Water, taken; so
-        # the disease is what controls Water, Earth; then what generates Earth, Fire,
-        # is taken, so the first free from Fire in the generating order, Metal; last,
-        # Wood.
+        # the unfavourable is what controls Water, Earth; then the enemy, what
+        # generates Earth, Fire, is taken, so the first free from Fire in the
+        # generating order, Metal; last and idle, Wood.
         self.assertEqual(
             climate_order(['丙', '癸']), ['fire', 'water', 'earth', 'metal', 'wood']
         )
@@ -358,7 +378,8 @@ class TestClimate(unittest.TestCase):
 
 
 class TestPull(unittest.TestCase):
-    WEIGHTS = _weights('water', 'metal', 'fire', 'wood', 'earth')
+    # Weights for the pull's arithmetic, not a school's.
+    WEIGHTS = {'water': 1.2, 'metal': 1.0, 'fire': -1.0, 'wood': -0.8, 'earth': -0.6}
 
     def test_the_day_counts_by_the_season(self) -> None:
         # 戊午 while Metal rules: 戊 Earth -0.6 × 0.6; 丁 Fire -1.0 × 0.4;

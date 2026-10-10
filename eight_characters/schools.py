@@ -300,9 +300,21 @@ def season_at(
 # ── Favourable elements ──
 
 Strength = Literal['weak', 'strong', 'following']
-# An element's weight in each place of the order, in tenths: the useful element,
-# the favourable one, the disease, the next, the last.
-WEIGHT_TENTHS: Final = (12, 10, -10, -8, -6)
+# The five gods (Ren Tieqiao on Di Tian Sui, 閒神 Xian Shen): the element a chart
+# uses, the one that helps it, one that is neither, and two against it.
+God = Literal['useful', 'favourable', 'idle', 'enemy', 'unfavourable']
+GODS: Final[tuple[God, ...]] = ('useful', 'favourable', 'idle', 'enemy', 'unfavourable')
+# Each god's weight, in tenths: the app's convention. The useful and the unfavourable
+# weigh alike and opposite, and so do the favourable and the enemy, as Di Tian Sui's
+# note has them (一喜而十备矣……一忌而十害矣); the idle element weighs nothing
+# (不足以为喜，不足以为忌，皆闲神也).
+GOD_TENTHS: Final[dict[God, int]] = {
+    'useful': 12,
+    'favourable': 10,
+    'idle': 0,
+    'enemy': -10,
+    'unfavourable': -12,
+}
 
 
 class Tally(TypedDict):
@@ -316,23 +328,21 @@ class Tally(TypedDict):
 class Favourable(TypedDict):
     school: FavourableSchool
     weights: dict[ElementName, float]
-    useful: ElementName
-    favourable: ElementName
-    disease: ElementName
-    # Support and restrain: how strong the Day Master is, and the tally that says so.
+    # The element each of the five gods is.
+    gods: dict[God, ElementName]
+    # Support and restrain: what unbalances the chart (None when it follows its
+    # strongest force), how strong its Day Master is, and the tally that says so.
+    disease: ElementName | None
     strength: Strength | None
     tally: Tally | None
     # Climate: the stems Qiong Tong Bao Jian names, in its order.
     named: list[str] | None
 
 
-def _weights(order: Sequence[ElementName]) -> dict[ElementName, float]:
-    if sorted(order) != sorted(ELEMENTS):
-        raise AssertionError(f'Weights need each element once, not {order}.')
-    return {
-        element: tenths / 10
-        for element, tenths in zip(order, WEIGHT_TENTHS, strict=True)
-    }
+def _weights(gods: Mapping[God, ElementName]) -> dict[ElementName, float]:
+    if sorted(gods.values()) != sorted(ELEMENTS):
+        raise AssertionError(f'The five gods need each element once, not {gods}.')
+    return {element: GOD_TENTHS[god] / 10 for god, element in gods.items()}
 
 
 def _first_free(
@@ -341,15 +351,34 @@ def _first_free(
     return next(element for element in candidates if element not in taken)
 
 
-def _support_order(
-    useful: ElementName, favourable: ElementName, disease: ElementName
-) -> list[ElementName]:
-    """The rest of support and restrain's order: the disease's generator, or where
-    that is taken, the controller of the useful element; then the one left."""
-    taken: list[ElementName] = [useful, favourable, disease]
-    second = _first_free([generator_of(disease), controller_of(useful)], taken)
-    taken.append(second)
-    return [*taken, _first_free(ELEMENTS, taken)]
+def _gods_around(useful: ElementName, disease: ElementName) -> dict[God, ElementName]:
+    """The five gods around a useful element, as Ren Tieqiao sets them out for Wood
+    (閒神): 用木，木有余，以火为喜神，以金为忌神，以水为仇神，以土为闲神；木不足，
+    以水为喜神，以土为忌神，以金为仇神，以火为闲神.
+
+    A useful element the disease generates has more than enough: what it generates
+    helps it, what controls it is unfavourable, the disease that feeds it is the
+    enemy, and what it controls is idle. One that must control the disease falls
+    short: what generates it helps it, the disease is unfavourable, what controls it
+    is the enemy, and what it generates is idle.
+    """
+    if generator_of(useful) == disease:
+        return {
+            'useful': useful,
+            'favourable': generates(useful),
+            'idle': controls(useful),
+            'enemy': disease,
+            'unfavourable': controller_of(useful),
+        }
+    if controls(useful) == disease:
+        return {
+            'useful': useful,
+            'favourable': generator_of(useful),
+            'idle': generates(useful),
+            'enemy': controller_of(useful),
+            'unfavourable': disease,
+        }
+    raise AssertionError(f'{useful} neither controls nor is fed by {disease}.')
 
 
 def chart_tally(
@@ -380,23 +409,26 @@ def support_and_restrain(
     pillars: Mapping[str, tuple[str, str]],
     birth_standings: Mapping[ElementName, Standing],
 ) -> Favourable:
-    """Support and restrain (扶抑 Fu Yi), after Di Tian Sui and Shen Feng Tong Kao.
+    """Support and restrain (扶抑 Fu Yi), after Di Tian Sui with Ren Tieqiao's notes,
+    and Shen Feng Tong Kao on disease and medicine (docs/Today.md).
 
-    The chart is counted (_chart_tally). Its Day Master's element and Resource are
+    The chart is counted (chart_tally). Its Day Master's element and Resource are
     its support; under half the count, the Day Master is weak.
-    - Weak: the disease is the strongest of Output, Wealth and Officer. The useful
-      element is the one that controls the disease, or the Resource when the disease
-      is Officer, and the favourable element is the other of the two that support
-      the Day Master.
-    - Strong: the disease is the stronger of Companion and Resource, the useful
-      element is the one that controls it, and the favourable element the one that
-      generates the useful one.
+    - Weak: the disease is the strongest of Output, Wealth and Officer. Ren Tieqiao
+      (體用) names the useful element: the Resource against Output or Officer, the
+      Companion against Wealth. The other gods stand around it (_gods_around), but
+      the favourable element is always the Day Master's other support, as Di Tian
+      Sui's note has it (印比为喜神); where Ren's pattern favours another, that one
+      is idle instead.
+    - Strong: the disease is the stronger of Companion and Resource. Ren names the
+      useful element: the Output against Companions, the Wealth against Resource;
+      the other gods stand around it.
     - Following: with no Companion or Resource anywhere but the Day Master itself,
       the chart follows its strongest force, the strongest of Output, Wealth and
-      Officer: it is useful, and the element that generates it favourable (Wealth,
-      when the force is Output, whose generator is the Day Master's own). The
-      Resource, which would revive the Day Master, is the disease, then the
-      Companion.
+      Officer (Ren: 弱极者…宜从其弱而抑之). It is useful, and the element that
+      generates it favourable (Wealth, when the force is Output, whose generator is
+      the Day Master's own). The Resource, which would revive the Day Master, is
+      unfavourable, the Companion the enemy, and the force left idle.
     Ties go to the first named.
     """
     day_master = pillars['day'][0]
@@ -410,30 +442,36 @@ def support_and_restrain(
     supported = tally[companion] + tally[resource]
     # Support beyond the Day Master's own stem.
     beyond = supported - STEM_TENTHS * STANDING_TENTHS[birth_standings[companion]]
+    disease: ElementName | None
     if beyond == 0:
         strength: Strength = 'following'
+        disease = None
         useful = _largest(tally, (output, wealth, officer))
         favourable = wealth if useful == output else generator_of(useful)
-        order: list[ElementName] = [useful, favourable, resource, companion]
-        order.append(_first_free(ELEMENTS, order))
+        gods: dict[God, ElementName] = {
+            'useful': useful,
+            'favourable': favourable,
+            'idle': _first_free((output, wealth, officer), (useful, favourable)),
+            'enemy': companion,
+            'unfavourable': resource,
+        }
     elif supported * 2 < total:
         strength = 'weak'
         disease = _largest(tally, (output, wealth, officer))
-        useful = resource if disease == officer else controller_of(disease)
-        favourable = companion if useful == resource else resource
-        order = _support_order(useful, favourable, disease)
+        useful = companion if disease == wealth else resource
+        gods = _gods_around(useful, disease)
+        support = resource if useful == companion else companion
+        if gods['favourable'] != support:
+            gods['idle'], gods['favourable'] = gods['favourable'], support
     else:
         strength = 'strong'
         disease = _largest(tally, (companion, resource))
-        useful = controller_of(disease)
-        favourable = generator_of(useful)
-        order = _support_order(useful, favourable, disease)
+        gods = _gods_around(output if disease == companion else wealth, disease)
     return {
         'school': 'support',
-        'weights': _weights(order),
-        'useful': order[0],
-        'favourable': order[1],
-        'disease': order[2],
+        'weights': _weights(gods),
+        'gods': gods,
+        'disease': disease,
         'strength': strength,
         'tally': {
             'elements': {element: tally[element] / 100 for element in ELEMENTS},
@@ -446,13 +484,19 @@ def support_and_restrain(
 def climate_favourable(named: Sequence[str]) -> Favourable:
     """Climate (调候 Tiao Hou): the weights from the stems Qiong Tong Bao Jian names
     for the chart's Day Master in its birth month (climate_order)."""
-    order = climate_order(named)
+    useful, favourable, unfavourable, enemy, idle = climate_order(named)
+    gods: dict[God, ElementName] = {
+        'useful': useful,
+        'favourable': favourable,
+        'idle': idle,
+        'enemy': enemy,
+        'unfavourable': unfavourable,
+    }
     return {
         'school': 'climate',
-        'weights': _weights(order),
-        'useful': order[0],
-        'favourable': order[1],
-        'disease': order[2],
+        'weights': _weights(gods),
+        'gods': gods,
+        'disease': None,
         'strength': None,
         'tally': None,
         'named': list(named),
@@ -463,11 +507,12 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
     """Climate's order from the stems Qiong Tong Bao Jian names, in its order.
 
     The first stem's element is useful, and the next of another element favourable;
-    when every named stem shares one element, the element that generates it. The
-    others follow the usual order of the five gods: the disease is what controls the
-    useful element, then what generates the disease, then the one left. A place
-    whose element is taken goes to the next free element, in the generating order
-    from the useful one.
+    when every named stem shares one element, the element that generates it. Then
+    the unfavourable element, what controls the useful one (Ren Tieqiao: 忌神者，破格
+    损用之神也); the enemy, what generates the unfavourable one; and the one left,
+    idle. A place whose element is taken goes to the next free element, in the
+    generating order from the useful one. The order is useful, favourable,
+    unfavourable, enemy, idle.
     """
     if not named or any(stem not in STEMS for stem in named):
         raise ValueError(f'Climate needs the stems the table names, not {named!r}.')
