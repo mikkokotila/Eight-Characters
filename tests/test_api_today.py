@@ -192,6 +192,12 @@ class TestToday(unittest.TestCase):
         self.assertNotIn('2011-12-30', dates)
         self.assertEqual(len(dates), 21)
         self.assertIn('2011-12-29', dates)
+        # Apia's clock runs a day ahead of its sun: the hours are those of the solar
+        # date the day pillar is, and noon on the clock falls within them.
+        hours = after.json()['hours']
+        noon = datetime.fromisoformat('2011-12-31T12:00:00+14:00')
+        self.assertLessEqual(datetime.fromisoformat(hours[0]['spans'][0]['start']), noon)
+        self.assertLess(noon, datetime.fromisoformat(hours[0]['spans'][1]['end']))
 
     def test_the_answer_is_the_accounts_own(self) -> None:
         self.assertEqual(self.english_headers['cache-control'], 'private, no-cache')
@@ -242,6 +248,10 @@ class TestToday(unittest.TestCase):
             self.assertEqual(earlier['end'], later['start'])
         for start, end in ((span['start'], span['end']) for span in spans):
             self.assertLess(datetime.fromisoformat(start), datetime.fromisoformat(end))
+        # The day's moment, noon on the date at the place, lies within its hours.
+        noon = datetime.fromisoformat(f'{DAY}T12:00:00+03:00')
+        self.assertLessEqual(datetime.fromisoformat(spans[0]['start']), noon)
+        self.assertLess(noon, datetime.fromisoformat(spans[-1]['end']))
         weights = self.english['favourable']['weights']
         for hour in hours:
             with self.subTest(branch=hour['branch']):

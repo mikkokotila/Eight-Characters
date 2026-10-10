@@ -627,8 +627,11 @@ def _hours(
     weights: Mapping[ElementName, float],
 ) -> list[Hour]:
     """The twelve double hours of the day at the place, by true solar time
-    (docs/Today.md, The hours)."""
-    midnight = datetime.combine(day, time(0))
+    (docs/Today.md, The hours): those of the true solar date its day pillar is, the
+    date true solar time shows at the day's moment. Far from its zone's meridian, as
+    in Samoa at UTC+14, that date and the clock's differ."""
+    del day
+    midnight = datetime.combine(noon.solar.true_solar_time.date(), time(0))
     readings = [midnight + timedelta(hours=hour) for hour in (0, *range(1, 24, 2), 24)]
     instants = true_solar_instants(
         readings,

@@ -258,7 +258,10 @@ settled by the luck pillar and the year, never by a day or a month.
 ## The hours
 
 The twelve double hours of the day, on the clock at where you are, by true solar time:
-a double hour starts at every odd hour of true solar time. The day runs from true
+a double hour starts at every odd hour of true solar time. They are the hours of the
+true solar date the day pillar belongs to, the one true solar time shows at the day's
+moment; far from a zone's meridian (Samoa, at UTC+14) its hours fall partly on the
+next clock date. The day runs from true
 solar midnight to midnight, so 子 Zi, which straddles midnight, appears twice: its
 first hour opens the day and its second closes it. Each hour gives its spans as clock
 times with their UTC offsets, so an hour the clocks skip or repeat shows as it falls.
