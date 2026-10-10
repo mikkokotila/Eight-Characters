@@ -446,3 +446,15 @@ def day_and_hour_changes(
         ],
     )
     return day_changes, hour_changes
+
+
+def true_solar_instants(
+    readings: Sequence[datetime],
+    timezone_name: str,
+    longitude_deg: float,
+    near: datetime,
+) -> list[datetime]:
+    """The real instants (aware UTC) at which true solar time at the longitude shows
+    each reading, solved from an instant `near` them."""
+    clocks = _Clocks(near, timezone_name, longitude_deg, ConventionSettings())
+    return [clocks.true_solar_instant(reading) for reading in readings]

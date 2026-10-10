@@ -158,10 +158,16 @@ def parse_first_birth(
 
 
 def _pillar(name: PillarName, stem: str, branch: str) -> ChartPillar:
+    return pillar_view(PILLAR_LABELS['en'][name], stem, branch)
+
+
+def pillar_view(label: str, stem: str, branch: str) -> ChartPillar:
+    """A pillar as the first chart shows it, under any label: its stem and branch,
+    each with its pinyin, element and polarity."""
     stem_data = STEMS[stem]
     branch_data = BRANCHES[branch]
     return {
-        'name': PILLAR_LABELS['en'][name],
+        'name': label,
         'stem': {
             'chinese': stem,
             'pinyin': stem_data['pinyin'],
@@ -178,7 +184,7 @@ def _pillar(name: PillarName, stem: str, branch: str) -> ChartPillar:
     }
 
 
-def _engine_pillar(name: PillarName, payload: dict[str, Any]) -> ChartPillar:
+def engine_pillar(name: PillarName, payload: dict[str, Any]) -> ChartPillar:
     pillar = payload['pillars'][name]
     return _pillar(name, pillar['stem']['chinese'], pillar['branch']['chinese'])
 
@@ -207,7 +213,7 @@ def _changes_within(
     first, last = _jd_tt(start), _jd_tt(end)
     found: list[tuple[float, PillarChange]] = []
     for name in names:
-        here = _engine_pillar(name, payload)
+        here = engine_pillar(name, payload)
         for side in ('previous', 'next'):
             change = payload['pillars'][name]['changes'][side]
             sign = -1.0 if side == 'previous' else 1.0
@@ -271,7 +277,7 @@ def build_first_chart(birth: FirstBirth) -> FirstChart:
         changing = {change['pillar'] for change in changes}
         return {
             'pillars': {
-                name: _engine_pillar(name, payload)
+                name: engine_pillar(name, payload)
                 for name in DATE_PILLARS
                 if name not in changing
             },
@@ -312,7 +318,7 @@ def build_first_chart(birth: FirstBirth) -> FirstChart:
         ) from exc
     names = PILLAR_NAMES if birth.clock is not None else DAY_PILLARS
     chart: FirstChart = {
-        'pillars': {name: _engine_pillar(name, payload) for name in names},
+        'pillars': {name: engine_pillar(name, payload) for name in names},
         'changes': [],
         'day_master': _day_master(payload['pillars']['day']['stem']['chinese']),
         'engine': payload['engine'],

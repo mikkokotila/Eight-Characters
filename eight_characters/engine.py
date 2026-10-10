@@ -1,4 +1,4 @@
-from dataclasses import asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from typing import Any
 
@@ -30,6 +30,7 @@ from eight_characters.sexagenary import (
     STEMS as SEXAGENARY_STEMS,
 )
 from eight_characters.sexagenary import (
+    DayPillarResult,
     Pillar,
     day_pillar,
     hour_pillar,
@@ -37,6 +38,7 @@ from eight_characters.sexagenary import (
     year_pillar,
 )
 from eight_characters.solar_position import (
+    SolarPositionResult,
     compute_solar_position_and_tst,
     julian_date_from_datetime_utc,
 )
@@ -47,6 +49,8 @@ from eight_characters.solar_term_solver import (
 )
 from eight_characters.time_convert import (
     BirthInput,
+    NormalizedTimeInput,
+    TTConversionResult,
     convert_utc_to_tt,
     normalize_birth_input,
 )
@@ -149,14 +153,25 @@ def _pillar_dict(pillar_obj: Pillar) -> PillarPayload:
     }
 
 
-def compute_engine_payload(
-    value: BirthInput,
-    *,
-    include_luck_pillars: bool = False,
-    luck_pillar_count: int = DEFAULT_LUCK_PILLAR_COUNT,
-) -> dict[str, Any]:
-    if include_luck_pillars and value.gender is None:
-        raise ValueError('gender is required when include_luck_pillars is true.')
+@dataclass(frozen=True)
+class PillarsAt:
+    """The four pillars at a moment, and what the engine fixed them by."""
+
+    normalized: NormalizedTimeInput
+    tt: TTConversionResult
+    solar: SolarPositionResult
+    lichun_jd_tt: float
+    bazi_year: int
+    civil_local: datetime
+    year: Pillar
+    month: Pillar
+    day: DayPillarResult
+    hour: Pillar
+
+
+def pillars_at(value: BirthInput) -> PillarsAt:
+    """The four pillars at the moment `value` names, by the engine's rules alone:
+    no flags, boundaries or changes. compute_engine_payload starts from it."""
     normalized = normalize_birth_input(value)
     tt_result = convert_utc_to_tt(normalized.utc_datetime)
 
@@ -194,13 +209,53 @@ def compute_engine_payload(
         conventions=value.conventions,
     )
 
-    pillars = {
-        'year': year_result,
-        'month': month_result,
-        'day': day_result.pillar,
-        'hour': hour_result,
-    }
-    validate_pillar_set(pillars)
+    validate_pillar_set(
+        {
+            'year': year_result,
+            'month': month_result,
+            'day': day_result.pillar,
+            'hour': hour_result,
+        }
+    )
+    return PillarsAt(
+        normalized=normalized,
+        tt=tt_result,
+        solar=solar,
+        lichun_jd_tt=lichun_jd,
+        bazi_year=bazi_year,
+        civil_local=civil_local_naive,
+        year=year_result,
+        month=month_result,
+        day=day_result,
+        hour=hour_result,
+    )
+
+
+def jie_before(at: PillarsAt) -> float:
+    """The Terrestrial Time Julian date of the jie that began the moment's month."""
+    terms = _nearest_month_terms(at.normalized.utc_datetime.year, at.solar.jd_tt)
+    return max(jd for _, jd in terms if jd <= at.solar.jd_tt)
+
+
+def compute_engine_payload(
+    value: BirthInput,
+    *,
+    include_luck_pillars: bool = False,
+    luck_pillar_count: int = DEFAULT_LUCK_PILLAR_COUNT,
+) -> dict[str, Any]:
+    if include_luck_pillars and value.gender is None:
+        raise ValueError('gender is required when include_luck_pillars is true.')
+    at = pillars_at(value)
+    normalized = at.normalized
+    tt_result = at.tt
+    solar = at.solar
+    lichun_jd = at.lichun_jd_tt
+    bazi_year = at.bazi_year
+    civil_local_naive = at.civil_local
+    year_result = at.year
+    month_result = at.month
+    day_result = at.day
+    hour_result = at.hour
 
     month_terms = _nearest_month_terms(normalized.utc_datetime.year, solar.jd_tt)
     term_jds = [jd for _, jd in month_terms]

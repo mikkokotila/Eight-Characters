@@ -110,6 +110,7 @@ def _decade(
     ten_gods: Mapping[tuple[str, str], TenGodName],
     natal: Sequence[StemEvidence],
     natal_elements: Sequence[ElementName],
+    position: str,
 ) -> DecadeContext:
     stem, branch = luck['stem']['chinese'], luck['branch']['chinese']
     if STEMS.get(stem) is None or BRANCHES.get(branch) is None:
@@ -123,7 +124,7 @@ def _decade(
             raise ValueError(f'Missing or invalid ten god for {day_master}/{char}.')
         return {
             **stem_identity(char),
-            'pillar': LUCK,
+            'pillar': position,
             'component': 'stem' if qi is None else 'hidden_stem',
             'branch': None if qi is None else branch,
             'qi_type': None if qi is None else QI_TYPES[qi],
@@ -150,7 +151,7 @@ def _decade(
         }
         for record in (visible, *hidden_records)
     ]
-    found = detect_luck_interactions(pillars, (stem, branch))
+    found = detect_luck_interactions(pillars, (stem, branch), position=position)
     interactions: list[LuckInteraction] = [
         {**relationship, 'phases': list(ACTS_IN[relationship['component']])}
         for relationship in found['interactions']
@@ -204,8 +205,12 @@ def build_luck_context(
     luck_pillars: Sequence[LuckPillar],
     hidden_stems: Mapping[str, Sequence[str]],
     ten_gods: Mapping[tuple[str, str], TenGodName],
+    *,
+    position: str = LUCK,
 ) -> LuckContext:
-    """Every decade's luck context, in the luck pillars' order."""
+    """Every decade's luck context, in the luck pillars' order. Another pillar read
+    as a luck pillar is, such as a year's, takes the fifth place under its own
+    `position` name (interactions.detect_luck_interactions)."""
     natal = natal_occurrences(pillars, hidden_stems, ten_gods)
     natal_elements: list[ElementName] = [
         *(STEMS[pillars[name][0]]['element'] for name in PILLAR_NAMES),
@@ -215,7 +220,9 @@ def build_luck_context(
         'policy': 'luck_context_v1',
         'natal_counts': _counts(natal_elements, natal),
         'decades': [
-            _decade(pillars, luck, hidden_stems, ten_gods, natal, natal_elements)
+            _decade(
+                pillars, luck, hidden_stems, ten_gods, natal, natal_elements, position
+            )
             for luck in luck_pillars
         ],
     }
