@@ -13,7 +13,7 @@ FavourableSchool = Literal['support', 'climate']
 # Which part of the year is Earth's, which sets every element's seasonal standing.
 SeasonSchool = Literal['eighteen', 'months', 'late_summer', 'commander']
 # How the year and the luck pillar count.
-TransitSchool = Literal['phases', 'ziping', 'seasoned']
+TransitSchool = Literal['phases', 'whole', 'seasoned']
 
 FAVOURABLE_SCHOOLS: Final[tuple[FavourableSchool, ...]] = ('support', 'climate')
 SEASON_SCHOOLS: Final[tuple[SeasonSchool, ...]] = (
@@ -22,7 +22,7 @@ SEASON_SCHOOLS: Final[tuple[SeasonSchool, ...]] = (
     'late_summer',
     'commander',
 )
-TRANSIT_SCHOOLS: Final[tuple[TransitSchool, ...]] = ('phases', 'ziping', 'seasoned')
+TRANSIT_SCHOOLS: Final[tuple[TransitSchool, ...]] = ('phases', 'whole', 'seasoned')
 
 DEFAULT_FAVOURABLE: Final[FavourableSchool] = 'support'
 DEFAULT_SEASON: Final[SeasonSchool] = 'eighteen'
