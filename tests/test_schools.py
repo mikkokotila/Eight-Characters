@@ -321,7 +321,10 @@ class TestClimate(unittest.TestCase):
                     self.assertIn(re.sub(r'\s+', '', entry.later.sentence), source)
 
     def test_entries_as_the_text_gives_them(self) -> None:
+        # 正月甲木's statement of the month alone comes before 总之正二月甲木's, which
+        # speaks of both months; 卯, with nothing said of it alone, takes the latter.
         self.assertEqual(climate_stems('甲', '寅', False), ['丙', '癸'])
+        self.assertEqual(climate_stems('甲', '卯', False), ['庚', '戊'])
         self.assertEqual(climate_stems('甲', '辰', True), ['庚', '壬'])
         # 乙 Yi in the 酉 You month: 癸 before 秋分, 丙 then 癸 after it.
         self.assertEqual(climate_stems('乙', '酉', False), ['癸'])

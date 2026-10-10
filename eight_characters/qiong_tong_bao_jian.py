@@ -10,6 +10,10 @@ tests find every passage in it, line breaks aside. The reduction:
 - What the text says to use for the month, unconditionally, in the order it ranks
   them: 先…后…, …为尊/为用/为主/为要…, …次之/佐之/为佐/为助/为辅. A season's
   passage counts for a month it names.
+- A statement of the month alone comes first. One that speaks of it with other
+  months (总之正二月甲木, a season's 三春…) counts for a month only where nothing is
+  said of it alone: 甲 Jia in 寅 Yin takes 丙癸 (Bing, Gui) from 正月甲木, and in 卯
+  Mao, whose own passage names no stem to use, 庚戊 (Geng, Wu) from 总之正二月甲木.
 - Where the month's use is stated more than once, a statement that ranks its stems
   over one that only lists them (专用 X Y, 并用, 兼用, 齐用), then the fullest, and
   of two as full, the later, which is usually the month's own summary. A statement

@@ -160,14 +160,18 @@ holds the revision, and the tests find every sentence in it. The reduction:
 - What the text says to use for the month, unconditionally, in the order it ranks
   them: 先…后…, …为尊/为用/为主/为要…, …次之/佐之/为佐/为助/为辅. A season's
   passage (三春…, 总之…) counts for a month it names.
+- A statement of the month alone comes first. One that speaks of it with other
+  months (正二月, 五六月, 三冬, or a season's passage) counts for each of them that
+  has nothing said of it alone. So 甲 Jia in 寅 Yin takes 丙 Bing and 癸 Gui from
+  正月甲木 (Jia Wood in the first month), and in 卯 Mao, whose own passage names no
+  stem to use, 庚 Geng and 戊 Wu from 总之正二月甲木 (in sum, Jia Wood in the first
+  and second months).
 - Where the month's use is stated more than once, a statement that ranks its stems
   wins over one that only lists them (专用 X Y, 并用, 兼用, 齐用), then the fullest,
   and of two as full, the later, usually the month's own summary. A statement that
   disclaims its order (四月庚金: 非拘执先后) does not rank.
 - A stem the text names only under a condition (或…, 若…, 如无…, 凡…者) or as a
   fallback is left out, and so is a role named without a stem (比劫, 财).
-- Where the text treats months together (正二月, 五六月, 三冬), each takes the shared
-  entry.
 - Where the text divides a month at its middle term (乙 Yi in 午 Wu and 酉 You, 壬 Ren
   in 丑 Chou, 癸 Gui in 辰 Chen), a birth after the middle term takes the second
   half's stems.
