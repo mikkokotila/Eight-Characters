@@ -4,7 +4,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = 'eight-characters'
-version = '0.47.0'
+version = '0.48.0'
 description = 'BaZi Four Pillars chart generator'
 readme = 'README.md'
 requires-python = '>=3.11'
@@ -69,8 +69,8 @@ ignore = [
 ]
 # The canon's own typography, which the readings quote and match exactly: the en
 # dash of its pillar pairings (Year–Month) and the multiplication sign of its section
-# titles (10×3).
-allowed-confusables = ["–", "×"]
+# titles (10×3); and the full-width comma of the classical sentences the schools cite.
+allowed-confusables = ["–", "×", "，", "；"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["S101", "BLE001", "PLR2004", "ANN"]

@@ -19,7 +19,12 @@ from eight_characters.accounts.backup import (
     require_clean,
     work_tree,
 )
-from eight_characters.accounts.records import RecordError, User, decode_user
+from eight_characters.accounts.records import (
+    RecordError,
+    Settings,
+    User,
+    decode_user,
+)
 from eight_characters.accounts.store import AccountStore, StoreError
 
 
@@ -67,7 +72,7 @@ def restore_backup(
             raise RestoreError('The checkout has no commits; it is no backup.')
         if manifest.recipient != str(identity.to_public()):
             raise RestoreError('This key is not the one the backup was encrypted to.')
-        users: list[User] = []
+        accounts: list[tuple[User, Settings | None]] = []
         emails: set[str] = set()
         for name, user_id in record_files(root):
             try:
@@ -75,7 +80,7 @@ def restore_backup(
             except pyrage.DecryptError as exc:
                 raise RestoreError(f'{name} does not decrypt with this key.') from exc
             try:
-                user = decode_user(plaintext)
+                user, settings = decode_user(plaintext)
             except RecordError as exc:
                 raise RestoreError(f'{name}: {exc}') from exc
             if user.id != user_id:
@@ -83,14 +88,14 @@ def restore_backup(
             if user.email in emails:
                 raise RestoreError(f"{name} repeats another account's email address.")
             emails.add(user.email)
-            users.append(user)
-        if len(users) != manifest.user_count:
+            accounts.append((user, settings))
+        if len(accounts) != manifest.user_count:
             raise RestoreError(
-                f'The backup holds {len(users)} users but its manifest counts '
+                f'The backup holds {len(accounts)} users but its manifest counts '
                 f'{manifest.user_count}.'
             )
         try:
-            AccountStore.restore(database, users, head=head)
+            AccountStore.restore(database, accounts, head=head)
         except StoreError as exc:
             raise RestoreError(str(exc)) from exc
-    return RestoreResult(users=len(users))
+    return RestoreResult(users=len(accounts))

@@ -40,5 +40,8 @@ jobs:
             tests.test_api_day_master_context \
             tests.test_api_role_profile \
             tests.test_api_reading \
+            tests.test_api_luck_reading \
             tests.test_api_evolution_explorer_endpoint \
-            tests.test_api_evolution_controls_endpoint
+            tests.test_api_evolution_controls_endpoint \
+            tests.test_schools \
+            tests.test_api_today

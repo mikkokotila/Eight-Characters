@@ -46,12 +46,14 @@ NEEDS_ACCOUNT = {
     ('POST', '/api/four_pillars'),
     ('POST', '/api/evolution_explorer'),
     ('POST', '/api/hidden_stems'),
+    ('POST', '/api/today'),
 }
 OPEN = {
     ('POST', '/api/first_chart'),
     ('POST', '/api/location_search'),
     ('POST', '/api/location_suggest'),
     ('GET', '/api/evolution_controls'),
+    ('GET', '/api/schools'),
 }
 
 ACCOUNT_STATE = re.compile(

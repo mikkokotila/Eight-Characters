@@ -523,7 +523,9 @@ def _write_and_commit(
         name = f'{change.path}{ENCRYPTED_SUFFIX}'
         target = root / name
         if change.user is not None:
-            ciphertext = pyrage.encrypt(encode_user(change.user), [recipient])
+            ciphertext = pyrage.encrypt(
+                encode_user(change.user, change.settings), [recipient]
+            )
             _write_atomically(target, ciphertext, scratch)
             written += 1
             touched.append(name)

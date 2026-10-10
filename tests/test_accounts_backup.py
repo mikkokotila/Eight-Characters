@@ -81,7 +81,7 @@ class TestRunBackup(BackupTestCase):
             ciphertext = self.file_of(user.id).read_bytes()
             self.assertTrue(ciphertext.startswith(b'age-encryption.org/v1\n'))
             self.assertEqual(
-                pyrage.decrypt(ciphertext, [self.identity]), encode_user(user)
+                pyrage.decrypt(ciphertext, [self.identity]), encode_user(user, None)
             )
         self.assertEqual(
             read_manifest(self.checkout),
@@ -133,7 +133,7 @@ class TestRunBackup(BackupTestCase):
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual((result.written, result.removed), (1, 0))
         plaintext = pyrage.decrypt(self.file_of(user.id).read_bytes(), [self.identity])
-        self.assertEqual(plaintext, encode_user(changed))
+        self.assertEqual(plaintext, encode_user(changed, None))
         self.assertEqual(self.remote_head(), result.commit)
 
     def test_a_deleted_record_leaves_the_backup_with_its_folders(self) -> None:
@@ -311,7 +311,7 @@ class TestRunBackup(BackupTestCase):
         progress = (snapshot.head, snapshot.pending_head)
         self.assertEqual(progress, (self.remote_head(), None))
         plaintext = pyrage.decrypt(self.file_of(user.id).read_bytes(), [self.identity])
-        self.assertEqual(plaintext, encode_user(user))
+        self.assertEqual(plaintext, encode_user(user, None))
 
     def test_a_commit_made_by_hand_and_undone_stops_the_run(self) -> None:
         # Its files are the backup's again, but pushing would publish the commits.
@@ -351,7 +351,7 @@ class TestRunBackup(BackupTestCase):
         for user in (first, second):
             ciphertext = self.file_of(user.id).read_bytes()
             plaintext = pyrage.decrypt(ciphertext, [self.identity])
-            self.assertEqual(plaintext, encode_user(user))
+            self.assertEqual(plaintext, encode_user(user, None))
         later = run_backup(self.store, self.checkout, self.recipient)
         self.assertFalse(later.recovered)
 
@@ -388,7 +388,7 @@ class TestRunBackup(BackupTestCase):
             self.remote_head(), git(self.checkout, 'rev-parse', 'HEAD').strip()
         )
         plaintext = pyrage.decrypt(self.file_of(user.id).read_bytes(), [self.identity])
-        self.assertEqual(plaintext, encode_user(user))
+        self.assertEqual(plaintext, encode_user(user, None))
 
     def test_a_second_run_at_the_same_time_is_refused(self) -> None:
         lock_path = self.checkout / '.git' / 'eight-characters-backup.lock'
@@ -797,7 +797,7 @@ class TestRestore(BackupTestCase):
         folder = clone / 'users' / 'ff' / twin_id
         folder.mkdir(parents=True)
         (folder / 'user.json.age').write_bytes(
-            pyrage.encrypt(encode_user(twin), [self.recipient])
+            pyrage.encrypt(encode_user(twin, None), [self.recipient])
         )
         (clone / MANIFEST).write_bytes(manifest_bytes(Manifest(str(self.recipient), 3)))
         git(clone, 'add', '--all')

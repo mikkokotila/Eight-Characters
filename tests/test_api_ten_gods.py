@@ -13,10 +13,10 @@ from eight_characters.data import STEMS
 from eight_characters.evolution.primitives import TEN_GOD_LABELS, ten_god_index
 from eight_characters.main import (
     ELEMENT_INDEX_BY_NAME,
-    MAPPINGS_DIR,
     HiddenStemsRequest,
     _build_ten_gods_result,
 )
+from eight_characters.mappings import MAPPINGS_DIR
 from eight_characters.ten_gods import DAY_MASTER, TEN_GOD_NAMES, parse_ten_gods_mapping
 from tests.accounts_support import signed_in_client
 

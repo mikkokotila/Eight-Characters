@@ -43,11 +43,20 @@ The account's email address and language, when it was made and changed, and its
 sessions. The IP address a code is asked from is kept with that request, for the
 hourly limits on codes; a request is dropped once it is an hour old, when the next
 code is asked for or the account's data is downloaded. Deleting the account leaves its
-requests until then, so that the limits hold. Charts are calculated, not stored.
+requests until then, so that the limits hold.
 
-Accounts are also kept in an encrypted backup, which only the site's owner can read. A
-deleted account leaves it at the backup's next run; earlier copies stay in the
-backup's history until the owner clears it.
+Charts are calculated, not stored, with one exception you choose for Today: a
+partner's chart, if you save it, with its date, time and place of birth, gender, an
+optional name and its Zi-hour convention. Today is about the chart you are viewing,
+so no chart of your own is kept. Today also keeps where you are, a place and its
+coordinates, and the schools you chose. A partner's chart is another person's data:
+save it only with their consent. You can replace or remove the partner's chart and
+where you are at any time; all of it leaves with the account.
+
+Accounts, with these settings, are also kept in an encrypted backup, which only the
+site's owner can read. A deleted account, a removed chart or a place you remove leaves it at the
+backup's next run; earlier copies stay in the backup's history until the owner clears
+it.
 
 A session lasts 30 days from signing in, and using the site in its last 15 days
 extends it to 30 days again, for at most 400 days from signing in. After it ends, or

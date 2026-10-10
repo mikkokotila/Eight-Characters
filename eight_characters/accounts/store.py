@@ -1,8 +1,8 @@
 """The account database: one SQLite file.
 
-Every change to a record the backup keeps (so far, a user) is logged in the
-`changes` table in the same transaction as the change itself, and the backup copies
-exactly the records logged there. The database is never created by accident: opening
+Every change to a record the backup keeps (so far, a user and its settings, which
+share its record) is logged in the `changes` table in the same transaction as the
+change itself, and the backup copies exactly the records logged there. The database is never created by accident: opening
 one that is missing fails, and a new or restored one is built aside and moved into
 place only when complete.
 """
@@ -10,27 +10,40 @@ place only when complete.
 import hmac
 import os
 import sqlite3
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from eight_characters.accounts.records import (
+    NO_CHOICE,
+    Birth,
+    ChosenSchools,
     Language,
+    Place,
     Plan,
     RecordError,
     RecordKind,
+    Settings,
     User,
+    decode_settings,
+    encode_settings,
     is_id,
     is_language,
     is_plan,
     new_id,
     normalize_email,
     parse_timestamp,
+    settings_value,
     timestamp,
     user_path,
+)
+from eight_characters.school_presets import (
+    FavourableSchool,
+    SeasonSchool,
+    TransitSchool,
 )
 
 # Numbered migrations: the database's `user_version` is how many have run. Each runs
@@ -112,6 +125,17 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         """,
         'CREATE INDEX chart_requests_by_client ON chart_requests (client, requested_at)',
     ),
+    # 4: each account's settings for Today, as the canonical JSON its record holds
+    # (records.encode_settings). Backed up with the account: a change is logged as the
+    # user's.
+    (
+        """
+        CREATE TABLE settings (
+            user_id TEXT PRIMARY KEY REFERENCES users (id) ON DELETE CASCADE,
+            record BLOB NOT NULL
+        ) STRICT
+        """,
+    ),
 )
 SCHEMA_VERSION: Final = len(MIGRATIONS)
 # SQLite's own field for telling an application's files from others ('E8CH').
@@ -134,10 +158,12 @@ class UnknownUser(StoreError):
 
 @dataclass(frozen=True)
 class RecordChange:
-    """A record changed since the last backup: its path, and it now (None if gone)."""
+    """A record changed since the last backup: its path, and it now (None if gone),
+    with the account's settings (None if it has none)."""
 
     path: str
     user: User | None
+    settings: Settings | None
 
 
 @dataclass(frozen=True)
@@ -293,6 +319,31 @@ def _select_user(connection: sqlite3.Connection, where: str, value: str) -> User
     return None if row is None else _user_from_row(row)
 
 
+def _select_settings(connection: sqlite3.Connection, user_id: str) -> Settings | None:
+    row = connection.execute(
+        'SELECT record FROM settings WHERE user_id = ?', (user_id,)
+    ).fetchone()
+    if row is None:
+        return None
+    record: object = row[0]
+    if not isinstance(record, bytes):
+        raise StoreError('A settings row holds a record that is not bytes.')
+    try:
+        return decode_settings(record)
+    except RecordError as exc:
+        raise StoreError(f'A settings row is not a valid record: {exc}') from exc
+
+
+def _put_settings(
+    connection: sqlite3.Connection, user_id: str, settings: Settings
+) -> None:
+    connection.execute(
+        'INSERT INTO settings (user_id, record) VALUES (?, ?) '
+        'ON CONFLICT (user_id) DO UPDATE SET record = excluded.record',
+        (user_id, encode_settings(settings)),
+    )
+
+
 def _log_change(
     connection: sqlite3.Connection, kind: RecordKind, record_id: str, path: str
 ) -> None:
@@ -396,23 +447,23 @@ class AccountStore:
     def restore(
         cls,
         path: Path,
-        users: Sequence[User],
+        accounts: Sequence[tuple[User, Settings | None]],
         *,
         head: str,
         clock: Callable[[], datetime] = _utc_now,
     ) -> 'AccountStore':
-        """A new database at `path` holding exactly these users, as backed up in the
-        Git commit `head`.
+        """A new database at `path` holding exactly these accounts, each with its
+        settings, as backed up in the Git commit `head`.
 
         Nothing is logged for the backup: the records came from it.
         """
-        return cls._build(path, users, head, clock)
+        return cls._build(path, accounts, head, clock)
 
     @classmethod
     def _build(
         cls,
         path: Path,
-        users: Sequence[User],
+        accounts: Sequence[tuple[User, Settings | None]],
         head: str | None,
         clock: Callable[[], datetime],
     ) -> 'AccountStore':
@@ -435,8 +486,10 @@ class AccountStore:
                 _migrate(connection)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
-                    for user in users:
+                    for user, settings in accounts:
                         _insert_user(connection, user)
+                        if settings is not None:
+                            _put_settings(connection, user.id, settings)
                     connection.execute(
                         'UPDATE backup_progress SET head = ? WHERE id = 1', (head,)
                     )
@@ -584,6 +637,89 @@ class AccountStore:
             )
             _log_change(connection, 'user', user.id, user_path(user.id))
 
+    # ── Settings ──
+
+    def settings(self, user_id: str) -> Settings | None:
+        """The account's settings for Today; None if it has set nothing."""
+        with _connection(self.path) as connection:
+            return _select_settings(connection, user_id)
+
+    def put_partner(self, user_id: str, birth: Birth) -> Settings | None:
+        """Keeps a birth as the account's partner's chart, replacing the one before."""
+        return self._update_settings(user_id, lambda s: replace(s, partner=birth))
+
+    def delete_partner(self, user_id: str) -> Settings | None:
+        """Removes the partner's chart, if the account keeps one."""
+        return self._update_settings(user_id, lambda s: replace(s, partner=None))
+
+    def put_place(self, user_id: str, place: Place) -> Settings | None:
+        """Keeps where the person is."""
+        return self._update_settings(user_id, lambda s: replace(s, place=place))
+
+    def delete_place(self, user_id: str) -> Settings | None:
+        """Forgets where the person is, if the account keeps it."""
+        return self._update_settings(user_id, lambda s: replace(s, place=None))
+
+    def set_schools(
+        self, user_id: str, chosen: Mapping[str, str | None]
+    ) -> Settings | None:
+        """Chooses the school for any of the three settings, by name: a preset, or
+        None to follow the default again. The settings not named stay."""
+        unknown = set(chosen) - {'favourable', 'season', 'transits'}
+        if unknown:
+            raise RecordError(f'Unknown settings: {sorted(unknown)}.')
+
+        def choose(settings: Settings) -> Settings:
+            now = settings.schools
+            return replace(
+                settings,
+                schools=ChosenSchools(
+                    favourable=cast(
+                        FavourableSchool | None,
+                        chosen.get('favourable', now.favourable),
+                    ),
+                    season=cast(SeasonSchool | None, chosen.get('season', now.season)),
+                    transits=cast(
+                        TransitSchool | None, chosen.get('transits', now.transits)
+                    ),
+                ),
+            )
+
+        return self._update_settings(user_id, choose)
+
+    def _update_settings(
+        self, user_id: str, change: Callable[[Settings], Settings]
+    ) -> Settings | None:
+        """Applies a change to the account's settings, or to the defaults for an
+        account that has set nothing, and logs it for the backup, in one write; the
+        settings after it. A change that changes nothing writes nothing, and an
+        account left with the defaults it had keeps no settings (None)."""
+        with self._write() as connection:
+            user = _select_user(connection, 'id', user_id)
+            if user is None:
+                raise UnknownUser('No account has that id.')
+            current = _select_settings(connection, user.id)
+            now = self._now()
+            base = current or Settings(
+                partner=None,
+                place=None,
+                schools=NO_CHOICE,
+                updated_at=now,
+            )
+            changed = change(base)
+            if changed == base:
+                return current
+            if current is not None:
+                # As for the account itself: each change moves updated_at past the
+                # last, even within one second or with the clock gone back.
+                after = timestamp(
+                    parse_timestamp(current.updated_at) + timedelta(seconds=1)
+                )
+                changed = replace(changed, updated_at=max(now, after))
+            _put_settings(connection, user.id, changed)
+            _log_change(connection, 'user', user.id, user_path(user.id))
+        return changed
+
     # ── Sessions ──
 
     def create_session(self, session: Session) -> bool:
@@ -692,13 +828,14 @@ class AccountStore:
             )
 
     def account_data(self, user_id: str) -> dict[str, Any]:
-        """Everything kept for an account, read at one moment: its record, its sessions
-        and its address's sign-in code (without their hashes), and the record of codes
-        asked for, with the client addresses they came from."""
+        """Everything kept for an account, read at one moment: its record and its
+        settings, its sessions and its address's sign-in code (without their hashes),
+        and the record of codes asked for, with the client addresses they came from."""
         with self._read() as connection:
             user = _select_user(connection, 'id', user_id)
             if user is None:
                 raise UnknownUser('No account has that id.')
+            settings = _select_settings(connection, user.id)
             sessions = connection.execute(
                 'SELECT created_at, expires_at FROM sessions WHERE user_id = ? '
                 'ORDER BY created_at, expires_at',
@@ -739,6 +876,7 @@ class AccountStore:
                 dict(zip(('created_at', 'expires_at'), _texts(row), strict=True))
                 for row in sessions
             ],
+            'settings': None if settings is None else settings_value(settings),
             'sign_in_code': sign_in_code,
         }
 
@@ -897,7 +1035,11 @@ class AccountStore:
                     )
                 latest[path] = record_id
             changes = tuple(
-                RecordChange(path=path, user=_select_user(connection, 'id', record_id))
+                RecordChange(
+                    path=path,
+                    user=_select_user(connection, 'id', record_id),
+                    settings=_select_settings(connection, record_id),
+                )
                 for path, record_id in sorted(latest.items())
             )
             user_count = _scalar(connection, 'SELECT COUNT(*) FROM users')

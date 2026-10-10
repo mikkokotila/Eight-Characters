@@ -384,6 +384,8 @@ def detect_interactions(
 def detect_luck_interactions(
     pillars: Mapping[str, tuple[str, str]],
     luck: tuple[str, str],
+    *,
+    position: str = LUCK,
 ) -> LuckInteractions:
     """The relationships a luck pillar forms with the natal chart.
 
@@ -393,11 +395,16 @@ def detect_luck_interactions(
     pillar takes part in, ordered by rule then position, and the natal halves that a
     complete whole with the luck pillar absorbs. A half a natal whole already
     absorbs is not a natal finding, so the luck pillar cannot absorb it.
+
+    Another pillar read the same way, such as a year's, takes the fifth place under
+    its own `position` name.
     """
+    if position in PILLAR_NAMES:
+        raise ValueError(f'The fifth position cannot be named {position!r}.')
     pairs = _natal_pairs(pillars)
-    _check_pair(LUCK, luck)
+    _check_pair(position, luck)
     pairs.append(luck)
-    names = (*PILLAR_NAMES, LUCK)
+    names = (*PILLAR_NAMES, position)
     at = len(PILLAR_NAMES)
     found = _find(pairs)
     interactions: list[Interaction] = []
@@ -424,3 +431,18 @@ def detect_luck_interactions(
                 }
             )
     return {'interactions': interactions, 'absorbed': absorbed}
+
+
+def branch_ties(first: str, second: str) -> list[InteractionKind]:
+    """The kinds of relationship two branches form between themselves, in the
+    catalogue's order: its pairs, the halves of its triples, and a self-punishment
+    when the two are one branch that punishes itself."""
+    for branch in (first, second):
+        if branch not in BRANCHES:
+            raise ValueError(f'Invalid branch: {branch!r}')
+    found = frozenset((first, second))
+    return [
+        rule.kind
+        for rule in INTERACTION_RULES
+        if rule.component == 'branch' and _size(rule) == 2 and _matches(rule, found)
+    ]

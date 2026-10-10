@@ -39,7 +39,6 @@ from eight_characters.interactions import (
     CANON_PUNISHMENT_PAIR,
     CANON_PUNISHMENT_TRIANGLES,
     CANON_SELF_PUNISHMENTS,
-    LUCK,
     Interaction,
     InteractionKind,
     InteractionMember,
@@ -628,12 +627,13 @@ def _relationship(
     entry = family['entries'][key]
     member_pillars = [member['pillar'] for member in interaction['members']]
     # Only the families the canon gives pairings for read one; a pair's is its pillars'.
-    # The canon's pairings are the natal positions', so a luck pillar's pair reads none.
+    # The canon's pairings are the natal positions', so a luck pillar's pair, or any
+    # fifth position's, reads none.
     pairing = (
         family['pairings'][_pairing(member_pillars)]
         if len(member_pillars) == 2
         and family['pairings']
-        and LUCK not in member_pillars
+        and all(pillar in PILLARS for pillar in member_pillars)
         else None
     )
     with_dm = neither = dynamic = None
@@ -781,11 +781,13 @@ def build_reading(
 
 
 def _luck_char(interaction: Interaction) -> str:
-    return next(m['char'] for m in interaction['members'] if m['pillar'] == LUCK)
+    """The fifth position's character: the luck pillar's, or another pillar's read
+    as a luck pillar is."""
+    return next(m['char'] for m in interaction['members'] if m['pillar'] not in PILLARS)
 
 
 def _natal_members(interaction: Interaction) -> list[InteractionMember]:
-    return [m for m in interaction['members'] if m['pillar'] != LUCK]
+    return [m for m in interaction['members'] if m['pillar'] in PILLARS]
 
 
 def _settles(

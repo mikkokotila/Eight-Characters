@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.48.0
+
+Today's API: what a day, its month, its year and the luck pillar in force bring to the
+chart the page is on and to a partner's, by the schools a person chooses, and the
+settings an account keeps for it (#66). The page comes next (#67).
+
+### Added
+- **API: `POST /api/today`**: everything Today shows for a date: the day's, month's and
+  year's pillars and the luck pillar, each with its pull on the chart, its
+  relationships with it and the canon's readings; the 22-day run; the twelve double
+  hours with their calls; and marriage, work and health. `docs/Today.md` is its rule
+  book.
+- **API: `GET /api/schools`**: the three settings Today follows (favourable elements,
+  Earth's season, the year and the luck pillar), each preset with its names and
+  summary in Finnish and English, its characters with their pinyin, its sources and
+  the default. The Finnish is provisional.
+- **API: Today's settings in the account**: `GET /api/account/settings`, `PUT` and
+  `DELETE /api/account/partner`, `PUT` and `DELETE /api/account/place`, and
+  `PATCH /api/account/schools`. They are part of the account's record (schema 2):
+  in Download my data, gone with the account, and in the encrypted backup. Schema 1
+  records still restore, as accounts without settings.
+- **Support and restrain** (the default) weighs the elements as Ren Tieqiao's five gods
+  in his notes on Di Tian Sui: the useful element he names for each case, and the
+  favourable, idle, enemy and unfavourable ones around it, at +1.2, +1.0, 0, -1.0 and
+  -1.2.
+- **Climate**: the stems Qiong Tong Bao Jian names for each Day Master in each month,
+  120 cells from Wikisource's revision 2294674, each with the passage it is read
+  from.
+- **The month's commander** for Earth's season, from San Ming Tong Hui's table.
+
+### Changed
+- `engine.pillars_at` gives a moment's pillars, which the engine's payload and Today
+  share; `jie_before` finds the month's term.
+- The hidden stems and Ten Gods tables load from `eight_characters/mappings.py`.
+- The relationships with a fifth pillar and the luck context take its position, so a
+  day, month or year pillar is read as the decade page reads a luck pillar.
+
+### Tests
+- `tests/test_schools.py`: each school's rules, every case of support and restrain,
+  the commander's table against San Ming Tong Hui's text, and every climate entry
+  found in the vendored revision.
+- `tests/test_api_today.py`: the answer for all 24 combinations of schools, Samoa's
+  skipped day, and a year of days against the daily briefing's formula.
+- `tests/test_accounts_settings.py`: the settings' record, store, backup, restore and
+  API.
+- Version bumped to `0.48.0`. The regression fixture changes only in
+  `engine.version`.
+
 ## 0.47.0
 
 The first chart's Day Master, part by part: for a front end that shows a visitor the
