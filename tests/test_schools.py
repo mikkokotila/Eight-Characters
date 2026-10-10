@@ -331,8 +331,8 @@ class TestPull(unittest.TestCase):
     WEIGHTS = _weights('water', 'metal', 'fire', 'wood', 'earth')
 
     def test_the_day_counts_by_the_season(self) -> None:
-        # 戊午 while Metal rules: 戊 Earth −0.6 × 0.6; 丁 Fire −1.0 × 0.4;
-        # 己 Earth −0.6 × 0.4 × 0.6.
+        # 戊午 while Metal rules: 戊 Earth -0.6 × 0.6; 丁 Fire -1.0 × 0.4;
+        # 己 Earth -0.6 × 0.4 × 0.6.
         found = pull(
             '戊', '午', self.WEIGHTS, standings('metal'), layer='day', transits='phases'
         )
@@ -388,7 +388,7 @@ class TestPull(unittest.TestCase):
             transits='seasoned',
             phase='branch',
         )
-        # 己 −0.6 × 0.6; 壬 1.2 × 1.0; 甲 −0.8 × 0.4 × 0.2.
+        # 己 -0.6 × 0.6; 壬 1.2 × 1.0; 甲 -0.8 × 0.4 × 0.2.
         self.assertEqual(seasoned['score'], 0.78)
         with self.assertRaises(ValueError):
             pull('己', '亥', self.WEIGHTS, metal, layer='luck', transits='phases')
