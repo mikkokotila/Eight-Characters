@@ -77,12 +77,12 @@ from eight_characters.first_chart import (
 )
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_context import build_luck_context
-from eight_characters.mappings import hidden_stems_lookup as _load_hidden_stems_lookup
-from eight_characters.mappings import ten_gods_lookup as _load_ten_gods_lookup
 from eight_characters.luck_pillars import (
     DEFAULT_LUCK_PILLAR_COUNT,
     MAX_LUCK_PILLAR_COUNT,
 )
+from eight_characters.mappings import hidden_stems_lookup as _load_hidden_stems_lookup
+from eight_characters.mappings import ten_gods_lookup as _load_ten_gods_lookup
 from eight_characters.nutation import nutation_series
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
 from eight_characters.reading import (
