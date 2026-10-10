@@ -34,11 +34,24 @@ in with a code sent by email. Charts need an account; the start page does not.
 
 | Record | Fields | Backup path |
 |---|---|---|
-| user | `id` (32 hex digits), `email` (trimmed, lowercase), `language` (`fi`/`en`), `plan` (`free`/`basic`/`pro`/`max`), `created_at`, `updated_at` (UTC, `2026-10-07T12:00:00Z`) | `users/<id[:2]>/<id>/user.json.age` |
+| user | `id` (32 hex digits), `email` (trimmed, lowercase), `language` (`fi`/`en`), `plan` (`free`/`basic`/`pro`/`max`), `created_at`, `updated_at` (UTC, `2026-10-07T12:00:00Z`), `settings` (below, or `null`) | `users/<id[:2]>/<id>/user.json.age` |
 
 A record's file is canonical JSON (UTF-8, keys sorted, two-space indents, a final
-newline) with `"schema": 1` and `"kind"`. A file that decodes to a valid record but is
-not exactly those bytes is refused.
+newline) with `"schema"` and `"kind"`. A file that decodes to a valid record but is
+not exactly those bytes is refused. The app writes schema 2. Schema 1 records, from
+before accounts kept settings, have no `settings` field and read as accounts without
+any, so a backup made before still restores.
+
+An account's settings for Today are part of its record: `charts` (`self` and
+`partner`, each a birth or `null`), `place` (where the person is: `name`, `timezone`,
+`latitude`, `longitude`, or `null`), `schools` (`favourable`, `season`, `transits`:
+a preset, or `null` to follow the default) and `updated_at`. A birth holds `name`
+(`null` or 1 to 80 printable characters), `date`, `time`, `place`, `fold` (`0`, `1` or
+`null`), `gender` (`male`/`female`) and `zi` (`split_midnight`/`whole_zi_23`), and is
+checked by the first chart's rules. Coordinates are written as numbers with a decimal
+point. The database keeps the settings as the same canonical JSON (migration 4,
+`settings`, deleted with the account), and a change to them is logged as the user's,
+so the backup copies the account's record again.
 
 Every change to a backed-up record is logged in the `changes` table in the same
 transaction. Sessions, sign-in codes and the record of codes asked for are kept in the
@@ -91,6 +104,11 @@ so the database alone cannot be used to test guesses or take over a session.
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"key": …}` names it | `204`; `400`, `401`, `409` |
 | `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
+| `GET /api/account/settings` | your chart and your partner's (each with its four pillars), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
+| `PUT /api/account/charts/self`, `PUT /api/account/charts/partner` | keeps a birth: `{key, name?, date, time, place: {name, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
+| `DELETE /api/account/charts/partner` | removes your partner's chart; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
+| `PUT /api/account/place` | where you are: `{key, place}` | `200` and the settings; `400`, `401`, `403`, `409` |
+| `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`.
@@ -109,9 +127,9 @@ birth. Creating the chart asks for an account first.
 
 | Request | Needs an account |
 |---|---|
-| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer` | yes: without one, `401` before the request is validated |
+| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer`, `GET /api/today`, `POST /api/today` | yes: without one, `401` before the request is validated |
 | `POST /api/first_chart` | no: it is for someone without one, and each client may ask for `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` an hour |
-| `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls` | no |
+| `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls`, `GET /api/schools` | no |
 
 `tests/test_accounts_app.py` holds both lists, so a new request fails it until it is
 put on one.

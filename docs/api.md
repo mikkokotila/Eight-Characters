@@ -9,10 +9,11 @@
 ## Accounts
 
 Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
-`POST /api/hidden_stems` and `POST /api/evolution_explorer` answer `401`
-(`{"detail": "Sign in to continue."}`) without one, before the request is validated. The
-first chart, `POST /api/first_chart`, is for someone without one, a limited number an
-hour per client. The place search and `GET /api/evolution_controls` need none.
+`POST /api/hidden_stems`, `POST /api/evolution_explorer`, `GET /api/today` and
+`POST /api/today` answer `401` (`{"detail": "Sign in to continue."}`) without one,
+before the request is validated. The first chart, `POST /api/first_chart`, is for
+someone without one, a limited number an hour per client. The place search,
+`GET /api/evolution_controls` and `GET /api/schools` need none.
 
 A session is the cookie the page gets when signing in (`__Host-ec_session` over HTTPS,
 `ec_session` on a laptop's plain HTTP). Signing in, and the account itself, are
@@ -549,6 +550,66 @@ Links with `city` and `country` instead of the coordinates, made before the
 coordinates were passed, still work in mode B. A link with only part of the
 date, time or place, or with both coordinates and a city, shows an error;
 `/explorer/` with no birth in the URL shows a bundled sample chart.
+
+### `GET /api/schools`
+
+Every school Today can follow (see [Today: the rules](Today.md)): three settings,
+`favourable`, `season` and `transits`, each with its `name` and `question`, and its
+presets. A preset has an `id`, its `name` and `summary` in Finnish and English (`fi`,
+`en`), its characters with their pinyin (`han`: `{chinese, pinyin}`, or `null`), its
+`sources`, and whether it is the `default`. `finnish_provisional` is `true` while the
+Finnish wording awaits confirmation.
+
+### `GET /api/today`
+
+Everything Today shows for a date, from the signed-in account's charts, place and
+schools (`GET /api/account/settings`). Query: `date` (`YYYY-MM-DD`, a date at where
+you are), `lang` (`fi` or `en`), `chart` (`self`, the default, or `partner`: the
+partner's chart is read, with yours as the partner's). Sent with `Cache-Control:
+private, no-cache`.
+
+- `404` when no chart of yours is saved, `chart=partner` and no partner's is, or where
+  you are is not set.
+- `400` for a malformed date, or one whose run (7 days back, 14 ahead) leaves the
+  engine's years.
+
+The answer, by [Today: the rules](Today.md):
+
+- `policy` (`today_v1`), `date`, `chart`, `language`, `place`, `schools` (the presets
+  used), `engine` (as the first chart's);
+- `changes`: any of the day's, month's and year's pillars that changes during the day,
+  as the first chart lists them;
+- `season`: the school, the ruling element, each element's standing, and for the
+  month's commander, the one in command;
+- `favourable`: the school, each element's weight, the useful, favourable and disease
+  elements; for support and restrain the strength and the tally behind it; for climate
+  the stems the text names;
+- `layers`: `day`, `month`, `year` and `luck` (`null` before the first luck pillar),
+  each with its pillar, the Ten Gods of its stem and hidden stems, its `pull` (`score`,
+  `band`, `parts`), its relationships with the natal chart (each with the canon's
+  `line`, `null` in Finnish) and the halves they absorb; the luck pillar with its
+  decade and phase;
+- `run`: 22 days, each with its pillar, pull and relationships;
+- `hours`: the twelve double hours, each with its clock spans, its `ties` to the day and
+  its `call` (`protect`, `mixed`, `avoid`, or `null` without a tie);
+- `marriage` (`null` without a partner's chart): the partner's pull and luck pillar,
+  whether you pull apart, the day at your spouse palace, and the day's relationships
+  with the partner's chart;
+- `work`: your career house, the day's and the month's relationships with it, and the
+  Ten Gods the day brings with the canon's sentence on each;
+- `health`: each element the day brings, its share of your birth tally, and its organs
+  in the canon's words;
+- `readings`: the canon's passages for each pillar, as the decade page's; `null` in
+  Finnish.
+
+### `POST /api/today`
+
+The same answer for what the body sends: `date`, `lang`, `place` (`{name, timezone,
+latitude, longitude}`), `charts` (`self`, and optionally `partner`, each a birth as
+`PUT /api/account/charts/self` takes one, without `key`), `chart` (`self` or
+`partner`) and `schools` (any of the three presets; the others follow their
+defaults). An unknown field, an unknown preset or a birth that cannot be charted is
+`400`.
 
 ### `GET /api/evolution_controls`
 
