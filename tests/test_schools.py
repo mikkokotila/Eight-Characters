@@ -20,6 +20,7 @@ from eight_characters.schools import (
     ELEMENTS,
     climate_order,
     commander,
+    element_of,
     pull,
     season_at,
     standings,
@@ -366,6 +367,17 @@ class TestClimate(unittest.TestCase):
         self.assertEqual(
             climate_order(['丙', '癸']), ['fire', 'water', 'earth', 'metal', 'wood']
         )
+        # An element named after the first two is never against the chart while one
+        # the text leaves unnamed is free: 丙 in 亥, 甲戊庚, leaves Metal idle.
+        self.assertEqual(
+            climate_order(['甲', '戊', '庚']), ['wood', 'earth', 'fire', 'water', 'metal']
+        )
+        # 己 in 戌 names four elements: of the two after the first two, the later,
+        # 甲 Wood, takes the place against the chart.
+        self.assertEqual(
+            climate_order(['癸', '丙', '辛', '甲']),
+            ['water', 'fire', 'earth', 'wood', 'metal'],
+        )
         # One element named: the favourable is what generates it.
         self.assertEqual(climate_order(['庚', '辛'])[:2], ['metal', 'earth'])
         self.assertEqual(climate_order(['壬'])[:3], ['water', 'metal', 'earth'])
@@ -374,7 +386,11 @@ class TestClimate(unittest.TestCase):
                 entry.stems,
                 *(() if entry.later is None else (entry.later.stems,)),
             ):
-                self.assertEqual(sorted(climate_order(stems)), sorted(ELEMENTS))
+                order = climate_order(stems)
+                self.assertEqual(sorted(order), sorted(ELEMENTS))
+                named = {element_of(stem) for stem in stems}
+                if order[4] not in named:
+                    self.assertFalse(named & set(order[2:4]), stems)
 
 
 class TestPull(unittest.TestCase):

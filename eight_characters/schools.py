@@ -511,24 +511,33 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
     the unfavourable element, what controls the useful one (Ren Tieqiao: 忌神者，破格
     损用之神也); the enemy, what generates the unfavourable one; and the one left,
     idle. A place whose element is taken goes to the next free element, in the
-    generating order from the useful one. The order is useful, favourable,
+    generating order from the useful one. An element the text names after the first
+    two is for the chart, not against it: it is never put in a place against the
+    chart while an element the text leaves unnamed is free for it, and of two it
+    names, the later is put there first. The order is useful, favourable,
     unfavourable, enemy, idle.
     """
     if not named or any(stem not in STEMS for stem in named):
         raise ValueError(f'Climate needs the stems the table names, not {named!r}.')
-    useful = element_of(named[0])
-    others: list[ElementName] = [
-        element_of(stem) for stem in named[1:] if element_of(stem) != useful
-    ]
-    favourable = others[0] if others else generator_of(useful)
+    elements: list[ElementName] = []
+    for stem in named:
+        if element_of(stem) not in elements:
+            elements.append(element_of(stem))
+    useful = elements[0]
+    favourable = elements[1] if len(elements) > 1 else generator_of(useful)
     start = ELEMENTS.index(useful)
     cycle: list[ElementName] = [ELEMENTS[(start + step) % 5] for step in range(5)]
+    # The text's other elements, the last named first.
+    kept = list(reversed(elements[2:]))
     taken: list[ElementName] = [useful, favourable]
-    disease = _first_free(
-        [controller_of(useful), controller_of(favourable), *cycle], taken
-    )
-    taken.append(disease)
-    taken.append(_first_free([generator_of(disease), *cycle], taken))
+
+    def against(preferred: Sequence[ElementName]) -> ElementName:
+        unnamed = [element for element in preferred if element not in kept]
+        return _first_free([*unnamed, *kept], taken)
+
+    unfavourable = against([controller_of(useful), controller_of(favourable), *cycle])
+    taken.append(unfavourable)
+    taken.append(against([generator_of(unfavourable), *cycle]))
     taken.append(_first_free(cycle, taken))
     return taken
 

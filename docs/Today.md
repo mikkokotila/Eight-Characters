@@ -1,8 +1,10 @@
 # Today: the rules
 
 Today shows what a day, its month, its year and the luck pillar in force bring to a
-chart, and to a partner's. The API computes all of it (`GET /api/today`,
-`POST /api/today`); the page shows what it is given. This page is the rule book: every
+chart, and to a partner's. The API computes all of it (`POST /api/today`); the page
+shows what it is given. Today is about the chart the page is on; the account keeps
+a partner's chart, where the person is and the schools chosen
+(`GET /api/account/settings`), and the page sends them with it. This page is the rule book: every
 number Today shows follows from it, and the tests hold the code to it.
 
 Today adds something the rest of the app does not do. The chart's readings quote the
@@ -177,12 +179,17 @@ holds the revision, and the tests find every sentence in it. The reduction:
 - What the text says to use for the month, unconditionally, in the order it ranks
   them: 先…后…, …为尊/为用/为主/为要…, …次之/佐之/为佐/为助/为辅. A season's
   passage (三春…, 总之…) counts for a month it names.
-- A statement of the month alone comes first. One that speaks of it with other
-  months (正二月, 五六月, 三冬, or a season's passage) counts for each of them that
-  has nothing said of it alone. So 甲 Jia in 寅 Yin takes 丙 Bing and 癸 Gui from
+- What the text says of the month alone comes first. A statement it shares with
+  other months (正二月, 五六月, 三冬, or a season's passage) counts for each of them
+  that has nothing said of it alone. So 甲 Jia in 寅 Yin takes 丙 Bing and 癸 Gui from
   正月甲木 (Jia Wood in the first month), and in 卯 Mao, whose own passage names no
   stem to use, 庚 Geng and 戊 Wu from 总之正二月甲木 (in sum, Jia Wood in the first
   and second months).
+- A sentence that only adds a stem for one month to a shared statement does not set
+  the statement aside: its stem follows the shared ones. 己 Ji in 戌 Xu takes 癸 Gui,
+  丙 Bing and 辛 Xin from 总之，三秋己土，先癸后丙，取辛辅癸 (in sum, autumn's Ji Earth:
+  Gui first, then Bing, with Xin to help Gui), then 甲 Jia from 九月土盛，宜甲木疏之 (in
+  the ninth month the Earth is thick, and Jia should loosen it).
 - Where the month's use is stated more than once, a statement that ranks its stems
   wins over one that only lists them (专用 X Y, 并用, 兼用, 齐用), then the fullest,
   and of two as full, the later, usually the month's own summary. A statement that
@@ -202,6 +209,11 @@ The weights then follow:
   harms the useful one). The enemy is what generates the unfavourable element, and
   the one left is idle. A place whose element is taken goes to the first free
   element in the generating order from the useful one.
+- An element the text names after the first two is for the chart, not against it.
+  It takes a place against the chart only when no element the text leaves unnamed
+  is free for it, and of two it names, the later takes it first. So 丙 Bing in 亥
+  Hai, with 甲 Jia, 戊 Wu and 庚 Geng named, leaves Metal idle, and 己 Ji in 戌 Xu,
+  with four elements named, puts the last, Wood, against the chart.
 
 ## The pull
 
