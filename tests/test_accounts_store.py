@@ -308,7 +308,8 @@ class TestBackupLog(StoreTestCase):
         self.store.delete_user(user.id)
         snapshot = self.store.backup_snapshot()
         self.assertEqual(
-            snapshot.changes, (RecordChange(path=user_path(user.id), user=None),)
+            snapshot.changes,
+            (RecordChange(path=user_path(user.id), user=None, settings=None),),
         )
         self.assertEqual(snapshot.user_count, 0)
 
@@ -478,6 +479,7 @@ class TestSessionsAndCodes(StoreTestCase):
             'account': account,
             'code_requests': requests,
             'sessions': [session],
+            'settings': None,
             'sign_in_code': code,
         }
         self.assertEqual(data, expected)
@@ -660,7 +662,9 @@ class TestRestore(StoreTestCase):
     def test_restores_exactly_the_users_with_nothing_left_to_back_up(self) -> None:
         users = [self.store.create_user(f'u{n}@example.com', 'fi') for n in range(3)]
         target = self.directory / 'restored.sqlite3'
-        restored = AccountStore.restore(target, users, head=COMMIT)
+        restored = AccountStore.restore(
+            target, [(user, None) for user in users], head=COMMIT
+        )
         self.assertEqual(restored.users(), sorted(users, key=lambda user: user.id))
         self.assertEqual(restored.backup_snapshot().changes, ())
         self.assertEqual(restored.backup_snapshot().head, COMMIT)
@@ -680,7 +684,7 @@ class TestRestore(StoreTestCase):
         )
         target = self.directory / 'restored.sqlite3'
         with self.assertRaises(StoreError):
-            AccountStore.restore(target, [user, twin], head=COMMIT)
+            AccountStore.restore(target, [(user, None), (twin, None)], head=COMMIT)
         self.assertFalse(target.exists())
         self.assertFalse(target.with_name('restored.sqlite3.partial').exists())
 

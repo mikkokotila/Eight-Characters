@@ -17,11 +17,6 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final
 
-from eight_characters.school_presets import (
-    FavourableSchool,
-    SeasonSchool,
-    TransitSchool,
-)
 from eight_characters.accounts.records import (
     DEFAULT_SCHOOLS,
     Birth,
@@ -45,6 +40,11 @@ from eight_characters.accounts.records import (
     settings_value,
     timestamp,
     user_path,
+)
+from eight_characters.school_presets import (
+    FavourableSchool,
+    SeasonSchool,
+    TransitSchool,
 )
 
 # Numbered migrations: the database's `user_version` is how many have run. Each runs

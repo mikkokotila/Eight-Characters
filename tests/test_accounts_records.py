@@ -108,7 +108,7 @@ class TestUser(unittest.TestCase):
 class TestRecordFiles(unittest.TestCase):
     def test_canonical_bytes(self) -> None:
         self.assertEqual(
-            encode_user(USER),
+            encode_user(USER, None),
             b'{\n'
             b'  "created_at": "2026-10-07T12:00:00Z",\n'
             b'  "email": "reader@example.com",\n'
@@ -116,7 +116,8 @@ class TestRecordFiles(unittest.TestCase):
             b'  "kind": "user",\n'
             b'  "language": "fi",\n'
             b'  "plan": "free",\n'
-            b'  "schema": 1,\n'
+            b'  "schema": 2,\n'
+            b'  "settings": null,\n'
             b'  "updated_at": "2026-10-07T12:30:00Z"\n'
             b'}\n',
         )
@@ -124,28 +125,29 @@ class TestRecordFiles(unittest.TestCase):
     def test_round_trip(self) -> None:
         for user in (USER, replace(USER, email='äiti@esimerkki.fi', language='en')):
             with self.subTest(email=user.email):
-                self.assertEqual(decode_user(encode_user(user)), user)
+                self.assertEqual(decode_user(encode_user(user, None)), (user, None))
 
     def test_letters_are_written_as_themselves(self) -> None:
-        data = encode_user(replace(USER, email='äiti@esimerkki.fi'))
+        data = encode_user(replace(USER, email='äiti@esimerkki.fi'), None)
         self.assertIn('äiti@esimerkki.fi'.encode(), data)
 
     def _variant(self, **changes: object) -> bytes:
-        record = json.loads(encode_user(USER))
+        record = json.loads(encode_user(USER, None))
         record.update(changes)
         return (
             json.dumps(record, ensure_ascii=False, sort_keys=True, indent=2) + '\n'
         ).encode()
 
     def test_refuses_anything_but_a_valid_canonical_record(self) -> None:
-        canonical = encode_user(USER)
+        canonical = encode_user(USER, None)
         cases = {
             'not UTF-8': b'\xff\xfe',
             'not JSON': b'{',
             'not an object': b'[]\n',
             'missing a field': canonical.replace(b'  "plan": "free",\n', b''),
             'an extra field': self._variant(admin=True),
-            'another schema': self._variant(schema=2),
+            'another schema': self._variant(schema=3),
+            'a schema 1 record with settings': self._variant(schema=1),
             'a schema that is not a number': self._variant(schema=True),
             'another kind': self._variant(kind='chart'),
             'a field that is not text': self._variant(language=1),
