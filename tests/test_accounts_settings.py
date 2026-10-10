@@ -325,10 +325,10 @@ class TestSettingsStore(StoreCase):
         assert again is not None
         self.assertIsNone(again.schools.favourable)
         self.assertEqual(again.schools.effective().favourable, 'support')
-        with self.assertRaises(RecordError):
-            self.store.set_schools(self.user.id, {'weights': 'support'})
-        with self.assertRaises(RecordError):
-            self.store.set_schools(self.user.id, {'season': 'modern'})
+        for chosen in ({'weights': 'support'}, {'season': 'modern'}, {'favourable': ''}):
+            with self.subTest(chosen=chosen), self.assertRaises(RecordError):
+                self.store.set_schools(self.user.id, chosen)
+        self.assertEqual(self.store.settings(self.user.id), again)
 
     def test_each_change_is_logged_for_the_backup_and_moves_its_time_on(self) -> None:
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)

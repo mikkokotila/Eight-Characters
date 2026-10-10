@@ -216,9 +216,13 @@ def favourable_for(natal: Natal, schools: Schools) -> Favourable:
 
 
 def _check_range(day: date) -> None:
-    first = day - timedelta(days=RUN_BEFORE)
-    last = day + timedelta(days=RUN_AFTER)
-    if first.year < MIN_SUPPORTED_YEAR or last.year > MAX_SUPPORTED_YEAR:
+    # The years first: a date far outside them has no run to compute.
+    inside = MIN_SUPPORTED_YEAR <= day.year <= MAX_SUPPORTED_YEAR
+    if (
+        not inside
+        or (day - timedelta(days=RUN_BEFORE)).year < MIN_SUPPORTED_YEAR
+        or (day + timedelta(days=RUN_AFTER)).year > MAX_SUPPORTED_YEAR
+    ):
         raise TodayInputError(
             f'Today reads {RUN_BEFORE} days back and {RUN_AFTER} ahead; dates from '
             f'{date(MIN_SUPPORTED_YEAR, 1, 1) + timedelta(days=RUN_BEFORE)} to '

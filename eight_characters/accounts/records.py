@@ -298,18 +298,22 @@ class ChosenSchools:
     transits: TransitSchool | None
 
     def __post_init__(self) -> None:
-        Schools(
-            favourable=self.favourable or DEFAULT_FAVOURABLE,
-            season=self.season or DEFAULT_SEASON,
-            transits=self.transits or DEFAULT_TRANSITS,
-        )
+        # Only None follows the default: anything else must be a school.
+        if self.favourable is not None and not is_favourable_school(self.favourable):
+            raise RecordError(f'Unknown favourable school: {self.favourable!r}.')
+        if self.season is not None and not is_season_school(self.season):
+            raise RecordError(f'Unknown season school: {self.season!r}.')
+        if self.transits is not None and not is_transit_school(self.transits):
+            raise RecordError(f'Unknown transit school: {self.transits!r}.')
 
     def effective(self) -> Schools:
         """The schools Today follows: each chosen one, or the default."""
         return Schools(
-            favourable=self.favourable or DEFAULT_SCHOOLS.favourable,
-            season=self.season or DEFAULT_SCHOOLS.season,
-            transits=self.transits or DEFAULT_SCHOOLS.transits,
+            favourable=DEFAULT_FAVOURABLE
+            if self.favourable is None
+            else self.favourable,
+            season=DEFAULT_SEASON if self.season is None else self.season,
+            transits=DEFAULT_TRANSITS if self.transits is None else self.transits,
         )
 
 
