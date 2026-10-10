@@ -2,6 +2,7 @@
 
 import unittest
 from datetime import date, datetime, timedelta
+from itertools import pairwise
 from typing import Any, ClassVar
 
 from fastapi.testclient import TestClient
@@ -116,7 +117,7 @@ class TestToday(unittest.TestCase):
         for text in (
             '2026-1-1',
             '2026-02-30',
-            '٢٠٢٦-١٠-١١',
+            '\u0662\u0660\u0662\u0666-\u0661\u0660-\u0661\u0661',
             '0001-01-01',
             '9999-12-31',
             '1949-01-07',
@@ -173,7 +174,7 @@ class TestToday(unittest.TestCase):
             self.assertEqual(len(hour['spans']), 1)
             spans.append(hour['spans'][0])
         spans.append(hours[0]['spans'][1])
-        for earlier, later in zip(spans, spans[1:], strict=False):
+        for earlier, later in pairwise(spans):
             self.assertEqual(earlier['end'], later['start'])
         for start, end in ((span['start'], span['end']) for span in spans):
             self.assertLess(datetime.fromisoformat(start), datetime.fromisoformat(end))
