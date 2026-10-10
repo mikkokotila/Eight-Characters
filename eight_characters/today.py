@@ -232,21 +232,27 @@ def _check_range(day: date) -> None:
 
 def _noon(day: date, place: Place) -> PillarsAt:
     """The day's moment: noon on that date at the place (its first pass, should the
-    clocks ever repeat it)."""
-    return pillars_at(
-        BirthInput(
-            year=day.year,
-            month=day.month,
-            day=day.day,
-            hour=12,
-            minute=0,
-            second=0,
-            timezone_name=place.timezone,
-            longitude=place.longitude,
-            latitude=place.latitude,
-            fold=0,
+    clocks ever repeat it). TodayInputError if the clocks skipped it, as Samoa's
+    skipped all of 30 December 2011."""
+    try:
+        return pillars_at(
+            BirthInput(
+                year=day.year,
+                month=day.month,
+                day=day.day,
+                hour=12,
+                minute=0,
+                second=0,
+                timezone_name=place.timezone,
+                longitude=place.longitude,
+                latitude=place.latitude,
+                fold=0,
+            )
         )
-    )
+    except NonexistentTimeError as exc:
+        raise TodayInputError(
+            f'Noon on {day} did not happen in {place.timezone}: the clocks skipped it.'
+        ) from exc
 
 
 def _season_now(at: PillarsAt, schools: Schools) -> Season:
@@ -544,7 +550,12 @@ def _run(
     days: list[RunDay] = []
     for offset in range(-RUN_BEFORE, RUN_AFTER + 1):
         other = day + timedelta(days=offset)
-        at = _noon(other, place)
+        try:
+            at = _noon(other, place)
+        except TodayInputError:
+            # A date the place's clocks skipped has no noon to read: the run leaves
+            # it out (docs/Today.md, The day).
+            continue
         pair = _pair(at.day.pillar.stem_idx, at.day.pillar.branch_idx)
         found = pull(
             pair[0],

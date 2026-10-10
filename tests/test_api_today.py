@@ -132,6 +132,24 @@ class TestToday(unittest.TestCase):
         reply = self.client.get('/api/today', params={'date': DAY, 'lang': 'sv'})
         self.assertEqual(reply.status_code, 400)
 
+    def test_a_day_the_clocks_skipped(self) -> None:
+        # Samoa moved across the date line and skipped 30 December 2011 entirely.
+        apia = {
+            'name': 'Apia, Tuamasaga, Samoa',
+            'timezone': 'Pacific/Apia',
+            'latitude': -13.83333,
+            'longitude': -171.76666,
+        }
+        body = {'lang': 'fi', 'place': apia, 'charts': {'self': OWN}}
+        skipped = self.client.post('/api/today', json={**body, 'date': '2011-12-30'})
+        self.assertEqual(skipped.status_code, 400)
+        after = self.client.post('/api/today', json={**body, 'date': '2011-12-31'})
+        self.assertEqual(after.status_code, 200, after.text)
+        dates = [day['date'] for day in after.json()['run']]
+        self.assertNotIn('2011-12-30', dates)
+        self.assertEqual(len(dates), 21)
+        self.assertIn('2011-12-29', dates)
+
     def test_the_answer_is_the_accounts_own(self) -> None:
         self.assertEqual(self.english_headers['cache-control'], 'private, no-cache')
         self.assertEqual(self.english['policy'], 'today_v1')

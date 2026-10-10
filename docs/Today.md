@@ -233,7 +233,9 @@ The standing, the luck pillar and its phase are those of the same moment. A part
 day is read at the same place.
 
 The run is the seven days before and the fourteen after, each read the same way. A
-date whose run would leave the engine's years (1949 to 2100) is refused.
+date whose run would leave the engine's years (1949 to 2100) is refused, and so is a
+date whose noon the place's clocks skipped; a skipped date in the run is left out (all
+of 30 December 2011 in Samoa, for one).
 
 ## Relationships
 
