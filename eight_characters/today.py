@@ -204,8 +204,11 @@ def favourable_for(natal: Natal, schools: Schools) -> Favourable:
         return support_and_restrain(
             natal.pillars, _birth_season(natal, schools)['standings']
         )
+    longitude = float(natal.payload['intermediate']['solar_longitude_deg'])
+    # A solar month runs 30 degrees from its jie; its middle term is 15 in.
+    second_half = (longitude - 315.0) % 30.0 >= 15.0
     return climate_favourable(
-        climate_stems(natal.day_master, natal.pillars['month'][1])
+        climate_stems(natal.day_master, natal.pillars['month'][1], second_half)
     )
 
 

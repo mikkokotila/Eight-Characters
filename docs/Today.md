@@ -148,11 +148,26 @@ outside reference: their tests hold the code to this table.
 ### Climate (调候 Tiao Hou)
 
 Qiong Tong Bao Jian names, for each Day Master born in each month, the stems that
-month's climate calls for. Its copy is prose, and the table the app keeps from it is
-data: one entry per Day Master and month, with the stems in the text's order of use
-and the sentence each is taken from. Where the text treats months together (正二月,
-五六月), each month takes the shared entry. A stem the text names only as a condition
-or a fallback is left out.
+month's climate calls for. Its copy is prose, Wikisource's 穷通宝鉴 at revision
+2294674 (14 June 2023), and the table the app keeps from it is data
+(`eight_characters/qiong_tong_bao_jian.py`): one entry per Day Master and month, with
+the stems in the text's order of use, the heading they stand under and the sentence
+they are taken from, word for word. `tests/fixtures/qiong_tong_bao_jian_2294674.txt`
+holds the revision, and the tests find every sentence in it. The reduction:
+
+- The text's words of order decide it: 先…后…, …为尊…佐之, …为用…次之, 专用, 耑用.
+- A month's own sentence comes first. Where it states no use, its season's summary
+  (三春…, 总之…) for that month; where neither does, the stems it names in 用…者.
+- Where the text treats months together (正二月, 五六月, 三冬), each takes the shared
+  entry.
+- A stem the text names only under a condition (或…, 若…, 如无…) or as a fallback is
+  left out, and so is a role named without a stem (比劫, 财).
+- Where the text divides a month at its middle term (乙 Yi in 午 Wu and 酉 You, 壬 Ren
+  in 丑 Chou, 癸 Gui in 辰 Chen), a birth after the middle term takes the second
+  half's stems.
+- Where an entry gives two orders (六月壬水), the first is taken.
+
+The weights then follow:
 
 - The first stem's element is useful, and the next stem's of another element
   favourable; if every stem named shares one element, the element that generates it.
