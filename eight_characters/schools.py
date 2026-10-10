@@ -528,12 +528,15 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
     start = ELEMENTS.index(useful)
     cycle: list[ElementName] = [ELEMENTS[(start + step) % 5] for step in range(5)]
     # The text's other elements, the last named first.
-    kept = list(reversed(elements[2:]))
+    kept: list[ElementName] = list(reversed(elements[2:]))
     taken: list[ElementName] = [useful, favourable]
 
     def against(preferred: Sequence[ElementName]) -> ElementName:
-        unnamed = [element for element in preferred if element not in kept]
-        return _first_free([*unnamed, *kept], taken)
+        candidates: list[ElementName] = [
+            element for element in preferred if element not in kept
+        ]
+        candidates.extend(kept)
+        return _first_free(candidates, taken)
 
     unfavourable = against([controller_of(useful), controller_of(favourable), *cycle])
     taken.append(unfavourable)
