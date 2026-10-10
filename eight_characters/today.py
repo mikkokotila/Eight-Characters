@@ -16,7 +16,7 @@ from typing import Any, Final, Literal, cast
 from typing_extensions import TypedDict
 
 from eight_characters import first_chart
-from eight_characters.accounts.records import Birth, Language, Place, Role, Schools
+from eight_characters.accounts.records import Birth, Language, Place, Schools
 from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
 from eight_characters.data import BRANCHES, STEMS, ElementName
@@ -108,6 +108,8 @@ ORGANS: Final[dict[ElementName, str]] = {
 
 Tie = InteractionKind | Literal['repeat']
 Call = Literal['protect', 'mixed', 'avoid']
+# Whose day Today shows: the chart's it is asked for, or the partner's.
+Whose = Literal['self', 'partner']
 
 
 class TodayInputError(ValueError):
@@ -509,7 +511,7 @@ class Health(TypedDict):
 class TodayAnswer(TypedDict):
     policy: Literal['today_v1']
     date: str
-    chart: Role
+    chart: Whose
     language: Language
     place: dict[str, Any]
     schools: dict[str, str]
@@ -734,7 +736,7 @@ def build_today(
     other: Birth | None,
     schools: Schools,
     language: Language,
-    chart: Role = 'self',
+    chart: Whose = 'self',
 ) -> TodayAnswer:
     """Everything Today shows for a date at a place: for `subject`'s chart, with
     `other`'s as the partner's (docs/Today.md)."""

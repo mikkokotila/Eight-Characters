@@ -1,4 +1,4 @@
-"""GET /api/today, POST /api/today and GET /api/schools (docs/Today.md)."""
+"""POST /api/today and GET /api/schools (docs/Today.md)."""
 
 import re
 import unittest
@@ -28,8 +28,8 @@ LISBON = {
     'latitude': 38.71667,
     'longitude': -9.13333,
 }
-# Made-up births, of nobody.
-OWN = {'date': '1990-05-17', 'time': '08:30', 'place': HELSINKI, 'gender': 'female'}
+# Made-up births, of nobody: the chart the page is on, and a partner's.
+CHART = {'date': '1990-05-17', 'time': '08:30', 'place': HELSINKI, 'gender': 'female'}
 PARTNER = {
     'name': 'Partner',
     'date': '1988-11-02',
@@ -38,6 +38,13 @@ PARTNER = {
     'gender': 'male',
 }
 DAY = '2026-10-11'
+# What the page sends for the chart it is on, with what the account keeps for Today.
+BODY: dict[str, Any] = {
+    'date': DAY,
+    'lang': 'en',
+    'place': HELSINKI,
+    'charts': {'self': CHART, 'partner': PARTNER},
+}
 
 
 def _keys(value: Any) -> set[str]:
@@ -78,15 +85,7 @@ class TestToday(unittest.TestCase):
         user = cls.accounts.store.user_by_email('today@example.com')
         assert user is not None
         cls.key = account_key(user)
-        for path, body in (
-            ('/api/account/charts/self', OWN),
-            ('/api/account/charts/partner', PARTNER),
-            ('/api/account/place', {'place': HELSINKI}),
-        ):
-            reply = cls.client.put(path, json={**body, 'key': cls.key})
-            if reply.status_code != 200:
-                raise AssertionError(f'{path}: {reply.text}')
-        reply = cls.client.get('/api/today', params={'date': DAY, 'lang': 'en'})
+        reply = cls.client.post('/api/today', json=BODY)
         if reply.status_code != 200:
             raise AssertionError(reply.text)
         cls.english = reply.json()
@@ -100,21 +99,50 @@ class TestToday(unittest.TestCase):
             ['favourable', 'season', 'transits'],
         )
 
-    def test_today_needs_a_chart_and_a_place(self) -> None:
-        client = site_client()
-        sign_in(client, self.accounts, 'nothing-yet@example.com')
-        user = self.accounts.store.user_by_email('nothing-yet@example.com')
-        assert user is not None
-        key = account_key(user)
-        asked = {'date': DAY, 'lang': 'en'}
-        self.assertEqual(client.get('/api/today', params=asked).status_code, 404)
-        client.put('/api/account/charts/self', json={**OWN, 'key': key})
-        reply = client.get('/api/today', params=asked)
-        self.assertEqual(reply.status_code, 404)
-        self.assertEqual(reply.json()['detail'], 'Where you are is not set.')
-        client.put('/api/account/place', json={'place': LISBON, 'key': key})
-        partner = client.get('/api/today', params={**asked, 'chart': 'partner'})
-        self.assertEqual(partner.status_code, 404)
+    def test_today_needs_the_chart_and_a_place(self) -> None:
+        for refused in (
+            {key: value for key, value in BODY.items() if key != 'charts'},
+            {key: value for key, value in BODY.items() if key != 'place'},
+            {**BODY, 'charts': {'partner': PARTNER}},
+            {**BODY, 'charts': {'self': CHART}, 'chart': 'partner'},
+        ):
+            with self.subTest(refused=refused):
+                reply = self.client.post('/api/today', json=refused)
+                self.assertEqual(reply.status_code, 400, reply.text)
+
+    def test_what_the_account_keeps_is_what_the_page_sends(self) -> None:
+        # The page reads the partner's chart, the place and the schools from the
+        # settings and sends them with the chart it is on.
+        for path, body in (
+            ('/api/account/partner', PARTNER),
+            ('/api/account/place', {'place': LISBON}),
+        ):
+            kept = self.client.put(path, json={**body, 'key': self.key})
+            self.assertEqual(kept.status_code, 200, kept.text)
+        chosen = self.client.patch(
+            '/api/account/schools', json={'key': self.key, 'transits': 'whole'}
+        )
+        settings = chosen.json()
+        partner = {
+            key: value
+            for key, value in settings['partner'].items()
+            if key not in ('pillars', 'problem')
+        }
+        reply = self.client.post(
+            '/api/today',
+            json={
+                'date': DAY,
+                'lang': 'en',
+                'place': settings['place'],
+                'charts': {'self': CHART, 'partner': partner},
+                'schools': settings['chosen'],
+            },
+        )
+        self.assertEqual(reply.status_code, 200, reply.text)
+        answer = reply.json()
+        self.assertEqual(answer['place']['name'], LISBON['name'])
+        self.assertEqual(answer['schools'], settings['schools'])
+        self.assertIsNotNone(answer['marriage'])
 
     def test_a_date_is_refused_unless_the_run_fits_the_engines_years(self) -> None:
         for text in (
@@ -127,11 +155,9 @@ class TestToday(unittest.TestCase):
             '2100-12-18',
         ):
             with self.subTest(date=text):
-                reply = self.client.get(
-                    '/api/today', params={'date': text, 'lang': 'en'}
-                )
+                reply = self.client.post('/api/today', json={**BODY, 'date': text})
                 self.assertEqual(reply.status_code, 400, reply.text)
-        reply = self.client.get('/api/today', params={'date': DAY, 'lang': 'sv'})
+        reply = self.client.post('/api/today', json={**BODY, 'lang': 'sv'})
         self.assertEqual(reply.status_code, 400)
 
     def test_every_combination_of_schools(self) -> None:
@@ -147,7 +173,7 @@ class TestToday(unittest.TestCase):
                                 'date': DAY,
                                 'lang': 'en',
                                 'place': HELSINKI,
-                                'charts': {'self': OWN, 'partner': PARTNER},
+                                'charts': {'self': CHART, 'partner': PARTNER},
                                 'schools': {
                                     'favourable': favourable,
                                     'season': season,
@@ -183,7 +209,7 @@ class TestToday(unittest.TestCase):
             'latitude': -13.83333,
             'longitude': -171.76666,
         }
-        body = {'lang': 'fi', 'place': apia, 'charts': {'self': OWN}}
+        body = {'lang': 'fi', 'place': apia, 'charts': {'self': CHART}}
         skipped = self.client.post('/api/today', json={**body, 'date': '2011-12-30'})
         self.assertEqual(skipped.status_code, 400)
         after = self.client.post('/api/today', json={**body, 'date': '2011-12-31'})
@@ -273,9 +299,7 @@ class TestToday(unittest.TestCase):
         lines = [r['line'] for r in _relationships(self.english)]
         self.assertTrue(lines)
         self.assertTrue(all(isinstance(line, str) and line for line in lines))
-        finnish = self.client.get(
-            '/api/today', params={'date': DAY, 'lang': 'fi'}
-        ).json()
+        finnish = self.client.post('/api/today', json={**BODY, 'lang': 'fi'}).json()
         self.assertIsNone(finnish['readings'])
         self.assertTrue(all(r['line'] is None for r in _relationships(finnish)))
         self.assertEqual(
@@ -310,8 +334,8 @@ class TestToday(unittest.TestCase):
         self.assertTrue(
             all(isinstance(r['line'], str) for r in marriage['partner_chart'])
         )
-        as_partner = self.client.get(
-            '/api/today', params={'date': DAY, 'lang': 'en', 'chart': 'partner'}
+        as_partner = self.client.post(
+            '/api/today', json={**BODY, 'chart': 'partner'}
         ).json()
         self.assertEqual(as_partner['chart'], 'partner')
         self.assertEqual(
@@ -323,7 +347,7 @@ class TestToday(unittest.TestCase):
             'date': DAY,
             'lang': 'en',
             'place': LISBON,
-            'charts': {'self': OWN},
+            'charts': {'self': CHART},
             'schools': {
                 'favourable': 'climate',
                 'season': 'commander',
@@ -342,13 +366,13 @@ class TestToday(unittest.TestCase):
         self.assertIsNotNone(answer['season']['commander'])
         self.assertIsNone(answer['marriage'])
         for refused in (
-            {**body, 'charts': {'self': OWN}, 'chart': 'partner'},
-            {**body, 'charts': {'self': {**OWN, 'zi': 'midnight'}}},
-            {**body, 'charts': {'self': OWN}, 'weights': {'wood': 1.2}},
+            {**body, 'charts': {'self': CHART}, 'chart': 'partner'},
+            {**body, 'charts': {'self': {**CHART, 'zi': 'midnight'}}},
+            {**body, 'charts': {'self': CHART}, 'weights': {'wood': 1.2}},
             {**body, 'schools': {'favourable': 'structure'}},
             {
                 **body,
-                'charts': {'self': {**OWN, 'time': '03:30', 'date': '2021-03-28'}},
+                'charts': {'self': {**CHART, 'time': '03:30', 'date': '2021-03-28'}},
             },
         ):
             with self.subTest(refused=refused):
@@ -440,7 +464,7 @@ class TestAgainstTheBriefingsFormula(unittest.TestCase):
                     'date': center.isoformat(),
                     'lang': 'fi',
                     'place': HELSINKI,
-                    'charts': {'self': OWN},
+                    'charts': {'self': CHART},
                     'schools': {'season': 'months'},
                 },
             ).json()

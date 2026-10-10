@@ -9,8 +9,8 @@
 ## Accounts
 
 Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
-`POST /api/hidden_stems`, `POST /api/evolution_explorer`, `GET /api/today` and
-`POST /api/today` answer `401` (`{"detail": "Sign in to continue."}`) without one,
+`POST /api/hidden_stems`, `POST /api/evolution_explorer` and `POST /api/today`
+answer `401` (`{"detail": "Sign in to continue."}`) without one,
 before the request is validated. The first chart, `POST /api/first_chart`, is for
 someone without one, a limited number an hour per client. The place search,
 `GET /api/evolution_controls` and `GET /api/schools` need none.
@@ -579,18 +579,25 @@ presets. A preset has an `id`, its `name` and `summary` in Finnish and English (
 `sources`, and whether it is the `default`. `finnish_provisional` is `true` while the
 Finnish wording awaits confirmation.
 
-### `GET /api/today`
+### `POST /api/today`
 
-Everything Today shows for a date, from the signed-in account's charts, place and
-schools (`GET /api/account/settings`). Query: `date` (`YYYY-MM-DD`, a date at where
-you are), `lang` (`fi` or `en`), `chart` (`self`, the default, or `partner`: the
-partner's chart is read, with yours as the partner's). Sent with `Cache-Control:
-private, no-cache`.
+Everything Today shows for a date, for the chart the page is on. The body:
 
-- `404` when no chart of yours is saved, `chart=partner` and no partner's is, or where
-  you are is not set.
+- `date` (`YYYY-MM-DD`, a date at where you are) and `lang` (`fi` or `en`);
+- `charts`: `self`, the chart the page is on, and optionally `partner`, each a birth
+  as `PUT /api/account/partner` takes one, without `key`;
+- `place`, where you are (`{name, city, timezone, latitude, longitude}`);
+- `chart`: `self`, the default, or `partner`, to read the partner's chart with the
+  other as the partner's;
+- `schools`: any of the three presets; the others follow their defaults.
+
+The page sends the partner's chart, the place and the schools the account keeps
+(`GET /api/account/settings`), with the chart it is on. The answer is sent with
+`Cache-Control: private, no-cache`.
+
 - `400` for a malformed date, or one whose run (7 days back, 14 ahead) leaves the
-  engine's years.
+  engine's years; an unknown field or preset; `chart` `partner` without a partner's
+  chart; or a birth that cannot be charted.
 
 The answer, by [Today: the rules](Today.md):
 
@@ -621,15 +628,6 @@ The answer, by [Today: the rules](Today.md):
   in the canon's words;
 - `readings`: the canon's passages for each pillar, as the decade page's; `null` in
   Finnish.
-
-### `POST /api/today`
-
-The same answer for what the body sends: `date`, `lang`, `place` (`{name, city,
-timezone, latitude, longitude}`), `charts` (`self`, and optionally `partner`, each a birth as
-`PUT /api/account/charts/self` takes one, without `key`), `chart` (`self` or
-`partner`) and `schools` (any of the three presets; the others follow their
-defaults). An unknown field, an unknown preset or a birth that cannot be charted is
-`400`.
 
 ### `GET /api/evolution_controls`
 

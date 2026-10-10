@@ -1,6 +1,7 @@
-"""The settings for Today an account keeps: its own chart, a partner's, where the
-person is, and the schools chosen. Their record, their database, their backup and
-the API that sets them."""
+"""The settings for Today an account keeps: a partner's chart, where the person is,
+and the schools chosen. Their record, their database, their backup and the API that
+sets them. Today is about the chart the page is on, so there is no chart of one's
+own to keep."""
 
 import json
 import shutil
@@ -62,7 +63,7 @@ LISBON = Place(
     longitude=-9.13333,
 )
 # Made-up births, of nobody.
-OWN = Birth(
+BIRTH = Birth(
     name=None,
     date='1990-05-17',
     time='08:30',
@@ -81,7 +82,6 @@ PARTNER = Birth(
     zi='whole_zi_23',
 )
 SETTINGS = Settings(
-    own=OWN,
     partner=PARTNER,
     place=LISBON,
     schools=ChosenSchools(favourable='climate', season='commander', transits=None),
@@ -156,7 +156,7 @@ class TestSettingsRecords(unittest.TestCase):
             {'zi': 'zi_at_midnight'},
         ):
             with self.subTest(changes=changes), self.assertRaises(RecordError):
-                replace(OWN, **changes)
+                replace(BIRTH, **changes)
         for changes in (
             {'favourable': 'structure'},
             {'season': 'seasons'},
@@ -182,12 +182,9 @@ class TestSettingsRecords(unittest.TestCase):
 
     def test_canonical_bytes(self) -> None:
         self.assertEqual(
-            encode_settings(replace(SETTINGS, partner=None, own=None)),
+            encode_settings(replace(SETTINGS, partner=None)),
             b'{\n'
-            b'  "charts": {\n'
-            b'    "partner": null,\n'
-            b'    "self": null\n'
-            b'  },\n'
+            b'  "partner": null,\n'
             b'  "place": {\n'
             b'    "city": "Lisbon",\n'
             b'    "latitude": 38.71667,\n'
@@ -207,8 +204,8 @@ class TestSettingsRecords(unittest.TestCase):
     def test_round_trip(self) -> None:
         for settings in (
             SETTINGS,
-            replace(SETTINGS, own=None, partner=None, place=None),
-            replace(SETTINGS, own=replace(OWN, fold=1, name='Äiti')),
+            replace(SETTINGS, partner=None, place=None),
+            replace(SETTINGS, partner=replace(BIRTH, fold=1, name='Äiti')),
         ):
             with self.subTest(settings=settings):
                 self.assertEqual(decode_settings(encode_settings(settings)), settings)
@@ -224,8 +221,10 @@ class TestSettingsRecords(unittest.TestCase):
             'not JSON': b'{',
             'not an object': b'[]\n',
             'an extra field': self._variant(lambda v: v.update(admin=True)),
-            'a missing chart': self._variant(lambda v: v['charts'].pop('partner')),
-            'an extra chart': self._variant(lambda v: v['charts'].update(mother=None)),
+            'a missing partner': self._variant(lambda v: v.pop('partner')),
+            'a chart of ones own': self._variant(
+                lambda v: v.update(charts={'self': None, 'partner': None})
+            ),
             'a coordinate as a whole number': self._variant(
                 lambda v: v['place'].update(latitude=38)
             ),
@@ -233,16 +232,16 @@ class TestSettingsRecords(unittest.TestCase):
                 lambda v: v['place'].update(latitude='38.7')
             ),
             'a name that is not text': self._variant(
-                lambda v: v['charts']['self'].update(name=1)
+                lambda v: v['partner'].update(name=1)
             ),
             'an unknown school': self._variant(
                 lambda v: v['schools'].update(season='modern')
             ),
             'a fold of true': self._variant(
-                lambda v: v['charts']['self'].update(fold=True)
+                lambda v: v['partner'].update(fold=True)
             ),
             'a place that is not an object': self._variant(
-                lambda v: v['charts']['self'].update(place=[])
+                lambda v: v['partner'].update(place=[])
             ),
             'a time zone that is not text': self._variant(
                 lambda v: v['place'].update(timezone=[])
@@ -297,16 +296,14 @@ class TestSettingsStore(StoreCase):
         self.assertIsNone(self.store.account_data(self.user.id)['settings'])
 
     def test_each_setting_is_kept(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
-        self.store.put_chart(self.user.id, 'partner', PARTNER)
+        self.store.put_partner(self.user.id, PARTNER)
         self.store.put_place(self.user.id, LISBON)
         kept = self.store.set_schools(self.user.id, {'season': 'months'})
         expected = Settings(
-            own=OWN,
             partner=PARTNER,
             place=LISBON,
             schools=replace(NO_CHOICE, season='months'),
-            updated_at='2026-10-07T12:00:03Z',
+            updated_at='2026-10-07T12:00:02Z',
         )
         self.assertEqual(kept, expected)
         self.assertEqual(self.store.settings(self.user.id), expected)
@@ -341,7 +338,7 @@ class TestSettingsStore(StoreCase):
 
     def test_each_change_is_logged_for_the_backup_and_moves_its_time_on(self) -> None:
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
-        first = self.store.put_chart(self.user.id, 'self', OWN)
+        first = self.store.put_partner(self.user.id, BIRTH)
         second = self.store.put_place(self.user.id, HELSINKI)
         assert first is not None and second is not None
         # Within one second, or with the clock gone back, a change still comes later.
@@ -353,31 +350,39 @@ class TestSettingsStore(StoreCase):
         self.assertEqual(snapshot.changes[0].settings, second)
 
     def test_a_change_that_changes_nothing_writes_nothing(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_partner(self.user.id, BIRTH)
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
         self.clock.advance(60)
-        kept = self.store.put_chart(self.user.id, 'self', OWN)
+        kept = self.store.put_partner(self.user.id, BIRTH)
         assert kept is not None
         self.assertEqual(kept.updated_at, '2026-10-07T12:00:00Z')
         self.assertEqual(self.store.backup_snapshot().changes, ())
-        # An account that keeps no settings keeps none after removing no partner, or
-        # choosing the default schools.
+        # An account that keeps no settings keeps none after removing no partner and
+        # no place, or choosing the default schools.
         other = self.store.create_user('other@example.com', 'en')
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
-        self.assertIsNone(self.store.delete_chart(other.id, 'partner'))
+        self.assertIsNone(self.store.delete_partner(other.id))
+        self.assertIsNone(self.store.delete_place(other.id))
         self.assertIsNone(self.store.set_schools(other.id, {'favourable': None}))
         self.assertIsNone(self.store.settings(other.id))
         self.assertEqual(self.store.backup_snapshot().changes, ())
 
     def test_a_partner_is_removed(self) -> None:
-        self.store.put_chart(self.user.id, 'partner', PARTNER)
-        kept = self.store.delete_chart(self.user.id, 'partner')
+        self.store.put_partner(self.user.id, PARTNER)
+        kept = self.store.delete_partner(self.user.id)
         assert kept is not None
         self.assertIsNone(kept.partner)
         self.assertEqual(self.store.settings(self.user.id), kept)
 
+    def test_the_place_is_forgotten(self) -> None:
+        self.store.put_place(self.user.id, HELSINKI)
+        kept = self.store.delete_place(self.user.id)
+        assert kept is not None
+        self.assertIsNone(kept.place)
+        self.assertEqual(self.store.settings(self.user.id), kept)
+
     def test_settings_go_with_the_account(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_partner(self.user.id, BIRTH)
         self.store.delete_user(self.user.id)
         connection = sqlite3.connect(self.path)
         try:
@@ -389,7 +394,7 @@ class TestSettingsStore(StoreCase):
             self.store.put_place(self.user.id, HELSINKI)
 
     def test_a_restore_holds_each_account_with_its_settings(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_partner(self.user.id, BIRTH)
         other = self.store.create_user('other@example.com', 'en')
         settings = self.store.settings(self.user.id)
         target = self.directory / 'restored.sqlite3'
@@ -411,14 +416,14 @@ class TestSettingsStore(StoreCase):
         kept = store.user_by_email('kept@example.com')
         assert kept is not None
         self.assertIsNone(store.settings(kept.id))
-        self.assertIsNotNone(store.put_chart(kept.id, 'self', OWN))
+        self.assertIsNotNone(store.put_partner(kept.id, BIRTH))
 
     def test_a_corrupt_settings_row_stops_the_store(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_partner(self.user.id, BIRTH)
         connection = sqlite3.connect(self.path)
         try:
             connection.execute(
-                'UPDATE settings SET record = ?', (b'{"charts": null}\n',)
+                'UPDATE settings SET record = ?', (b'{"partner": null}\n',)
             )
             connection.commit()
         finally:
@@ -439,21 +444,21 @@ class TestSettingsBackup(StoreCase):
         return pyrage.decrypt(path.read_bytes(), [self.identity])
 
     def test_the_backup_keeps_the_settings_in_the_account_record(self) -> None:
-        settings = self.store.put_chart(self.user.id, 'self', OWN)
+        settings = self.store.put_partner(self.user.id, BIRTH)
         run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(self._record(self.user.id), encode_user(self.user, settings))
-        changed = self.store.put_chart(self.user.id, 'partner', PARTNER)
+        changed = self.store.put_partner(self.user.id, PARTNER)
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(result.written, 1)
         self.assertEqual(decode_user(self._record(self.user.id)), (self.user, changed))
 
     def test_a_restore_brings_the_settings_back(self) -> None:
-        self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_partner(self.user.id, BIRTH)
         run_backup(self.store, self.checkout, self.recipient)
         # A change to the settings alone, after a backup, reaches the next one.
         self.store.put_place(self.user.id, LISBON)
         self.store.set_schools(self.user.id, {'season': 'commander'})
-        settings = self.store.put_chart(self.user.id, 'partner', PARTNER)
+        settings = self.store.put_partner(self.user.id, PARTNER)
         result = run_backup(self.store, self.checkout, self.recipient)
         self.assertEqual(result.written, 1)
         target = self.directory / 'restored.sqlite3'
@@ -506,16 +511,17 @@ class TestSettingsApi(unittest.TestCase):
         signed_out = site_client()
         self.assertEqual(signed_out.get('/api/account/settings').status_code, 401)
         for method, path, body in (
-            ('PUT', '/api/account/charts/self', _birth_json(OWN, self.key)),
-            ('DELETE', '/api/account/charts/partner', {'key': self.key}),
+            ('PUT', '/api/account/partner', _birth_json(PARTNER, self.key)),
+            ('DELETE', '/api/account/partner', {'key': self.key}),
             (
                 'PUT',
                 '/api/account/place',
                 {'key': self.key, 'place': _place_json(HELSINKI)},
             ),
+            ('DELETE', '/api/account/place', {'key': self.key}),
             ('PATCH', '/api/account/schools', {'key': self.key}),
         ):
-            with self.subTest(path=path):
+            with self.subTest(method=method, path=path):
                 reply = signed_out.request(method, path, json=body)
                 self.assertEqual(reply.status_code, 401)
 
@@ -525,7 +531,7 @@ class TestSettingsApi(unittest.TestCase):
         self.assertEqual(
             reply.json(),
             {
-                'charts': {'self': None, 'partner': None},
+                'partner': None,
                 'place': None,
                 'schools': {
                     'favourable': 'support',
@@ -540,14 +546,14 @@ class TestSettingsApi(unittest.TestCase):
 
     def test_a_saved_chart_has_the_pillars_of_the_four_pillars(self) -> None:
         # 00:47 in Helsinki on 18 May 1990 is about 23:30 true solar time on the 17th.
-        late = replace(OWN, date='1990-05-18', time='00:47', zi='whole_zi_23')
-        for role, birth in (('self', OWN), ('partner', PARTNER), ('self', late)):
-            with self.subTest(role=role):
+        late = replace(BIRTH, date='1990-05-18', time='00:47', zi='whole_zi_23')
+        for birth in (BIRTH, PARTNER, late):
+            with self.subTest(birth=birth):
                 reply = self.client.put(
-                    f'/api/account/charts/{role}', json=_birth_json(birth, self.key)
+                    '/api/account/partner', json=_birth_json(birth, self.key)
                 )
                 self.assertEqual(reply.status_code, 200)
-                chart = reply.json()['charts'][role]
+                chart = reply.json()['partner']
                 place = birth.place
                 four = self.client.post(
                     '/api/four_pillars',
@@ -579,16 +585,16 @@ class TestSettingsApi(unittest.TestCase):
                 self.assertEqual(chart['place']['name'], place.name)
         # The Zi-hour convention moves a birth late in the evening to the next day.
         split = self.client.put(
-            '/api/account/charts/self',
+            '/api/account/partner',
             json=_birth_json(replace(late, zi='split_midnight'), self.key),
-        ).json()['charts']['self']['pillars']['day']
+        ).json()['partner']['pillars']['day']
         whole = self.client.put(
-            '/api/account/charts/self', json=_birth_json(late, self.key)
-        ).json()['charts']['self']['pillars']['day']
+            '/api/account/partner', json=_birth_json(late, self.key)
+        ).json()['partner']['pillars']['day']
         self.assertNotEqual(split, whole)
 
     def test_a_birth_is_checked_by_the_first_charts_rules(self) -> None:
-        body = _birth_json(OWN, self.key)
+        body = _birth_json(BIRTH, self.key)
         cases: dict[str, dict[str, Any]] = {
             'no time': {k: v for k, v in body.items() if k != 'time'},
             'a time in another form': {**body, 'time': '8.30'},
@@ -621,36 +627,51 @@ class TestSettingsApi(unittest.TestCase):
         }
         for name, case in cases.items():
             with self.subTest(name):
-                reply = self.client.put('/api/account/charts/self', json=case)
+                reply = self.client.put('/api/account/partner', json=case)
                 self.assertEqual(reply.status_code, 400, reply.text)
         self.assertIsNone(self.accounts.store.settings(self.user.id))
         repeated = {**body, 'date': '2021-10-31', 'time': '03:30', 'fold': 1}
-        reply = self.client.put('/api/account/charts/self', json=repeated)
+        reply = self.client.put('/api/account/partner', json=repeated)
         self.assertEqual(reply.status_code, 200, reply.text)
-        self.assertEqual(reply.json()['charts']['self']['fold'], 1)
+        self.assertEqual(reply.json()['partner']['fold'], 1)
 
     def test_a_saved_chart_that_no_longer_computes_shows_why(self) -> None:
         # As a time zone update can leave a saved time one the clocks skipped: the
         # settings still answer, and say what is wrong with that chart.
-        skipped = replace(OWN, date='2021-03-28', time='03:30')
-        self.accounts.store.put_chart(self.user.id, 'self', skipped)
+        skipped = replace(BIRTH, date='2021-03-28', time='03:30')
+        self.accounts.store.put_partner(self.user.id, skipped)
         reply = self.client.get('/api/account/settings')
         self.assertEqual(reply.status_code, 200)
-        chart = reply.json()['charts']['self']
+        chart = reply.json()['partner']
         self.assertIsNone(chart['pillars'])
         self.assertIn('skipped', chart['problem'])
 
-    def test_an_unknown_role_is_refused(self) -> None:
-        reply = self.client.put(
-            '/api/account/charts/mother', json=_birth_json(OWN, self.key)
+    def test_there_is_no_chart_of_ones_own_to_keep(self) -> None:
+        # Today is about the chart the page is on.
+        for path in ('/api/account/charts/self', '/api/account/self'):
+            with self.subTest(path=path):
+                reply = self.client.put(path, json=_birth_json(BIRTH, self.key))
+                self.assertEqual(reply.status_code, 404)
+        self.assertIsNone(self.accounts.store.settings(self.user.id))
+
+    def test_where_you_are_is_kept_and_forgotten(self) -> None:
+        kept = self.client.put(
+            '/api/account/place', json={'key': self.key, 'place': _place_json(LISBON)}
         )
-        self.assertEqual(reply.status_code, 400)
+        self.assertEqual(kept.status_code, 200)
+        self.assertEqual(kept.json()['place'], _place_json(LISBON))
+        forgotten = self.client.request(
+            'DELETE', '/api/account/place', json={'key': self.key}
+        )
+        self.assertEqual(forgotten.status_code, 200)
+        self.assertIsNone(forgotten.json()['place'])
+        self.assertIsNone(self.client.get('/api/account/settings').json()['place'])
 
     def test_writes_come_from_the_site_and_name_the_account(self) -> None:
         writes: list[tuple[str, str, dict[str, Any]]] = [
-            ('PUT', '/api/account/charts/self', _birth_json(OWN, self.key)),
-            ('PUT', '/api/account/charts/partner', _birth_json(PARTNER, self.key)),
-            ('DELETE', '/api/account/charts/partner', {'key': self.key}),
+            ('PUT', '/api/account/partner', _birth_json(PARTNER, self.key)),
+            ('DELETE', '/api/account/partner', {'key': self.key}),
+            ('DELETE', '/api/account/place', {'key': self.key}),
             (
                 'PUT',
                 '/api/account/place',
@@ -682,8 +703,7 @@ class TestSettingsApi(unittest.TestCase):
                 reply = self.client.request(method, path, json=body)
                 self.assertEqual(reply.status_code, 200, reply.text)
         settings = self.client.get('/api/account/settings').json()
-        self.assertIsNotNone(settings['charts']['self'])
-        self.assertIsNone(settings['charts']['partner'])
+        self.assertIsNone(settings['partner'])
         self.assertEqual(settings['place'], _place_json(HELSINKI))
         self.assertEqual(settings['schools']['season'], 'months')
 
@@ -719,7 +739,7 @@ class TestSettingsApi(unittest.TestCase):
                 self.assertEqual(refused.status_code, 400)
 
     def test_settings_survive_signing_out_and_go_with_the_account(self) -> None:
-        self.client.put('/api/account/charts/self', json=_birth_json(OWN, self.key))
+        self.client.put('/api/account/partner', json=_birth_json(BIRTH, self.key))
         self.client.put(
             '/api/account/place',
             json={'key': self.key, 'place': _place_json(LISBON)},
@@ -751,7 +771,7 @@ class TestSettingsApi(unittest.TestCase):
             '/api/account/export', json={'key': self.key}
         ).json()
         self.assertEqual(exported['settings']['place'], _place_json(LISBON))
-        self.assertEqual(exported['settings']['charts']['self']['date'], OWN.date)
+        self.assertEqual(exported['settings']['partner']['date'], BIRTH.date)
         deleted = sign_in_again.request(
             'DELETE', '/api/account', json={'key': self.key, 'email': email}
         )

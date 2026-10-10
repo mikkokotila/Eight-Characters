@@ -4,8 +4,8 @@ A record is written as canonical JSON: UTF-8, keys sorted, two-space indents and
 final newline. The same record therefore always gives the same bytes, and a file that
 decodes to a record must be exactly those bytes.
 
-An account's record holds the account and its settings for Today: its own chart, a
-partner's, where the person is, and the schools chosen.
+An account's record holds the account and its settings for Today: a partner's chart,
+where the person is, and the schools chosen.
 """
 
 import json
@@ -33,13 +33,10 @@ from eight_characters.time_convert import Gender, load_timezone
 Language = Literal['fi', 'en']
 Plan = Literal['free', 'basic', 'pro', 'max']
 RecordKind = Literal['user']
-# Whose chart: the account holder's own, or their partner's.
-Role = Literal['self', 'partner']
 ZiConvention = Literal['split_midnight', 'whole_zi_23']
 
 LANGUAGES: Final[tuple[Language, ...]] = ('fi', 'en')
 PLANS: Final[tuple[Plan, ...]] = ('free', 'basic', 'pro', 'max')
-ROLES: Final[tuple[Role, ...]] = ('self', 'partner')
 GENDERS: Final[tuple[Gender, ...]] = ('male', 'female')
 # The engine's Zi-hour conventions (conventions.ALLOWED_ZI_CONVENTIONS).
 ZI_CONVENTIONS: Final[tuple[ZiConvention, ...]] = ('split_midnight', 'whole_zi_23')
@@ -71,8 +68,7 @@ _USER_FIELDS: Final = frozenset(
     }
 )
 _FIELDS_BY_SCHEMA: Final = {1: _USER_FIELDS, 2: _USER_FIELDS | {'settings'}}
-_SETTINGS_FIELDS: Final = frozenset({'charts', 'place', 'schools', 'updated_at'})
-_CHARTS_FIELDS: Final = frozenset(ROLES)
+_SETTINGS_FIELDS: Final = frozenset({'partner', 'place', 'schools', 'updated_at'})
 _BIRTH_FIELDS: Final = frozenset(
     {'date', 'fold', 'gender', 'name', 'place', 'time', 'zi'}
 )
@@ -128,10 +124,6 @@ def is_language(value: str) -> TypeGuard[Language]:
 
 def is_plan(value: str) -> TypeGuard[Plan]:
     return value in PLANS
-
-
-def is_role(value: str) -> TypeGuard[Role]:
-    return value in ROLES
 
 
 def is_gender(value: str) -> TypeGuard[Gender]:
@@ -325,10 +317,10 @@ NO_CHOICE: Final = ChosenSchools(favourable=None, season=None, transits=None)
 
 @dataclass(frozen=True)
 class Settings:
-    """What an account keeps for Today: its own chart, a partner's, where the person
-    is, and the schools chosen. An account that has set nothing has none."""
+    """What an account keeps for Today: a partner's chart, where the person is, and
+    the schools chosen. An account that has set nothing has none. Today is about the
+    chart the page is on, so the account keeps no chart of its own."""
 
-    own: Birth | None
     partner: Birth | None
     place: Place | None
     schools: ChosenSchools
@@ -336,9 +328,6 @@ class Settings:
 
     def __post_init__(self) -> None:
         _check_timestamp('updated_at', self.updated_at)
-
-    def chart(self, role: Role) -> Birth | None:
-        return self.own if role == 'self' else self.partner
 
 
 def canonical_json(value: dict[str, Any]) -> bytes:
@@ -372,10 +361,7 @@ def settings_value(settings: Settings) -> dict[str, Any]:
     """The settings as their records write them, and as the API and the export show
     them."""
     return {
-        'charts': {
-            role: None if birth is None else _birth_value(birth)
-            for role, birth in (('partner', settings.partner), ('self', settings.own))
-        },
+        'partner': None if settings.partner is None else _birth_value(settings.partner),
         'place': None if settings.place is None else place_value(settings.place),
         'schools': {
             'favourable': settings.schools.favourable,
@@ -461,7 +447,6 @@ def _birth_from(value: object, what: str) -> Birth:
 def settings_from(value: object) -> Settings:
     """The settings a record's JSON value holds, every part checked."""
     record = _fields(value, 'The settings', _SETTINGS_FIELDS)
-    charts = _fields(record['charts'], 'The charts', _CHARTS_FIELDS)
     schools = _fields(record['schools'], 'The schools', _SCHOOLS_FIELDS)
     favourable = _optional_text(schools, 'favourable', 'The schools')
     season = _optional_text(schools, 'season', 'The schools')
@@ -472,11 +457,9 @@ def settings_from(value: object) -> Settings:
         raise RecordError(f'Unknown season school: {season!r}.')
     if transits is not None and not is_transit_school(transits):
         raise RecordError(f'Unknown transit school: {transits!r}.')
-    own: object = charts['self']
-    partner: object = charts['partner']
+    partner: object = record['partner']
     place: object = record['place']
     return Settings(
-        own=None if own is None else _birth_from(own, 'Your chart'),
         partner=None if partner is None else _birth_from(partner, "A partner's chart"),
         place=None if place is None else _place_from(place, 'Where you are'),
         schools=ChosenSchools(favourable=favourable, season=season, transits=transits),

@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Literal, cast
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
+from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -21,7 +21,6 @@ from eight_characters import __version__
 from eight_characters.accounts.records import (
     ChosenSchools,
     RecordError,
-    Role,
     Schools,
 )
 from eight_characters.accounts.web import (
@@ -108,7 +107,7 @@ from eight_characters.time_convert import (
     Gender,
     NonexistentTimeError,
 )
-from eight_characters.today import TodayAnswer, TodayInputError, build_today
+from eight_characters.today import TodayAnswer, TodayInputError, Whose, build_today
 from eight_characters.vsop87d import earth_series
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -317,14 +316,16 @@ class TodayCharts(BaseModel):
 
 
 class TodayRequest(BaseModel):
-    # Everything GET /api/today takes from the account's settings, sent instead.
+    # The chart the page is on, as `self`, and what the account keeps for Today
+    # (GET /api/account/settings): a partner's chart, where the person is, and the
+    # schools chosen.
     model_config = ConfigDict(extra='forbid', strict=True)
 
     date: str
     lang: Literal['fi', 'en']
     place: PlaceRequest
     charts: TodayCharts
-    chart: Role = 'self'
+    chart: Whose = 'self'
     schools: SchoolsChoice = Field(default_factory=SchoolsChoice)
 
 
@@ -1407,51 +1408,10 @@ def schools() -> Catalog:
     return school_catalog()
 
 
-@app.get('/api/today', dependencies=ACCOUNT_REQUIRED)
-def today_from_settings(
-    response: Response,
-    current: SessionDependency,
-    accounts: AccountsDependency,
-    date_text: str = Query(alias='date'),
-    lang: Literal['fi', 'en'] = Query(),
-    chart: Role = Query(default='self'),
-) -> TodayAnswer:
-    """Everything Today shows for a date, from the account's charts, place and
-    schools (docs/Today.md)."""
-    day = _day(date_text)
-    user = require_account(current)
-    settings = accounts.store.settings(user.id)
-    own = None if settings is None else settings.own
-    partner = None if settings is None else settings.partner
-    if own is None:
-        raise HTTPException(status_code=404, detail='No chart of yours is saved.')
-    if chart == 'partner' and partner is None:
-        raise HTTPException(status_code=404, detail="No partner's chart is saved.")
-    if settings is None or settings.place is None:
-        raise HTTPException(status_code=404, detail='Where you are is not set.')
-    subject, other = (own, partner) if chart == 'self' else (partner, own)
-    if subject is None:
-        raise AssertionError('The chart asked for was found above.')
-    try:
-        answer = build_today(
-            day,
-            settings.place,
-            subject,
-            other,
-            settings.schools.effective(),
-            lang,
-            chart,
-        )
-    except TodayInputError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
-    # The answer is the account's own: no shared cache may keep it.
-    response.headers['Cache-Control'] = 'private, no-cache'
-    return answer
-
-
 @app.post('/api/today', dependencies=ACCOUNT_REQUIRED)
 def today_from_request(payload: TodayRequest, response: Response) -> TodayAnswer:
-    """Everything Today shows, for births, a place and schools sent in the request."""
+    """Everything Today shows for a date: for the chart sent as `self`, with a
+    partner's beside it, at a place, by the schools chosen (docs/Today.md)."""
     day = _day(payload.date)
     try:
         place = place_of(payload.place)

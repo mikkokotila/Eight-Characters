@@ -26,7 +26,6 @@ from eight_characters.accounts.records import (
     Plan,
     RecordError,
     RecordKind,
-    Role,
     Settings,
     User,
     decode_settings,
@@ -645,22 +644,21 @@ class AccountStore:
         with _connection(self.path) as connection:
             return _select_settings(connection, user_id)
 
-    def put_chart(self, user_id: str, role: Role, birth: Birth) -> Settings | None:
-        """Keeps a birth as the account's own chart or its partner's, replacing the
-        one before."""
-        if role == 'self':
-            return self._update_settings(user_id, lambda s: replace(s, own=birth))
+    def put_partner(self, user_id: str, birth: Birth) -> Settings | None:
+        """Keeps a birth as the account's partner's chart, replacing the one before."""
         return self._update_settings(user_id, lambda s: replace(s, partner=birth))
 
-    def delete_chart(self, user_id: str, role: Role) -> Settings | None:
-        """Removes the account's own chart or its partner's, if it keeps one."""
-        if role == 'self':
-            return self._update_settings(user_id, lambda s: replace(s, own=None))
+    def delete_partner(self, user_id: str) -> Settings | None:
+        """Removes the partner's chart, if the account keeps one."""
         return self._update_settings(user_id, lambda s: replace(s, partner=None))
 
     def put_place(self, user_id: str, place: Place) -> Settings | None:
         """Keeps where the person is."""
         return self._update_settings(user_id, lambda s: replace(s, place=place))
+
+    def delete_place(self, user_id: str) -> Settings | None:
+        """Forgets where the person is, if the account keeps it."""
+        return self._update_settings(user_id, lambda s: replace(s, place=None))
 
     def set_schools(
         self, user_id: str, chosen: Mapping[str, str | None]
@@ -703,7 +701,6 @@ class AccountStore:
             current = _select_settings(connection, user.id)
             now = self._now()
             base = current or Settings(
-                own=None,
                 partner=None,
                 place=None,
                 schools=NO_CHOICE,

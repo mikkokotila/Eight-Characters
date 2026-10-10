@@ -42,8 +42,9 @@ not exactly those bytes is refused. The app writes schema 2. Schema 1 records, f
 before accounts kept settings, have no `settings` field and read as accounts without
 any, so a backup made before still restores.
 
-An account's settings for Today are part of its record: `charts` (`self` and
-`partner`, each a birth or `null`), `place` (where the person is: `name`, `city`, `timezone`,
+An account's settings for Today are part of its record: `partner` (a partner's
+chart, a birth or `null`; Today is about the chart the page is on, so none of the
+account's own is kept), `place` (where the person is: `name`, `city`, `timezone`,
 `latitude`, `longitude`, or `null`), `schools` (`favourable`, `season`, `transits`:
 a preset, or `null` to follow the default) and `updated_at`. A birth holds `name`
 (`null` or 1 to 80 printable characters), `date`, `time`, `place`, `fold` (`0`, `1` or
@@ -104,10 +105,11 @@ so the database alone cannot be used to test guesses or take over a session.
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"key": …}` names it | `204`; `400`, `401`, `409` |
 | `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
-| `GET /api/account/settings` | your chart and your partner's (each with its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
-| `PUT /api/account/charts/self`, `PUT /api/account/charts/partner` | keeps a birth: `{key, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
-| `DELETE /api/account/charts/partner` | removes your partner's chart; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
+| `GET /api/account/settings` | your partner's chart (with its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
+| `PUT /api/account/partner` | keeps a birth as your partner's chart: `{key, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
+| `DELETE /api/account/partner` | removes your partner's chart; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
 | `PUT /api/account/place` | where you are: `{key, place}` | `200` and the settings; `400`, `401`, `403`, `409` |
+| `DELETE /api/account/place` | forgets where you are; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
 | `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409` |
 
 Every request that changes something must carry the site's own `Origin`, or it is
@@ -127,7 +129,7 @@ birth. Creating the chart asks for an account first.
 
 | Request | Needs an account |
 |---|---|
-| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer`, `GET /api/today`, `POST /api/today` | yes: without one, `401` before the request is validated |
+| `POST /api/four_pillars`, `POST /api/chart`, `POST /api/hidden_stems`, `POST /api/evolution_explorer`, `POST /api/today` | yes: without one, `401` before the request is validated |
 | `POST /api/first_chart` | no: it is for someone without one, and each client may ask for `EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT` an hour |
 | `POST /api/location_suggest`, `POST /api/location_search`, `GET /api/evolution_controls`, `GET /api/schools` | no |
 

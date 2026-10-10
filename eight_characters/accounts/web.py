@@ -40,13 +40,11 @@ from eight_characters.accounts.person_check import (
 from eight_characters.accounts.records import (
     DEFAULT_SCHOOLS,
     NO_CHOICE,
-    ROLES,
     Birth,
     ChosenSchools,
     Language,
     Place,
     RecordError,
-    Role,
     Schools,
     Settings,
     User,
@@ -574,7 +572,8 @@ class ChartView(TypedDict):
 
 
 class SettingsView(TypedDict):
-    charts: dict[Role, ChartView | None]
+    # A partner's chart; Today's own is the chart the page is on.
+    partner: ChartView | None
     place: dict[str, Any] | None
     # The school Today follows for each setting, and the one chosen: None where the
     # account follows the default.
@@ -851,23 +850,19 @@ def _chosen_view(chosen: ChosenSchools) -> dict[str, str | None]:
 
 
 def settings_view(user: User, settings: Settings | None) -> SettingsView:
-    """What the page is told of the account's settings, each chart with its pillars;
-    the defaults when it has set nothing."""
+    """What the page is told of the account's settings, a partner's chart with its
+    pillars; the defaults when it has set nothing."""
     if settings is None:
         return {
-            'charts': {role: None for role in ROLES},
+            'partner': None,
             'place': None,
             'schools': _schools_view(DEFAULT_SCHOOLS),
             'chosen': _chosen_view(NO_CHOICE),
             'updated_at': None,
             'key': account_key(user),
         }
-    charts: dict[Role, ChartView | None] = {}
-    for role in ROLES:
-        birth = settings.chart(role)
-        charts[role] = None if birth is None else _chart_view(birth)
     return {
-        'charts': charts,
+        'partner': None if settings.partner is None else _chart_view(settings.partner),
         'place': None if settings.place is None else place_value(settings.place),
         'schools': _schools_view(settings.schools.effective()),
         'chosen': _chosen_view(settings.schools),
@@ -888,21 +883,20 @@ def _changed(user: User, change: Callable[[], Settings | None]) -> SettingsView:
 def read_settings(
     current: SessionDependency, accounts: AccountsDependency
 ) -> SettingsView:
-    """Your chart, your partner's, where you are, and your schools."""
+    """Your partner's chart, where you are, and your schools."""
     user = _signed_in(current).user
     return settings_view(user, accounts.store.settings(user.id))
 
 
-@router.put('/charts/{role}')
-def save_chart(
-    role: Role,
+@router.put('/partner')
+def save_partner(
     payload: BirthRequest,
     request: Request,
     current: SessionDependency,
     accounts: AccountsDependency,
 ) -> SettingsView:
-    """Keeps a birth as your chart or your partner's. It is checked as a first chart
-    with its time is, and charted before it is kept."""
+    """Keeps a birth as your partner's chart. It is checked as a first chart with its
+    time is, and charted before it is kept."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
@@ -910,11 +904,11 @@ def save_chart(
         birth = birth_of(payload)
     except (RecordError, FirstChartInputError, TodayInputError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    return _changed(user, lambda: accounts.store.put_chart(user.id, role, birth))
+    return _changed(user, lambda: accounts.store.put_partner(user.id, birth))
 
 
-@router.delete('/charts/partner')
-def delete_partner_chart(
+@router.delete('/partner')
+def delete_partner(
     payload: AccountRequest,
     request: Request,
     current: SessionDependency,
@@ -924,7 +918,7 @@ def delete_partner_chart(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
-    return _changed(user, lambda: accounts.store.delete_chart(user.id, 'partner'))
+    return _changed(user, lambda: accounts.store.delete_partner(user.id))
 
 
 @router.put('/place')
@@ -943,6 +937,20 @@ def save_place(
     except RecordError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(user, lambda: accounts.store.put_place(user.id, place))
+
+
+@router.delete('/place')
+def delete_place(
+    payload: AccountRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> SettingsView:
+    """Forgets where you are, if it is kept."""
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    return _changed(user, lambda: accounts.store.delete_place(user.id))
 
 
 @router.patch('/schools')

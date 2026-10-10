@@ -46,7 +46,6 @@ NEEDS_ACCOUNT = {
     ('POST', '/api/four_pillars'),
     ('POST', '/api/evolution_explorer'),
     ('POST', '/api/hidden_stems'),
-    ('GET', '/api/today'),
     ('POST', '/api/today'),
 }
 OPEN = {
