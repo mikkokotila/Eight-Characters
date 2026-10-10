@@ -22,6 +22,7 @@ from typing import Final
 
 from eight_characters.sexagenary import BRANCHES, STEMS
 
+
 @dataclass(frozen=True)
 class Later:
     """The stems for a month's second half, from its middle term, and their sentence."""
@@ -203,7 +204,10 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
         stems=('癸',),
         heading='八月乙木',
         sentence='在白露之后，桂蕊未开，耑用癸水以滋桂萼。',
-        later=Later(stems=('丙', '癸'), sentence='若秋分后，桂花已开，却喜向阳，又宜用丙，癸水次之'),
+        later=Later(
+            stems=('丙', '癸'),
+            sentence='若秋分后，桂花已开，却喜向阳，又宜用丙，癸水次之',
+        ),
     ),
     ClimateEntry(
         day_master='乙',
@@ -835,7 +839,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
         stems=('丙',),
         heading='十二月壬水',
         sentence='上半月癸辛主事，故旺，专用丙火。',
-        later=Later(stems=('丙', '甲'), sentence='下半月己土主事，故衰。亦用丙火，甲木佐之。'),
+        later=Later(
+            stems=('丙', '甲'), sentence='下半月己土主事，故衰。亦用丙火，甲木佐之。'
+        ),
     ),
     ClimateEntry(
         day_master='癸',
@@ -859,7 +865,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
         stems=('丙',),
         heading='三月癸水',
         sentence='清明后、火气未炽，专用丙火，为阴阳合谐。',
-        later=Later(stems=('丙', '辛', '甲'), sentence='谷雨后，虽用丙火，尚宜辛甲佐之。'),
+        later=Later(
+            stems=('丙', '辛', '甲'), sentence='谷雨后，虽用丙火，尚宜辛甲佐之。'
+        ),
     ),
     ClimateEntry(
         day_master='癸',

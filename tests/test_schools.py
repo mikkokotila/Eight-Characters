@@ -114,9 +114,7 @@ class TestEarthSeason(unittest.TestCase):
                 for offset, ruler in ((-60, before), (60, after)):
                     moment = instant + timedelta(seconds=offset)
                     at = pillars_at(
-                        BirthInput(
-                            utc_timestamp=moment.strftime('%Y-%m-%dT%H:%M:%SZ')
-                        )
+                        BirthInput(utc_timestamp=moment.strftime('%Y-%m-%dT%H:%M:%SZ'))
                     )
                     season = season_at(
                         'eighteen',
@@ -188,7 +186,9 @@ class TestEarthSeason(unittest.TestCase):
         months = re.findall(r'建(.)\1中有?(.*?)(?=[一二三四五六七八九十]+月建|$)', text)
         self.assertEqual(len(months), 12)
         for branch, body in months:
-            spans = re.findall(r'(..)(?:用事|長生|墓庫)?(一十八|二十三|二十|五|七)日', body)
+            spans = re.findall(
+                r'(..)(?:用事|長生|墓庫)?(一十八|二十三|二十|五|七)日', body
+            )
             with self.subTest(branch=branch):
                 table = COMMANDERS[branch]
                 self.assertEqual(len(spans), len(table))
@@ -320,7 +320,10 @@ class TestClimate(unittest.TestCase):
         self.assertEqual(climate_order(['庚', '辛'])[:2], ['metal', 'earth'])
         self.assertEqual(climate_order(['壬'])[:3], ['water', 'metal', 'earth'])
         for entry in TABLE:
-            for stems in (entry.stems, *(() if entry.later is None else (entry.later.stems,))):
+            for stems in (
+                entry.stems,
+                *(() if entry.later is None else (entry.later.stems,)),
+            ):
                 self.assertEqual(sorted(climate_order(stems)), sorted(ELEMENTS))
 
 
@@ -346,20 +349,44 @@ class TestPull(unittest.TestCase):
         self.assertEqual(year['score'], -1.62)
         self.assertEqual(year['band'], 'strongly_draining')
         branch_phase = pull(
-            '己', '亥', self.WEIGHTS, metal, layer='luck', transits='phases', phase='branch'
+            '己',
+            '亥',
+            self.WEIGHTS,
+            metal,
+            layer='luck',
+            transits='phases',
+            phase='branch',
         )
         self.assertEqual(branch_phase['score'], 0.88)
         self.assertNotIn('stem', [part['role'] for part in branch_phase['parts']])
         stem_phase = pull(
-            '己', '亥', self.WEIGHTS, metal, layer='luck', transits='phases', phase='stem'
+            '己',
+            '亥',
+            self.WEIGHTS,
+            metal,
+            layer='luck',
+            transits='phases',
+            phase='stem',
         )
         self.assertEqual(stem_phase['score'], 0.28)
         whole = pull(
-            '己', '亥', self.WEIGHTS, metal, layer='luck', transits='whole', phase='branch'
+            '己',
+            '亥',
+            self.WEIGHTS,
+            metal,
+            layer='luck',
+            transits='whole',
+            phase='branch',
         )
         self.assertEqual(whole['score'], 0.58)
         seasoned = pull(
-            '己', '亥', self.WEIGHTS, metal, layer='luck', transits='seasoned', phase='branch'
+            '己',
+            '亥',
+            self.WEIGHTS,
+            metal,
+            layer='luck',
+            transits='seasoned',
+            phase='branch',
         )
         # 己 −0.6 × 0.6; 壬 1.2 × 1.0; 甲 −0.8 × 0.4 × 0.2.
         self.assertEqual(seasoned['score'], 0.78)

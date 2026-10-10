@@ -325,7 +325,11 @@ class TestSettingsStore(StoreCase):
         assert again is not None
         self.assertIsNone(again.schools.favourable)
         self.assertEqual(again.schools.effective().favourable, 'support')
-        for chosen in ({'weights': 'support'}, {'season': 'modern'}, {'favourable': ''}):
+        for chosen in (
+            {'weights': 'support'},
+            {'season': 'modern'},
+            {'favourable': ''},
+        ):
             with self.subTest(chosen=chosen), self.assertRaises(RecordError):
                 self.store.set_schools(self.user.id, chosen)
         self.assertEqual(self.store.settings(self.user.id), again)
