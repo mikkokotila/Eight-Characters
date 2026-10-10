@@ -123,7 +123,9 @@ class TestToday(unittest.TestCase):
             '2100-12-18',
         ):
             with self.subTest(date=text):
-                reply = self.client.get('/api/today', params={'date': text, 'lang': 'en'})
+                reply = self.client.get(
+                    '/api/today', params={'date': text, 'lang': 'en'}
+                )
                 self.assertEqual(reply.status_code, 400, reply.text)
         reply = self.client.get('/api/today', params={'date': DAY, 'lang': 'sv'})
         self.assertEqual(reply.status_code, 400)
@@ -139,7 +141,10 @@ class TestToday(unittest.TestCase):
     def test_the_days_pillars_are_the_first_charts_at_noon(self) -> None:
         first = self.client.post(
             '/api/first_chart',
-            json={'date': DAY, 'location': {k: v for k, v in HELSINKI.items() if k != 'name'}},
+            json={
+                'date': DAY,
+                'location': {k: v for k, v in HELSINKI.items() if k != 'name'},
+            },
         ).json()
         for layer in ('day', 'month', 'year'):
             with self.subTest(layer=layer):
@@ -191,10 +196,14 @@ class TestToday(unittest.TestCase):
         lines = [r['line'] for r in _relationships(self.english)]
         self.assertTrue(lines)
         self.assertTrue(all(isinstance(line, str) and line for line in lines))
-        finnish = self.client.get('/api/today', params={'date': DAY, 'lang': 'fi'}).json()
+        finnish = self.client.get(
+            '/api/today', params={'date': DAY, 'lang': 'fi'}
+        ).json()
         self.assertIsNone(finnish['readings'])
         self.assertTrue(all(r['line'] is None for r in _relationships(finnish)))
-        self.assertEqual(finnish['layers']['day']['pull'], self.english['layers']['day']['pull'])
+        self.assertEqual(
+            finnish['layers']['day']['pull'], self.english['layers']['day']['pull']
+        )
 
     def test_no_symbolic_stars_and_no_void(self) -> None:
         keys = {key.lower() for key in _keys(self.english)}
@@ -228,7 +237,11 @@ class TestToday(unittest.TestCase):
             'lang': 'en',
             'place': LISBON,
             'charts': {'self': OWN},
-            'schools': {'favourable': 'climate', 'season': 'commander', 'transits': 'whole'},
+            'schools': {
+                'favourable': 'climate',
+                'season': 'commander',
+                'transits': 'whole',
+            },
         }
         reply = self.client.post('/api/today', json=body)
         self.assertEqual(reply.status_code, 200, reply.text)
@@ -246,10 +259,15 @@ class TestToday(unittest.TestCase):
             {**body, 'charts': {'self': {**OWN, 'zi': 'midnight'}}},
             {**body, 'charts': {'self': OWN}, 'weights': {'wood': 1.2}},
             {**body, 'schools': {'favourable': 'structure'}},
-            {**body, 'charts': {'self': {**OWN, 'time': '03:30', 'date': '2021-03-28'}}},
+            {
+                **body,
+                'charts': {'self': {**OWN, 'time': '03:30', 'date': '2021-03-28'}},
+            },
         ):
             with self.subTest(refused=refused):
-                self.assertEqual(self.client.post('/api/today', json=refused).status_code, 400)
+                self.assertEqual(
+                    self.client.post('/api/today', json=refused).status_code, 400
+                )
 
 
 # ── A year of days, against the daily briefing's own formula ──
@@ -265,7 +283,9 @@ _MULTIPLIER = {
 }
 _ELEMENTS = ('wood', 'fire', 'earth', 'metal', 'water')
 _SEASON = {2: 'wood', 3: 'wood', 4: 'wood', 5: 'fire', 6: 'fire', 7: 'fire'}
-_SEASON.update({8: 'metal', 9: 'metal', 10: 'metal', 11: 'water', 0: 'water', 1: 'water'})
+_SEASON.update(
+    {8: 'metal', 9: 'metal', 10: 'metal', 11: 'water', 0: 'water', 1: 'water'}
+)
 _HIDDEN = {
     0: [9],
     1: [5, 9, 7],
@@ -296,7 +316,9 @@ def _briefing_day_pull(
 
     total = weights[element(stem)] * counts(element(stem))
     for rank, hidden in enumerate(_HIDDEN[branch]):
-        total += weights[element(hidden)] * (1.0, 0.4, 0.2)[rank] * counts(element(hidden))
+        total += (
+            weights[element(hidden)] * (1.0, 0.4, 0.2)[rank] * counts(element(hidden))
+        )
     return total
 
 
@@ -353,7 +375,9 @@ class TestAgainstTheBriefingsFormula(unittest.TestCase):
                 stem = stem_index.index(day['pillar']['stem']['chinese'])
                 branch = BRANCH_CHARS.index(day['pillar']['branch']['chinese'])
                 self.assertEqual((stem, branch), _briefing_day_pillar(when))
-                expected = _briefing_day_pull(stem, branch, weights, at.month.branch_idx)
+                expected = _briefing_day_pull(
+                    stem, branch, weights, at.month.branch_idx
+                )
                 self.assertAlmostEqual(day['score'], expected, delta=0.005 + 1e-9)
                 checked += 1
             center += timedelta(days=22)
