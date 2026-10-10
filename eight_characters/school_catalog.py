@@ -114,10 +114,11 @@ _SEASON: Final = [
         {'fi': 'Maan 18 päivää', 'en': "Earth's 18 days"},
         {'chinese': '土王', 'pinyin': 'Tu Wang'},
         {
-            'fi': 'Maa hallitsee kunkin vuodenajan alkua edeltävät 18 päivää, joten '
-            'jokainen elementti hallitsee 72 päivää.',
-            'en': 'Earth rules the 18 days before each season begins, so every element '
-            'rules 72 days.',
+            'fi': 'Maa hallitsee auringon viimeiset 18 astetta ennen kunkin '
+            'vuodenajan alkua, noin 18 päivää, joten jokainen elementti hallitsee '
+            'viidenneksen vuodesta.',
+            'en': "Earth rules the sun's last 18 degrees before each season begins, "
+            'about 18 days, so every element rules a fifth of the year.',
         },
         [
             'Bai Hu Tong (土王四季，各十八日)',

@@ -269,6 +269,18 @@ class TestSupportAndRestrain(unittest.TestCase):
                 self.assertEqual(found['disease'], 'water')
                 self.assertEqual(found['weights']['wood'], -0.8)
 
+    def test_a_review_fixture_follows(self) -> None:
+        # 1987-08-01 14:00 UTC at 0, 0: 丁卯 丁未 壬午 丁未. No Water or Metal but the
+        # Day Master's own stem, so it follows its strongest force, Fire.
+        found = support_and_restrain(
+            _chart('丁卯', '丁未', '壬午', '丁未'), standings('earth')
+        )
+        self.assertEqual(found['strength'], 'following')
+        self.assertEqual(found['useful'], 'fire')
+        self.assertEqual(found['favourable'], 'wood')
+        self.assertEqual(found['disease'], 'metal')
+        self.assertEqual(sorted(found['weights'].values()), sorted(ORDER))
+
     def test_exactly_half_is_strong(self) -> None:
         # Wood 2.4 and Water 2.2 make 4.6 of 9.2: half, so strong; Wood, the larger,
         # is the disease.

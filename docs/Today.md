@@ -63,7 +63,9 @@ solar month, from one jie to the next, as the month pillar's.
 - **Earth's 18 days** (the default). Earth rules the 18 degrees of the sun's path
   before each season starts: while the longitude, modulo 90°, is in [27°, 45°).
   Otherwise the season's own element rules: Wood from 315° to 27°, Fire from 45° to
-  117°, Metal from 135° to 207°, Water from 225° to 297°. Each element rules 72°.
+  117°, Metal from 135° to 207°, Water from 225° to 297°. Each element rules 72°. The
+  rule is the sun's, in degrees, as the almanacs set 土用 Tu Yong: 18° takes the sun
+  17.7 to 18.8 days, by the season.
   Sources: Bai Hu Tong (土王四季，各十八日); Su Wen, chapter 29; Xie Ji Bian Fang
   Shu; San Ming Tong Hui, juan 2. The canon's own Background gives Earth "the last
   eighteen days of each season".
@@ -200,7 +202,10 @@ when choosing days (Xie Ji Bian Fang Shu, juan 34: 日之衰旺全看月令). Th
 the bands below.
 
 - **By phase**: San Ming Tong Hui, juan 2, on luck: 在干兼用地支之神，在支則棄天干之物;
-  the luck column already sets the stem aside in the branch phase. The year's branch
+  the luck column already sets the stem aside in the branch phase. In its branch phase
+  a luck pillar's stem, and the relationships and readings its stem brings, are set
+  aside in Today too; under the other two schools the stem counts and acts all ten
+  years. The year's branch
   at half is the app's convention, after Di Tian Sui's original note that the year
   weighs its stem (太歲……故重天干).
 - **Ten years as one**: Di Tian Sui's original note reads a luck pillar as the land

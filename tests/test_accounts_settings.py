@@ -443,8 +443,14 @@ class TestSettingsBackup(StoreCase):
         self.assertEqual(decode_user(self._record(self.user.id)), (self.user, changed))
 
     def test_a_restore_brings_the_settings_back(self) -> None:
-        settings = self.store.put_chart(self.user.id, 'self', OWN)
+        self.store.put_chart(self.user.id, 'self', OWN)
         run_backup(self.store, self.checkout, self.recipient)
+        # A change to the settings alone, after a backup, reaches the next one.
+        self.store.put_place(self.user.id, LISBON)
+        self.store.set_schools(self.user.id, {'season': 'commander'})
+        settings = self.store.put_chart(self.user.id, 'partner', PARTNER)
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual(result.written, 1)
         target = self.directory / 'restored.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         self.assertEqual(AccountStore.open(target).settings(self.user.id), settings)

@@ -132,6 +132,46 @@ class TestToday(unittest.TestCase):
         reply = self.client.get('/api/today', params={'date': DAY, 'lang': 'sv'})
         self.assertEqual(reply.status_code, 400)
 
+    def test_every_combination_of_schools(self) -> None:
+        # 2 x 4 x 3 = 24: each answers, with each element weighed once, and a luck
+        # pillar in its branch phase acts by phase only through its branch.
+        for favourable in ('support', 'climate'):
+            for season in ('eighteen', 'months', 'late_summer', 'commander'):
+                for transits in ('phases', 'whole', 'seasoned'):
+                    with self.subTest(f'{favourable}/{season}/{transits}'):
+                        reply = self.client.post(
+                            '/api/today',
+                            json={
+                                'date': DAY,
+                                'lang': 'en',
+                                'place': HELSINKI,
+                                'charts': {'self': OWN, 'partner': PARTNER},
+                                'schools': {
+                                    'favourable': favourable,
+                                    'season': season,
+                                    'transits': transits,
+                                },
+                            },
+                        )
+                        self.assertEqual(reply.status_code, 200, reply.text)
+                        answer = reply.json()
+                        self.assertEqual(
+                            sorted(answer['favourable']['weights'].values()),
+                            [-1.0, -0.8, -0.6, 1.0, 1.2],
+                        )
+                        luck = answer['layers']['luck']
+                        if luck is not None and luck['luck']['phase'] == 'branch':
+                            acting = transits != 'phases'
+                            stems = [
+                                r
+                                for r in luck['relationships']
+                                if r['component'] == 'stem'
+                            ]
+                            if not acting:
+                                self.assertEqual(stems, [])
+                            roles = [part['role'] for part in luck['pull']['parts']]
+                            self.assertEqual('stem' in roles, acting)
+
     def test_a_day_the_clocks_skipped(self) -> None:
         # Samoa moved across the date line and skipped 30 December 2011 entirely.
         apia = {

@@ -360,10 +360,16 @@ class _Read:
 
 
 def _read(
-    natal: Natal, layer: LayerName, pair: tuple[str, str], english: bool
+    natal: Natal,
+    layer: LayerName,
+    pair: tuple[str, str],
+    english: bool,
+    active: PhaseName | None = None,
 ) -> _Read:
     """The pillar read against the natal chart as the decade page reads a luck
-    pillar, in its own fifth position."""
+    pillar, in its own fifth position. With `active`, a luck pillar's phase, only what
+    acts in it: in the branch phase its stem, and the relationships its stem forms,
+    are set aside, as on the decade page."""
     position = POSITIONS[layer]
     pillar = {
         'sequence': 1,
@@ -391,8 +397,29 @@ def _read(
         )['decades'][0]
         if layer not in SETTLING:
             reading = {**reading, 'settles': []}
+    kept = {
+        found['id']
+        for found in decade['interactions']
+        if active is None or active in found['phases']
+    }
+    if reading is not None and active is not None:
+        reading = {
+            **reading,
+            'relationships': {
+                key: value
+                for key, value in reading['relationships'].items()
+                if key in kept
+            },
+            'settles': [
+                {**settled, 'by': [by for by in settled['by'] if by in kept]}
+                for settled in reading['settles']
+                if any(by in kept for by in settled['by'])
+            ],
+        }
     relationships: list[Relationship] = []
     for found in decade['interactions']:
+        if found['id'] not in kept:
+            continue
         interaction = cast(
             Interaction, {k: v for k, v in found.items() if k != 'phases'}
         )
@@ -405,6 +432,7 @@ def _read(
     absorbed = [
         cast(AbsorbedInteraction, {k: v for k, v in half.items() if k != 'phases'})
         for half in decade['absorbed']
+        if active is None or active in half['phases']
     ]
     return _Read(relationships=relationships, absorbed=absorbed, reading=reading)
 
@@ -508,7 +536,12 @@ def _layer(
     english: bool,
     luck: LuckSpan | None = None,
 ) -> tuple[Layer, LuckDecadeReading | None]:
-    read = _read(natal, layer, pair, english)
+    # By phase, a luck pillar counts and acts as its phase lets it; the other schools
+    # count its stem through all ten years.
+    active = (
+        luck['phase'] if luck is not None and schools.transits == 'phases' else None
+    )
+    read = _read(natal, layer, pair, english, active)
     view: Layer = {
         'layer': layer,
         'position': POSITIONS[layer],
