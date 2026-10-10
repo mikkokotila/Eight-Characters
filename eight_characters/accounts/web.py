@@ -505,6 +505,8 @@ class PlaceRequest(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True)
 
     name: str
+    # The city alone, as a chart's link names it.
+    city: str
     timezone: str
     latitude: float = Field(ge=-90.0, le=90.0, allow_inf_nan=False)
     longitude: float = Field(ge=-180.0, le=180.0, allow_inf_nan=False)
@@ -564,8 +566,11 @@ class ChartView(TypedDict):
     fold: int | None
     gender: Gender
     zi: ZiConvention
-    # The chart's four pillars, as /api/four_pillars gives them.
-    pillars: dict[PillarName, ChartPillar]
+    # The chart's four pillars, as /api/four_pillars gives them; None, with the
+    # reason in `problem`, if the engine no longer charts it (a time zone update can
+    # make its clock time one the clocks skipped or repeated).
+    pillars: dict[PillarName, ChartPillar] | None
+    problem: str | None
 
 
 class SettingsView(TypedDict):
@@ -778,6 +783,7 @@ def delete_account(
 def place_of(request: PlaceRequest) -> Place:
     return Place(
         name=request.name,
+        city=request.city,
         timezone=request.timezone,
         # A whole number is a float here: the record writes coordinates as floats.
         latitude=float(request.latitude),
@@ -807,6 +813,14 @@ def charted(birth: Birth) -> dict[PillarName, ChartPillar]:
 
 
 def _chart_view(birth: Birth) -> ChartView:
+    pillars: dict[PillarName, ChartPillar] | None = None
+    problem: str | None = None
+    try:
+        pillars = charted(birth)
+    except TodayInputError as exc:
+        # Shown with the chart, so the page can ask for its time again; Today
+        # refuses the chart with the same reason.
+        problem = str(exc)
     return {
         'name': birth.name,
         'date': birth.date,
@@ -815,7 +829,8 @@ def _chart_view(birth: Birth) -> ChartView:
         'fold': birth.fold,
         'gender': birth.gender,
         'zi': birth.zi,
-        'pillars': charted(birth),
+        'pillars': pillars,
+        'problem': problem,
     }
 
 

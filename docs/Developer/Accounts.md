@@ -43,7 +43,7 @@ before accounts kept settings, have no `settings` field and read as accounts wit
 any, so a backup made before still restores.
 
 An account's settings for Today are part of its record: `charts` (`self` and
-`partner`, each a birth or `null`), `place` (where the person is: `name`, `timezone`,
+`partner`, each a birth or `null`), `place` (where the person is: `name`, `city`, `timezone`,
 `latitude`, `longitude`, or `null`), `schools` (`favourable`, `season`, `transits`:
 a preset, or `null` to follow the default) and `updated_at`. A birth holds `name`
 (`null` or 1 to 80 printable characters), `date`, `time`, `place`, `fold` (`0`, `1` or
@@ -104,8 +104,8 @@ so the database alone cannot be used to test guesses or take over a session.
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"key": …}` names it | `204`; `400`, `401`, `409` |
 | `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
-| `GET /api/account/settings` | your chart and your partner's (each with its four pillars), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
-| `PUT /api/account/charts/self`, `PUT /api/account/charts/partner` | keeps a birth: `{key, name?, date, time, place: {name, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
+| `GET /api/account/settings` | your chart and your partner's (each with its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
+| `PUT /api/account/charts/self`, `PUT /api/account/charts/partner` | keeps a birth: `{key, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?}`, checked by the first chart's rules and charted first | `200` and the settings; `400` (a malformed birth, a time the clocks skipped, or repeated without `fold`), `401`, `403`, `409` |
 | `DELETE /api/account/charts/partner` | removes your partner's chart; `{"key": …}` | `200` and the settings; `400`, `401`, `403`, `409` |
 | `PUT /api/account/place` | where you are: `{key, place}` | `200` and the settings; `400`, `401`, `403`, `409` |
 | `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409` |

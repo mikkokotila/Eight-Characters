@@ -49,12 +49,14 @@ from tests.accounts_support import (
 
 HELSINKI = Place(
     name='Helsinki, Uusimaa, Finland',
+    city='Helsinki',
     timezone='Europe/Helsinki',
     latitude=60.16952,
     longitude=24.93545,
 )
 LISBON = Place(
     name='Lisbon, Lisbon, Portugal',
+    city='Lisbon',
     timezone='Europe/Lisbon',
     latitude=38.71667,
     longitude=-9.13333,
@@ -98,6 +100,7 @@ USER = User(
 def _place_json(place: Place) -> dict[str, Any]:
     return {
         'name': place.name,
+        'city': place.city,
         'timezone': place.timezone,
         'latitude': place.latitude,
         'longitude': place.longitude,
@@ -123,6 +126,7 @@ def _birth_json(birth: Birth, key: str) -> dict[str, Any]:
 class TestSettingsRecords(unittest.TestCase):
     def test_each_part_is_checked(self) -> None:
         for changes in (
+            {'city': ''},
             {'name': ''},
             {'name': ' Helsinki'},
             {'name': 'Hel\nsinki'},
@@ -185,6 +189,7 @@ class TestSettingsRecords(unittest.TestCase):
             b'    "self": null\n'
             b'  },\n'
             b'  "place": {\n'
+            b'    "city": "Lisbon",\n'
             b'    "latitude": 38.71667,\n'
             b'    "longitude": -9.13333,\n'
             b'    "name": "Lisbon, Lisbon, Portugal",\n'
@@ -623,6 +628,17 @@ class TestSettingsApi(unittest.TestCase):
         reply = self.client.put('/api/account/charts/self', json=repeated)
         self.assertEqual(reply.status_code, 200, reply.text)
         self.assertEqual(reply.json()['charts']['self']['fold'], 1)
+
+    def test_a_saved_chart_that_no_longer_computes_shows_why(self) -> None:
+        # As a time zone update can leave a saved time one the clocks skipped: the
+        # settings still answer, and say what is wrong with that chart.
+        skipped = replace(OWN, date='2021-03-28', time='03:30')
+        self.accounts.store.put_chart(self.user.id, 'self', skipped)
+        reply = self.client.get('/api/account/settings')
+        self.assertEqual(reply.status_code, 200)
+        chart = reply.json()['charts']['self']
+        self.assertIsNone(chart['pillars'])
+        self.assertIn('skipped', chart['problem'])
 
     def test_an_unknown_role_is_refused(self) -> None:
         reply = self.client.put(

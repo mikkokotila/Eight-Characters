@@ -16,12 +16,14 @@ from tests.accounts_support import install_accounts, sign_in, site_client
 
 HELSINKI = {
     'name': 'Helsinki, Uusimaa, Finland',
+    'city': 'Helsinki',
     'timezone': 'Europe/Helsinki',
     'latitude': 60.16952,
     'longitude': 24.93545,
 }
 LISBON = {
     'name': 'Lisbon, Lisbon, Portugal',
+    'city': 'Lisbon',
     'timezone': 'Europe/Lisbon',
     'latitude': 38.71667,
     'longitude': -9.13333,
@@ -176,6 +178,7 @@ class TestToday(unittest.TestCase):
         # Samoa moved across the date line and skipped 30 December 2011 entirely.
         apia = {
             'name': 'Apia, Tuamasaga, Samoa',
+            'city': 'Apia',
             'timezone': 'Pacific/Apia',
             'latitude': -13.83333,
             'longitude': -171.76666,
@@ -203,7 +206,9 @@ class TestToday(unittest.TestCase):
             '/api/first_chart',
             json={
                 'date': DAY,
-                'location': {k: v for k, v in HELSINKI.items() if k != 'name'},
+                'location': {
+                    k: v for k, v in HELSINKI.items() if k not in ('name', 'city')
+                },
             },
         ).json()
         for layer in ('day', 'month', 'year'):

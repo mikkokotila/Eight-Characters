@@ -604,8 +604,8 @@ The answer, by [Today: the rules](Today.md):
 
 ### `POST /api/today`
 
-The same answer for what the body sends: `date`, `lang`, `place` (`{name, timezone,
-latitude, longitude}`), `charts` (`self`, and optionally `partner`, each a birth as
+The same answer for what the body sends: `date`, `lang`, `place` (`{name, city,
+timezone, latitude, longitude}`), `charts` (`self`, and optionally `partner`, each a birth as
 `PUT /api/account/charts/self` takes one, without `key`), `chart` (`self` or
 `partner`) and `schools` (any of the three presets; the others follow their
 defaults). An unknown field, an unknown preset or a birth that cannot be charted is

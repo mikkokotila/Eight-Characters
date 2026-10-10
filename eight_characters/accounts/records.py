@@ -76,7 +76,7 @@ _CHARTS_FIELDS: Final = frozenset(ROLES)
 _BIRTH_FIELDS: Final = frozenset(
     {'date', 'fold', 'gender', 'name', 'place', 'time', 'zi'}
 )
-_PLACE_FIELDS: Final = frozenset({'latitude', 'longitude', 'name', 'timezone'})
+_PLACE_FIELDS: Final = frozenset({'city', 'latitude', 'longitude', 'name', 'timezone'})
 _SCHOOLS_FIELDS: Final = frozenset({'favourable', 'season', 'transits'})
 
 
@@ -199,15 +199,18 @@ class User:
 
 @dataclass(frozen=True)
 class Place:
-    """A place as the place search gives it: its name, time zone and coordinates."""
+    """A place as the place search gives it: its full name, its city (as a chart's
+    link names it), its time zone and its coordinates."""
 
     name: str
+    city: str
     timezone: str
     latitude: float
     longitude: float
 
     def __post_init__(self) -> None:
         _check_text('A place name', self.name, PLACE_NAME_MAX_LENGTH)
+        _check_text('A city', self.city, PLACE_NAME_MAX_LENGTH)
         _check_coordinate('latitude', self.latitude, 90.0)
         _check_coordinate('longitude', self.longitude, 180.0)
         try:
@@ -345,6 +348,7 @@ def canonical_json(value: dict[str, Any]) -> bytes:
 
 def place_value(place: Place) -> dict[str, Any]:
     return {
+        'city': place.city,
         'latitude': place.latitude,
         'longitude': place.longitude,
         'name': place.name,
@@ -422,6 +426,7 @@ def _place_from(value: object, what: str) -> Place:
     record = _fields(value, what, _PLACE_FIELDS)
     return Place(
         name=_text(record, 'name', what),
+        city=_text(record, 'city', what),
         timezone=_text(record, 'timezone', what),
         latitude=_float(record, 'latitude', what),
         longitude=_float(record, 'longitude', what),

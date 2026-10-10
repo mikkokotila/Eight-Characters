@@ -835,6 +835,7 @@ def build_today(
         'language': language,
         'place': {
             'name': place.name,
+            'city': place.city,
             'timezone': place.timezone,
             'latitude': place.latitude,
             'longitude': place.longitude,
