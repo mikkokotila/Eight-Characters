@@ -460,15 +460,34 @@ and the rest of the passage cut):
     "polarity": "Yang",
     "element": "earth",
     "title": "戊 Wu — Yang Earth",
-    "passage": ["The mountain, the plateau, the great wall. …"]
+    "passage": ["The mountain, the plateau, the great wall. …"],
+    "parts": [
+      {"part": "core", "first": "The mountain, the plateau, the great wall.", "rest": ["Massive, stable, immovable, …"]},
+      {"part": "grounds", "first": "The mountain."},
+      {"part": "day", "first": "The mountain's core."},
+      {"part": "month", "first": "The mountain in the world's view."},
+      {"part": "year", "first": "The mountain's bedrock."},
+      {"part": "cycle", "first": "Emperor's Peak · Bathing · Birth"}
+    ]
   },
-  "engine": {"version": "0.46.0", "…": "…"}
+  "engine": {"version": "0.47.0", "…": "…"}
 }
 ```
 
 Each pillar carries its English name (`PILLAR_LABELS`), and each branch its sign
 (`animal` in `eight_characters/data.py`). `day_master.passage` is the canon's passage for
 the Day Master, word for word, as the reading gives it.
+
+`day_master.parts` are the parts of the Day Master's reading in the order of the app's
+Day Master page, each with `first`, the line the app shows for it: `core`, what the
+element is; `grounds`, how it meets any ground; `hour`, `day`, `month` and `year`, the
+Day Master in each pillar the chart has, from the hour to the year; and `cycle`, where
+it is in its cycle, whose `first` is the names of its stages on the chart's branches,
+from the year to the hour, joined by ` · `. A part's `first` is its passage's first
+sentence, split as the reading splits one (`sentences` in
+`eight_characters/reading.py`, and `static/readings.js`). The core also has `rest`, the
+rest of its passage word for word, so that it reads in full; the rest of the other parts
+is the reading's, for an account.
 
 ### `POST /api/evolution_explorer`
 
