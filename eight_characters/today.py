@@ -620,7 +620,6 @@ def _clock(instant: datetime, place: Place) -> str:
 
 
 def _hours(
-    day: date,
     place: Place,
     noon: PillarsAt,
     day_branch: str,
@@ -630,7 +629,6 @@ def _hours(
     (docs/Today.md, The hours): those of the true solar date its day pillar is, the
     date true solar time shows at the day's moment. Far from its zone's meridian, as
     in Samoa at UTC+14, that date and the clock's differ."""
-    del day
     midnight = datetime.combine(noon.solar.true_solar_time.date(), time(0))
     readings = [midnight + timedelta(hours=hour) for hour in (0, *range(1, 24, 2), 24)]
     instants = true_solar_instants(
@@ -854,7 +852,7 @@ def build_today(
         'favourable': favourable,
         'layers': layers,
         'run': _run(natal, day, place, weights, schools),
-        'hours': _hours(day, place, noon, pairs['day'][1], weights),
+        'hours': _hours(place, noon, pairs['day'][1], weights),
         'marriage': marriage,
         'work': _work(natal, layers),
         'health': _health(natal, schools, pairs['day'], season),
