@@ -276,9 +276,24 @@ class TestSupportAndRestrain(unittest.TestCase):
         # 甲 on 午, with no Wood or Water anywhere else, visible or hidden.
         # The Resource, Water, is unfavourable, and the Companion, Wood, the enemy.
         cases = {
-            'Wealth strongest': (('戊戌', '己巳', '甲戌', '戊午'), 'earth', 'fire', 'metal'),
-            'Output strongest': (('丙午', '丁巳', '甲午', '丙午'), 'fire', 'earth', 'metal'),
-            'Officer strongest': (('庚戌', '辛酉', '甲戌', '辛巳'), 'metal', 'earth', 'fire'),
+            'Wealth strongest': (
+                ('戊戌', '己巳', '甲戌', '戊午'),
+                'earth',
+                'fire',
+                'metal',
+            ),
+            'Output strongest': (
+                ('丙午', '丁巳', '甲午', '丙午'),
+                'fire',
+                'earth',
+                'metal',
+            ),
+            'Officer strongest': (
+                ('庚戌', '辛酉', '甲戌', '辛巳'),
+                'metal',
+                'earth',
+                'fire',
+            ),
         }
         for name, (pillars, useful, favourable, idle) in cases.items():
             with self.subTest(name):
@@ -371,7 +386,8 @@ class TestClimate(unittest.TestCase):
         # An element named after the first two is never against the chart while one
         # the text leaves unnamed is free: 丙 in 亥, 甲戊庚, leaves Metal idle.
         self.assertEqual(
-            climate_order(['甲', '戊', '庚']), ['wood', 'earth', 'fire', 'water', 'metal']
+            climate_order(['甲', '戊', '庚']),
+            ['wood', 'earth', 'fire', 'water', 'metal'],
         )
         # 己 in 戌 names four elements: of the two after the first two, the later,
         # 甲 Wood, takes the place against the chart.

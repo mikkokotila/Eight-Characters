@@ -237,9 +237,7 @@ class TestSettingsRecords(unittest.TestCase):
             'an unknown school': self._variant(
                 lambda v: v['schools'].update(season='modern')
             ),
-            'a fold of true': self._variant(
-                lambda v: v['partner'].update(fold=True)
-            ),
+            'a fold of true': self._variant(lambda v: v['partner'].update(fold=True)),
             'a place that is not an object': self._variant(
                 lambda v: v['partner'].update(place=[])
             ),
