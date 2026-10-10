@@ -22,7 +22,7 @@ from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 from typing_extensions import TypedDict
 
 from eight_characters.accounts.mail import (
@@ -38,10 +38,18 @@ from eight_characters.accounts.person_check import (
     Turnstile,
 )
 from eight_characters.accounts.records import (
+    DEFAULT_SCHOOLS,
+    ROLES,
+    Birth,
     Language,
+    Place,
     RecordError,
+    Role,
+    Schools,
+    Settings,
     User,
     normalize_email,
+    place_value,
     timestamp,
 )
 from eight_characters.accounts.signin import (
@@ -55,6 +63,18 @@ from eight_characters.accounts.signin import (
     TooManyRequests,
 )
 from eight_characters.accounts.store import AccountStore, UnknownUser
+from eight_characters.first_chart import (
+    ChartPillar,
+    FirstChartInputError,
+    PillarName,
+    build_first_chart,
+)
+from eight_characters.school_presets import (
+    FavourableSchool,
+    SeasonSchool,
+    TransitSchool,
+)
+from eight_characters.time_convert import Gender
 
 logger = logging.getLogger(__name__)
 
@@ -477,6 +497,67 @@ class DeleteRequest(BaseModel):
     key: str
 
 
+class PlaceRequest(BaseModel):
+    # A place as /api/location_suggest gives it, with the name the page shows for it.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    name: str
+    timezone: str
+    latitude: float = Field(ge=-90.0, le=90.0, allow_inf_nan=False)
+    longitude: float = Field(ge=-180.0, le=180.0, allow_inf_nan=False)
+
+
+class BirthRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    # The account the page names, by its key (see AccountRequest).
+    key: str
+    name: str | None = None
+    date: str
+    time: str
+    place: PlaceRequest
+    # Which pass of a time the clocks repeat: 0 the first, 1 the second.
+    fold: int | None = Field(default=None, ge=0, le=1)
+    gender: Gender
+
+
+class HereRequest(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    key: str
+    place: PlaceRequest
+
+
+class SchoolsRequest(BaseModel):
+    # Each school left out stays as it is.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    key: str
+    favourable: FavourableSchool | None = None
+    season: SeasonSchool | None = None
+    transits: TransitSchool | None = None
+
+
+class ChartView(TypedDict):
+    name: str | None
+    date: str
+    time: str
+    place: dict[str, Any]
+    fold: int | None
+    gender: Gender
+    # The chart's four pillars, as /api/four_pillars gives them.
+    pillars: dict[PillarName, ChartPillar]
+
+
+class SettingsView(TypedDict):
+    charts: dict[Role, ChartView | None]
+    place: dict[str, Any] | None
+    schools: dict[str, str]
+    # When the settings last changed; None for an account that has set nothing.
+    updated_at: str | None
+    key: str
+
+
 router = APIRouter(prefix='/api/account')
 
 
@@ -667,3 +748,165 @@ def delete_account(
     except UnknownUser as exc:
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
     _clear_session_cookie(response, accounts)
+
+
+# ── Settings for Today ──
+
+
+def _place(request: PlaceRequest) -> Place:
+    return Place(
+        name=request.name,
+        timezone=request.timezone,
+        # A whole number is a float here: the record writes coordinates as floats.
+        latitude=float(request.latitude),
+        longitude=float(request.longitude),
+    )
+
+
+def charted(birth: Birth) -> dict[PillarName, ChartPillar]:
+    """The birth's four pillars, by the engine; FirstChartInputError if its clock time
+    did not happen at its place, or happened twice there and no fold says which."""
+    return build_first_chart(birth.first_birth())['pillars']
+
+
+def _chart_view(birth: Birth) -> ChartView:
+    return {
+        'name': birth.name,
+        'date': birth.date,
+        'time': birth.time,
+        'place': place_value(birth.place),
+        'fold': birth.fold,
+        'gender': birth.gender,
+        'pillars': charted(birth),
+    }
+
+
+def _schools_view(schools: Schools) -> dict[str, str]:
+    return {
+        'favourable': schools.favourable,
+        'season': schools.season,
+        'transits': schools.transits,
+    }
+
+
+def settings_view(user: User, settings: Settings | None) -> SettingsView:
+    """What the page is told of the account's settings, each chart with its pillars;
+    the defaults when it has set nothing."""
+    if settings is None:
+        return {
+            'charts': {role: None for role in ROLES},
+            'place': None,
+            'schools': _schools_view(DEFAULT_SCHOOLS),
+            'updated_at': None,
+            'key': account_key(user),
+        }
+    charts: dict[Role, ChartView | None] = {}
+    for role in ROLES:
+        birth = settings.chart(role)
+        charts[role] = None if birth is None else _chart_view(birth)
+    return {
+        'charts': charts,
+        'place': None if settings.place is None else place_value(settings.place),
+        'schools': _schools_view(settings.schools),
+        'updated_at': settings.updated_at,
+        'key': account_key(user),
+    }
+
+
+def _changed(user: User, change: Callable[[], Settings | None]) -> SettingsView:
+    try:
+        return settings_view(user, change())
+    except UnknownUser as exc:
+        # Deleted since the session was found.
+        raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
+
+
+@router.get('/settings')
+def read_settings(
+    current: SessionDependency, accounts: AccountsDependency
+) -> SettingsView:
+    """Your chart, your partner's, where you are, and your schools."""
+    user = _signed_in(current).user
+    return settings_view(user, accounts.store.settings(user.id))
+
+
+@router.put('/charts/{role}')
+def save_chart(
+    role: Role,
+    payload: BirthRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> SettingsView:
+    """Keeps a birth as your chart or your partner's. It is checked as a first chart
+    with its time is, and charted before it is kept."""
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    try:
+        birth = Birth(
+            name=payload.name,
+            date=payload.date,
+            time=payload.time,
+            place=_place(payload.place),
+            fold=payload.fold,
+            gender=payload.gender,
+        )
+        charted(birth)
+    except (RecordError, FirstChartInputError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _changed(user, lambda: accounts.store.put_chart(user.id, role, birth))
+
+
+@router.delete('/charts/partner')
+def delete_partner_chart(
+    payload: AccountRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> SettingsView:
+    """Removes your partner's chart, if you keep one."""
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    return _changed(user, lambda: accounts.store.delete_chart(user.id, 'partner'))
+
+
+@router.put('/place')
+def save_place(
+    payload: HereRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> SettingsView:
+    """Keeps where you are: the place Today's hours are reckoned for."""
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    try:
+        place = _place(payload.place)
+    except RecordError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _changed(user, lambda: accounts.store.put_place(user.id, place))
+
+
+@router.patch('/schools')
+def choose_schools(
+    payload: SchoolsRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> SettingsView:
+    """Chooses the school for any of Today's three settings (GET /api/schools)."""
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    return _changed(
+        user,
+        lambda: accounts.store.set_schools(
+            user.id,
+            favourable=payload.favourable,
+            season=payload.season,
+            transits=payload.transits,
+        ),
+    )
