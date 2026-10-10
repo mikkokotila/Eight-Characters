@@ -2,11 +2,11 @@
 its place, and with its place and time; the checks on what it is sent; and the
 hourly limit per client, directly and through a proxy the app trusts."""
 
+import datetime
 import re
 import shutil
 import tempfile
 import unittest
-from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -86,6 +86,26 @@ def app_lines(chart: dict[str, Any]) -> list[dict[str, Any]]:
         }
     )
     return lines
+
+
+def four(chart: dict[str, Any]) -> list[str]:
+    return [
+        pillar['stem']['chinese'] + pillar['branch']['chinese']
+        for pillar in chart['pillars'].values()
+    ]
+
+
+def change(chart: dict[str, Any]) -> list[tuple[str, str, str, str]]:
+    """Each change as (pillar, when, before, after)."""
+    return [
+        (
+            entry['pillar'],
+            entry.get('at') or entry['at_utc'],
+            entry['before']['stem']['chinese'] + entry['before']['branch']['chinese'],
+            entry['after']['stem']['chinese'] + entry['after']['branch']['chinese'],
+        )
+        for entry in chart['changes']
+    ]
 
 
 class FirstChartTestCase(unittest.TestCase):
@@ -315,10 +335,10 @@ class TestTheDayMastersReading(FirstChartTestCase):
 
     def test_every_day_master_reads_as_the_app_reads_it(self) -> None:
         # Ten days in a row hold all ten day stems.
-        first = date(1990, 3, 14)
+        first = datetime.date(1990, 3, 14)
         stems: set[str] = set()
         for offset in range(10):
-            day = (first + timedelta(days=offset)).isoformat()
+            day = (first + datetime.timedelta(days=offset)).isoformat()
             chart = self.chart(date=day, time='07:40', location=CHICAGO)
             stems.add(chart['day_master']['stem'])
             self.assertEqual(chart['day_master']['parts'], app_lines(chart), day)
