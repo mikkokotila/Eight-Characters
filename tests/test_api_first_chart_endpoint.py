@@ -2,9 +2,11 @@
 its place, and with its place and time; the checks on what it is sent; and the
 hourly limit per client, directly and through a proxy the app trusts."""
 
+import re
 import shutil
 import tempfile
 import unittest
+from datetime import date, timedelta
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -18,7 +20,9 @@ from eight_characters.accounts.web import (
     load_config,
 )
 from eight_characters.canon import load_canon
-from eight_characters.main import app
+from eight_characters.interactions import detect_interactions
+from eight_characters.main import _load_ten_gods_lookup, app
+from eight_characters.reading import build_reading
 from tests.accounts_support import TEST_ORIGIN, Clock, account_environment
 
 CHICAGO: dict[str, Any] = {
@@ -27,26 +31,61 @@ CHICAGO: dict[str, Any] = {
     'longitude': -87.6298,
 }
 PROXY_SECRET = 'a proxy secret that is at least 32 bytes long'
+PILLARS = ('year', 'month', 'day', 'hour')
 
 
-def four(chart: dict[str, Any]) -> list[str]:
-    return [
-        pillar['stem']['chinese'] + pillar['branch']['chinese']
-        for pillar in chart['pillars'].values()
-    ]
+def sentences(text: str) -> list[str]:
+    # As static/readings.js splits a passage: at a stop, or after a quote closing it.
+    return re.split(r'(?<=[.!?])\s+|(?<=[.!?]["”])\s+', text)
 
 
-def change(chart: dict[str, Any]) -> list[tuple[str, str, str, str]]:
-    """Each change as (pillar, when, before, after)."""
-    return [
-        (
-            entry['pillar'],
-            entry.get('at') or entry['at_utc'],
-            entry['before']['stem']['chinese'] + entry['before']['branch']['chinese'],
-            entry['after']['stem']['chinese'] + entry['after']['branch']['chinese'],
+def app_lines(chart: dict[str, Any]) -> list[dict[str, Any]]:
+    """The Day Master page's lines as the app reads them for this chart: build_reading,
+    as POST /api/four_pillars gives it to an account, read as static/readings.js reads
+    it. Each line's head is its passage's first sentence; the core's rest follows it."""
+    names = [name for name in PILLARS if name in chart['pillars']]
+    pillars = {
+        name: (
+            chart['pillars'][name]['stem']['chinese'],
+            chart['pillars'][name]['branch']['chinese'],
         )
-        for entry in chart['changes']
+        for name in names
+    }
+    # build_reading needs all four pillars: without a time, the day stands in for the
+    # hour, and nothing is read from it, since the lens and the stages are read for the
+    # chart's own pillars only.
+    full = pillars if 'hour' in pillars else {**pillars, 'hour': pillars['day']}
+    reading = build_reading(
+        load_canon(), full, _load_ten_gods_lookup(), detect_interactions(full)
+    )
+    core = [p['text'] for p in reading['day_master']['core']]
+    lead, *rest = sentences(core[0])
+    grounds = reading['day_master']['grounds'][0]['text']
+    lines: list[dict[str, Any]] = [
+        {
+            'part': 'core',
+            'first': lead,
+            'rest': ([' '.join(rest)] if rest else []) + core[1:],
+        },
+        {'part': 'grounds', 'first': sentences(grounds)[0]},
     ]
+    lines += [
+        {
+            'part': name,
+            'first': sentences(reading['pillars'][name]['lens'][0]['text'])[0],
+        }
+        for name in ('hour', 'day', 'month', 'year')
+        if name in names
+    ]
+    lines.append(
+        {
+            'part': 'cycle',
+            'first': ' · '.join(
+                reading['pillars'][name]['stage']['name'] for name in names
+            ),
+        }
+    )
+    return lines
 
 
 class FirstChartTestCase(unittest.TestCase):
@@ -106,7 +145,11 @@ class TestWhatABirthSettles(FirstChartTestCase):
         chart = self.chart(date='1990-03-14', time='07:40', location=CHICAGO)
         lens = load_canon()['day_masters']['戊']
         self.assertEqual(
-            chart['day_master'],
+            {
+                key: value
+                for key, value in chart['day_master'].items()
+                if key != 'parts'
+            },
             {
                 'stem': '戊',
                 'pinyin': 'Wu',
@@ -227,6 +270,62 @@ class TestWhatABirthSettles(FirstChartTestCase):
             with self.subTest(fold=fold):
                 body = {**repeated, 'location': {**CHICAGO, 'fold': fold}}
                 self.chart(**body)
+
+
+class TestTheDayMastersReading(FirstChartTestCase):
+    """Its parts, as the app's Day Master page reads them, each by the line it shows."""
+
+    def test_its_parts_come_in_the_apps_order_each_by_the_line_the_app_shows(
+        self,
+    ) -> None:
+        chart = self.chart(date='1990-03-14', time='07:40', location=CHICAGO)
+        parts = chart['day_master']['parts']
+        self.assertEqual(parts, app_lines(chart))
+        self.assertEqual(
+            [(part['part'], part['first']) for part in parts],
+            [
+                ('core', 'The mountain, the plateau, the great wall.'),
+                ('grounds', 'The mountain.'),
+                ('hour', 'The mountain in winter.'),
+                ('day', "The mountain's core."),
+                ('month', "The mountain in the world's view."),
+                ('year', "The mountain's bedrock."),
+                ('cycle', "Emperor's Peak · Bathing · Birth · Capping"),
+            ],
+        )
+        # The core reads in full: its line and its rest are the passage, word for word.
+        core = parts[0]
+        self.assertEqual(
+            ' '.join([core['first'], *core['rest']]),
+            ' '.join(chart['day_master']['passage']),
+        )
+        self.assertEqual([part for part in parts if 'rest' in part], [core])
+
+    def test_without_a_time_the_hour_has_no_part_and_the_cycle_three_stages(
+        self,
+    ) -> None:
+        chart = self.chart(date='1990-03-14', location=CHICAGO)
+        parts = chart['day_master']['parts']
+        self.assertEqual(parts, app_lines(chart))
+        self.assertEqual(
+            [part['part'] for part in parts],
+            ['core', 'grounds', 'day', 'month', 'year', 'cycle'],
+        )
+        self.assertEqual(parts[-1]['first'], "Emperor's Peak · Bathing · Birth")
+
+    def test_every_day_master_reads_as_the_app_reads_it(self) -> None:
+        # Ten days in a row hold all ten day stems.
+        first = date(1990, 3, 14)
+        stems: set[str] = set()
+        for offset in range(10):
+            day = (first + timedelta(days=offset)).isoformat()
+            chart = self.chart(date=day, time='07:40', location=CHICAGO)
+            stems.add(chart['day_master']['stem'])
+            self.assertEqual(chart['day_master']['parts'], app_lines(chart), day)
+        self.assertEqual(len(stems), 10)
+
+    def test_a_date_alone_has_no_day_master(self) -> None:
+        self.assertNotIn('day_master', self.chart(date='1990-03-14'))
 
 
 class TestWhatItIsSent(FirstChartTestCase):
