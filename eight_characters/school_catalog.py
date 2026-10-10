@@ -82,7 +82,7 @@ _FAVOURABLE: Final = [
             'vahvimman sitä vastustavan voiman, taudin. Tautia hillitsevästä '
             'elementistä tulee hyödyllinen elementti. Kartta, jolla ei ole lainkaan '
             'tukea, seuraa vahvinta voimaansa.',
-            'en': 'Measures the Day Master’s strength in the birth season and finds '
+            'en': "Measures the Day Master's strength in the birth season and finds "
             'the strongest force against it, the disease. What controls the disease '
             'becomes the useful element. A chart with no support at all follows its '
             'strongest force.',
@@ -111,7 +111,7 @@ _SEASON: Final = [
     _preset(
         'eighteen',
         DEFAULT_SEASON,
-        {'fi': 'Maan 18 päivää', 'en': 'Earth’s 18 days'},
+        {'fi': 'Maan 18 päivää', 'en': "Earth's 18 days"},
         {'chinese': '土王', 'pinyin': 'Tu Wang'},
         {
             'fi': 'Maa hallitsee kunkin vuodenajan alkua edeltävät 18 päivää, joten '
@@ -134,7 +134,7 @@ _SEASON: Final = [
         {
             'fi': 'Lohikäärmeen, vuohen, koiran ja härän kuukaudet kuuluvat '
             'kokonaan maalle.',
-            'en': 'The Dragon, Goat, Dog and Ox months are Earth’s, whole.',
+            'en': "The Dragon, Goat, Dog and Ox months are Earth's, whole.",
         },
         ['Huainanzi, Tian Wen Xun (戊己四季，土也)'],
     ),
@@ -152,13 +152,13 @@ _SEASON: Final = [
     _preset(
         'commander',
         DEFAULT_SEASON,
-        {'fi': 'Kuukauden komentaja', 'en': 'The month’s commander'},
+        {'fi': 'Kuukauden komentaja', 'en': "The month's commander"},
         {'chinese': '人元司令', 'pinyin': 'Ren Yuan Si Ling'},
         {
             'fi': 'Kuukautta komentava hallitsee, päivinä kuukauden aurinkotermistä '
             'laskien, San Ming Tong Huin taulukon mukaan.',
             'en': 'What commands the month rules, by the days since its solar term, as '
-            'San Ming Tong Hui’s table gives them.',
+            "San Ming Tong Hui's table gives them.",
         },
         ['San Ming Tong Hui, juan 2, 論人元司事 Lun Ren Yuan Si Shi'],
     ),
@@ -172,7 +172,7 @@ _TRANSITS: Final = [
         {
             'fi': 'Onnenpilarin runko lasketaan sen viitenä ensimmäisenä vuonna, haara '
             'kaikkina kymmenenä. Vuoden haara lasketaan puolella painolla.',
-            'en': 'A luck pillar’s stem counts in its first five years, its branch in '
+            'en': "A luck pillar's stem counts in its first five years, its branch in "
             'all ten. The year counts its branch at half.',
         },
         [
@@ -202,7 +202,7 @@ _TRANSITS: Final = [
             'fi': 'Vuosi ja onnenpilari lasketaan kuten päivä, tämän kuun vuodenajan '
             'mukaan.',
             'en': 'The year and the luck pillar count as the day does, by this '
-            'month’s season.',
+            "month's season.",
         },
         ['Xie Ji Bian Fang Shu, juan 34 (日之衰旺全看月令)'],
     ),
@@ -222,7 +222,7 @@ def school_catalog() -> Catalog:
         },
         {
             'id': 'season',
-            'name': {'fi': 'Maan vuodenaika', 'en': 'Earth’s season'},
+            'name': {'fi': 'Maan vuodenaika', 'en': "Earth's season"},
             'question': {
                 'fi': 'Mikä osa vuodesta kuuluu maalle?',
                 'en': 'Which part of the year belongs to Earth?',

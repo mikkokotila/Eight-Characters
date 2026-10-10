@@ -1426,7 +1426,7 @@ def today_from_settings(
     if own is None:
         raise HTTPException(status_code=404, detail='No chart of yours is saved.')
     if chart == 'partner' and partner is None:
-        raise HTTPException(status_code=404, detail='No partner’s chart is saved.')
+        raise HTTPException(status_code=404, detail="No partner's chart is saved.")
     if settings is None or settings.place is None:
         raise HTTPException(status_code=404, detail='Where you are is not set.')
     subject, other = (own, partner) if chart == 'self' else (partner, own)
@@ -1468,7 +1468,7 @@ def today_from_request(payload: TodayRequest, response: Response) -> TodayAnswer
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if payload.chart == 'partner' and partner is None:
         raise HTTPException(
-            status_code=400, detail='chart is partner, but no partner’s chart is sent.'
+            status_code=400, detail="chart is partner, but no partner's chart is sent."
         )
     subject, other = (own, partner) if payload.chart == 'self' else (partner, own)
     if subject is None:

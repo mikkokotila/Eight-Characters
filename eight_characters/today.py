@@ -46,9 +46,9 @@ from eight_characters.reading import LuckDecadeReading, build_luck_reading
 from eight_characters.schools import (
     ELEMENTS,
     QI_NAMES,
+    QI_TENTHS,
     STANDING_TENTHS,
     STEM_TENTHS,
-    QI_TENTHS,
     Favourable,
     LayerName,
     PhaseName,
