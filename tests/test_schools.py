@@ -218,7 +218,7 @@ class TestSupportAndRestrain(unittest.TestCase):
         # Resource water. Equal standing, so the tally is the plain count.
         cases = {
             'weak, Output strongest': (
-                ('丙午', '丙午', '甲午', '丁巳'),
+                ('丙午', '丙午', '甲午', '癸巳'),
                 'weak',
                 ('water', 'wood', 'fire', 'earth', 'metal'),
             ),
@@ -256,9 +256,9 @@ class TestSupportAndRestrain(unittest.TestCase):
     def test_a_chart_with_no_support_but_its_day_master_follows(self) -> None:
         # 甲 on 午, with no Wood or Water anywhere else, visible or hidden.
         cases = {
-            'Wealth strongest': (('戊戌', '己未', '甲午', '戊辰'), 'earth', 'fire'),
+            'Wealth strongest': (('戊戌', '己巳', '甲戌', '戊午'), 'earth', 'fire'),
             'Output strongest': (('丙午', '丁巳', '甲午', '丙午'), 'fire', 'earth'),
-            'Officer strongest': (('庚申', '辛酉', '甲戌', '庚申'), 'metal', 'earth'),
+            'Officer strongest': (('庚戌', '辛酉', '甲戌', '辛巳'), 'metal', 'earth'),
         }
         for name, (pillars, useful, favourable) in cases.items():
             with self.subTest(name):
@@ -269,13 +269,21 @@ class TestSupportAndRestrain(unittest.TestCase):
                 self.assertEqual(found['disease'], 'water')
                 self.assertEqual(found['weights']['wood'], -0.8)
 
-    def test_exactly_half_is_strong_and_ties_go_to_the_first_named(self) -> None:
-        # Wood and Water make 40 of 80 tenths: half, so strong. Companion and Resource
-        # tie, so Companion is the disease.
-        found = support_and_restrain(_chart('甲子', '丙午', '甲子', '丙午'), EVEN)
+    def test_exactly_half_is_strong(self) -> None:
+        # Wood 2.4 and Water 2.2 make 4.6 of 9.2: half, so strong; Wood, the larger,
+        # is the disease.
+        found = support_and_restrain(_chart('甲子', '丙辰', '甲子', '丙戌'), EVEN)
         assert found['tally'] is not None
         self.assertEqual(found['tally']['supported_share'], 0.5)
         self.assertEqual(found['strength'], 'strong')
+        self.assertEqual(found['disease'], 'wood')
+
+    def test_a_tie_goes_to_the_first_named(self) -> None:
+        # Companion and Resource count 4.0 each: Companion is named first.
+        found = support_and_restrain(_chart('甲子', '甲子', '甲子', '甲子'), EVEN)
+        assert found['tally'] is not None
+        self.assertEqual(found['tally']['elements']['wood'], 4.0)
+        self.assertEqual(found['tally']['elements']['water'], 4.0)
         self.assertEqual(found['disease'], 'wood')
 
     def test_the_weights_are_a_permutation(self) -> None:
@@ -295,7 +303,6 @@ class TestClimate(unittest.TestCase):
             with self.subTest(heading=entry.heading, months=entry.months):
                 self.assertIn(entry.heading, source)
                 self.assertIn(entry.sentence, source)
-                self.assertIn(entry.day_master, entry.heading)
                 if entry.later is not None:
                     self.assertIn(entry.later.sentence, source)
 

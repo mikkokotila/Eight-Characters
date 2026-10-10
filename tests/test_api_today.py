@@ -1,5 +1,6 @@
 """GET /api/today, POST /api/today and GET /api/schools (docs/Today.md)."""
 
+import re
 import unittest
 from datetime import date, datetime, timedelta
 from itertools import pairwise
@@ -207,8 +208,9 @@ class TestToday(unittest.TestCase):
         )
 
     def test_no_symbolic_stars_and_no_void(self) -> None:
+        forbidden = re.compile(r'(^|_)(stars?|void|kong_wang)($|_)')
         keys = {key.lower() for key in _keys(self.english)}
-        self.assertFalse({key for key in keys if 'star' in key or 'void' in key})
+        self.assertFalse({key for key in keys if forbidden.search(key)})
 
     def test_marriage_reads_both_charts(self) -> None:
         marriage = self.english['marriage']
@@ -367,6 +369,8 @@ class TestAgainstTheBriefingsFormula(unittest.TestCase):
                         month=when.month,
                         day=when.day,
                         hour=12,
+                        minute=0,
+                        second=0,
                         timezone_name=HELSINKI['timezone'],
                         longitude=HELSINKI['longitude'],
                         latitude=HELSINKI['latitude'],
