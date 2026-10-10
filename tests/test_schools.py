@@ -4,6 +4,7 @@ import re
 import unittest
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from typing import ClassVar
 
 from eight_characters.data import STEMS
 from eight_characters.engine import jie_before, pillars_at
@@ -395,7 +396,13 @@ class TestClimate(unittest.TestCase):
 
 class TestPull(unittest.TestCase):
     # Weights for the pull's arithmetic, not a school's.
-    WEIGHTS = {'water': 1.2, 'metal': 1.0, 'fire': -1.0, 'wood': -0.8, 'earth': -0.6}
+    WEIGHTS: ClassVar[dict[str, float]] = {
+        'water': 1.2,
+        'metal': 1.0,
+        'fire': -1.0,
+        'wood': -0.8,
+        'earth': -0.6,
+    }
 
     def test_the_day_counts_by_the_season(self) -> None:
         # 戊午 while Metal rules: 戊 Earth -0.6 × 0.6; 丁 Fire -1.0 × 0.4;
