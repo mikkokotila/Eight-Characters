@@ -329,10 +329,15 @@ class Favourable(TypedDict):
 def _weights(order: Sequence[ElementName]) -> dict[ElementName, float]:
     if sorted(order) != sorted(ELEMENTS):
         raise AssertionError(f'Weights need each element once, not {order}.')
-    return {element: tenths / 10 for element, tenths in zip(order, WEIGHT_TENTHS, strict=True)}
+    return {
+        element: tenths / 10
+        for element, tenths in zip(order, WEIGHT_TENTHS, strict=True)
+    }
 
 
-def _first_free(candidates: Sequence[ElementName], taken: Sequence[ElementName]) -> ElementName:
+def _first_free(
+    candidates: Sequence[ElementName], taken: Sequence[ElementName]
+) -> ElementName:
     return next(element for element in candidates if element not in taken)
 
 
@@ -348,7 +353,8 @@ def _support_order(
 
 
 def chart_tally(
-    pillars: Mapping[str, tuple[str, str]], birth_standings: Mapping[ElementName, Standing]
+    pillars: Mapping[str, tuple[str, str]],
+    birth_standings: Mapping[ElementName, Standing],
 ) -> dict[ElementName, int]:
     """Each element's count in hundredths: every stem in full and every hidden stem
     by its qi, each times its element's standing in the birth season."""
@@ -363,13 +369,16 @@ def chart_tally(
     return tally
 
 
-def _largest(tally: Mapping[ElementName, int], among: Sequence[ElementName]) -> ElementName:
+def _largest(
+    tally: Mapping[ElementName, int], among: Sequence[ElementName]
+) -> ElementName:
     """The element counted most among these; a tie goes to the first listed."""
     return max(among, key=lambda element: (tally[element], -among.index(element)))
 
 
 def support_and_restrain(
-    pillars: Mapping[str, tuple[str, str]], birth_standings: Mapping[ElementName, Standing]
+    pillars: Mapping[str, tuple[str, str]],
+    birth_standings: Mapping[ElementName, Standing],
 ) -> Favourable:
     """Support and restrain (扶抑 Fu Yi), after Di Tian Sui and Shen Feng Tong Kao.
 
@@ -468,7 +477,9 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
     start = ELEMENTS.index(useful)
     cycle: list[ElementName] = [ELEMENTS[(start + step) % 5] for step in range(5)]
     taken: list[ElementName] = [useful, favourable]
-    disease = _first_free([controller_of(useful), controller_of(favourable), *cycle], taken)
+    disease = _first_free(
+        [controller_of(useful), controller_of(favourable), *cycle], taken
+    )
     taken.append(disease)
     taken.append(_first_free([generator_of(disease), *cycle], taken))
     taken.append(_first_free(cycle, taken))
@@ -578,4 +589,3 @@ def pull(
         )
     score = rounded(total)
     return {'score': score, 'band': band(score), 'parts': parts}
-

@@ -517,9 +517,7 @@ def _layer(
     return view, read.reading
 
 
-def _touching(
-    relationships: Sequence[Relationship], pillar: str
-) -> list[Relationship]:
+def _touching(relationships: Sequence[Relationship], pillar: str) -> list[Relationship]:
     """The relationships that take in a natal pillar's branch."""
     return [
         relationship
@@ -649,7 +647,9 @@ def _work(natal: Natal, layers: Mapping[LayerName, Layer | None]) -> Work:
     }
 
 
-def _health(natal: Natal, schools: Schools, day_pair: tuple[str, str], season: Season) -> Health:
+def _health(
+    natal: Natal, schools: Schools, day_pair: tuple[str, str], season: Season
+) -> Health:
     tally = chart_tally(natal.pillars, _birth_season(natal, schools)['standings'])
     total = sum(tally.values())
     brought = dict.fromkeys(ELEMENTS, 0)
@@ -805,4 +805,3 @@ def build_today(
         'health': _health(natal, schools, pairs['day'], season),
         'readings': readings if english else None,
     }
-
