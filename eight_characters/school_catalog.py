@@ -231,7 +231,10 @@ def school_catalog() -> Catalog:
         },
         {
             'id': 'transits',
-            'name': {'fi': 'Vuosi ja onnenpilari', 'en': 'The year and the luck pillar'},
+            'name': {
+                'fi': 'Vuosi ja onnenpilari',
+                'en': 'The year and the luck pillar',
+            },
             'question': {
                 'fi': 'Miten vuosi ja onnenpilari lasketaan?',
                 'en': 'How do the year and your luck pillar count?',

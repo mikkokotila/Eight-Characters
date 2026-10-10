@@ -1389,7 +1389,9 @@ _DAY = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
 
 def _day(text: str) -> date:
     if _DAY.fullmatch(text) is None:
-        raise HTTPException(status_code=400, detail='date must be in YYYY-MM-DD format.')
+        raise HTTPException(
+            status_code=400, detail='date must be in YYYY-MM-DD format.'
+        )
     try:
         return date.fromisoformat(text)
     except ValueError as exc:

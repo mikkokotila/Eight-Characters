@@ -662,7 +662,9 @@ class AccountStore:
         """Keeps where the person is."""
         return self._update_settings(user_id, lambda s: replace(s, place=place))
 
-    def set_schools(self, user_id: str, chosen: Mapping[str, str | None]) -> Settings | None:
+    def set_schools(
+        self, user_id: str, chosen: Mapping[str, str | None]
+    ) -> Settings | None:
         """Chooses the school for any of the three settings, by name: a preset, or
         None to follow the default again. The settings not named stay."""
         unknown = set(chosen) - {'favourable', 'season', 'transits'}

@@ -170,18 +170,50 @@ def _span(name: str, element: ElementName, days: int | None) -> CommanderSpan:
 # is. The text writes 己 as 巳 in 未 and 丑, a slip of the brush its own hidden-stem
 # lists correct.
 COMMANDERS: Final[dict[str, tuple[CommanderSpan, ...]]] = {
-    '寅': (_span('艮土', 'earth', 5), _span('丙火', 'fire', 5), _span('甲木', 'wood', None)),
+    '寅': (
+        _span('艮土', 'earth', 5),
+        _span('丙火', 'fire', 5),
+        _span('甲木', 'wood', None),
+    ),
     '卯': (_span('甲木', 'wood', 7), _span('乙木', 'wood', None)),
-    '辰': (_span('乙木', 'wood', 7), _span('壬水', 'water', 5), _span('戊土', 'earth', None)),
-    '巳': (_span('戊土', 'earth', 7), _span('庚金', 'metal', 5), _span('丙火', 'fire', None)),
+    '辰': (
+        _span('乙木', 'wood', 7),
+        _span('壬水', 'water', 5),
+        _span('戊土', 'earth', None),
+    ),
+    '巳': (
+        _span('戊土', 'earth', 7),
+        _span('庚金', 'metal', 5),
+        _span('丙火', 'fire', None),
+    ),
     '午': (_span('丙火', 'fire', 7), _span('丁火', 'fire', None)),
-    '未': (_span('丁火', 'fire', 7), _span('甲木', 'wood', 5), _span('己土', 'earth', None)),
-    '申': (_span('坤土', 'earth', 5), _span('壬水', 'water', 5), _span('庚金', 'metal', None)),
+    '未': (
+        _span('丁火', 'fire', 7),
+        _span('甲木', 'wood', 5),
+        _span('己土', 'earth', None),
+    ),
+    '申': (
+        _span('坤土', 'earth', 5),
+        _span('壬水', 'water', 5),
+        _span('庚金', 'metal', None),
+    ),
     '酉': (_span('庚金', 'metal', 7), _span('辛金', 'metal', None)),
-    '戌': (_span('辛金', 'metal', 7), _span('丙火', 'fire', 5), _span('戊土', 'earth', None)),
-    '亥': (_span('戊土', 'earth', 5), _span('甲木', 'wood', 5), _span('壬水', 'water', None)),
+    '戌': (
+        _span('辛金', 'metal', 7),
+        _span('丙火', 'fire', 5),
+        _span('戊土', 'earth', None),
+    ),
+    '亥': (
+        _span('戊土', 'earth', 5),
+        _span('甲木', 'wood', 5),
+        _span('壬水', 'water', None),
+    ),
     '子': (_span('壬水', 'water', 7), _span('癸水', 'water', None)),
-    '丑': (_span('癸水', 'water', 7), _span('庚金', 'metal', 5), _span('己土', 'earth', None)),
+    '丑': (
+        _span('癸水', 'water', 7),
+        _span('庚金', 'metal', 5),
+        _span('己土', 'earth', None),
+    ),
 }
 
 
@@ -233,7 +265,7 @@ def season_at(
     """The season at a moment, by the school: the sun's apparent longitude, the
     month's branch, and the days since the month's jie."""
     if not 0.0 <= longitude_deg < 360.0:
-        raise ValueError('The sun\'s longitude must be in [0, 360).')
+        raise ValueError("The sun's longitude must be in [0, 360).")
     if month_branch not in SEASON_OF_MONTH:
         raise ValueError(f'Not a branch: {month_branch!r}.')
     held: CommanderView | None = None
@@ -247,9 +279,13 @@ def season_at(
                 int(((longitude_deg - 315.0) % 360.0) // 90.0)
             ]
     elif school == 'months':
-        ruler = 'earth' if month_branch in EARTH_MONTHS else SEASON_OF_MONTH[month_branch]
+        ruler = (
+            'earth' if month_branch in EARTH_MONTHS else SEASON_OF_MONTH[month_branch]
+        )
     elif school == 'late_summer':
-        ruler = 'earth' if month_branch == LATE_SUMMER else SEASON_OF_MONTH[month_branch]
+        ruler = (
+            'earth' if month_branch == LATE_SUMMER else SEASON_OF_MONTH[month_branch]
+        )
     else:
         held = commander(month_branch, days_since_jie)
         ruler = held['element']
