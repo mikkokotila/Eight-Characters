@@ -196,7 +196,9 @@ class TestToday(unittest.TestCase):
         # date the day pillar is, and noon on the clock falls within them.
         hours = after.json()['hours']
         noon = datetime.fromisoformat('2011-12-31T12:00:00+14:00')
-        self.assertLessEqual(datetime.fromisoformat(hours[0]['spans'][0]['start']), noon)
+        self.assertLessEqual(
+            datetime.fromisoformat(hours[0]['spans'][0]['start']), noon
+        )
         self.assertLess(noon, datetime.fromisoformat(hours[0]['spans'][1]['end']))
 
     def test_the_answer_is_the_accounts_own(self) -> None:
