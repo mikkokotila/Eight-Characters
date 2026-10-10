@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.47.0
+
+The first chart's Day Master, part by part: for a front end that shows a visitor the
+Day Master's reading as the app's Readings show it, before she has an account (#69).
+
+### Added
+- **API: `day_master.parts` in `POST /api/first_chart`**, with a place: the parts of the
+  Day Master's reading in the order of the app's Day Master page, what the element is,
+  how it meets any ground, the Day Master in each pillar the chart has from the hour to
+  the year, and where it is in its cycle. Each with `first`, the line the app shows for
+  it: its passage's first sentence, or for the cycle, the names of its stages on the
+  chart's branches. The first part also with `rest`, the rest of its passage word for
+  word. `day_master.passage` is unchanged.
+
+### Changed
+- The reading's sentence rule is public as `sentences` in `eight_characters/reading.py`,
+  so that the first chart splits a passage as the reading does.
+
+### Tests
+- `tests/test_api_first_chart_endpoint.py`: the parts of the Day Master of Chicago, 14
+  March 1990, with and without a time, against the lines the app reads from
+  `build_reading` for the same chart; the core's line and rest, word for word, as its
+  passage; and every one of the ten Day Masters, ten days in a row, read as the app reads
+  it.
+- Version bumped to `0.47.0`; the static assets' cache keys follow it. The regression
+  fixture changes only in `engine.version`.
+
 ## 0.46.0
 
 The first chart, for someone without an account: what a birth settles, from its date
