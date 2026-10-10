@@ -18,7 +18,9 @@ from eight_characters.accounts import store as store_module
 from eight_characters.accounts.backup import run_backup
 from eight_characters.accounts.records import (
     DEFAULT_SCHOOLS,
+    NO_CHOICE,
     Birth,
+    ChosenSchools,
     Place,
     RecordError,
     Schools,
@@ -65,6 +67,7 @@ OWN = Birth(
     place=HELSINKI,
     fold=None,
     gender='female',
+    zi='split_midnight',
 )
 PARTNER = Birth(
     name='Partner',
@@ -73,12 +76,13 @@ PARTNER = Birth(
     place=LISBON,
     fold=None,
     gender='male',
+    zi='whole_zi_23',
 )
 SETTINGS = Settings(
     own=OWN,
     partner=PARTNER,
     place=LISBON,
-    schools=Schools(favourable='climate', season='commander', transits='ziping'),
+    schools=ChosenSchools(favourable='climate', season='commander', transits=None),
     updated_at='2026-10-07T12:00:00Z',
 )
 USER = User(
@@ -107,6 +111,7 @@ def _birth_json(birth: Birth, key: str) -> dict[str, Any]:
         'time': birth.time,
         'place': _place_json(birth.place),
         'gender': birth.gender,
+        'zi': birth.zi,
     }
     if birth.name is not None:
         body['name'] = birth.name
@@ -144,6 +149,7 @@ class TestSettingsRecords(unittest.TestCase):
             {'fold': 2},
             {'fold': True},
             {'gender': 'other'},
+            {'zi': 'zi_at_midnight'},
         ):
             with self.subTest(changes=changes), self.assertRaises(RecordError):
                 replace(OWN, **changes)
@@ -154,6 +160,8 @@ class TestSettingsRecords(unittest.TestCase):
         ):
             with self.subTest(changes=changes), self.assertRaises(RecordError):
                 replace(DEFAULT_SCHOOLS, **changes)
+            with self.subTest(chosen=changes), self.assertRaises(RecordError):
+                replace(NO_CHOICE, **changes)
         with self.assertRaises(RecordError):
             replace(SETTINGS, updated_at='2026-10-07 12:00')
 
@@ -161,6 +169,11 @@ class TestSettingsRecords(unittest.TestCase):
         self.assertEqual(
             DEFAULT_SCHOOLS,
             Schools(favourable='support', season='eighteen', transits='phases'),
+        )
+        self.assertEqual(NO_CHOICE.effective(), DEFAULT_SCHOOLS)
+        self.assertEqual(
+            SETTINGS.schools.effective(),
+            Schools(favourable='climate', season='commander', transits='phases'),
         )
 
     def test_canonical_bytes(self) -> None:
@@ -180,7 +193,7 @@ class TestSettingsRecords(unittest.TestCase):
             b'  "schools": {\n'
             b'    "favourable": "climate",\n'
             b'    "season": "commander",\n'
-            b'    "transits": "ziping"\n'
+            b'    "transits": null\n'
             b'  },\n'
             b'  "updated_at": "2026-10-07T12:00:00Z"\n'
             b'}\n',
@@ -282,12 +295,12 @@ class TestSettingsStore(StoreCase):
         self.store.put_chart(self.user.id, 'self', OWN)
         self.store.put_chart(self.user.id, 'partner', PARTNER)
         self.store.put_place(self.user.id, LISBON)
-        kept = self.store.set_schools(self.user.id, season='months')
+        kept = self.store.set_schools(self.user.id, {'season': 'months'})
         expected = Settings(
             own=OWN,
             partner=PARTNER,
             place=LISBON,
-            schools=replace(DEFAULT_SCHOOLS, season='months'),
+            schools=replace(NO_CHOICE, season='months'),
             updated_at='2026-10-07T12:00:03Z',
         )
         self.assertEqual(kept, expected)
@@ -298,13 +311,24 @@ class TestSettingsStore(StoreCase):
         )
 
     def test_a_choice_of_one_school_keeps_the_others(self) -> None:
-        self.store.set_schools(self.user.id, favourable='climate', transits='ziping')
-        kept = self.store.set_schools(self.user.id, season='late_summer')
+        self.store.set_schools(
+            self.user.id, {'favourable': 'climate', 'transits': 'whole'}
+        )
+        kept = self.store.set_schools(self.user.id, {'season': 'late_summer'})
         assert kept is not None
         self.assertEqual(
             kept.schools,
-            Schools(favourable='climate', season='late_summer', transits='ziping'),
+            ChosenSchools(favourable='climate', season='late_summer', transits='whole'),
         )
+        # None follows the default again.
+        again = self.store.set_schools(self.user.id, {'favourable': None})
+        assert again is not None
+        self.assertIsNone(again.schools.favourable)
+        self.assertEqual(again.schools.effective().favourable, 'support')
+        with self.assertRaises(RecordError):
+            self.store.set_schools(self.user.id, {'weights': 'support'})
+        with self.assertRaises(RecordError):
+            self.store.set_schools(self.user.id, {'season': 'modern'})
 
     def test_each_change_is_logged_for_the_backup_and_moves_its_time_on(self) -> None:
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
@@ -332,7 +356,7 @@ class TestSettingsStore(StoreCase):
         other = self.store.create_user('other@example.com', 'en')
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
         self.assertIsNone(self.store.delete_chart(other.id, 'partner'))
-        self.assertIsNone(self.store.set_schools(other.id, favourable='support'))
+        self.assertIsNone(self.store.set_schools(other.id, {'favourable': None}))
         self.assertIsNone(self.store.settings(other.id))
         self.assertEqual(self.store.backup_snapshot().changes, ())
 
@@ -493,13 +517,16 @@ class TestSettingsApi(unittest.TestCase):
                     'season': 'eighteen',
                     'transits': 'phases',
                 },
+                'chosen': {'favourable': None, 'season': None, 'transits': None},
                 'updated_at': None,
                 'key': self.key,
             },
         )
 
     def test_a_saved_chart_has_the_pillars_of_the_four_pillars(self) -> None:
-        for role, birth in (('self', OWN), ('partner', PARTNER)):
+        # 00:47 in Helsinki on 18 May 1990 is about 23:30 true solar time on the 17th.
+        late = replace(OWN, date='1990-05-18', time='00:47', zi='whole_zi_23')
+        for role, birth in (('self', OWN), ('partner', PARTNER), ('self', late)):
             with self.subTest(role=role):
                 reply = self.client.put(
                     f'/api/account/charts/{role}', json=_birth_json(birth, self.key)
@@ -517,6 +544,7 @@ class TestSettingsApi(unittest.TestCase):
                             'latitude': place.latitude,
                             'longitude': place.longitude,
                         },
+                        'conventions': {'zi_convention': birth.zi},
                     },
                 ).json()['four_pillars']
                 for pillar in ('year', 'month', 'day', 'hour'):
@@ -532,7 +560,17 @@ class TestSettingsApi(unittest.TestCase):
                     )
                 self.assertEqual(chart['date'], birth.date)
                 self.assertEqual(chart['name'], birth.name)
+                self.assertEqual(chart['zi'], birth.zi)
                 self.assertEqual(chart['place']['name'], place.name)
+        # The Zi-hour convention moves a birth late in the evening to the next day.
+        split = self.client.put(
+            '/api/account/charts/self',
+            json=_birth_json(replace(late, zi='split_midnight'), self.key),
+        ).json()['charts']['self']['pillars']['day']
+        whole = self.client.put(
+            '/api/account/charts/self', json=_birth_json(late, self.key)
+        ).json()['charts']['self']['pillars']['day']
+        self.assertNotEqual(split, whole)
 
     def test_a_birth_is_checked_by_the_first_charts_rules(self) -> None:
         body = _birth_json(OWN, self.key)
@@ -633,6 +671,15 @@ class TestSettingsApi(unittest.TestCase):
             reply.json()['schools'],
             {'favourable': 'climate', 'season': 'eighteen', 'transits': 'seasoned'},
         )
+        self.assertEqual(
+            reply.json()['chosen'],
+            {'favourable': 'climate', 'season': None, 'transits': 'seasoned'},
+        )
+        back = self.client.patch(
+            '/api/account/schools', json={'key': self.key, 'favourable': None}
+        )
+        self.assertEqual(back.json()['chosen']['favourable'], None)
+        self.assertEqual(back.json()['schools']['favourable'], 'support')
         for body in (
             {'favourable': 'structure'},
             {'season': 'modern'},

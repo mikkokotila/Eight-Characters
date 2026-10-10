@@ -35,11 +35,14 @@ Plan = Literal['free', 'basic', 'pro', 'max']
 RecordKind = Literal['user']
 # Whose chart: the account holder's own, or their partner's.
 Role = Literal['self', 'partner']
+ZiConvention = Literal['split_midnight', 'whole_zi_23']
 
 LANGUAGES: Final[tuple[Language, ...]] = ('fi', 'en')
 PLANS: Final[tuple[Plan, ...]] = ('free', 'basic', 'pro', 'max')
 ROLES: Final[tuple[Role, ...]] = ('self', 'partner')
 GENDERS: Final[tuple[Gender, ...]] = ('male', 'female')
+# The engine's Zi-hour conventions (conventions.ALLOWED_ZI_CONVENTIONS).
+ZI_CONVENTIONS: Final[tuple[ZiConvention, ...]] = ('split_midnight', 'whole_zi_23')
 # The version of a record's own fields that this app writes. Schema 1 records, from
 # before accounts kept settings, are read as accounts without any; a record of any
 # other version is refused.
@@ -70,7 +73,9 @@ _USER_FIELDS: Final = frozenset(
 _FIELDS_BY_SCHEMA: Final = {1: _USER_FIELDS, 2: _USER_FIELDS | {'settings'}}
 _SETTINGS_FIELDS: Final = frozenset({'charts', 'place', 'schools', 'updated_at'})
 _CHARTS_FIELDS: Final = frozenset(ROLES)
-_BIRTH_FIELDS: Final = frozenset({'date', 'fold', 'gender', 'name', 'place', 'time'})
+_BIRTH_FIELDS: Final = frozenset(
+    {'date', 'fold', 'gender', 'name', 'place', 'time', 'zi'}
+)
 _PLACE_FIELDS: Final = frozenset({'latitude', 'longitude', 'name', 'timezone'})
 _SCHOOLS_FIELDS: Final = frozenset({'favourable', 'season', 'transits'})
 
@@ -131,6 +136,10 @@ def is_role(value: str) -> TypeGuard[Role]:
 
 def is_gender(value: str) -> TypeGuard[Gender]:
     return value in GENDERS
+
+
+def is_zi(value: str) -> TypeGuard[ZiConvention]:
+    return value in ZI_CONVENTIONS
 
 
 def _check_text(name: str, value: object, longest: int) -> None:
@@ -224,10 +233,14 @@ class Birth:
     # Which pass of a time the clocks repeat: 0 the first, 1 the second.
     fold: int | None
     gender: Gender
+    # The Zi-hour convention the chart is drawn with, as its link carries it.
+    zi: ZiConvention
 
     def __post_init__(self) -> None:
         if self.name is not None:
             _check_text('A name', self.name, NAME_MAX_LENGTH)
+        if not is_zi(self.zi):
+            raise RecordError(f'Unknown Zi-hour convention: {self.zi!r}.')
         if self.fold is not None and (
             type(self.fold) is not int or self.fold not in (0, 1)
         ):
@@ -255,7 +268,7 @@ class Birth:
 
 @dataclass(frozen=True)
 class Schools:
-    """The school chosen for each of Today's three settings."""
+    """The school Today follows for each of its three settings."""
 
     favourable: FavourableSchool
     season: SeasonSchool
@@ -276,6 +289,34 @@ DEFAULT_SCHOOLS: Final = Schools(
 
 
 @dataclass(frozen=True)
+class ChosenSchools:
+    """The schools an account chose; None where it follows the default, and so
+    follows a later change of the default too."""
+
+    favourable: FavourableSchool | None
+    season: SeasonSchool | None
+    transits: TransitSchool | None
+
+    def __post_init__(self) -> None:
+        Schools(
+            favourable=self.favourable or DEFAULT_FAVOURABLE,
+            season=self.season or DEFAULT_SEASON,
+            transits=self.transits or DEFAULT_TRANSITS,
+        )
+
+    def effective(self) -> Schools:
+        """The schools Today follows: each chosen one, or the default."""
+        return Schools(
+            favourable=self.favourable or DEFAULT_SCHOOLS.favourable,
+            season=self.season or DEFAULT_SCHOOLS.season,
+            transits=self.transits or DEFAULT_SCHOOLS.transits,
+        )
+
+
+NO_CHOICE: Final = ChosenSchools(favourable=None, season=None, transits=None)
+
+
+@dataclass(frozen=True)
 class Settings:
     """What an account keeps for Today: its own chart, a partner's, where the person
     is, and the schools chosen. An account that has set nothing has none."""
@@ -283,7 +324,7 @@ class Settings:
     own: Birth | None
     partner: Birth | None
     place: Place | None
-    schools: Schools
+    schools: ChosenSchools
     updated_at: str
 
     def __post_init__(self) -> None:
@@ -315,6 +356,7 @@ def _birth_value(birth: Birth) -> dict[str, Any]:
         'name': birth.name,
         'place': place_value(birth.place),
         'time': birth.time,
+        'zi': birth.zi,
     }
 
 
@@ -356,6 +398,13 @@ def _text(record: dict[str, Any], name: str, what: str) -> str:
     return value
 
 
+def _optional_text(record: dict[str, Any], name: str, what: str) -> str | None:
+    value: object = record[name]
+    if value is not None and not isinstance(value, str):
+        raise RecordError(f"{what}' {name} must be text or null.")
+    return value
+
+
 def _float(record: dict[str, Any], name: str, what: str) -> float:
     value: object = record[name]
     # Only a float: true is no number, and a whole number would not write back as the
@@ -386,6 +435,9 @@ def _birth_from(value: object, what: str) -> Birth:
     gender = _text(record, 'gender', what)
     if not is_gender(gender):
         raise RecordError(f'Unknown gender: {gender!r}.')
+    zi = _text(record, 'zi', what)
+    if not is_zi(zi):
+        raise RecordError(f'Unknown Zi-hour convention: {zi!r}.')
     return Birth(
         name=name,
         date=_text(record, 'date', what),
@@ -393,6 +445,7 @@ def _birth_from(value: object, what: str) -> Birth:
         place=_place_from(record['place'], f"{what}'s place"),
         fold=cast(int | None, fold),
         gender=gender,
+        zi=zi,
     )
 
 
@@ -401,14 +454,14 @@ def settings_from(value: object) -> Settings:
     record = _fields(value, 'The settings', _SETTINGS_FIELDS)
     charts = _fields(record['charts'], 'The charts', _CHARTS_FIELDS)
     schools = _fields(record['schools'], 'The schools', _SCHOOLS_FIELDS)
-    favourable = _text(schools, 'favourable', 'The schools')
-    season = _text(schools, 'season', 'The schools')
-    transits = _text(schools, 'transits', 'The schools')
-    if not is_favourable_school(favourable):
+    favourable = _optional_text(schools, 'favourable', 'The schools')
+    season = _optional_text(schools, 'season', 'The schools')
+    transits = _optional_text(schools, 'transits', 'The schools')
+    if favourable is not None and not is_favourable_school(favourable):
         raise RecordError(f'Unknown favourable school: {favourable!r}.')
-    if not is_season_school(season):
+    if season is not None and not is_season_school(season):
         raise RecordError(f'Unknown season school: {season!r}.')
-    if not is_transit_school(transits):
+    if transits is not None and not is_transit_school(transits):
         raise RecordError(f'Unknown transit school: {transits!r}.')
     own: object = charts['self']
     partner: object = charts['partner']
@@ -417,7 +470,7 @@ def settings_from(value: object) -> Settings:
         own=None if own is None else _birth_from(own, 'Your chart'),
         partner=None if partner is None else _birth_from(partner, "A partner's chart"),
         place=None if place is None else _place_from(place, 'Where you are'),
-        schools=Schools(favourable=favourable, season=season, transits=transits),
+        schools=ChosenSchools(favourable=favourable, season=season, transits=transits),
         updated_at=_text(record, 'updated_at', 'The settings'),
     )
 

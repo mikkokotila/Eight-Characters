@@ -10,23 +10,23 @@ place only when complete.
 import hmac
 import os
 import sqlite3
-from collections.abc import Callable, Generator, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, cast
 
 from eight_characters.accounts.records import (
-    DEFAULT_SCHOOLS,
+    NO_CHOICE,
     Birth,
+    ChosenSchools,
     Language,
     Place,
     Plan,
     RecordError,
     RecordKind,
     Role,
-    Schools,
     Settings,
     User,
     decode_settings,
@@ -662,23 +662,26 @@ class AccountStore:
         """Keeps where the person is."""
         return self._update_settings(user_id, lambda s: replace(s, place=place))
 
-    def set_schools(
-        self,
-        user_id: str,
-        favourable: FavourableSchool | None = None,
-        season: SeasonSchool | None = None,
-        transits: TransitSchool | None = None,
-    ) -> Settings | None:
-        """Chooses the school for any of the three settings; the others stay."""
+    def set_schools(self, user_id: str, chosen: Mapping[str, str | None]) -> Settings | None:
+        """Chooses the school for any of the three settings, by name: a preset, or
+        None to follow the default again. The settings not named stay."""
+        unknown = set(chosen) - {'favourable', 'season', 'transits'}
+        if unknown:
+            raise RecordError(f'Unknown settings: {sorted(unknown)}.')
 
         def choose(settings: Settings) -> Settings:
             now = settings.schools
             return replace(
                 settings,
-                schools=Schools(
-                    favourable=favourable or now.favourable,
-                    season=season or now.season,
-                    transits=transits or now.transits,
+                schools=ChosenSchools(
+                    favourable=cast(
+                        FavourableSchool | None,
+                        chosen.get('favourable', now.favourable),
+                    ),
+                    season=cast(SeasonSchool | None, chosen.get('season', now.season)),
+                    transits=cast(
+                        TransitSchool | None, chosen.get('transits', now.transits)
+                    ),
                 ),
             )
 
@@ -701,7 +704,7 @@ class AccountStore:
                 own=None,
                 partner=None,
                 place=None,
-                schools=DEFAULT_SCHOOLS,
+                schools=NO_CHOICE,
                 updated_at=now,
             )
             changed = change(base)

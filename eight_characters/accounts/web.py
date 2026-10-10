@@ -39,8 +39,10 @@ from eight_characters.accounts.person_check import (
 )
 from eight_characters.accounts.records import (
     DEFAULT_SCHOOLS,
+    NO_CHOICE,
     ROLES,
     Birth,
+    ChosenSchools,
     Language,
     Place,
     RecordError,
@@ -48,6 +50,7 @@ from eight_characters.accounts.records import (
     Schools,
     Settings,
     User,
+    ZiConvention,
     normalize_email,
     place_value,
     timestamp,
@@ -67,7 +70,6 @@ from eight_characters.first_chart import (
     ChartPillar,
     FirstChartInputError,
     PillarName,
-    build_first_chart,
 )
 from eight_characters.school_presets import (
     FavourableSchool,
@@ -75,6 +77,7 @@ from eight_characters.school_presets import (
     TransitSchool,
 )
 from eight_characters.time_convert import Gender
+from eight_characters.today import TodayInputError, chart_birth
 
 logger = logging.getLogger(__name__)
 
@@ -519,6 +522,21 @@ class BirthRequest(BaseModel):
     # Which pass of a time the clocks repeat: 0 the first, 1 the second.
     fold: int | None = Field(default=None, ge=0, le=1)
     gender: Gender
+    # The Zi-hour convention the chart is drawn with, as its link carries it.
+    zi: ZiConvention = 'split_midnight'
+
+
+class BirthBody(BaseModel):
+    # A birth sent with a request, as BirthRequest without the account's key.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    name: str | None = None
+    date: str
+    time: str
+    place: PlaceRequest
+    fold: int | None = Field(default=None, ge=0, le=1)
+    gender: Gender
+    zi: ZiConvention = 'split_midnight'
 
 
 class HereRequest(BaseModel):
@@ -529,7 +547,7 @@ class HereRequest(BaseModel):
 
 
 class SchoolsRequest(BaseModel):
-    # Each school left out stays as it is.
+    # Each school left out stays as it is; one sent as null follows the default again.
     model_config = ConfigDict(extra='forbid', strict=True)
 
     key: str
@@ -545,6 +563,7 @@ class ChartView(TypedDict):
     place: dict[str, Any]
     fold: int | None
     gender: Gender
+    zi: ZiConvention
     # The chart's four pillars, as /api/four_pillars gives them.
     pillars: dict[PillarName, ChartPillar]
 
@@ -552,7 +571,10 @@ class ChartView(TypedDict):
 class SettingsView(TypedDict):
     charts: dict[Role, ChartView | None]
     place: dict[str, Any] | None
+    # The school Today follows for each setting, and the one chosen: None where the
+    # account follows the default.
     schools: dict[str, str]
+    chosen: dict[str, str | None]
     # When the settings last changed; None for an account that has set nothing.
     updated_at: str | None
     key: str
@@ -753,7 +775,7 @@ def delete_account(
 # ── Settings for Today ──
 
 
-def _place(request: PlaceRequest) -> Place:
+def place_of(request: PlaceRequest) -> Place:
     return Place(
         name=request.name,
         timezone=request.timezone,
@@ -763,10 +785,25 @@ def _place(request: PlaceRequest) -> Place:
     )
 
 
+def birth_of(request: BirthRequest | BirthBody) -> Birth:
+    """The birth a request names, checked by the first chart's rules and charted:
+    RecordError, FirstChartInputError or TodayInputError if it cannot be."""
+    birth = Birth(
+        name=request.name,
+        date=request.date,
+        time=request.time,
+        place=place_of(request.place),
+        fold=request.fold,
+        gender=request.gender,
+        zi=request.zi,
+    )
+    chart_birth(birth)
+    return birth
+
+
 def charted(birth: Birth) -> dict[PillarName, ChartPillar]:
-    """The birth's four pillars, by the engine; FirstChartInputError if its clock time
-    did not happen at its place, or happened twice there and no fold says which."""
-    return build_first_chart(birth.first_birth())['pillars']
+    """The birth's four pillars, by the engine, with its own Zi-hour convention."""
+    return chart_birth(birth).chart()
 
 
 def _chart_view(birth: Birth) -> ChartView:
@@ -777,6 +814,7 @@ def _chart_view(birth: Birth) -> ChartView:
         'place': place_value(birth.place),
         'fold': birth.fold,
         'gender': birth.gender,
+        'zi': birth.zi,
         'pillars': charted(birth),
     }
 
@@ -789,6 +827,14 @@ def _schools_view(schools: Schools) -> dict[str, str]:
     }
 
 
+def _chosen_view(chosen: ChosenSchools) -> dict[str, str | None]:
+    return {
+        'favourable': chosen.favourable,
+        'season': chosen.season,
+        'transits': chosen.transits,
+    }
+
+
 def settings_view(user: User, settings: Settings | None) -> SettingsView:
     """What the page is told of the account's settings, each chart with its pillars;
     the defaults when it has set nothing."""
@@ -797,6 +843,7 @@ def settings_view(user: User, settings: Settings | None) -> SettingsView:
             'charts': {role: None for role in ROLES},
             'place': None,
             'schools': _schools_view(DEFAULT_SCHOOLS),
+            'chosen': _chosen_view(NO_CHOICE),
             'updated_at': None,
             'key': account_key(user),
         }
@@ -807,7 +854,8 @@ def settings_view(user: User, settings: Settings | None) -> SettingsView:
     return {
         'charts': charts,
         'place': None if settings.place is None else place_value(settings.place),
-        'schools': _schools_view(settings.schools),
+        'schools': _schools_view(settings.schools.effective()),
+        'chosen': _chosen_view(settings.schools),
         'updated_at': settings.updated_at,
         'key': account_key(user),
     }
@@ -844,16 +892,8 @@ def save_chart(
     user = _signed_in(current).user
     _named(user, payload.key)
     try:
-        birth = Birth(
-            name=payload.name,
-            date=payload.date,
-            time=payload.time,
-            place=_place(payload.place),
-            fold=payload.fold,
-            gender=payload.gender,
-        )
-        charted(birth)
-    except (RecordError, FirstChartInputError) as exc:
+        birth = birth_of(payload)
+    except (RecordError, FirstChartInputError, TodayInputError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(user, lambda: accounts.store.put_chart(user.id, role, birth))
 
@@ -884,7 +924,7 @@ def save_place(
     user = _signed_in(current).user
     _named(user, payload.key)
     try:
-        place = _place(payload.place)
+        place = place_of(payload.place)
     except RecordError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(user, lambda: accounts.store.put_place(user.id, place))
@@ -901,12 +941,9 @@ def choose_schools(
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
-    return _changed(
-        user,
-        lambda: accounts.store.set_schools(
-            user.id,
-            favourable=payload.favourable,
-            season=payload.season,
-            transits=payload.transits,
-        ),
-    )
+    chosen: dict[str, str | None] = {
+        name: getattr(payload, name)
+        for name in ('favourable', 'season', 'transits')
+        if name in payload.model_fields_set
+    }
+    return _changed(user, lambda: accounts.store.set_schools(user.id, chosen))

@@ -1,15 +1,14 @@
-import csv
 import json
+import re
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
-from datetime import datetime
-from functools import lru_cache
+from datetime import date, datetime
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Literal, cast
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -19,12 +18,22 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
+from eight_characters.accounts.records import (
+    ChosenSchools,
+    RecordError,
+    Role,
+    Schools,
+)
 from eight_characters.accounts.web import (
     AccountsDependency,
+    BirthBody,
+    PlaceRequest,
     SessionDependency,
     account_view,
     accounts_from_environment,
+    birth_of,
     count_chart_request,
+    place_of,
     require_account,
 )
 from eight_characters.accounts.web import router as account_router
@@ -68,6 +77,8 @@ from eight_characters.first_chart import (
 )
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_context import build_luck_context
+from eight_characters.mappings import hidden_stems_lookup as _load_hidden_stems_lookup
+from eight_characters.mappings import ten_gods_lookup as _load_ten_gods_lookup
 from eight_characters.luck_pillars import (
     DEFAULT_LUCK_PILLAR_COUNT,
     MAX_LUCK_PILLAR_COUNT,
@@ -80,11 +91,16 @@ from eight_characters.reading import (
     check_reading_canon,
 )
 from eight_characters.role_profile import build_role_profile
+from eight_characters.school_catalog import Catalog, school_catalog
+from eight_characters.school_presets import (
+    FavourableSchool,
+    SeasonSchool,
+    TransitSchool,
+)
 from eight_characters.ten_gods import (
     DAY_MASTER,
     DayMasterName,
     TenGodName,
-    parse_ten_gods_mapping,
 )
 from eight_characters.time_convert import (
     AmbiguousTimeError,
@@ -92,10 +108,10 @@ from eight_characters.time_convert import (
     Gender,
     NonexistentTimeError,
 )
+from eight_characters.today import TodayAnswer, TodayInputError, build_today
 from eight_characters.vsop87d import earth_series
 
 BASE_DIR = Path(__file__).resolve().parent
-MAPPINGS_DIR = BASE_DIR / 'resources' / 'mappings'
 EXPLORER_DIR = BASE_DIR / 'explorer'
 
 BRANCH_ID_BY_CHAR: dict[str, int] = {
@@ -282,6 +298,34 @@ class FirstChartRequest(BaseModel):
     date: str
     time: str | None = None
     location: FirstChartPlace | None = None
+
+
+class SchoolsChoice(BaseModel):
+    # The schools for this answer; each left out follows the default.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    favourable: FavourableSchool | None = None
+    season: SeasonSchool | None = None
+    transits: TransitSchool | None = None
+
+
+class TodayCharts(BaseModel):
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    own: BirthBody = Field(alias='self')
+    partner: BirthBody | None = None
+
+
+class TodayRequest(BaseModel):
+    # Everything GET /api/today takes from the account's settings, sent instead.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    date: str
+    lang: Literal['fi', 'en']
+    place: PlaceRequest
+    charts: TodayCharts
+    chart: Role = 'self'
+    schools: SchoolsChoice = Field(default_factory=SchoolsChoice)
 
 
 class HiddenStemsRequest(BaseModel):
@@ -640,39 +684,6 @@ async def _resolve_four_pillars_location(
     return await _resolve_city_location(city_name, country_name)
 
 
-def _extract_hidden_stem_char(entry: str) -> str:
-    token = entry.strip()
-    if not token:
-        raise ValueError('Hidden stem entry cannot be empty.')
-    parts = token.split()
-    return parts[-1]
-
-
-@lru_cache(maxsize=1)
-def _load_hidden_stems_lookup() -> dict[str, list[str]]:
-    csv_path = MAPPINGS_DIR / 'hidden-stems.csv'
-    if not csv_path.exists():
-        raise RuntimeError(f'Hidden stems lookup not found: {csv_path}')
-
-    lookup: dict[str, list[str]] = {}
-    with csv_path.open('r', encoding='utf-8', newline='') as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            branch_col = (row.get('Earthly Branch') or '').strip()
-            hidden_col = (
-                row.get('Hidden Stems (Main, Middle, Residual Qi)') or ''
-            ).strip()
-            if not branch_col or not hidden_col:
-                continue
-            branch_char = branch_col[-1]
-            entries = [item for item in hidden_col.split(',') if item.strip()]
-            lookup[branch_char] = [_extract_hidden_stem_char(item) for item in entries]
-
-    if not lookup:
-        raise RuntimeError('Hidden stems lookup is empty.')
-    return lookup
-
-
 def _validate_pillar_text(pillar_text: str, field_name: str) -> tuple[str, str]:
     value = pillar_text.strip()
     if len(value) != 2:
@@ -724,11 +735,6 @@ def _build_hidden_stems_result(
             'hidden_stems': enriched,
         }
     return result
-
-
-@lru_cache(maxsize=1)
-def _load_ten_gods_lookup() -> dict[tuple[str, str], TenGodName]:
-    return parse_ten_gods_mapping(MAPPINGS_DIR / 'ten-gods.csv')
 
 
 # Every chart request needs both mappings and the astronomical model tables: a
@@ -1373,3 +1379,104 @@ async def hidden_stems(
         ) from exc
 
     return {'hidden_stems': hidden_stems_payload}
+
+
+# ── Today ──
+
+
+_DAY = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
+
+
+def _day(text: str) -> date:
+    if _DAY.fullmatch(text) is None:
+        raise HTTPException(status_code=400, detail='date must be in YYYY-MM-DD format.')
+    try:
+        return date.fromisoformat(text)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=400, detail=f'{text} is not a date that exists.'
+        ) from exc
+
+
+@app.get('/api/schools')
+def schools() -> Catalog:
+    """Every school Today can follow, in Finnish and English, with its sources and
+    which is the default (docs/Today.md)."""
+    return school_catalog()
+
+
+@app.get('/api/today', dependencies=ACCOUNT_REQUIRED)
+def today_from_settings(
+    response: Response,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+    date_text: str = Query(alias='date'),
+    lang: Literal['fi', 'en'] = Query(),
+    chart: Role = Query(default='self'),
+) -> TodayAnswer:
+    """Everything Today shows for a date, from the account's charts, place and
+    schools (docs/Today.md)."""
+    day = _day(date_text)
+    user = require_account(current)
+    settings = accounts.store.settings(user.id)
+    own = None if settings is None else settings.own
+    partner = None if settings is None else settings.partner
+    if own is None:
+        raise HTTPException(status_code=404, detail='No chart of yours is saved.')
+    if chart == 'partner' and partner is None:
+        raise HTTPException(status_code=404, detail='No partner’s chart is saved.')
+    if settings is None or settings.place is None:
+        raise HTTPException(status_code=404, detail='Where you are is not set.')
+    subject, other = (own, partner) if chart == 'self' else (partner, own)
+    if subject is None:
+        raise AssertionError('The chart asked for was found above.')
+    try:
+        answer = build_today(
+            day,
+            settings.place,
+            subject,
+            other,
+            settings.schools.effective(),
+            lang,
+            chart,
+        )
+    except TodayInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # The answer is the account's own: no shared cache may keep it.
+    response.headers['Cache-Control'] = 'private, no-cache'
+    return answer
+
+
+@app.post('/api/today', dependencies=ACCOUNT_REQUIRED)
+def today_from_request(payload: TodayRequest, response: Response) -> TodayAnswer:
+    """Everything Today shows, for births, a place and schools sent in the request."""
+    day = _day(payload.date)
+    try:
+        place = place_of(payload.place)
+        own = birth_of(payload.charts.own)
+        partner = (
+            None if payload.charts.partner is None else birth_of(payload.charts.partner)
+        )
+        chosen = ChosenSchools(
+            favourable=payload.schools.favourable,
+            season=payload.schools.season,
+            transits=payload.schools.transits,
+        )
+    except (RecordError, FirstChartInputError, TodayInputError) as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    if payload.chart == 'partner' and partner is None:
+        raise HTTPException(
+            status_code=400, detail='chart is partner, but no partner’s chart is sent.'
+        )
+    subject, other = (own, partner) if payload.chart == 'self' else (partner, own)
+    if subject is None:
+        raise AssertionError('The chart asked for was checked above.')
+    schools_used: Schools = chosen.effective()
+    try:
+        answer = build_today(
+            day, place, subject, other, schools_used, payload.lang, payload.chart
+        )
+    except TodayInputError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    response.headers['Cache-Control'] = 'private, no-cache'
+    return answer
