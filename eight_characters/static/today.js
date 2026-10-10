@@ -209,9 +209,10 @@
         <span id="today-run-label" class="luck-ribbon-label">${esc(t('today_run_label'))}</span>
         <div class="today-run-track">${answer.run.map((day) => `
           <button type="button" class="today-run-day band-${esc(day.band)}${day.date === state.day ? ' is-selected' : ''}" data-today-day="${esc(day.date)}"
-            ${day.date === state.day ? 'aria-current="date"' : ''} aria-label="${esc(t('today_run_day', { day: shortDate(day.date), pull: pull(day) }))}">
+            ${day.date === state.day ? 'aria-current="date"' : ''} aria-label="${esc(t('today_run_day', { day: shortDate(day.date), pillar: `${day.pillar.stem.pinyin} ${day.pillar.branch.pinyin}`, pull: pull(day) }))}">
             <span class="today-run-date" aria-hidden="true">${esc(shortDate(day.date))}</span>
             <span class="today-run-chars" lang="zh-Hant" aria-hidden="true">${esc(day.pillar.stem.chinese + day.pillar.branch.chinese)}</span>
+            <span class="today-run-pinyin" aria-hidden="true">${esc(`${day.pillar.stem.pinyin} ${day.pillar.branch.pinyin}`)}</span>
             <span class="today-run-mark" aria-hidden="true"></span>
             <span class="today-run-score" aria-hidden="true">${esc(score(day.score))}</span>
             <span class="today-run-band" aria-hidden="true">${esc(bandName(day.band))}</span>
