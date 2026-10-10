@@ -207,9 +207,7 @@ class TestSettingsRecords(unittest.TestCase):
             'not an object': b'[]\n',
             'an extra field': self._variant(lambda v: v.update(admin=True)),
             'a missing chart': self._variant(lambda v: v['charts'].pop('partner')),
-            'an extra chart': self._variant(
-                lambda v: v['charts'].update(mother=None)
-            ),
+            'an extra chart': self._variant(lambda v: v['charts'].update(mother=None)),
             'a coordinate as a whole number': self._variant(
                 lambda v: v['place'].update(latitude=38)
             ),
@@ -438,11 +436,7 @@ class TestSettingsBackup(StoreCase):
             }
         )
         path = (
-            self.checkout
-            / 'users'
-            / self.user.id[:2]
-            / self.user.id
-            / 'user.json.age'
+            self.checkout / 'users' / self.user.id[:2] / self.user.id / 'user.json.age'
         )
         path.write_bytes(pyrage.encrypt(old, [self.recipient]))
         git(self.checkout, 'commit', '--quiet', '-am', 'a backup from before settings')
