@@ -99,6 +99,12 @@
         <p class="solar-time" id="chart-solar-time"></p>
       </div>
       <div class="chart-tools">
+        <!-- The chart, or its day (today.js). -->
+        <div class="segmented page-switch" id="page-switch" role="group" aria-labelledby="page-switch-label">
+          <span id="page-switch-label" class="sr-only" data-i18n="page_label">Sivu</span>
+          <button type="button" data-page="chart" aria-pressed="true" data-i18n="page_chart">Kartta</button>
+          <button type="button" data-page="today" aria-pressed="false" data-i18n="page_today">Päivä</button>
+        </div>
         <div class="segmented display-switch" id="display-switch" role="group" aria-labelledby="display-switch-label">
           <span id="display-switch-label" class="sr-only" data-i18n="display_label">Näytä</span>
           <button type="button" data-display="characters" aria-pressed="true" data-i18n="display_characters">Merkit</button>
@@ -126,6 +132,7 @@
         <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
         <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
         <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
+        <button type="button" id="save-partner-btn" class="bar-action" data-i18n="save_partner">Tallenna kumppaniksi</button>
       </div>
       <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
       <ul id="chart-notices" class="chart-notices hidden"></ul>
@@ -293,6 +300,137 @@
 </div>
 
 <!-- ═══════════════════════════════════════════════════
+     VIEW 4 — THE CHART'S DAY (hidden initially)
+     ═══════════════════════════════════════════════════ -->
+<!-- What a day, its month, its year and the luck pillar bring to the chart on screen,
+     and to a partner's: the API's answer (POST /api/today), drawn by today.js. -->
+<div id="today-view" class="chart-container today-view hidden">
+  <div class="chart-column">
+    <header class="chart-bar">
+      <div class="chart-identity">
+        <h1 class="name" id="today-date"></h1>
+        <p class="solar-time" id="today-chart"></p>
+      </div>
+      <div class="chart-tools">
+        <div class="segmented page-switch" id="today-page-switch" role="group" aria-labelledby="today-page-label">
+          <span id="today-page-label" class="sr-only" data-i18n="page_label">Sivu</span>
+          <button type="button" data-page="chart" aria-pressed="false" data-i18n="page_chart">Kartta</button>
+          <button type="button" data-page="today" aria-pressed="true" data-i18n="page_today">Päivä</button>
+        </div>
+        <div class="segmented today-steps" id="today-steps" role="group" aria-labelledby="today-steps-label">
+          <span id="today-steps-label" class="sr-only" data-i18n="today_steps_label">Päivä</span>
+          <button type="button" class="today-step" data-today-step="-1" data-i18n="today_previous">Edellinen päivä</button>
+          <button type="button" class="today-now" data-today-now data-i18n="today_now">Tänään</button>
+          <button type="button" class="today-step" data-today-step="1" data-i18n="today_next">Seuraava päivä</button>
+        </div>
+        <!-- With a partner's chart saved: whose day the page shows. -->
+        <div class="segmented today-who hidden" id="today-who" role="group" aria-labelledby="today-who-label">
+          <span id="today-who-label" class="sr-only" data-i18n="today_who_label">Kenen päivä</span>
+          <button type="button" data-who="self" aria-pressed="true" data-i18n="today_self">Tämä kartta</button>
+          <button type="button" data-who="partner" aria-pressed="false"><span class="today-who-name"></span></button>
+        </div>
+        <div class="segmented" id="today-language" role="group" aria-labelledby="today-language-label">
+          <span id="today-language-label" class="sr-only" data-i18n="language_label">Kieli</span>
+          <button type="button" data-today-lang="fi" aria-pressed="false">FI</button>
+          <button type="button" data-today-lang="en" aria-pressed="false">EN</button>
+        </div>
+        <button type="button" id="today-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+        <button type="button" id="today-copy-text" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
+        <button type="button" id="today-print" class="bar-action" data-i18n="print">Tulosta</button>
+        <button type="button" id="today-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
+      </div>
+    </header>
+    <!-- What the page cannot show yet, or says about what it shows. -->
+    <div id="today-notice" class="today-notice hidden" role="status"></div>
+    <div id="today-body" class="today-body hidden">
+      <nav class="chart-topics today-topics" aria-labelledby="today-pull-line">
+        <h2 id="today-pull-line" class="day-master-line today-pull-line"></h2>
+        <div id="today-topics" class="context-controls"></div>
+      </nav>
+      <div id="today-run" class="luck-ribbon today-run" role="group" aria-labelledby="today-run-label"></div>
+      <span id="today-pillars-label" class="sr-only" data-i18n="today_pillars_label">Päivän pilarit</span>
+      <div id="today-pillars" class="today-pillars" role="group" aria-labelledby="today-pillars-label"></div>
+      <section id="today-in-chart" class="today-section" aria-labelledby="today-in-chart-title"></section>
+      <section id="today-hours" class="today-section" aria-labelledby="today-hours-title"></section>
+    </div>
+  </div>
+  <aside id="today-panel" class="chart-panel hidden" aria-labelledby="today-panel-title">
+    <div class="chart-panel-bar">
+      <h2 id="today-panel-title" class="sr-only" data-i18n="panel_title">Tarkempi tieto</h2>
+      <button type="button" class="panel-close" data-close-today-panel data-i18n="panel_close">Sulje</button>
+    </div>
+    <section id="today-detail" class="relationship-detail today-detail" aria-labelledby="today-detail-title"></section>
+  </aside>
+  <p id="today-status" class="sr-only" aria-live="polite" aria-atomic="true"></p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     VIEW 5 — SETTINGS (hidden initially)
+     ═══════════════════════════════════════════════════ -->
+<!-- What the account keeps for the day: a partner's chart, where you are, and the
+     schools (settings.js). -->
+<div id="settings-view" class="settings-container hidden">
+  <header class="compare-bar settings-bar">
+    <h1 class="compare-title" data-i18n="settings_title">Asetukset</h1>
+    <div class="compare-tools">
+      <button type="button" id="settings-close" class="bar-action" data-i18n="settings_close">Sulje asetukset</button>
+    </div>
+  </header>
+  <div class="settings-body">
+    <p id="settings-status" class="settings-status hidden" role="status"></p>
+    <section id="settings-partner" class="settings-section" aria-labelledby="settings-partner-title">
+      <h2 id="settings-partner-title" class="settings-heading" data-i18n="settings_partner">Kumppanin kartta</h2>
+      <div id="settings-partner-body" class="settings-partner"></div>
+    </section>
+    <section id="settings-place" class="settings-section" aria-labelledby="settings-place-title">
+      <h2 id="settings-place-title" class="settings-heading" data-i18n="settings_place">Missä olet</h2>
+      <p id="settings-place-now" class="settings-note"></p>
+      <form id="settings-place-form" class="settings-place-form" novalidate>
+        <div class="field-group location-group">
+          <label for="settings-location" id="settings-location-label" data-i18n="settings_place_search">Etsi paikka</label>
+          <div class="location-search-wrap">
+            <input type="text" id="settings-location" autocomplete="off" spellcheck="false" role="combobox"
+              aria-autocomplete="list" aria-expanded="false" aria-controls="settings-location-suggestions"
+              aria-describedby="settings-location-status">
+            <div id="settings-location-suggestions" class="location-suggestions hidden" role="listbox"
+              aria-labelledby="settings-location-label"></div>
+          </div>
+          <div id="settings-location-status" class="field-status" aria-live="polite"></div>
+        </div>
+        <div class="settings-actions">
+          <button type="submit" id="settings-place-save" class="bar-action" data-i18n="settings_place_save" disabled>Tallenna paikka</button>
+          <button type="button" id="settings-place-remove" class="bar-action hidden" data-i18n="settings_place_remove">Poista paikka</button>
+        </div>
+      </form>
+    </section>
+    <section id="settings-schools" class="settings-section" aria-labelledby="settings-schools-title">
+      <h2 id="settings-schools-title" class="settings-heading" data-i18n="settings_schools">Koulukunnat</h2>
+      <p class="settings-note" data-i18n="settings_schools_note"></p>
+      <div id="settings-schools-body" class="settings-schools"></div>
+    </section>
+  </div>
+</div>
+
+<!-- Saving the chart on screen as the partner's: its name, and what it replaces. -->
+<dialog id="partner-dialog" class="chart-dialog partner-dialog" aria-labelledby="partner-dialog-title">
+  <form id="partner-form" method="dialog" novalidate>
+    <h2 id="partner-dialog-title" data-i18n="save_partner_title">Tallenna kumppanin kartaksi</h2>
+    <p id="partner-dialog-chart" class="account-lead"></p>
+    <p id="partner-dialog-replaces" class="account-note hidden"></p>
+    <div class="account-field">
+      <label for="partner-name" data-i18n="save_partner_name">Nimi (valinnainen)</label>
+      <input type="text" id="partner-name" maxlength="80" autocomplete="off" spellcheck="false" aria-describedby="partner-name-status">
+      <p id="partner-name-status" class="field-status" aria-live="polite"></p>
+    </div>
+    <p class="account-note" data-i18n="save_partner_consent"></p>
+    <div class="account-actions">
+      <button type="submit" id="partner-save" class="bar-action" value="save" data-i18n="save_partner_confirm">Tallenna</button>
+      <button type="button" id="partner-cancel" class="bar-action" data-i18n="cancel">Peruuta</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- ═══════════════════════════════════════════════════
      THE ACCOUNT — charts need one; the start page does not
      ═══════════════════════════════════════════════════ -->
 <!-- Signing in, or creating an account, with a code sent by email; and, signed in, the
@@ -351,6 +489,7 @@
       <p id="account-language-menu-note" class="account-note" data-i18n="account_language_note"></p>
     </div>
     <div class="account-actions">
+      <button type="button" id="account-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
       <button type="button" id="account-export" class="bar-action" data-i18n="account_export">Lataa tietoni</button>
       <button type="button" id="account-sign-out" class="bar-action" data-i18n="account_sign_out">Kirjaudu ulos</button>
       <button type="button" id="account-sign-out-everywhere" class="bar-action" data-i18n="account_sign_out_everywhere">Kirjaudu ulos kaikilta laitteilta</button>
@@ -385,6 +524,8 @@
 <script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/compare.js?v={{ app_version }}"></script>
 <script src="/static/account.js?v={{ app_version }}"></script>
+<script src="/static/today.js?v={{ app_version }}"></script>
+<script src="/static/settings.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>
 </body>
 </html>

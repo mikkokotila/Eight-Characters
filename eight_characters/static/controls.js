@@ -13,6 +13,9 @@
     '.luck-chip', '.luck-phase', '.luck-identity', '[data-zi-convention]',
     '#compare-sides button', '#compare-swap', '#compare-copy-link', '#compare-close',
     '#compare-cancel', '#create-chart-btn', '.gender-option',
+    '#page-switch button', '#today-page-switch button', '#save-partner-btn', '#settings-close',
+    '#today-language button', '.today-step', '.today-now', '#today-copy-link', '#today-copy-text',
+    '#today-print', '#today-settings',
   ].join(',');
   const text = (key, vars = {}) => {
     const lang = document.documentElement.lang;
@@ -30,6 +33,9 @@
     'back-btn': ['pencil', 'edit'], 'new-chart-btn': ['square-plus', 'new'],
     'compare-btn': ['columns-2', 'compare'], 'compare-swap': ['arrow-left-right', 'swap'],
     'compare-copy-link': ['link-2', 'link'], 'compare-close': ['x', 'comparison_close'],
+    'save-partner-btn': ['user-plus', 'save_partner'], 'settings-close': ['x', 'settings_close'],
+    'today-copy-link': ['link-2', 'link'], 'today-copy-text': ['clipboard-list', 'copy_day'],
+    'today-print': ['printer', 'print'], 'today-settings': ['settings', 'settings'],
   };
   const info = (node) => {
     let label = labelOf(node);
@@ -43,8 +49,10 @@
       [icon, key] = node.dataset.view === 'standard' ? ['columns-4', 'standard'] : ['workflow', 'evolution']; only = true;
     } else if (node.matches('#luck-switch button')) {
       [icon, key] = node.dataset.luckShow === 'off' ? ['circle-dot', 'natal'] : ['calendar-range', 'with_luck']; only = true;
-    } else if (node.matches('#chart-language button, #compare-language button, .lang-btn')) {
-      key = (node.dataset.chartLang ?? node.dataset.compareLang ?? node.dataset.lang) === 'fi' ? 'finnish' : 'english';
+    } else if (node.matches('#page-switch button, #today-page-switch button')) {
+      [icon, key] = node.dataset.page === 'chart' ? ['columns-4', 'page_chart'] : ['sun', 'page_today']; only = true;
+    } else if (node.matches('#chart-language button, #compare-language button, #today-language button, .lang-btn')) {
+      key = (node.dataset.chartLang ?? node.dataset.compareLang ?? node.dataset.todayLang ?? node.dataset.lang) === 'fi' ? 'finnish' : 'english';
     } else if (node.id === 'relationships-topic') {
       icon = 'waypoints'; key = 'relationships'; only = true; count = node.dataset.controlCount; caption = withLuck(node, count);
       label = text('relationships');
@@ -75,6 +83,9 @@
     else if (node.matches('.luck-step')) {
       [icon, key] = node.dataset.luckStep === '-1' ? ['chevron-left', 'previous'] : ['chevron-right', 'next']; label = node.getAttribute('aria-label'); only = true;
     } else if (node.matches('.luck-today')) { icon = 'calendar-check'; key = 'today'; only = true; }
+    else if (node.matches('.today-step')) {
+      [icon, key] = node.dataset.todayStep === '-1' ? ['chevron-left', 'day_previous'] : ['chevron-right', 'day_next']; only = true;
+    } else if (node.matches('.today-now')) { icon = 'calendar-check'; key = 'day_today'; only = true; }
     else if (node.matches('.luck-chip')) {
       key = node.dataset.luck === 'before' ? 'before' : 'decade';
       label = node.dataset.luck === 'before' ? text('luck_before') : node.querySelector('.luck-chip-names').textContent.trim();

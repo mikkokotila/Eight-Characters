@@ -156,6 +156,10 @@ class UnknownUser(StoreError):
     """No account has that id."""
 
 
+class SettingsChanged(StoreError):
+    """The account's settings changed after the version a change was made from."""
+
+
 @dataclass(frozen=True)
 class RecordChange:
     """A record changed since the last backup: its path, and it now (None if gone),
@@ -644,24 +648,32 @@ class AccountStore:
         with _connection(self.path) as connection:
             return _select_settings(connection, user_id)
 
-    def put_partner(self, user_id: str, birth: Birth) -> Settings | None:
+    # Each change names the settings it was made from by their `updated_at`, None for
+    # an account that had none: a change made from settings that have changed since
+    # raises SettingsChanged and changes nothing, so one tab never undoes another's.
+
+    def put_partner(
+        self, user_id: str, birth: Birth, read: str | None
+    ) -> Settings | None:
         """Keeps a birth as the account's partner's chart, replacing the one before."""
-        return self._update_settings(user_id, lambda s: replace(s, partner=birth))
+        return self._update_settings(user_id, read, lambda s: replace(s, partner=birth))
 
-    def delete_partner(self, user_id: str) -> Settings | None:
+    def delete_partner(self, user_id: str, read: str | None) -> Settings | None:
         """Removes the partner's chart, if the account keeps one."""
-        return self._update_settings(user_id, lambda s: replace(s, partner=None))
+        return self._update_settings(user_id, read, lambda s: replace(s, partner=None))
 
-    def put_place(self, user_id: str, place: Place) -> Settings | None:
+    def put_place(
+        self, user_id: str, place: Place, read: str | None
+    ) -> Settings | None:
         """Keeps where the person is."""
-        return self._update_settings(user_id, lambda s: replace(s, place=place))
+        return self._update_settings(user_id, read, lambda s: replace(s, place=place))
 
-    def delete_place(self, user_id: str) -> Settings | None:
+    def delete_place(self, user_id: str, read: str | None) -> Settings | None:
         """Forgets where the person is, if the account keeps it."""
-        return self._update_settings(user_id, lambda s: replace(s, place=None))
+        return self._update_settings(user_id, read, lambda s: replace(s, place=None))
 
     def set_schools(
-        self, user_id: str, chosen: Mapping[str, str | None]
+        self, user_id: str, chosen: Mapping[str, str | None], read: str | None
     ) -> Settings | None:
         """Chooses the school for any of the three settings, by name: a preset, or
         None to follow the default again. The settings not named stay."""
@@ -685,20 +697,23 @@ class AccountStore:
                 ),
             )
 
-        return self._update_settings(user_id, choose)
+        return self._update_settings(user_id, read, choose)
 
     def _update_settings(
-        self, user_id: str, change: Callable[[Settings], Settings]
+        self, user_id: str, read: str | None, change: Callable[[Settings], Settings]
     ) -> Settings | None:
         """Applies a change to the account's settings, or to the defaults for an
         account that has set nothing, and logs it for the backup, in one write; the
         settings after it. A change that changes nothing writes nothing, and an
-        account left with the defaults it had keeps no settings (None)."""
+        account left with the defaults it had keeps no settings (None). SettingsChanged
+        if the settings are no longer the ones `read` names."""
         with self._write() as connection:
             user = _select_user(connection, 'id', user_id)
             if user is None:
                 raise UnknownUser('No account has that id.')
             current = _select_settings(connection, user.id)
+            if (None if current is None else current.updated_at) != read:
+                raise SettingsChanged('The settings changed since they were read.')
             now = self._now()
             base = current or Settings(
                 partner=None,

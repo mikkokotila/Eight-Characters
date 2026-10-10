@@ -3079,6 +3079,8 @@ kbd {
 .is-embedded #back-btn,
 .is-embedded #new-chart-btn,
 .is-embedded #compare-btn,
+.is-embedded #page-switch,
+.is-embedded #save-partner-btn,
 .is-embedded .account-btn { display: none; }
 .is-embedded { --page-block: var(--space-4); }
 .is-embedded body { padding: var(--page-block) var(--space-4); }
@@ -3118,6 +3120,308 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
+/* ── Settings: what the account keeps for a chart's day (settings.js) ── */
+.settings-container {
+  width: 100%;
+  max-width: 760px;
+  align-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+.settings-container[aria-busy='true'] { cursor: progress; }
+.settings-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.settings-heading {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-3);
+  color: var(--ink-1);
+}
+.settings-note { color: var(--ink-2); font-size: var(--text-1); line-height: 1.5; }
+.settings-status {
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink-1);
+}
+.settings-status.is-error { color: var(--ink-error); border-color: var(--line-2); }
+.settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-3);
+}
+.settings-partner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.settings-partner-name {
+  font-family: var(--font-serif);
+  font-size: var(--text-3);
+  color: var(--ink-1);
+  overflow-wrap: anywhere;
+}
+.settings-pillars {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-2);
+  max-width: 440px;
+}
+.settings-pillar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+}
+.settings-pillar-name { font-size: var(--text-1); color: var(--ink-3); }
+.settings-pillar-chars { font-family: var(--font-glyph); font-size: var(--text-4); color: var(--ink-1); }
+.settings-pillar-pinyin { font-size: var(--text-1); color: var(--ink-2); }
+.settings-problem { color: var(--ink-error); }
+.settings-place-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 560px;
+}
+.settings-schools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.settings-school {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  min-width: 0;
+}
+.settings-school-name {
+  padding: 0 var(--space-1);
+  font-family: var(--font-serif);
+  font-size: var(--text-2);
+  color: var(--ink-1);
+}
+.settings-preset {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--space-1) var(--space-2);
+  align-items: baseline;
+}
+.settings-preset label { color: var(--ink-1); cursor: pointer; }
+.settings-preset .settings-summary,
+.settings-preset .settings-sources { grid-column: 2; }
+.settings-summary { color: var(--ink-2); font-size: var(--text-1); line-height: 1.5; }
+.settings-sources { color: var(--ink-3); font-size: var(--text-1); line-height: 1.4; overflow-wrap: anywhere; }
+.settings-default,
+.settings-han { color: var(--ink-2); }
+
+/* ── Today: the chart's day (today.js) ── */
+.today-notice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-2);
+  color: var(--ink-1);
+}
+.today-view[aria-busy='true'] .today-body { opacity: 0.6; }
+.today-view[aria-busy='true'] button { cursor: progress; }
+.today-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding-top: var(--space-4);
+}
+.today-body.hidden { display: none; }
+.today-pull-line { margin-right: auto; }
+.today-run { margin: 0; flex-direction: column; }
+.today-run-track {
+  display: flex;
+  gap: var(--space-1);
+  overflow-x: auto;
+  padding: var(--space-1);
+  scroll-snap-type: x proximity;
+}
+.today-run-day {
+  flex: 0 0 auto;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  min-width: 68px;
+  padding: var(--space-2);
+  border: 1px solid var(--line-1);
+  border-radius: 10px;
+  background: var(--surface-1);
+  color: var(--ink-1);
+  font: inherit;
+  cursor: pointer;
+  scroll-snap-align: center;
+}
+.today-run-day:hover { background: var(--surface-2); border-color: var(--line-2); }
+.today-run-day:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.today-run-day.is-selected { border-color: var(--ink-1); box-shadow: inset 0 0 0 1px var(--ink-1); }
+.today-run-date { font-size: var(--text-1); color: var(--ink-2); white-space: nowrap; }
+.today-run-chars { font-family: var(--font-glyph); font-size: var(--text-3); }
+.today-run-pinyin { font-size: var(--text-1); color: var(--ink-2); white-space: nowrap; }
+.today-run-score { font-size: var(--text-1); font-variant-numeric: tabular-nums; }
+.today-run-band { display: none; font-size: var(--text-1); }
+/* A band's mark says it by its shape, not by colour alone: a filled circle, a ring, a
+   dash, a box and a filled box, from strongly supportive to strongly draining. */
+.today-run-mark,
+.today-band-mark,
+.today-call-mark {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: var(--space-1);
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+.band-strongly_supportive :is(.today-run-mark, .today-band-mark) { background: currentColor; }
+.band-mixed :is(.today-run-mark, .today-band-mark) { height: 0; border-width: 1.5px 0 0; border-radius: 0; vertical-align: middle; }
+.band-draining :is(.today-run-mark, .today-band-mark) { border-radius: 1px; }
+.band-strongly_draining :is(.today-run-mark, .today-band-mark) { border-radius: 1px; background: currentColor; }
+.call-protect .today-call-mark { background: currentColor; }
+.call-mixed .today-call-mark { height: 0; border-width: 1.5px 0 0; border-radius: 0; vertical-align: middle; }
+.call-avoid .today-call-mark { border-radius: 1px; background: currentColor; }
+.today-pillars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.today-pillar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+  padding: var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 12px;
+  background: var(--surface-1);
+}
+.today-pillar-name {
+  font-size: var(--text-1);
+  font-weight: 500;
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.today-pillar-open {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-1);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.today-pillar-open:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 4px; }
+.today-pillar-open[aria-expanded='true'] .today-chars { text-decoration: underline; text-underline-offset: 4px; }
+.today-pillar-open .today-chars { font-family: var(--font-glyph); font-size: var(--text-5); line-height: 1.1; }
+.today-pinyin { font-size: var(--text-1); color: var(--ink-2); }
+.today-detail-subtitle .today-chars { font-family: var(--font-glyph); margin-left: var(--space-1); }
+.today-detail-subtitle .today-pinyin { margin-left: var(--space-1); }
+.today-pillar-god,
+.today-pillar-pull,
+.today-pillar-luck,
+.today-pillar-none { font-size: var(--text-1); color: var(--ink-1); line-height: 1.4; }
+.today-pillar-luck { color: var(--ink-2); }
+.today-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.today-section-title {
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-3);
+  color: var(--ink-1);
+}
+.today-relationships {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.today-relationship {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-1) var(--space-3);
+  padding: var(--space-2) 0;
+  border-bottom: 1px solid var(--line-1);
+}
+.today-relationship-kind { font-weight: 500; color: var(--ink-1); }
+.today-relationship-members { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--ink-2); }
+.today-relationship-line { flex-basis: 100%; color: var(--ink-2); font-style: italic; }
+.today-hours,
+.today-parts,
+.today-health {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--text-1);
+}
+:is(.today-hours, .today-parts, .today-health) :is(th, td) {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--line-1);
+  text-align: left;
+  vertical-align: top;
+}
+:is(.today-hours, .today-parts, .today-health) thead th { font-weight: 500; color: var(--ink-2); }
+:is(.today-hours, .today-parts, .today-health) tbody th { font-weight: 400; white-space: nowrap; }
+:is(.today-parts, .today-health) td { font-variant-numeric: tabular-nums; }
+.today-detail .panel-heading { margin-bottom: var(--space-3); }
+.today-detail p { line-height: 1.5; color: var(--ink-1); }
+.today-detail-pillar { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.today-detail-subtitle {
+  margin-top: var(--space-4);
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-2);
+  color: var(--ink-1);
+}
+.today-readings { display: flex; flex-direction: column; }
+.today-reading { padding: var(--space-2) 0; border-bottom: 1px solid var(--line-1); }
+.today-reading summary { cursor: pointer; color: var(--ink-1); }
+.today-reading .canon-text { margin-top: var(--space-2); }
+.today-gods { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0; }
+@media (max-width: 640px) {
+  .today-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .today-hours tbody th { white-space: normal; }
+}
+/* On paper the run shows every day, each with its band as a word. */
+@media print {
+  .today-view .today-run.luck-ribbon { display: flex !important; }
+  .today-run-track { flex-wrap: wrap; overflow: visible; }
+  .today-run-band { display: block; }
+  .today-notice .settings-actions { display: none; }
+}
+
 /* While the session is made sure of, before the charts are asked for again. */
 .compare-container[aria-busy='true'] :is(#compare-language button, #compare-swap) { cursor: progress; }
 .compare-charts {

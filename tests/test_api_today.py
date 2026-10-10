@@ -113,14 +113,19 @@ class TestToday(unittest.TestCase):
     def test_what_the_account_keeps_is_what_the_page_sends(self) -> None:
         # The page reads the partner's chart, the place and the schools from the
         # settings and sends them with the chart it is on.
+        read = self.client.get('/api/account/settings').json()['updated_at']
         for path, body in (
             ('/api/account/partner', PARTNER),
             ('/api/account/place', {'place': LISBON}),
         ):
-            kept = self.client.put(path, json={**body, 'key': self.key})
+            kept = self.client.put(
+                path, json={**body, 'key': self.key, 'updated_at': read}
+            )
             self.assertEqual(kept.status_code, 200, kept.text)
+            read = kept.json()['updated_at']
         chosen = self.client.patch(
-            '/api/account/schools', json={'key': self.key, 'transits': 'whole'}
+            '/api/account/schools',
+            json={'key': self.key, 'updated_at': read, 'transits': 'whole'},
         )
         settings = chosen.json()
         partner = {
