@@ -347,9 +347,12 @@ def _plain(texts: Sequence[str]) -> list[Paragraph]:
     return [{'label': None, 'text': text} for text in texts]
 
 
-def _sentences(text: str) -> list[str]:
-    # A sentence ends at its stop, or just after the closing quote that follows it:
-    # 'hence "uncivilized." Zi (Water) feeds Mao' holds two.
+def sentences(text: str) -> list[str]:
+    """A passage's sentences, as the app's Readings split them (static/readings.js).
+
+    A sentence ends at its stop, or just after the closing quote that follows it:
+    'hence "uncivilized." Zi (Water) feeds Mao' holds two.
+    """
     return re.split(r'(?<=[.!?])\s+|(?<=[.!?]["”])\s+', text)
 
 
@@ -357,13 +360,13 @@ def check_reading_canon(canon: Canon) -> None:
     """The canon holds every sentence and label the reading relies on; else it raises."""
     grounds = canon['stems_on_branches']
     for pair, sentence in DAY_PILLAR_ONLY.items():
-        if sentence not in _sentences(grounds[pair[0]]['branches'][pair[1]]):
+        if sentence not in sentences(grounds[pair[0]]['branches'][pair[1]]):
             raise CanonError(
                 f'the Day-Pillar sentence of {pair} is no longer in the canon'
             )
     for key, by_season in SEASON_SENTENCES.items():
         entry = canon['clashes']['entries'][key]
-        said = [s for p in entry['paragraphs'] for s in _sentences(p['text'])]
+        said = [s for p in entry['paragraphs'] for s in sentences(p['text'])]
         for sentence in by_season.values():
             if sentence not in said:
                 raise CanonError(
@@ -401,7 +404,7 @@ def check_reading_canon(canon: Canon) -> None:
     _check_lines(canon)
     texts = _settle_texts(canon)
     for source, sentence in SETTLE_SENTENCES.items():
-        if _sentences(texts[source]).count(sentence) != 1:
+        if sentences(texts[source]).count(sentence) != 1:
             raise CanonError(
                 f'the sentence that waits for a luck pillar ({source}) is no longer in the canon'
             )
@@ -515,8 +518,8 @@ def _pair_name(key: str, chars: Sequence[str]) -> str:
     return '-'.join(BRANCHES[char]['pinyin'] for char in key if char in chars)
 
 
-def _one(sentences: Sequence[str], matches: Callable[[str], bool], what: str) -> str:
-    found = [sentence for sentence in sentences if matches(sentence)]
+def _one(said: Sequence[str], matches: Callable[[str], bool], what: str) -> str:
+    found = [sentence for sentence in said if matches(sentence)]
     if len(found) != 1:
         raise CanonError(f'expected one sentence {what}, found {len(found)}')
     return found[0]
@@ -539,8 +542,8 @@ def _line(
     else, the entry's first sentence.
     """
     if pairing is not None:
-        return _sentences(pairing['text'])[0]
-    said = [sentence for p in lead for sentence in _sentences(p['text'])]
+        return sentences(pairing['text'])[0]
+    said = [sentence for p in lead for sentence in sentences(p['text'])]
     title = entry['title']
     if kind == 'half_frame':
         absent = next(BRANCHES[char]['pinyin'] for char in key if char not in chars)
@@ -552,7 +555,7 @@ def _line(
         pair = _pair_name(key, chars)
         own = _labelled(entry, HALF_PUNISHMENT_LABELS[key])
         return _one(
-            _sentences(own['text']),
+            sentences(own['text']),
             lambda sentence: sentence.startswith(pair + ' '),
             f'on {pair} in {title}',
         )
@@ -570,7 +573,7 @@ def _line(
         )
     if kind == 'self_punishment':
         own = _labelled(entry, _self_punishment_label(entry, chars[0]))
-        return _sentences(own['text'])[0]
+        return sentences(own['text'])[0]
     return said[0]
 
 
@@ -708,7 +711,7 @@ def build_reading(
         text = grounds['branches'][branch]
         only = DAY_PILLAR_ONLY.get(day_master + branch)
         if only is not None and not is_day:
-            text = ' '.join(s for s in _sentences(text) if s != only)
+            text = ' '.join(s for s in sentences(text) if s != only)
         stage = life_stage(day_master, branch)
         readings[pillar] = {
             'stem': stem,
@@ -900,7 +903,7 @@ def build_luck_reading(
         text = grounds['branches'][branch]
         only = DAY_PILLAR_ONLY.get(day_master + branch)
         if only is not None:
-            text = ' '.join(s for s in _sentences(text) if s != only)
+            text = ' '.join(s for s in sentences(text) if s != only)
         passages = canon['ten_gods'][god]
         read.append(
             {

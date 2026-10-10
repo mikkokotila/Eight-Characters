@@ -18,11 +18,13 @@ A date alone, a date and a place, or a date, a place and a time. Each settles mo
   engine's flags.
 
 With a place, the chart has a Day Master: the day pillar's stem, and the canon's
-passage for it, word for word. Every pillar is computed by the engine; nothing here
-works one out.
+passage for it, word for word; and the parts of its reading in the order of the app's
+Day Master page (static/readings.js), each by the line the app shows for it, the first
+part also in full. Every pillar is computed by the engine; nothing here works one out.
 """
 
 import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Any, Final, Literal, NotRequired
@@ -32,7 +34,9 @@ from typing_extensions import TypedDict
 from eight_characters.canon import load_canon
 from eight_characters.data import BRANCHES, PILLAR_LABELS, STEMS
 from eight_characters.engine import compute_engine_payload
+from eight_characters.life_stages import life_stage
 from eight_characters.policy import MAX_SUPPORTED_YEAR, MIN_SUPPORTED_YEAR
+from eight_characters.reading import sentences
 from eight_characters.solar_position import julian_date_from_datetime_utc
 from eight_characters.time_convert import (
     AmbiguousTimeError,
@@ -48,6 +52,8 @@ PILLAR_NAMES: Final[tuple[PillarName, ...]] = ('year', 'month', 'day', 'hour')
 # What a date alone can settle, and what a date and a place settle without a time.
 DATE_PILLARS: Final[tuple[PillarName, ...]] = ('year', 'month')
 DAY_PILLARS: Final[tuple[PillarName, ...]] = ('year', 'month', 'day')
+# The Day Master in each pillar, in the order the app's Day Master page reads them.
+LENS_ORDER: Final[tuple[PillarName, ...]] = ('hour', 'day', 'month', 'year')
 # The widest offsets a civil clock has kept from UTC: a date runs from its midnight at
 # UTC+14 to its next midnight at UTC-12.
 EARLIEST_OFFSET: Final = timezone(timedelta(hours=14))
@@ -110,6 +116,19 @@ class PillarChange(TypedDict):
     after: ChartPillar
 
 
+DayMasterPartName = Literal['core', 'grounds', 'hour', 'day', 'month', 'year', 'cycle']
+
+
+class DayMasterPart(TypedDict):
+    part: DayMasterPartName
+    # The line the app shows for the part: its passage's first sentence, or for the
+    # cycle, the names of the stages on the chart's branches, from the year to the hour.
+    first: str
+    # The core's rest, word for word: the first part reads in full without an account.
+    # The rest of every other part is the account's.
+    rest: NotRequired[list[str]]
+
+
 class DayMaster(TypedDict):
     stem: str
     pinyin: str
@@ -117,6 +136,7 @@ class DayMaster(TypedDict):
     element: str
     title: str
     passage: list[str]
+    parts: list[DayMasterPart]
 
 
 class FirstChart(TypedDict):
@@ -243,9 +263,36 @@ def _changes_within(
     return [entry for _, entry in found]
 
 
-def _day_master(stem: str) -> DayMaster:
-    lens = load_canon()['day_masters'][stem]
+def _lead(paragraphs: Sequence[str]) -> tuple[str, list[str]]:
+    """A passage's first sentence, and its rest, as the app splits a passage for its
+    line: the first paragraph's other sentences, then the other paragraphs."""
+    first, *others = paragraphs
+    lead, *rest = sentences(first)
+    return lead, ([' '.join(rest)] if rest else []) + others
+
+
+def _day_master(stem: str, branches: Mapping[PillarName, str]) -> DayMaster:
+    """The Day Master of a chart whose pillars have these branches."""
+    canon = load_canon()
+    lens = canon['day_masters'][stem]
     stem_data = STEMS[stem]
+    first, rest = _lead(lens['core'])
+    parts: list[DayMasterPart] = [
+        {'part': 'core', 'first': first, 'rest': rest},
+        {
+            'part': 'grounds',
+            'first': _lead(canon['stems_on_branches'][stem]['introduction'])[0],
+        },
+    ]
+    for name in LENS_ORDER:
+        if name in branches:
+            parts.append({'part': name, 'first': _lead([lens['pillars'][name]])[0]})
+    stages = [
+        canon['stages'][life_stage(stem, branches[name])]['name']
+        for name in PILLAR_NAMES
+        if name in branches
+    ]
+    parts.append({'part': 'cycle', 'first': ' · '.join(stages)})
     return {
         'stem': stem,
         'pinyin': stem_data['pinyin'],
@@ -253,6 +300,7 @@ def _day_master(stem: str) -> DayMaster:
         'element': stem_data['element'],
         'title': lens['title'],
         'passage': list(lens['core']),
+        'parts': parts,
     }
 
 
@@ -320,7 +368,10 @@ def build_first_chart(birth: FirstBirth) -> FirstChart:
     chart: FirstChart = {
         'pillars': {name: engine_pillar(name, payload) for name in names},
         'changes': [],
-        'day_master': _day_master(payload['pillars']['day']['stem']['chinese']),
+        'day_master': _day_master(
+            payload['pillars']['day']['stem']['chinese'],
+            {name: payload['pillars'][name]['branch']['chinese'] for name in names},
+        ),
         'engine': payload['engine'],
     }
     if birth.clock is None:
