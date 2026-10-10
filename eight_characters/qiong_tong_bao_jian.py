@@ -205,9 +205,9 @@ TABLE: Final[tuple[ClimateEntry, ...]] = (
     ClimateEntry(
         day_master='乙',
         months='申',
-        stems=('丙', '癸'),
-        heading='三秋乙木',
-        sentence='三秋乙木，金神司令，先丙后癸，惟九月耑用癸水',
+        stems=('己',),
+        heading='七月乙木',
+        sentence='七月喜己土为用，或不见丙癸。己土必不可少',
         later=None,
     ),
     ClimateEntry(

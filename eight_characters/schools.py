@@ -538,7 +538,7 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
         candidates.extend(kept)
         return _first_free(candidates, taken)
 
-    unfavourable = against([controller_of(useful), controller_of(favourable), *cycle])
+    unfavourable = against([controller_of(useful), *cycle])
     taken.append(unfavourable)
     taken.append(against([generator_of(unfavourable), *cycle]))
     taken.append(_first_free(cycle, taken))

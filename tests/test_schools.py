@@ -362,6 +362,9 @@ class TestClimate(unittest.TestCase):
         # speaks of both months; 卯, with nothing said of it alone, takes the latter.
         self.assertEqual(climate_stems('甲', '寅', False), ['丙', '癸'])
         self.assertEqual(climate_stems('甲', '卯', False), ['庚', '戊'])
+        # 七月乙木 names its own use, 七月喜己土为用 … 己土必不可少, before autumn's
+        # 先丙后癸.
+        self.assertEqual(climate_stems('乙', '申', False), ['己'])
         self.assertEqual(climate_stems('甲', '辰', True), ['庚', '壬'])
         # 乙 Yi in the 酉 You month: 癸 before 秋分, 丙 then 癸 after it.
         self.assertEqual(climate_stems('乙', '酉', False), ['癸'])
@@ -388,6 +391,13 @@ class TestClimate(unittest.TestCase):
         self.assertEqual(
             climate_order(['甲', '戊', '庚']),
             ['wood', 'earth', 'fire', 'water', 'metal'],
+        )
+        # Where what controls the useful element is named, the place goes to the first
+        # free element in the generating order from the useful one: 戊 in 寅, 丙甲癸,
+        # puts Earth against the chart, then Metal, and leaves Water idle.
+        self.assertEqual(
+            climate_order(['丙', '甲', '癸']),
+            ['fire', 'wood', 'earth', 'metal', 'water'],
         )
         # 己 in 戌 names four elements: of the two after the first two, the later,
         # 甲 Wood, takes the place against the chart.
