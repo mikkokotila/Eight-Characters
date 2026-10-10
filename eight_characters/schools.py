@@ -472,7 +472,9 @@ def climate_order(named: Sequence[str]) -> list[ElementName]:
     if not named or any(stem not in STEMS for stem in named):
         raise ValueError(f'Climate needs the stems the table names, not {named!r}.')
     useful = element_of(named[0])
-    others = [element_of(stem) for stem in named[1:] if element_of(stem) != useful]
+    others: list[ElementName] = [
+        element_of(stem) for stem in named[1:] if element_of(stem) != useful
+    ]
     favourable = others[0] if others else generator_of(useful)
     start = ELEMENTS.index(useful)
     cycle: list[ElementName] = [ELEMENTS[(start + step) % 5] for step in range(5)]
