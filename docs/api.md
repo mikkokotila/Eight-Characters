@@ -471,7 +471,7 @@ and the rest of the passage cut):
       {"part": "cycle", "first": "Emperor's Peak · Bathing · Birth"}
     ]
   },
-  "engine": {"version": "0.47.0", "…": "…"}
+  "engine": {"version": "0.48.0", "…": "…"}
 }
 ```
 
