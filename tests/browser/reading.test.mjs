@@ -251,7 +251,7 @@ for (const profile of profiles) {
       const page1 = await lines(page, '#context-detail');
       assert.deepEqual(page1.map((l) => l.part), DAY_MASTER_PARTS);
       // Where Yang Water stands on each branch, from the year to the hour.
-      assert.equal(page1.find((l) => l.part === 'dm-cycle').head, 'Tomb · Embryo · Emperor\'s Peak · Death');
+      assert.equal(page1.find((l) => l.part === 'dm-cycle').head, 'Tomb · Embryo · Emperor’s Peak · Death');
       await toggle(page, '#context-detail', 'dm-cycle');
       assert.deepEqual(await page.locator('.canon-clause').allTextContents(),
         ['year', 'month', 'day', 'hour'].map((name) => plain(firstSentence(reading.pillars[name].stage.paragraphs[0].text))));
@@ -472,7 +472,7 @@ for (const profile of profiles) {
       assert.equal(await lineOf('half_frame:22:year-day'),
         'Zi-Chen without Shen creates a deep reservoir with no source — depth without the generating mechanism to refill it.');
       assert.equal(await lineOf('punishment:34:day-hour'),
-        'The character of this punishment is specifically about the violation of proper relationships — hence "uncivilized."');
+        'The character of this punishment is specifically about the violation of proper relationships — hence “uncivilized.”');
       assert.equal(await lineOf('harm:42:year-hour'),
         'In practice: the gentle creative domain and the complex hidden-depth domain interfere with each other through their opposing relationships to the protective structure.');
       // Beside the clash: a half-frame, the Zi-Mao punishment and a harm, each family once.
@@ -538,15 +538,15 @@ for (const profile of profiles) {
 
     check('a reading that does not match its chart is refused', async (page) => {
       const refusals = [
-        ['The chart\'s reading is incomplete: the hour pillar.', (payload) => { payload.reading.pillars.hour.stem = '甲'; }],
-        ['The chart\'s reading is incomplete: its policy.', (payload) => { payload.reading.policy = 'canon_taxonomy_v0'; }],
-        ['The chart\'s reading is incomplete: the year stem\'s role.', (payload) => {
+        ['The chart’s reading is incomplete: the hour pillar.', (payload) => { payload.reading.pillars.hour.stem = '甲'; }],
+        ['The chart’s reading is incomplete: its policy.', (payload) => { payload.reading.policy = 'canon_taxonomy_v0'; }],
+        ['The chart’s reading is incomplete: the year stem’s role.', (payload) => {
           payload.reading.pillars.year.stem_reading.ten_god = 'friend';
         }],
         // The ring names no character without its pinyin, and none by another pinyin than
         // the chart's.
-        ['The chart\'s reading is incomplete: the ring.', (payload) => { delete payload.reading.day_master.cycle.ring[0].pinyin; }],
-        ['The chart\'s reading is incomplete: the ring.', (payload) => { payload.reading.day_master.cycle.ring[4].pinyin = 'Zhi'; }],
+        ['The chart’s reading is incomplete: the ring.', (payload) => { delete payload.reading.day_master.cycle.ring[0].pinyin; }],
+        ['The chart’s reading is incomplete: the ring.', (payload) => { payload.reading.day_master.cycle.ring[4].pinyin = 'Zhi'; }],
         ['Chart rendering failed.', (payload) => { delete payload.reading; }],
       ];
       for (const [message, mutate] of refusals) {

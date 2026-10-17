@@ -470,7 +470,7 @@ for (const profile of profiles) {
       assert.equal((await column(page)).state, 'none');
     });
 
-    check('a birth within the luck pillars\' allowance of a solar term has a nominal timeline, and says so', async (page) => {
+    check('a birth within the luck pillars’ allowance of a solar term has a nominal timeline, and says so', async (page) => {
       await openSample(page);
       assert.equal(await page.locator('#chart-notices').isVisible(), false);
       // Seconds from Jingzhe on 5 March 1988, and from Lichun on 4 February: further than
@@ -480,8 +480,8 @@ for (const profile of profiles) {
         longitude: String(CHENGDU.longitude), timezone: CHENGDU.timezone, lang: 'en', gender: 'female', topic: 'luck/1/stem',
       })}`;
       for (const [date, time, notice] of [
-        ['1988-03-05', '16:46:30', 'The birth lies within the luck pillars\' allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.'],
-        ['1988-02-04', '22:42:47', 'The birth lies within the luck pillars\' allowance (3 s) of Lichun, so their decades, the age they start at and their direction could be other ones.'],
+        ['1988-03-05', '16:46:30', 'The birth lies within the luck pillars’ allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.'],
+        ['1988-02-04', '22:42:47', 'The birth lies within the luck pillars’ allowance (3 s) of Lichun, so their decades, the age they start at and their direction could be other ones.'],
       ]) {
         await page.goto('about:blank');
         const payload = await openLink(page, near(date, time), { place: CHENGDU });
@@ -500,9 +500,9 @@ for (const profile of profiles) {
       await page.goto('about:blank');
       const both = await openLink(page, near('1988-03-05', '16:46:33'), { place: CHENGDU });
       assert.deepEqual([both.flags.solar_term_ambiguous, both.luck_pillars.uncertainty.boundary_ambiguous], [true, true]);
-      const natalNotice = 'The birth lies within the calculation\'s uncertainty (0.5 s) of a solar term, so the month pillar could be the other one.';
+      const natalNotice = 'The birth lies within the calculation’s uncertainty (0.5 s) of a solar term, so the month pillar could be the other one.';
       assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [natalNotice,
-        'The birth lies within the luck pillars\' allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.']);
+        'The birth lies within the luck pillars’ allowance (3 s) of a solar term, so their decades and the age they start at could be other ones.']);
       await click(page, '#luck-switch [data-luck-show="off"]');
       assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [natalNotice]);
     });
@@ -523,7 +523,7 @@ for (const profile of profiles) {
           { identity: 'Wu 戊 · Yang Earth', type: 'Stem phase, not now', role: 'Seven Killings', resting: true },
           { identity: 'Gui 癸 · Yin Water', type: 'Main', role: 'Rob Wealth', resting: false },
         ],
-        stage: 'Day Master on Zi 子: Emperor\'s Peak, stage 5 of 12',
+        stage: 'Day Master on Zi 子: Emperor’s Peak, stage 5 of 12',
         roots: [{ identity: 'Gui 癸 · Yin Water', type: 'Main', role: 'Same element, opposite polarity', resting: false }],
         relationships: [
           { kind: 'harmony_frame', name: 'Day–Month–Luck · Three-harmony frame', chars: 'Chen 辰 – Shen 申 – Zi 子', when: 'acts in both phases', resting: false },

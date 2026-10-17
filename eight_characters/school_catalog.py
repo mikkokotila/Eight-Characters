@@ -83,8 +83,8 @@ _FAVOURABLE: Final = [
             'Suihin nimeävät kullekin tapaukselle hyödyllisen elementin, ja muut neljä '
             'asettuvat sen ympärille: suotuisa, joutilas, vihollinen ja epäsuotuisa. '
             'Kartta, jolla ei ole lainkaan tukea, seuraa vahvinta voimaansa.',
-            'en': "Measures the Day Master's strength in the birth season and finds "
-            "what unbalances the chart, the disease. Ren Tieqiao's notes on Di Tian Sui "
+            'en': 'Measures the Day Master’s strength in the birth season and finds '
+            'what unbalances the chart, the disease. Ren Tieqiao’s notes on Di Tian Sui '
             'name the useful element for each case, and the other four stand around '
             'it: favourable, idle, enemy and unfavourable. A chart with no support at '
             'all follows its strongest force.',
@@ -114,13 +114,13 @@ _SEASON: Final = [
     _preset(
         'eighteen',
         DEFAULT_SEASON,
-        {'fi': 'Maan 18 päivää', 'en': "Earth's 18 days"},
+        {'fi': 'Maan 18 päivää', 'en': 'Earth’s 18 days'},
         {'chinese': '土王', 'pinyin': 'Tu Wang'},
         {
             'fi': 'Maa hallitsee auringon viimeiset 18 astetta ennen kunkin '
             'vuodenajan alkua, noin 18 päivää, joten jokainen elementti hallitsee '
             'viidenneksen vuodesta.',
-            'en': "Earth rules the sun's last 18 degrees before each season begins, "
+            'en': 'Earth rules the sun’s last 18 degrees before each season begins, '
             'about 18 days, so every element rules a fifth of the year.',
         },
         [
@@ -138,7 +138,7 @@ _SEASON: Final = [
         {
             'fi': 'Lohikäärmeen, vuohen, koiran ja härän kuukaudet kuuluvat '
             'kokonaan maalle.',
-            'en': "The Dragon, Goat, Dog and Ox months are Earth's, whole.",
+            'en': 'The Dragon, Goat, Dog and Ox months are Earth’s, whole.',
         },
         ['Huainanzi, Tian Wen Xun (戊己四季，土也)'],
     ),
@@ -156,13 +156,13 @@ _SEASON: Final = [
     _preset(
         'commander',
         DEFAULT_SEASON,
-        {'fi': 'Kuukauden komentaja', 'en': "The month's commander"},
+        {'fi': 'Kuukauden komentaja', 'en': 'The month’s commander'},
         {'chinese': '人元司令', 'pinyin': 'Ren Yuan Si Ling'},
         {
             'fi': 'Kuukautta komentava hallitsee, päivinä kuukauden aurinkotermistä '
             'laskien, San Ming Tong Huin taulukon mukaan.',
             'en': 'What commands the month rules, by the days since its solar term, as '
-            "San Ming Tong Hui's table gives them.",
+            'San Ming Tong Hui’s table gives them.',
         },
         ['San Ming Tong Hui, juan 2, 論人元司事 Lun Ren Yuan Si Shi'],
     ),
@@ -176,7 +176,7 @@ _TRANSITS: Final = [
         {
             'fi': 'Onnenpilarin runko lasketaan sen viitenä ensimmäisenä vuonna, haara '
             'kaikkina kymmenenä. Vuoden haara lasketaan puolella painolla.',
-            'en': "A luck pillar's stem counts in its first five years, its branch in "
+            'en': 'A luck pillar’s stem counts in its first five years, its branch in '
             'all ten. The year counts its branch at half.',
         },
         [
@@ -206,7 +206,7 @@ _TRANSITS: Final = [
             'fi': 'Vuosi ja onnenpilari lasketaan kuten päivä, tämän kuun vuodenajan '
             'mukaan.',
             'en': 'The year and the luck pillar count as the day does, by this '
-            "month's season.",
+            'month’s season.',
         },
         ['Xie Ji Bian Fang Shu, juan 34 (日之衰旺全看月令)'],
     ),
@@ -226,7 +226,7 @@ def school_catalog() -> Catalog:
         },
         {
             'id': 'season',
-            'name': {'fi': 'Maan vuodenaika', 'en': "Earth's season"},
+            'name': {'fi': 'Maan vuodenaika', 'en': 'Earth’s season'},
             'question': {
                 'fi': 'Mikä osa vuodesta kuuluu maalle?',
                 'en': 'Which part of the year belongs to Earth?',

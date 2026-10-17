@@ -167,7 +167,7 @@ for (const profile of profiles) {
       const rows = dialog.locator('.key-row').filter({ visible: true });
       assert.equal(await rows.count(), 8);
       assert.deepEqual(await rows.locator('dd').allTextContents(), ['Between pillars', 'Between stem and branch',
-        "A branch's hidden stems", 'Read what the focused card means', 'A card to its Ten Gods and back',
+        'A branch’s hidden stems', 'Read what the focused card means', 'A card to its Ten Gods and back',
         'Closes what is open', 'Commands', 'These keys']);
       assert.equal(await dialog.locator('.key-arrow .sr-only').first().textContent(), 'Left arrow');
       assert.equal(await page.evaluate(() => document.getElementById('keys-dialog').contains(document.activeElement)), true);

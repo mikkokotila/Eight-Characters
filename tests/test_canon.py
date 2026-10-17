@@ -156,9 +156,10 @@ class TestCanon(unittest.TestCase):
 
     def test_the_canon_writes_no_diacritics(self):
         # Pinyin is written without tone marks, as everywhere in the app. Outside the
-        # Chinese characters, the canon uses ASCII and these marks only; the page fonts
-        # draw them all, and the arrow is drawn by the page (readings.js).
-        allowed = set('·×–—→')
+        # Chinese characters, the canon uses ASCII and these marks only, its quotes and
+        # apostrophe typeset; the page fonts draw them all, and the arrow is drawn by the
+        # page (readings.js).
+        allowed = set('·×–—→’“”')
         found = {
             char
             for char in self.markdown
@@ -171,6 +172,11 @@ class TestCanon(unittest.TestCase):
                 for char in unicodedata.normalize('NFD', self.markdown)
             )
         )
+
+    def test_the_canon_is_typeset(self):
+        # Its quotes and apostrophes are a typesetter's (“ ” ’), never a typewriter's.
+        self.assertNotIn("'", self.markdown)
+        self.assertNotIn('"', self.markdown)
 
     def test_inline_marks_are_kept_as_marks(self):
         self.assertIn(

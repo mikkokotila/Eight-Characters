@@ -67,7 +67,7 @@ for (const profile of profiles) {
       await page.locator('#account-email').fill(email);
       await turnstileAnswered(page);
       await page.locator('#account-send').click();
-      assert.equal(await text(page, '#account-language-status'), "Choose the account's language.");
+      assert.equal(await text(page, '#account-language-status'), 'Choose the account’s language.');
       assert.deepEqual(codes, []);
       await page.locator('#account-language input[value="fi"]').check();
       await page.locator('#account-send').click();
@@ -353,7 +353,7 @@ for (const profile of profiles) {
       await page.locator('#account-delete-email').fill('someone-else@example.com');
       await page.locator('#account-delete-confirm').click();
       await page.locator('#account-delete-status.is-error').waitFor();
-      assert.equal(await text(page, '#account-delete-status'), "That is not the account's address.");
+      assert.equal(await text(page, '#account-delete-status'), 'That is not the account’s address.');
       assert.equal(await statusOf(account), 200);
       await page.locator('#account-delete-email').fill(account.email.toUpperCase());
       await page.locator('#account-delete-confirm').click();

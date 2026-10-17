@@ -119,7 +119,7 @@ RUN_CONTROLS = (
         'integer',
         'Run',
         'Particles',
-        "How many particles the run follows. More find more of the chart's basins, "
+        'How many particles the run follows. More find more of the chart’s basins, '
         'and cost more.',
         24,
         8,
@@ -175,7 +175,7 @@ RUN_CONTROLS = (
         'integer',
         'Clustering',
         'Basin Clustering Min Samples',
-        "How many particles within the radius make a basin's core. At most the "
+        'How many particles within the radius make a basin’s core. At most the '
         'number of particles.',
         1,
         1,
@@ -344,8 +344,8 @@ MODEL_CONTROLS = (
         'omega_min_r',
         'Rule Activation',
         'Minimum Rule Qi Activation',
-        "The lowest a switched-on rule's qi activation goes. Its highest is 1 plus "
-        "the rule's proximity weight, never below 1.",
+        'The lowest a switched-on rule’s qi activation goes. Its highest is 1 plus '
+        'the rule’s proximity weight, never below 1.',
         0.1,
         1.0,
     ),
@@ -388,7 +388,7 @@ MODEL_CONTROLS = (
         'lambda_mode',
         'Structure Mode',
         'Structure-Mode Fidelity Weight',
-        "Weight of the chart's fit to its structure mode.",
+        'Weight of the chart’s fit to its structure mode.',
         0.1,
         20.0,
     ),
@@ -396,8 +396,8 @@ MODEL_CONTROLS = (
         'delta_clash',
         'Damage',
         'Clash Damage Intensity',
-        "How much an active clash lowers each participant's vitality, per unit of "
-        "the rule's qi activation.",
+        'How much an active clash lowers each participant’s vitality, per unit of '
+        'the rule’s qi activation.',
         0.0,
         1.0,
     ),
@@ -405,7 +405,7 @@ MODEL_CONTROLS = (
         'delta_pun',
         'Damage',
         'Punishment Damage Intensity',
-        "How much an active punishment lowers each participant's vitality, per "
+        'How much an active punishment lowers each participant’s vitality, per '
         'unit of qi activation.',
         0.0,
         0.8,
@@ -423,7 +423,7 @@ MODEL_CONTROLS = (
         'Energy Weights',
         'Intra-Pillar Coherence Weight',
         'Weight of the energy within each pillar: its chemistry and how far its '
-        "stem sits from its life stage's vitality.",
+        'stem sits from its life stage’s vitality.',
         0.1,
         10.0,
     ),
@@ -439,7 +439,7 @@ MODEL_CONTROLS = (
         'lambda_v',
         'Energy Weights',
         'Life-Stage Anchor Weight',
-        "Weight of a stem's distance from its life stage's vitality.",
+        'Weight of a stem’s distance from its life stage’s vitality.',
         0.1,
         20.0,
     ),
@@ -455,7 +455,7 @@ MODEL_CONTROLS = (
         'lambda_dom',
         'Energy Weights',
         'Pillar Domain Resonance Weight',
-        "Weight of each entity's ten-god resonance with its pillar.",
+        'Weight of each entity’s ten-god resonance with its pillar.',
         0.1,
         12.0,
     ),
@@ -487,7 +487,7 @@ MODEL_CONTROLS = (
         'omega_season',
         'Energy Weights',
         'Seasonal Qi Boost',
-        "How much more a frame weighs when its element is the season's.",
+        'How much more a frame weighs when its element is the season’s.',
         0.0,
         2.0,
     ),
@@ -543,7 +543,7 @@ MODEL_CONTROLS = (
         'cascade_gain_min',
         'Motifs',
         'Cascade Amplification Gate',
-        "A cascade's last step carries at least this multiple of its first.",
+        'A cascade’s last step carries at least this multiple of its first.',
         1.0,
         3.0,
     ),
@@ -551,7 +551,7 @@ MODEL_CONTROLS = (
         'bottleneck_quantile',
         'Motifs',
         'Pressure Node Cutoff',
-        "A bottleneck's flow per unit of vitality reaches at least this quantile.",
+        'A bottleneck’s flow per unit of vitality reaches at least this quantile.',
         0.5,
         0.99,
     ),
@@ -567,7 +567,7 @@ MODEL_CONTROLS = (
         'cluster_beta',
         'Clustering',
         'Cluster Distance Weight: Elements',
-        "Share of the distance from their entities' effective elements.",
+        'Share of the distance from their entities’ effective elements.',
         0.0,
         1.0,
     ),
@@ -575,7 +575,7 @@ MODEL_CONTROLS = (
         'cluster_gamma',
         'Clustering',
         'Cluster Distance Weight: Activations',
-        "Share of the distance from their rules' qi activations. The three shares "
+        'Share of the distance from their rules’ qi activations. The three shares '
         'add up to 1.',
         0.0,
         1.0,
@@ -621,7 +621,7 @@ MODEL_CONTROLS = (
     _table(
         'proximity_weight_by_gap',
         'Pillar Distance Decay Curve',
-        "A rule's proximity weight by how far apart its pillars are.",
+        'A rule’s proximity weight by how far apart its pillars are.',
         0.0,
         1.5,
         None,

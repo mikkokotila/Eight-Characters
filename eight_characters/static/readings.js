@@ -48,7 +48,7 @@
     let serial = 0;
     // The kinds of reading that are open: they stay open on the next page that has them.
     const open = new Set();
-    const fail = (what) => { throw new Error(`The chart's reading is incomplete: ${what}.`); };
+    const fail = (what) => { throw new Error(`The chart’s reading is incomplete: ${what}.`); };
 
     // The canon's arrow is drawn, as the page's other arrows are: the page fonts have
     // none. The words beside it say what it means, so assistive technology skips it.
@@ -226,7 +226,7 @@
         const angle = (-90 + (stage.stage - 1) * 30) * Math.PI / 180;
         const cos = Math.cos(angle); const sin = Math.sin(angle);
         const on = at[stage.stage] || [];
-        const name = stage.name.replace("Emperor's ", '').replace('Approaching ', '');
+        const name = stage.name.replace('Emperor’s ', '').replace('Approaching ', '');
         const lines = [
           { kind: `canon-ring-stage${on.length ? ' is-on' : ''}`, markup: esc(name) },
           { kind: `canon-ring-branch${on.length ? ' is-on' : ''}`, markup: `<tspan class="canon-ring-pinyin">${esc(stage.pinyin)}</tspan> <tspan class="canon-ring-char">${esc(stage.branch)}</tspan>` },
@@ -274,7 +274,7 @@
       const top = Math.min(...labels.map((l) => l.top)) - gap;
       const bottom = Math.max(...labels.map((l) => l.top + l.height)) + gap;
       // The Day Master in the centre: its character over its pinyin, as a pillar is named.
-      return `<svg class="canon-ring" viewBox="0 ${fixed(top)} ${width} ${fixed(bottom - top)}" role="img" aria-label="${esc(`The twelve stages of ${element()}, with this chart's branches on them`)}">
+      return `<svg class="canon-ring" viewBox="0 ${fixed(top)} ${width} ${fixed(bottom - top)}" role="img" aria-label="${esc(`The twelve stages of ${element()}, with this chart’s branches on them`)}">
         <circle cx="${cx}" cy="${cy}" r="${r}" class="canon-ring-track"/>
         <text class="canon-ring-center" x="${cx}" y="${cy + 3}" text-anchor="middle"><tspan class="canon-ring-char">${esc(reading.day_master.stem)}</tspan><tspan class="canon-ring-pinyin" x="${cx}" dy="22">${esc(chart.day.stem.pinyin)}</tspan></text>${marksOnRing}</svg>`;
     };
@@ -406,7 +406,7 @@
         const p = chartData.pillars[index];
         const r = data.pillars[name];
         if (r.stem !== p.stem.char || r.branch !== p.branch.char) fail(`the ${name} pillar`);
-        if (name !== 'day' && r.stem_reading.ten_god !== gods[name].stem.ten_god) fail(`the ${name} stem's role`);
+        if (name !== 'day' && r.stem_reading.ten_god !== gods[name].stem.ten_god) fail(`the ${name} stem’s role`);
         if (ring.find((s) => s.branch === p.branch.char)?.pinyin !== p.branch.pinyin) fail('the ring');
       });
       if (data.day_master.stem !== chartData.pillars[1].stem.char) fail('the Day Master');
@@ -419,7 +419,7 @@
       chart = {};
       relationshipLabel = labelFor;
       if (data === null) {
-        if (luck !== null) fail('its luck pillars, without the chart\'s own');
+        if (luck !== null) fail('its luck pillars, without the chart’s own');
         return;
       }
       validate(data, chartData, gods);

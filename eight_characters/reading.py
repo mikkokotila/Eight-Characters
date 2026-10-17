@@ -287,7 +287,7 @@ SETTLE_SENTENCES: dict[SettleSource, str] = {
         'Pillar or annual pillar brings the same Branch into an adjacent position.'
     ),
     'half_frame': (
-        "When only two of the three Branches are present and one of them is the Peak Branch, it's a "
+        'When only two of the three Branches are present and one of them is the Peak Branch, it’s a '
         'half-frame (半合) — a coalition waiting for its third member, potential energy that activates '
         'when the missing Branch arrives via Luck Pillar (the ten-year cycles that run alongside the '
         'natal chart) or annual pillar.'

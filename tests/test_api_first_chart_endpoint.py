@@ -307,10 +307,10 @@ class TestTheDayMastersReading(FirstChartTestCase):
                 ('core', 'The mountain, the plateau, the great wall.'),
                 ('grounds', 'The mountain.'),
                 ('hour', 'The mountain in winter.'),
-                ('day', "The mountain's core."),
-                ('month', "The mountain in the world's view."),
-                ('year', "The mountain's bedrock."),
-                ('cycle', "Emperor's Peak · Bathing · Birth · Capping"),
+                ('day', 'The mountain’s core.'),
+                ('month', 'The mountain in the world’s view.'),
+                ('year', 'The mountain’s bedrock.'),
+                ('cycle', 'Emperor’s Peak · Bathing · Birth · Capping'),
             ],
         )
         # The core reads in full: its line and its rest are the passage, word for word.
@@ -331,7 +331,7 @@ class TestTheDayMastersReading(FirstChartTestCase):
             [part['part'] for part in parts],
             ['core', 'grounds', 'day', 'month', 'year', 'cycle'],
         )
-        self.assertEqual(parts[-1]['first'], "Emperor's Peak · Bathing · Birth")
+        self.assertEqual(parts[-1]['first'], 'Emperor’s Peak · Bathing · Birth')
 
     def test_every_day_master_reads_as_the_app_reads_it(self) -> None:
         # Ten days in a row hold all ten day stems.

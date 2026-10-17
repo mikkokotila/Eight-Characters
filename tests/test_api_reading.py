@@ -129,7 +129,7 @@ class TestReadingApi(unittest.TestCase):
             {
                 'year': 'Tomb',
                 'month': 'Embryo',
-                'day': "Emperor's Peak",
+                'day': 'Emperor’s Peak',
                 'hour': 'Death',
             },
         )
@@ -406,7 +406,7 @@ class TestReadingSelection(unittest.TestCase):
         self.assertEqual(
             line('申子戌戌', 'half_frame'),
             'The half-frames: Shen-Zi without Chen creates a powerful current with no'
-            " reservoir — intelligence that flows but isn't stored.",
+            ' reservoir — intelligence that flows but isn’t stored.',
         )
         self.assertEqual(
             line('子辰戌戌', 'half_frame'),
@@ -438,7 +438,7 @@ class TestReadingSelection(unittest.TestCase):
         self.assertEqual(
             line('子卯戌戌', 'punishment'),
             'The character of this punishment is specifically about the violation of'
-            ' proper relationships — hence "uncivilized."',
+            ' proper relationships — hence “uncivilized.”',
         )
         # A self-punishment: its own branch.
         self.assertEqual(line('辰辰戌戌', 'self_punishment'), 'Too much stored Water.')

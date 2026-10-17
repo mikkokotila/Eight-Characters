@@ -69,7 +69,9 @@ class TestMessages(unittest.TestCase):
             CodeMessage('no_account', 'reader@example.com', 'fi', None), SENDER, ORIGIN
         )
         parsed = email.message_from_bytes(bytes(message), policy=default)
-        self.assertEqual(parsed['Subject'], 'Tällä osoitteella ei ole Eight Chord -tiliä')
+        self.assertEqual(
+            parsed['Subject'], 'Tällä osoitteella ei ole Eight Chord -tiliä'
+        )
         body = parsed.get_body()
         assert body is not None
         self.assertIn('yritettiin kirjautua', body.get_content())

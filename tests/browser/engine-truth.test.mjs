@@ -255,7 +255,7 @@ for (const profile of profiles) {
         payload.four_pillars.year.changes.next.seconds = 0.3;
       });
       assert.deepEqual(await page.locator('#chart-notices li').allTextContents(), [
-        "The birth lies within the calculation's uncertainty (0.5 s) of Lichun, so the year and month pillars"
+        'The birth lies within the calculation’s uncertainty (0.5 s) of Lichun, so the year and month pillars'
           + ' could be the other ones.',
       ]);
     });
@@ -263,7 +263,7 @@ for (const profile of profiles) {
     for (const [name, mutate] of Object.entries(FLAG_CONTRADICTIONS)) {
       check(`a chart with ${name} is not shown`, async (page) => {
         await openChart(page, { success: false }, mutate);
-        assert.equal(await page.locator('#form-error').textContent(), "Could not read the chart's notices.");
+        assert.equal(await page.locator('#form-error').textContent(), 'Could not read the chart’s notices.');
         assert.equal(await page.locator('#chart-view').isHidden(), true);
       });
     }

@@ -844,7 +844,9 @@ def export_account(
         data = accounts.store.account_data(user.id)
     except UnknownUser as exc:
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
-    response.headers['Content-Disposition'] = 'attachment; filename="eight-chord-account.json"'
+    response.headers['Content-Disposition'] = (
+        'attachment; filename="eight-chord-account.json"'
+    )
     return {**data, 'exported_at': timestamp(accounts.clock())}
 
 
@@ -865,11 +867,11 @@ def delete_account(
         typed = normalize_email(payload.email)
     except RecordError as exc:
         raise HTTPException(
-            status_code=400, detail="Type the account's email address to delete it."
+            status_code=400, detail='Type the account’s email address to delete it.'
         ) from exc
     if typed != user.email:
         raise HTTPException(
-            status_code=400, detail="Type the account's email address to delete it."
+            status_code=400, detail='Type the account’s email address to delete it.'
         )
     try:
         accounts.store.delete_user(user.id)

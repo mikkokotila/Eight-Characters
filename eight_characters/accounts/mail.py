@@ -28,7 +28,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
         'Your sign-in code: {code}',
         'Your sign-in code for Eight Chord is\n\n'
         '    {code}\n\n'
-        f"It works once, for {_MINUTES} minutes. If you didn't ask for it, you can "
+        f'It works once, for {_MINUTES} minutes. If you didn’t ask for it, you can '
         'ignore this email: no one can sign in without the code.\n\n'
         '{origin}\n',
     ),
@@ -45,7 +45,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
         'Your code to create your account: {code}',
         'Enter this code on Eight Chord to create your account:\n\n'
         '    {code}\n\n'
-        f"It works once, for {_MINUTES} minutes. If you didn't ask for an account, "
+        f'It works once, for {_MINUTES} minutes. If you didn’t ask for an account, '
         'you can ignore this email: nothing is created without the code.\n\n'
         '{origin}\n',
     ),
@@ -62,7 +62,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
         'Someone asked to create an Eight Chord account with this address, but it '
         'already has one. To sign in, enter this code:\n\n'
         '    {code}\n\n'
-        f"It works once, for {_MINUTES} minutes. If you didn't ask for it, you can "
+        f'It works once, for {_MINUTES} minutes. If you didn’t ask for it, you can '
         'ignore this email.\n\n'
         '{origin}\n',
     ),
@@ -79,7 +79,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
         'No Eight Chord account for this address',
         'Someone asked to sign in to Eight Chord with this address, but there is no '
         'account for it. To create one, go to {origin} and choose Create account.\n\n'
-        "If you didn't ask, you can ignore this email.\n",
+        'If you didn’t ask, you can ignore this email.\n',
     ),
     ('no_account', 'fi'): (
         'Tällä osoitteella ei ole Eight Chord -tiliä',
