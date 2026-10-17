@@ -16,8 +16,8 @@ for (const profile of profiles) {
       for (const lang of ['en', 'fi']) {
         await openChart(page, { lang });
         const labels = lang === 'en'
-          ? ['Characters', 'Ten Gods', 'Hidden stems', 'Standard', 'Evolution', 'Copy link', 'Copy as text', 'Edit', 'New chart', 'Compare']
-          : ['Merkit', 'Kymmenen jumalaa', 'Piilorungot', 'Standardi', 'Evoluutio', 'Kopioi linkki', 'Kopioi tekstinä', 'Muokkaa', 'Uusi kartta', 'Vertaa'];
+          ? ['Characters', 'Ten Gods', 'Hidden stems', 'Copy link', 'Copy as text', 'Edit', 'New chart', 'Compare']
+          : ['Merkit', 'Kymmenen jumalaa', 'Piilorungot', 'Kopioi linkki', 'Kopioi tekstinä', 'Muokkaa', 'Uusi kartta', 'Vertaa'];
         for (const label of labels) {
           const button = page.locator('#chart-view').getByRole('button', { name: label, exact: true });
           assert.equal(await button.locator(':scope > svg[aria-hidden="true"]').count(), 1, label);

@@ -722,10 +722,6 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#form-error').isHidden(), true);
       // The library knows it by its pass.
       await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Repeated');
-      // And the explorer is asked for the same pass.
-      const explored = page.waitForRequest('**/api/evolution_explorer');
-      await page.locator('#view-switch button[data-view="evolution"]').click();
-      assert.equal((await explored).postDataJSON().location.fold, 1);
     });
 
     check('a chart without a gender is not saved, and says why', async (page) => {

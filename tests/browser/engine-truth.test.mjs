@@ -91,30 +91,30 @@ for (const profile of profiles) {
         ['壬', '申', '己', '丑', '癸', '丑', '丁', '卯']);
       assert.equal(await page.locator('#chart-date').textContent(), 'February 4, 1988 · 16:30 · Chengdu');
       assert.equal(await page.locator('#chart-solar-time').textContent(),
-        'True solar time 15:12:24 · 1 h 17 min 36 s behind clock time');
+        'True solar time 15:12:24 · 1\u00a0h 17\u00a0min 36\u00a0s behind clock time');
     });
 
     check('Finnish writes its times with periods', async (page) => {
       await openChart(page, { lang: 'fi' });
       assert.equal(await page.locator('#chart-date').textContent(), '4. helmikuuta 1988 · 16.30 · Chengdu');
       assert.equal(await page.locator('#chart-solar-time').textContent(),
-        'Todellinen aurinkoaika 15.12.24 · 1 t 17 min 36 s kelloaikaa jäljessä');
+        'Todellinen aurinkoaika 15.12.24 · 1\u00a0t 17\u00a0min 36\u00a0s kelloaikaa jäljessä');
     });
 
     check('a true solar time on another day than the clock gives its date', async (page) => {
       await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '00:50' });
       assert.equal(await page.locator('#chart-solar-time').textContent(),
-        'True solar time June 14, 1988, 23:29:24 · 1 h 20 min 36 s behind clock time');
+        'True solar time June 14, 1988, 23:29:24 · 1\u00a0h 20\u00a0min 36\u00a0s behind clock time');
     });
 
     check('only a pillar within 30 minutes of a change is marked, on either side of it', async (page) => {
       await openChart(page, { lang: 'en' });
-      assert.deepEqual(await marks(page), { hour: 'changed 12 min 24 s ago', day: '', month: '', year: '' });
+      assert.deepEqual(await marks(page), { hour: 'changed 12\u00a0min 24\u00a0s ago', day: '', month: '', year: '' });
       await page.locator('#back-btn').click();
       await page.locator('#time').fill('18:10');
       await page.locator('#create-chart-btn').click();
       await page.waitForFunction(() => document.querySelector('.pillar-mark')?.textContent.startsWith('changes'));
-      assert.deepEqual(await marks(page), { hour: 'changes in 7 min 36 s', day: '', month: '', year: '' });
+      assert.deepEqual(await marks(page), { hour: 'changes in 7\u00a0min 36\u00a0s', day: '', month: '', year: '' });
     });
 
     check("the year's exact changes open on demand: Lichun is 6 h 12 min away", async (page) => {
@@ -122,8 +122,8 @@ for (const profile of profiles) {
       assert.deepEqual(await changes(page, 'year'), {
         title: 'Year · 丁卯 Ding Mao',
         sides: [
-          ['Previous change', '364 d 23 h 38 min 21.4 s ago', 'Solar term Lichun', '丙寅 Bing Yin then 丁卯 Ding Mao'],
-          ['Next change', 'in 6 h 12 min 49.5 s', 'Solar term Lichun', '丁卯 Ding Mao then 戊辰 Wu Chen'],
+          ['Previous change', '364\u00a0d 23\u00a0h 38\u00a0min 21.4\u00a0s ago', 'Solar term Lichun', '丙寅 Bing Yin then 丁卯 Ding Mao'],
+          ['Next change', 'in 6\u00a0h 12\u00a0min 49.5\u00a0s', 'Solar term Lichun', '丁卯 Ding Mao then 戊辰 Wu Chen'],
         ],
       });
       const year = page.locator('.pillar-identity[data-pillar="year"]');
@@ -138,12 +138,12 @@ for (const profile of profiles) {
     check('day and hour changes name the clock they are read on, and its date when it differs', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.deepEqual((await changes(page, 'hour')).sides, [
-        ['Previous change', '12 min 24.2 s ago', 'True solar time 15:00', '辛未 Xin Wei then 壬申 Ren Shen'],
-        ['Next change', 'in 1 h 47 min 36.3 s', 'True solar time 17:00', '壬申 Ren Shen then 癸酉 Gui You'],
+        ['Previous change', '12\u00a0min 24.2\u00a0s ago', 'True solar time 15:00', '辛未 Xin Wei then 壬申 Ren Shen'],
+        ['Next change', 'in 1\u00a0h 47\u00a0min 36.3\u00a0s', 'True solar time 17:00', '壬申 Ren Shen then 癸酉 Gui You'],
       ]);
       assert.deepEqual((await changes(page, 'day')).sides, [
-        ['Previous change', '15 h 12 min 28.1 s ago', 'True solar time 00:00', '戊子 Wu Zi then 己丑 Ji Chou'],
-        ['Next change', 'in 8 h 47 min 38.0 s', 'True solar time February 5, 1988, 00:00', '己丑 Ji Chou then 庚寅 Geng Yin'],
+        ['Previous change', '15\u00a0h 12\u00a0min 28.1\u00a0s ago', 'True solar time 00:00', '戊子 Wu Zi then 己丑 Ji Chou'],
+        ['Next change', 'in 8\u00a0h 47\u00a0min 38.0\u00a0s', 'True solar time February 5, 1988, 00:00', '己丑 Ji Chou then 庚寅 Geng Yin'],
       ]);
     });
 
@@ -186,7 +186,7 @@ for (const profile of profiles) {
         day: '庚子 Geng Zi',
         hour: '丙子 Bing Zi',
         // The Zi hour began at true solar 23:00 under either convention; this day at midnight.
-        marks: { hour: 'changed 29 min 24 s ago', day: '', month: '', year: '' },
+        marks: { hour: 'changed 29\u00a0min 24\u00a0s ago', day: '', month: '', year: '' },
         yearStemTenGod: 'Indirect Resource',
         roots: 'No roots detected',
         relationships: ['Day–Month · Branch clash', 'Hour–Month · Branch clash', 'Day–Year · Half-frame', 'Hour–Year · Half-frame'],
@@ -202,7 +202,7 @@ for (const profile of profiles) {
         day: '辛丑 Xin Chou',
         hour: '戊子 Wu Zi',
         // Under this convention the day and the hour both began at true solar 23:00.
-        marks: { hour: 'changed 29 min 24 s ago', day: 'changed 29 min 24 s ago', month: '', year: '' },
+        marks: { hour: 'changed 29\u00a0min 24\u00a0s ago', day: 'changed 29\u00a0min 24\u00a0s ago', month: '', year: '' },
         yearStemTenGod: 'Direct Resource',
         roots: 'Root in one branch',
         relationships: ['Hour–Day · Branch combination', 'Hour–Month · Branch clash', 'Hour–Year · Half-frame', 'Day–Month · Branch harm'],

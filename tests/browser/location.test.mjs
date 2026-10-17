@@ -327,23 +327,14 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#location-status').textContent(), 'Location search failed.');
     });
 
-    check("the chart's Evolution view opens the explorer for the picked place", async (page) => {
-      await stubSuggestions(page);
-      await page.goto(baseURL);
-      await page.locator('#date').fill('1988-02-04');
-      await page.locator('#time').fill('15:40');
-      await search(page, 'Chengdu', CHENGDU_SICHUAN.display);
-      await page.locator('.location-suggestion').nth(1).click();
-      assert.deepEqual((await createChart(page)).location, locationOf(CHENGDU_JIANGXI));
+    // No control leads to the explorer (#108): it is opened at its address, which names
+    // the place by its coordinates.
+    check('the explorer, opened at its address, computes for the place the address names', async (page) => {
       const request = page.waitForRequest('**/api/evolution_explorer');
-      await page.locator('#view-switch button[data-view="evolution"]').click();
+      await page.goto(`${baseURL}/explorer/?date=1988-02-04&time=15:40&latitude=26.36828&longitude=115.34289`
+        + '&timezone=Asia%2FShanghai&lang=en');
       const body = (await request).postDataJSON();
       assert.deepEqual(body, { date: '1988-02-04', time: '15:40', location: locationOf(CHENGDU_JIANGXI) });
-      const { lang: _lang, ...link } = Object.fromEntries(new URL(page.url()).searchParams);
-      assert.deepEqual(link, {
-        date: '1988-02-04', time: '15:40', latitude: '26.36828', longitude: '115.34289',
-        timezone: 'Asia/Shanghai',
-      });
       await page.waitForFunction(() => /nodes visible/.test(document.getElementById('statusBar').textContent));
     });
 

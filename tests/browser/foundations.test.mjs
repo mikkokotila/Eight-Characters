@@ -660,13 +660,12 @@ for (const profile of profiles) {
       }
     });
 
-    check('the chart, not the landing page, chooses its view, in the page language', async (page) => {
+    check('neither the landing page nor the chart offers another view: the explorer opens at its address only', async (page) => {
       await page.goto(process.env.EC_BASE_URL);
       assert.equal(await page.locator('#input-view button[data-view], #input-view [data-mode]').count(), 0);
-      for (const [lang, views] of Object.entries({ fi: ['Standardi', 'Evoluutio'], en: ['Standard', 'Evolution'] })) {
+      for (const lang of ['fi', 'en']) {
         await openChart(page, { lang });
-        assert.deepEqual(await page.locator('#view-switch button').allTextContents(), views);
-        assert.equal(await page.locator('#view-switch button[data-view="standard"]').getAttribute('aria-pressed'), 'true');
+        assert.equal(await page.locator('#view-switch, [data-view], a[href*="/explorer"]').count(), 0, lang);
       }
     });
 

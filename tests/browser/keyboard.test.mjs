@@ -205,11 +205,13 @@ for (const profile of profiles) {
       const all = await options();
       for (const expected of ['Day Master · Ji — Yin Earth Topic', 'Chou month Topic', 'Relationships (1) Topic',
         'Hour–Year · Stem combination Relationships',
-        'Direct Wealth Roles', 'Hour · 壬申 Ren Shen Pillar', 'Ten Gods Show', 'FI Language', 'Evolution View',
+        'Direct Wealth Roles', 'Hour · 壬申 Ren Shen Pillar', 'Ten Gods Show', 'FI Language',
         'Copy link Chart', 'Edit Chart', 'New chart Chart', 'Keys Chart']) {
         assert.ok(all.includes(expected), `${expected} in ${JSON.stringify(all)}`);
       }
       assert.equal(all.includes('EN Language'), false);
+      // The Evolution explorer is reached at its address only.
+      assert.deepEqual(all.filter((option) => /evolution/i.test(option)), []);
       // Words narrow the list; Enter runs the chosen one, as one step of the history.
       await page.keyboard.type('hour year');
       assert.deepEqual(await options(), ['Hour–Year · Stem combination Relationships']);
@@ -257,7 +259,7 @@ for (const profile of profiles) {
         reached.push(await focused(page));
         await press(page, TAB);
       }
-      assert.deepEqual(reached, ['Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems', 'Standard', 'Evolution',
+      assert.deepEqual(reached, ['Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems',
         'FI', 'EN',
         // In English the Day Master line opens the Day Master's page of readings.
         'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn',
