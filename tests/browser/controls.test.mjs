@@ -145,21 +145,31 @@ for (const profile of profiles) {
     check('tooltip text passes clicks through to a nearby control', async (page) => {
       await openChart(page); await page.setViewportSize({ width: 320, height: 844 });
       await page.keyboard.press('Tab'); await page.locator('#copy-text-btn').focus(); await tipOpen(page); await settled(page);
-      const button = page.locator('[data-chart-lang="fi"]');
-      const control = await button.boundingBox(); const tip = await page.locator(tipSelector).boundingBox();
-      assert.ok(control && tip);
-      const left = Math.max(control.x, tip.x); const right = Math.min(control.x + control.width, tip.x + tip.width);
-      const top = Math.max(control.y, tip.y); const bottom = Math.min(control.y + control.height, tip.y + tip.height);
-      assert.ok(right > left && bottom > top, 'the narrow layout exercises a tooltip over another control');
-      const recalculated = page.waitForResponse(response => new URL(response.url()).pathname === '/api/four_pillars');
-      await page.mouse.click((left + right) / 2, (top + bottom) / 2);
-      await (await recalculated).finished();
-      await page.waitForFunction(() => document.documentElement.lang === 'fi'
-        && document.querySelector('#chart-view').getAttribute('aria-busy') !== 'true'
-        && document.querySelector('[data-context="roots"]').getAttribute('aria-label').startsWith('Juuret'));
+      // Whichever of the bar's choices the tooltip covers at this width (the bar's layout
+      // decides which, #108): a click on the tooltip's text reaches that choice.
+      const covered = await page.evaluate((selector) => {
+        const tip = document.querySelector(selector).getBoundingClientRect();
+        // A choice that stays on the chart: its display, its luck pillar or its language.
+        const choices = '#chart-view :is(#display-switch, #luck-switch, #chart-language) button[aria-pressed="false"]';
+        const choice = [...document.querySelectorAll(choices)].find((button) => {
+          const box = button.getBoundingClientRect();
+          return button.checkVisibility() && box.right > tip.left && box.left < tip.right && box.bottom > tip.top && box.top < tip.bottom;
+        });
+        if (!choice) return null;
+        choice.setAttribute('data-covered', '');
+        const box = choice.getBoundingClientRect();
+        return {
+          x: (Math.max(box.left, tip.left) + Math.min(box.right, tip.right)) / 2,
+          y: (Math.max(box.top, tip.top) + Math.min(box.bottom, tip.bottom)) / 2,
+        };
+      }, tipSelector);
+      assert.ok(covered, 'the narrow layout exercises a tooltip over another control');
+      await page.mouse.click(covered.x, covered.y);
+      await page.waitForFunction(() => document.querySelector('[data-covered]').getAttribute('aria-pressed') === 'true'
+        && document.querySelector('#chart-view').getAttribute('aria-busy') !== 'true');
       await settled(page);
       await tipClosed(page);
-      assert.equal(await button.getAttribute('aria-pressed'), 'true');
+      assert.equal(await page.locator('[data-covered]').getAttribute('aria-pressed'), 'true');
     });
 
     if (!profile.hasTouch) {
