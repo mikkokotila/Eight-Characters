@@ -333,10 +333,8 @@ for (const profile of profiles) {
     check('scrollbars take the page\'s lines', async (page) => {
       await startPage(page);
       await openChart(page);
-      const supported = await page.evaluate(() => CSS.supports('scrollbar-color', 'red blue'));
-      // WebKit draws its own scrollbars and has no scrollbar-color to give them.
-      assert.equal(supported, engineName === 'chromium');
-      if (!supported) return;
+      // Both engines draw scrollbars in the colours a page gives them.
+      assert.equal(await page.evaluate(() => CSS.supports('scrollbar-color', 'red blue')), true);
       for (const [scheme, line] of [['light', 'rgba(42, 37, 32, 0.3)'], ['dark', 'rgba(238, 231, 220, 0.34)']]) {
         await page.emulateMedia({ colorScheme: scheme });
         assert.equal(await page.evaluate(() => getComputedStyle(document.documentElement).scrollbarColor), `${line} rgba(0, 0, 0, 0)`);
