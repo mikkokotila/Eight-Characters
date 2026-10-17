@@ -825,22 +825,80 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-couple').isHidden(), true);
     });
 
-    check('without a place the day says so and leads to Settings; without a gender, to the chart', async (page) => {
+    check('without a place the day asks where you are, there, and opens at the place chosen; without a gender, it leads to the chart', async (page) => {
       await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       await setSettings(page, { place: null });
       await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
-      await page.locator('#today-notice').waitFor({ state: 'visible' });
-      assert.match(await page.locator('#today-notice').textContent(), /needs where you are/);
+      const question = page.locator('#today-place');
+      await question.waitFor({ state: 'visible' });
+      // Asked, the day draws nothing, says nothing else, and asks the API nothing yet.
       assert.equal(await page.locator('#today-body').isHidden(), true);
-      await page.locator('[data-today-action="settings"]').click();
-      await page.locator('#settings-view').waitFor({ state: 'visible' });
-      assert.equal(await page.evaluate(() => location.hash), '#settings');
-      await setSettings(page);
+      assert.equal(await page.locator('#today-notice').isHidden(), true);
+      assert.equal(answers.length, 0);
+      assert.equal(await page.locator('#today-place-title').textContent(), 'Where are you today?');
+      assert.equal(await page.locator('.today-place-lead').textContent(), 'The day is read where you are: on your calendar’s date, '
+        + 'its twelve double hours following the sun in your sky. Name your place, and the day opens.');
+      assert.equal(await page.locator('#today-location-label').textContent(), 'Find a place');
+      assert.equal(await page.locator('#today-place-note').textContent(), 'Your account keeps it for every day you open, and Settings can change it.');
+      // The field has the focus at once, but on a touch screen, whose keyboard would cover
+      // the question.
+      assert.equal(await page.evaluate(() => document.activeElement.id), profile.name === 'mobile' ? '' : 'today-location');
+      // The day's keys leave the field to its typing.
+      await page.locator('#today-location').fill('Hels');
+      await page.locator('#today-location').press('ArrowRight');
+      assert.equal(await part(page, 'day'), DAY);
+      await page.locator('#today-location-suggestions .location-suggestion').waitFor();
+      assert.deepEqual(await page.locator('#today-location-suggestions .location-suggestion-city').allTextContents(), [HELSINKI.display]);
+      // Chosen, the place is kept for the account, and the day opens at it, its heading
+      // taking the focus from the field gone.
+      await page.locator('#today-location-suggestions .location-suggestion').click();
+      await shown(page);
+      await page.locator('#today-body').waitFor({ state: 'visible' });
+      assert.equal(await question.isHidden(), true);
+      assert.equal(await page.locator('#today-location').inputValue(), '');
+      assert.deepEqual(answers.at(-1).request.place, PLACE);
+      assert.deepEqual(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), PLACE);
+      assert.equal(await page.evaluate(() => document.activeElement.id), 'today-date');
+      // Without a gender, the day leads to the chart.
       const link = `/#today?${new URLSearchParams([...chartParams()].filter(([key]) => key !== 'gender'))}&day=${DAY}`;
       await page.goto(new URL(link, process.env.EC_BASE_URL).href);
       await page.locator('#today-notice').waitFor({ state: 'visible' });
       assert.match(await page.locator('#today-notice').textContent(), /gender/);
+      assert.equal(await question.isHidden(), true);
+    });
+
+    check('a place refused because the settings changed elsewhere is said, and the day reads them again', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      await recordToday(page);
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page, { place: null });
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await page.locator('#today-place').waitFor({ state: 'visible' });
+      // Another tab changes the settings (a birth saved) while the question shows.
+      assert.equal(await page.evaluate(async (birth) => {
+        const read = await (await fetch('/api/account/settings')).json();
+        const response = await fetch('/api/account/charts', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...birth, key: read.key, updated_at: read.updated_at }),
+        });
+        return response.status;
+      }, SELF), 201);
+      await page.locator('#today-location').fill('Hels');
+      await page.locator('#today-location-suggestions .location-suggestion').click();
+      await page.waitForFunction(() => document.getElementById('today-location-status').classList.contains('is-error'));
+      assert.equal(await page.locator('#today-location-status').textContent(), 'Your settings changed elsewhere. They are shown as they are now: choose again.');
+      assert.equal(await page.locator('#today-place').isVisible(), true);
+      assert.equal(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), null);
+      // Chosen again, from the settings read again, it is kept, and the day opens.
+      await page.locator('#today-location').fill('Helsinki');
+      await page.locator('#today-location-suggestions .location-suggestion').click();
+      await shown(page);
+      await page.locator('#today-body').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), PLACE);
     });
 
     check('a link with an unknown, repeated or wrong part is refused, naming it', async (page) => {

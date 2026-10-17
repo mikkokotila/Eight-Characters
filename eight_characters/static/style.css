@@ -3418,6 +3418,59 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   color: var(--ink-1);
 }
 .today-view[aria-busy='true'] :is(.today-body, .chart-panel) { opacity: 0.6; }
+/* With no place kept, the day asks where you are, in the room it will take: Today's sun
+   in a ring, a title as the start page sets its own, a lead, and the start page's place
+   field, centred. Its note says where the place is kept. */
+.today-place {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-8) auto var(--space-7);
+  padding: 0 var(--space-4);
+  text-align: center;
+}
+.today-place-mark {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-round);
+  background: var(--surface-1);
+  color: var(--ink-2);
+}
+.today-place-mark .control-icon { width: 24px; height: 24px; margin: 0; }
+.today-place-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: var(--text-5);
+  line-height: var(--leading-2);
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-1);
+}
+.today-place-lead {
+  max-width: 34em;
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-2);
+  line-height: var(--leading-3);
+  color: var(--ink-2);
+  text-wrap: pretty;
+}
+/* Room for one status line, as Settings keeps: a chosen place's, which may wrap, shows
+   only while the day opens. */
+.today-place .location-group .field-status { min-height: 1lh; }
+.today-place-form[aria-busy='true'] input { cursor: progress; }
+.today-place-note {
+  /* As wide as the field, so that its suggestions, hanging over it, cover it whole. */
+  max-width: 270px;
+  margin: 0;
+  font-size: var(--text-1);
+  line-height: var(--leading-4);
+  color: var(--ink-2);
+}
 .today-view[aria-busy='true'] button { cursor: progress; }
 .today-view .bar-action[aria-disabled='true'] { opacity: 0.5; cursor: default; }
 /* The partner in view, with the chart in several couples: a pill like the switches
@@ -3860,6 +3913,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-run-number { display: none; }
   .today-run-text { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1); }
   .today-notice .settings-actions { display: none; }
+  .today-place { display: none !important; }
 }
 
 /* While the session is made sure of, before the charts are asked for again. */

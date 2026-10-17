@@ -77,6 +77,12 @@
     const panel = need('#today-panel');
     const detail = need('#today-detail');
     const status = need('#today-status');
+    const placeSection = need('#today-place');
+    const placeForm = need('#today-place-form');
+    const placeInput = need('#today-location');
+    if (!window.EC_ICONS || !window.EC_PLACE_SEARCH) throw new Error('Today needs its icons and the place search.');
+    // The question for where you are wears the sun, Today's own mark.
+    need('.today-place-mark').innerHTML = window.EC_ICONS.markup('sun');
 
     // What is shown: the chart, the day, whose day and the open topic (the address), the
     // settings it was asked with, and the API's answer. Each request is numbered: only
@@ -1061,6 +1067,7 @@
       drawInChart();
       drawHours();
       drawPanel();
+      putPlaceAway();
       body.classList.remove('hidden');
     };
     // Drawing replaces the page's buttons: the one that had focus hands it to its
@@ -1082,9 +1089,8 @@
     const ready = (yes) => {
       for (const button of [copyText, printButton]) button.setAttribute('aria-disabled', String(!yes));
     };
-    // Says what the page shows instead of the day, with what can be done: the day before
-    // it, and its open topic, are no longer shown.
-    const instead = (text, actions) => keepingFocus(() => {
+    // The day before, and its open topic, are no longer shown.
+    const leaveDay = () => {
       // An answer that could not be drawn is neither copied as text nor printed.
       answer = null;
       body.classList.add('hidden');
@@ -1096,8 +1102,76 @@
       panel.classList.add('hidden');
       view.classList.remove('has-panel');
       detail.innerHTML = '';
+    };
+    // Says what the page shows instead of the day, with what can be done.
+    const instead = (text, actions) => keepingFocus(() => {
+      leaveDay();
+      putPlaceAway();
       sayNotice(text, actions);
     });
+
+    // ── Where you are, asked for here while the account keeps no place ──
+    // The question is asked from the settings read (`placeFrom`, their basis): the place
+    // chosen is kept from them, so one set meanwhile elsewhere refuses it, and the day
+    // reads the settings again. Each choice is numbered: only the latest one's answer
+    // opens the day, and none once the question is put away.
+    let placeFrom = -1;
+    let placing = 0;
+    const placeSearch = window.EC_PLACE_SEARCH.create({
+      input: placeInput,
+      list: need('#today-location-suggestions'),
+      status: need('#today-location-status'),
+      optionId: 'today-location-option',
+      translate: t,
+      escape: esc,
+      format,
+      onType: () => {},
+      onPick: async (picked) => {
+        const mine = ++placing;
+        placeInput.readOnly = true;
+        placeForm.setAttribute('aria-busy', 'true');
+        placeSearch.setStatus(t('today_place_saving', { city: picked.city }));
+        let problem;
+        try {
+          problem = await settings.setPlace({
+            name: picked.display, city: picked.city, timezone: picked.timezone, latitude: picked.latitude, longitude: picked.longitude,
+          }, placeFrom);
+        } catch (err) {
+          console.error(err);
+          problem = err.message || t('settings_load_error');
+        }
+        if (mine !== placing || state === null) return;
+        if (problem !== null) {
+          placeInput.readOnly = false;
+          placeForm.removeAttribute('aria-busy');
+          placeSearch.setStatus(problem, 'is-error');
+        }
+        // Kept, the day opens at the place, and the question goes once it is drawn;
+        // refused, the settings are read again, and the question stays, saying why.
+        await show(state);
+      },
+    });
+    // Asks where you are, in place of the day. Asked anew while it shows, it keeps what
+    // was typed and said; newly asked, its field takes the focus, except on a touch
+    // screen, whose keyboard would rise over the question.
+    const askPlace = (from) => {
+      const asking = placeSection.classList.contains('hidden');
+      keepingFocus(() => {
+        leaveDay();
+        placeFrom = from;
+        placeSection.classList.remove('hidden');
+      });
+      if (asking && !window.matchMedia('(pointer: coarse)').matches) placeInput.focus();
+    };
+    // The question goes, with what was typed and any choice on its way.
+    const putPlaceAway = () => {
+      placing += 1;
+      placeFrom = -1;
+      placeInput.readOnly = false;
+      placeForm.removeAttribute('aria-busy');
+      placeSearch.reset();
+      placeSection.classList.add('hidden');
+    };
 
     // Shows the day a state names: the settings are read again, then the API asked. Until
     // its answer is drawn, the day is neither copied as text nor printed.
@@ -1139,7 +1213,7 @@
           return;
         }
         if (kept.place === null) {
-          instead(t('today_needs_place'), [['settings', t('settings_open')]]);
+          askPlace(settings.basis());
           return;
         }
         // The partner in view (#98): the one the address names, else the first couple's
@@ -1240,6 +1314,7 @@
       dropKnown();
       stripRun = null;
       cancelDrag();
+      putPlaceAway();
       view.classList.add('hidden');
       view.removeAttribute('aria-busy');
     };
@@ -1257,6 +1332,7 @@
       partnerSelect.replaceChildren();
       partnerChoices = '';
       clearNotice();
+      putPlaceAway();
       body.classList.add('hidden');
       for (const part of [pullLine, topics, run, scale, pillarsNote, pillars, couple, inChart, hours]) part.replaceChildren();
       couple.classList.add('hidden');

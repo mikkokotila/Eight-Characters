@@ -81,7 +81,8 @@ the form before signing in. New chart and Edit still open the form.
 ## Where you are
 
 A place search of its own, as the birth form's: choose a place from the list and save
-it. The hours of a day are reckoned for it. Remove forgets it. Nothing is guessed from
+it. The hours of a day are reckoned for it. Today asks for it with the same search while
+none is set, and keeps the place chosen there. Remove forgets it. Nothing is guessed from
 the browser. A place picked while the one before is being saved stays in the search,
 to be saved in turn. Saved or removed from the keyboard, the place leaves the focus in
 the search.

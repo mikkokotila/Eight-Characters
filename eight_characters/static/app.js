@@ -1823,7 +1823,7 @@ document.addEventListener('DOMContentLoaded', () => {
     escape: esc,
     locale,
     settings: settingsPage,
-    format: { parseWallClock, date: formatDate, time: formatTime, dateIn },
+    format: { parseWallClock, date: formatDate, time: formatTime, dateIn, coordinates: formatCoordinates },
     account,
     go: (hash, method) => history[method](null, '', `${formAddress()}${hash}`),
     // Today's Chart hands its focus to the chart's own, so the chart's keys act at once.

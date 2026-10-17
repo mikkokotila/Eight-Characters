@@ -283,6 +283,27 @@
     </header>
     <!-- What the page cannot show yet, or says about what it shows. -->
     <div id="today-notice" class="today-notice hidden" role="status"></div>
+    <!-- With no place kept for the account: the day asks where you are, here, and opens
+         once a place is chosen. -->
+    <section id="today-place" class="today-place hidden" aria-labelledby="today-place-title">
+      <span class="today-place-mark" aria-hidden="true"></span>
+      <h2 id="today-place-title" class="today-place-title" data-i18n="today_place_title">Missä olet tänään?</h2>
+      <p class="today-place-lead" data-i18n="today_place_lead"></p>
+      <form id="today-place-form" class="today-place-form" novalidate>
+        <div class="field-group location-group">
+          <label for="today-location" id="today-location-label" data-i18n="settings_place_search">Etsi paikka</label>
+          <div class="location-search-wrap">
+            <input type="text" id="today-location" autocomplete="off" spellcheck="false" role="combobox"
+              aria-autocomplete="list" aria-expanded="false" aria-controls="today-location-suggestions"
+              aria-describedby="today-location-status today-place-note">
+            <div id="today-location-suggestions" class="location-suggestions hidden" role="listbox"
+              aria-labelledby="today-location-label"></div>
+          </div>
+          <div id="today-location-status" class="field-status" aria-live="polite"></div>
+        </div>
+      </form>
+      <p id="today-place-note" class="today-place-note" data-i18n="today_place_note"></p>
+    </section>
     <!-- Printed while a day is on its way, instead of the day before. -->
     <p class="today-pending-print" data-i18n="today_pending_print">Päivää luetaan vielä.</p>
     <div id="today-body" class="today-body hidden">

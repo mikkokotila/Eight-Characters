@@ -689,6 +689,9 @@
     );
     // Corrects a saved chart's birth: it keeps its id, its mark and its couple.
     const correctChart = async (id, birth, from) => write('PUT', `/api/account/charts/${encodeURIComponent(id)}`, birth, from);
+    // Sets where you are, as Today asks for it when none is set (today.js), from the
+    // settings it read: null once set, or why not.
+    const setPlace = async (place, from) => write('PUT', '/api/account/place', { place }, from);
 
     return {
       show,
@@ -698,6 +701,7 @@
       basis: () => basis,
       saveChart,
       correctChart,
+      setPlace,
       chartName,
       // A sign-out, or another account taken (`why` says which), forgets what was read for
       // the account and leaves nothing of it on the page, and the changes still waiting

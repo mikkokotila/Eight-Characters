@@ -14,8 +14,17 @@ a comparison's frames, and the Evolution explorer, a page of its own, has none.
 
 The day asks for what the account keeps in [Settings](Standard-Settings.md): where you
 are, the schools and, when the chart on screen is a saved chart in a couple, the other
-chart of the couple. Without a place, Today says so and leads to Settings; without a
-gender, back to the chart.
+chart of the couple. Without a gender, Today leads back to the chart.
+
+Without a place, the day asks for it there, in the room it will take: "Where are you
+today?", why it asks (the day is read on your calendar's date, its twelve double hours
+following the sun in your sky), and the place search Settings has. Its field takes the
+focus, except on a touch screen, whose keyboard would rise over the question. A place
+chosen is kept for the account, as Settings keeps it, and the day opens at it; the
+question goes once the day is drawn, and the day's heading takes the focus. Refused
+because the settings changed elsewhere, the choice is not made: the question says why,
+the settings are read again, and the reader chooses again. Settings can change the place
+at any time.
 
 ## The page
 
