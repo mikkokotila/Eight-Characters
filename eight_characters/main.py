@@ -21,10 +21,10 @@ from eight_characters import __version__
 from eight_characters.accounts.records import (
     Birth,
     ChosenSchools,
-    Place,
     RecordError,
     Schools,
 )
+from eight_characters.accounts.records import Place as AccountPlace
 from eight_characters.accounts.web import (
     AccountsDependency,
     BirthBody,
@@ -1429,7 +1429,7 @@ def schools() -> Catalog:
 
 def _today_basis(
     payload: TodayBasis,
-) -> tuple[Place, Birth, Birth | None, Schools]:
+) -> tuple[AccountPlace, Birth, Birth | None, Schools]:
     """What a day, or days, are read for: the place, the chart read and the other one
     sent (None for no partner), and the schools. 400 for any that cannot be read, and
     for the partner's chart asked for without one."""

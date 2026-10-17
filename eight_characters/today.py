@@ -11,9 +11,9 @@ luck pillar.
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
-from typing import Any, Final, Literal, cast
+from typing import Any, Final, Literal, NotRequired, cast
 
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from eight_characters import first_chart
 from eight_characters.accounts.records import Birth, Language, Place, Schools
