@@ -328,11 +328,12 @@
       // Under a plan's cap, a chart in as many couples as it allows is not offered: the
       // page says why.
       const capped = settings.couples_per_chart !== null && open.length < settings.charts.length;
-      const cap = settings.couples_per_chart === 1 ? t('settings_couple_cap_one') : t('settings_couple_cap', { count: settings.couples_per_chart });
+      const cap = () => (settings.couples_per_chart === 1 ? t('settings_couple_cap_one')
+        : t('settings_couple_cap', { count: settings.couples_per_chart }));
       couplesBody.innerHTML = `
         ${couples === '' ? `<p class="settings-note">${esc(t('settings_couples_none'))}</p>` : `<ul class="couple-cards">${couples}</ul>`}
         ${pending === null ? '' : `<p class="settings-note">${esc(t('settings_pending', { name: chartName(pending) }))}</p>`}
-        ${capped ? `<p class="settings-note">${esc(cap)}</p>` : ''}
+        ${capped ? `<p class="settings-note">${esc(cap())}</p>` : ''}
         ${first !== null ? `
           <div class="settings-choose settings-pair">
             <label for="settings-pair-first">${esc(t('settings_pair_first'))}</label>
