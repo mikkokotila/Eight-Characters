@@ -179,6 +179,11 @@ async function visitStates(page, inspect) {
     await page.locator('#chart-view').waitFor({ state: 'visible' });
     await settled(page);
     await inspect(`${lang} chart`);
+    // In the toolbar's words, its Actions menu open over the chart.
+    await page.locator('#chart-actions-button').click();
+    await settled(page);
+    await inspect(`${lang} chart with its Actions menu open`);
+    await page.keyboard.press('Escape');
     await page.locator('.card.stem[data-pillar="day"]').hover();
     await page.locator('.card-hint').waitFor({ state: 'visible' });
     await inspect(`${lang} chart with the long-press hint`);
