@@ -6,7 +6,7 @@
 // other tab is played by the API (account-helpers.mjs).
 import { readFile } from 'node:fs/promises';
 import {
-  assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU,
+  assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU, press,
 } from './chart-helpers.mjs';
 import { newAccount, newSession, asAccount, readCode, signInPage, turnstileAnswered } from './account-helpers.mjs';
 import {
@@ -158,7 +158,7 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
       // A second chart, after the first in the history.
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       await page.locator('#date').fill(BIRTH.date);
       await page.locator('#time').fill('12:00');
       await page.locator('#location').fill(CHENGDU.city);
@@ -214,7 +214,7 @@ for (const profile of profiles) {
       await askForChart(page);
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       // Signed out on every device, from another one, while the second birth is typed.
       await asAccount(playwright, account, async (request) => {
@@ -265,7 +265,7 @@ for (const profile of profiles) {
         await page.locator('.location-suggestion').click();
         await page.locator('#create-chart-btn').click();
       };
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await compareWith('1990-05-09', '12:00');
       await checking;
       // Signed out on every device, from another one; then back to the second birth, and
@@ -315,7 +315,7 @@ for (const profile of profiles) {
         await held;
         return route.fulfill({ response });
       });
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -362,7 +362,7 @@ for (const profile of profiles) {
         await held;
         return route.fulfill({ response });
       });
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -412,7 +412,7 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
       await switchInAnotherTab(page, earlier, later);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -460,7 +460,7 @@ for (const profile of profiles) {
       await settled(page);
       // Another tab signs in to another account, which a comparison here takes.
       await switchInAnotherTab(page, earlier, later);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -693,7 +693,7 @@ for (const profile of profiles) {
       await askForChart(page);
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -929,7 +929,7 @@ for (const profile of profiles) {
       await settled(page);
       // A comparison, then back to its second birth, so that coming forward checks the
       // session again.
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -981,7 +981,7 @@ for (const profile of profiles) {
       await settled(page);
       // A comparison, then back to its second birth, so that coming forward checks the
       // session again.
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -1024,7 +1024,7 @@ for (const profile of profiles) {
       await settled(page);
       // A comparison, then back to its second birth, so that coming forward checks the
       // session again.
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -1195,7 +1195,7 @@ for (const profile of profiles) {
       await settled(page);
       // A comparison, then back to its second birth, so that coming forward checks the
       // session again.
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');
@@ -1247,7 +1247,7 @@ for (const profile of profiles) {
       await askForChart(page);
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');

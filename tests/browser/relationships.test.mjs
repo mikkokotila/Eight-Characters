@@ -1,6 +1,6 @@
 import {
   assert, describe, it, settled, engineName, profiles, openChart, fillChart, count,
-  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships, press,
 } from './chart-helpers.mjs';
 
 for (const profile of profiles) {
@@ -204,7 +204,7 @@ for (const profile of profiles) {
       await openRelationships(page);
       await page.locator('.relationship-chip').click();
       await showDisplay(page, 'ten-gods');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await fillChart(page, { date: '1990-01-15', time: '12:00' });
       await count(page, '.card.is-related', 0);
       await count(page, '.card.is-flipped', 0);

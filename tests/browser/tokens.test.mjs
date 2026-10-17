@@ -34,7 +34,10 @@ const ROWS = [16, 20];
 // Each control's height, on a desktop and on a phone.
 const CONTROLS = {
   '.segmented > button': [36, 44],
-  '.bar-action': [36, 44],
+  '.bar-action:not(.bar-menu-button)': [36, 44],
+  // In the toolbar's words the Actions menu's button stands as tall as the switches'
+  // pills beside it.
+  '.bar-menu-button': [46, 54],
   '.topic-button, .chart-topics .context-toggle': [36, 44],
   '.panel-close': [36, 44],
   '.canon-link': [36, 44],

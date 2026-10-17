@@ -255,7 +255,7 @@ for (const profile of profiles) {
         assert.equal(await page.locator('.relationship-chip').nth(2).evaluate(node => node === document.activeElement), true);
         // Returning keyboard focus can spotlight the cleared relationship. Once
         // focus leaves that line, every arc returns to its resting ink.
-        await page.locator('#copy-link-btn').focus();
+        await page.locator('#chart-language button[data-chart-lang="en"]').focus();
         await settled(page);
         assert.deepEqual(await inks(), everyArc(INK.rest));
       });

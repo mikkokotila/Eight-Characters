@@ -1,6 +1,6 @@
 import {
   assert, describe, it, settled, engineName, profiles, openChart, fillChart, count,
-  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships, press,
 } from './chart-helpers.mjs';
 
 for (const profile of profiles) {
@@ -163,7 +163,7 @@ for (const profile of profiles) {
     check('one and four root branches use correct labels and retain all occurrences', async (page) => {
       await openChart(page, { date: '1990-01-08', time: '12:00' });
       assert.equal(await page.locator('[data-context="roots"]').innerText(), 'Root in one branch');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await fillChart(page, { date: '1990-01-13', time: '12:00' });
       assert.equal(await page.locator('[data-context="roots"]').innerText(), 'Roots in 4 branches');
       const before = await geometry(page);
@@ -179,7 +179,7 @@ for (const profile of profiles) {
       await openChart(page);
       await page.locator('[data-context="season"]').click();
       assert.match(await page.locator('#context-detail').innerText(), /Winter · Water/);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await fillChart(page, { time: '23:30' });
       assert.equal(await page.locator('[data-context="season"]').innerText(), 'Yin month');
       await page.locator('[data-context="season"]').click();
@@ -223,7 +223,7 @@ for (const profile of profiles) {
       await openChart(page);
       await page.locator('[data-context="roots"]').click();
       await showDisplay(page, 'ten-gods');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await fillChart(page, { date: '1990-05-09', time: '12:00' });
       await count(page, '.card.is-context-source, #pillars .is-context-evidence, .card.is-flipped', 0);
       await settled(page);

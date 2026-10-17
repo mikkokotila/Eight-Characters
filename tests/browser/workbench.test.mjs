@@ -2,7 +2,7 @@
 // Stage 4 of the Standard view (#19): the chart as a workbench. One bar above it, and a panel
 // that explains the chosen topic beside it (a sheet over the foot of the page below 1200px).
 import {
-  assert, describe, it, engineName, profiles, openChart, count, settled, showDisplay, openRelationships, withPage,
+  assert, describe, it, engineName, profiles, openChart, count, settled, showDisplay, openRelationships, withPage, press,
 } from './chart-helpers.mjs';
 
 // Where the pillars stand on the page, to a tenth of a pixel.
@@ -218,7 +218,7 @@ for (const profile of profiles) {
       await count(page, '.card.is-flipped', 8);
       assert.equal(await page.locator('.card.stem[data-pillar="year"] .ten-god-name').textContent(), 'Epäsuora voimavara');
       // Back at the form, the page speaks Finnish too.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Luo kartta');
     });
 
@@ -251,12 +251,12 @@ for (const profile of profiles) {
     check('Edit keeps the birth for another chart; New chart starts from an empty form', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.equal(await page.locator('#back-btn').textContent(), 'Edit');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.deepEqual(await fields(page), { date: '1988-02-04', time: '16:30', location: 'Chengdu, Sichuan, China' });
       await page.locator('#create-chart-btn').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await page.locator('[data-context="roots"]').click();
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       assert.deepEqual(await fields(page), { date: '', time: '', location: '' });
       assert.equal(await page.evaluate(() => document.activeElement.id), 'date');
       assert.equal(await page.locator('#location-status').textContent(), '');

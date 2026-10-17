@@ -3,7 +3,7 @@
 // for the second birth; the pair then shows as two charts, each the chart view embedded in
 // a frame of its own, with its own topics. The pair has an address of its own.
 import {
-  assert, describe, it, engineName, profiles, openChart, settled, withPage, CHENGDU,
+  assert, describe, it, engineName, profiles, openChart, settled, withPage, CHENGDU, press,
 } from './chart-helpers.mjs';
 
 const SECOND = { date: '1990-05-09', time: '12:00' };
@@ -52,7 +52,7 @@ async function compareWithSecond(page, lang = 'en') {
 }
 // On a chart: Compare, and the second birth.
 async function askForSecond(page) {
-  await page.locator('#compare-btn').click();
+  await press(page, '#compare-btn');
   await page.locator('#compare-note').waitFor({ state: 'visible' });
   await page.locator('#date').fill(SECOND.date);
   await page.locator('#time').fill(SECOND.time);
@@ -92,7 +92,7 @@ for (const profile of profiles) {
     check('Compare asks for the second birth, naming the first, and Cancel goes back to it', async (page) => {
       await openChart(page, { lang: 'en' });
       const first = await page.locator('#chart-date').textContent();
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#compare-note-text').textContent(), `Second chart, to compare with ${first}`);
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Compare');

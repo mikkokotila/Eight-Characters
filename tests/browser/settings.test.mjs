@@ -5,7 +5,7 @@
 // from settings another tab has changed since is refused, and the page shows the
 // settings as they are. The library in a chart's heading saves and opens charts.
 import {
-  assert, describe, it, engineName, profiles, openLink, settled, withPage, playwright, HELSINKI, TROMSO,
+  assert, describe, it, engineName, profiles, openLink, settled, withPage, playwright, HELSINKI, TROMSO, press,
 } from './chart-helpers.mjs';
 import { newAccount, asAccount, signInPage, stubTurnstile } from './account-helpers.mjs';
 import { dialogOpens, signInThroughDialog } from './account-page.mjs';
@@ -971,7 +971,7 @@ for (const profile of profiles) {
         await settled(page);
       };
       const remade = async () => {
-        await page.locator('#back-btn').click();
+        await press(page, '#back-btn');
         await page.locator('#input-view').waitFor({ state: 'visible' });
         await page.locator('#create-chart-btn').click();
         await drawn();
@@ -994,7 +994,7 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('zi')), 'whole_zi_23');
       // Back to the chart after New chart, which emptied the form: the chart on screen is
       // the one come back to, asked for nothing, and the form is filled with it again.
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       await page.locator('#input-view').waitFor({ state: 'visible' });
       const askedBefore = asked.length;
       await page.goBack();
@@ -1009,7 +1009,7 @@ for (const profile of profiles) {
       assert.equal(asked.at(-1).location.fold, 1);
       assert.equal(await page.locator('#form-error').isHidden(), true);
       // Another time is another moment: its pass is not carried over.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await page.locator('#time').fill('12:00');
       await page.locator('#create-chart-btn').click();
       await drawn();
@@ -1028,7 +1028,7 @@ for (const profile of profiles) {
       assert.equal(asked.at(-1).conventions?.zi_convention, undefined);
       // New chart begins anew: the convention of the chart before is not carried over.
       await opened(chartLink({ date: '2021-06-15', time: '00:50', zi: 'whole_zi_23' }), '2021');
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       await page.locator('#date').fill('2021-06-15');
       await page.locator('#time').fill('00:50');
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
@@ -1061,7 +1061,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     await settled(page);
     assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), '1977-02-03');
     await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Unsaved chart');
-    await page.locator('#new-chart-btn').click();
+    await press(page, '#new-chart-btn');
     await page.locator('#input-view').waitFor({ state: 'visible' });
     assert.equal(await page.evaluate(() => location.hash), '');
   }, { signedIn: false }));

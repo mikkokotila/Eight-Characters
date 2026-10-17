@@ -1,4 +1,6 @@
 // The classic view's controls: local icons, preserved labels, and one accessible tooltip.
+// In the toolbar's words (toolbar.js) a control marked data-control-words shows its words
+// too: a switch its label alone, an action its icon and label, a topic its title.
 (() => {
   if (!window.EC_ICONS || !window.EC_I18N) throw new Error('Control resources are missing.');
   const { markup } = window.EC_ICONS;
@@ -28,6 +30,11 @@
   // app.js and day-master-context.js): Relationships 3+2, Roots 3+1, Roles +2.
   const withLuck = (node, count) => (node.dataset.controlLuck ? `${count ?? ''}${node.dataset.controlLuck}` : null);
   const firstWords = (label) => label.split(' · ')[0].trim().split(/\s+/).slice(0, 2).join(' ');
+  // What the toolbar's words show of a control: a switch its label (`label`), an action
+  // its icon and label (`icon-label`), a topic its title between its icon and its count
+  // (`title`). Navigation keeps its icons: the steps, Today's dates, Close on a panel.
+  const ACTIONS = ['copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'today-copy-link',
+    'today-copy-text', 'today-print', 'today-settings', 'compare-swap', 'compare-copy-link', 'compare-close'];
   const fixed = {
     'copy-link-btn': ['link-2', 'link'], 'copy-text-btn': ['clipboard-list', 'copy'],
     'back-btn': ['pencil', 'edit'], 'new-chart-btn': ['square-plus', 'new'],
@@ -40,27 +47,28 @@
   const info = (node) => {
     let label = labelOf(node);
     let icon = null; let key = null; let only = false; let count = null; let caption = null;
-    let place = node;
-    if (fixed[node.id]) { [icon, key] = fixed[node.id]; only = true; }
+    let place = node; let words = null; let title = null;
+    if (fixed[node.id]) { [icon, key] = fixed[node.id]; only = true; if (ACTIONS.includes(node.id)) words = 'icon-label'; }
     else if (node.matches('#display-switch button')) {
       [icon, key] = { characters: ['languages', 'characters'], 'ten-gods': ['orbit', 'gods'], 'hidden-stems': ['layers-2', 'hidden'] }[node.dataset.display];
-      only = true;
+      only = true; words = 'label';
     } else if (node.matches('#luck-switch button')) {
-      [icon, key] = node.dataset.luckShow === 'off' ? ['circle-dot', 'natal'] : ['calendar-range', 'with_luck']; only = true;
+      [icon, key] = node.dataset.luckShow === 'off' ? ['circle-dot', 'natal'] : ['calendar-range', 'with_luck']; only = true; words = 'label';
     } else if (node.matches('#page-switch button, #today-page-switch button')) {
-      [icon, key] = node.dataset.page === 'chart' ? ['columns-4', 'page_chart'] : ['sun', 'page_today']; only = true;
+      [icon, key] = node.dataset.page === 'chart' ? ['columns-4', 'page_chart'] : ['sun', 'page_today']; only = true; words = 'label';
     } else if (node.matches('#chart-language button, #compare-language button, #today-language button, .lang-btn')) {
       key = (node.dataset.chartLang ?? node.dataset.compareLang ?? node.dataset.todayLang ?? node.dataset.lang) === 'fi' ? 'finnish' : 'english';
     } else if (node.id === 'relationships-topic') {
       icon = 'waypoints'; key = 'relationships'; only = true; count = node.dataset.controlCount; caption = withLuck(node, count);
-      label = text('relationships');
+      label = text('relationships'); words = 'title'; title = label;
     } else if (node.matches('[data-context]')) {
       const context = node.dataset.context;
       [icon, key] = { season: ['sun-snow', 'season'], roots: ['sprout', 'roots'], roles: ['users-round', 'roles'], 'day-master': ['chevron-down', 'master'] }[context];
       if (context === 'roots') {
         count = node.dataset.controlCount; only = Number(count) > 0; caption = withLuck(node, count);
         label = text('context_roots');
-      } else if (context === 'roles') { only = true; caption = withLuck(node, null); }
+        if (only) { words = 'title'; title = node.dataset.title; }
+      } else if (context === 'roles') { only = true; caption = withLuck(node, null); words = 'title'; title = node.dataset.title; }
       else if (context === 'day-master') label = text('ten_god_day_master');
     } else if (node.matches('.panel-close')) { icon = 'x'; key = 'close'; only = true; }
     else if (node.matches('.pillar-identity, .luck-identity')) {
@@ -107,7 +115,7 @@
     }
     if (!key || !place) throw new Error('Unknown classic control.');
     if (key === 'copy') label = text('tip_copy_label');
-    return { icon, key, label, prefix: firstWords(label), description: text('tip_' + key), only, count, caption, place };
+    return { icon, key, label, prefix: firstWords(label), description: text('tip_' + key), only, count, caption, place, words, title };
   };
   const decorate = (node) => {
     const spec = info(node);
@@ -136,6 +144,23 @@
     }
     // The page's original text stays in the DOM, including its full accessible name.
     node.dataset.controlTip = spec.key;
+    if (spec.words) {
+      if (node.dataset.controlWords !== spec.words) node.dataset.controlWords = spec.words;
+    } else if (node.dataset.controlWords) delete node.dataset.controlWords;
+    // A topic's title, shown in words between its icon and its count; its full name is
+    // its label's, for a screen reader, as in icons.
+    let title = node.querySelector(':scope > .control-title');
+    if (spec.words === 'title') {
+      if (!title) {
+        title = document.createElement('span');
+        title.className = 'control-title';
+        title.setAttribute('aria-hidden', 'true');
+        const icon = node.querySelector(':scope > [data-control-icon]');
+        if (icon) icon.after(title);
+        else node.prepend(title);
+      }
+      if (title.textContent !== spec.title) title.textContent = spec.title;
+    } else title?.remove();
   };
   window.EC_CONTROLS = { label: labelOf, icon: (node) => info(node).icon };
 
@@ -146,7 +171,11 @@
     let active = null; let pending = null; let hoverTimer = null; let exitTimer = null; let fadeTimer = null;
     let keyboard = false; let escapeKeyDown = false; let dismissed = null; let touch = null; let suppressedClick = null; let hoveringTip = false;
     let touchInput = false;
-    const trigger = (target) => target instanceof Element ? target.closest(selectors) : null;
+    // In the toolbar's words a menu's items say what they do, and need no tooltip.
+    const trigger = (target) => {
+      const node = target instanceof Element ? target.closest(selectors) : null;
+      return node && document.documentElement.dataset.toolbar === 'words' && node.closest('.bar-menu-items') ? null : node;
+    };
     const cancelHover = () => { clearTimeout(hoverTimer); hoverTimer = null; pending = null; };
     const describe = (node, add) => {
       const target = node.matches('.gender-option') ? node.querySelector('input') : node;

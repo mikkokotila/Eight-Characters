@@ -1,6 +1,6 @@
 import {
   assert, describe, it, settled, profiles, openChart, fillChart, count,
-  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships,
+  geometry, natalColors, longPress, screenshot, withPage, showDisplay, openRelationships, press,
 } from './chart-helpers.mjs';
 
 async function openRoles(page, options = {}) {
@@ -230,7 +230,7 @@ for (const profile of profiles) {
     check('new charts reset the overview and contain no previous role or root state', async (page) => {
       await openRoles(page);
       await page.locator('[data-root-pillar="hour"]').click();
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await fillChart(page,{date:'1990-05-09',time:'12:00'});
       await count(page,'.card.is-context-reference, .card.is-context-source, #pillars .is-context-evidence',0);
       await settled(page);

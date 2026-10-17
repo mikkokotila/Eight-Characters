@@ -2,7 +2,8 @@
 
 Settings keep the account's saved charts, which of them is your own, the couples they
 form, where you are, and the schools [Today](Standard-Today.md) follows. Everything
-Settings show comes from the API (`GET /api/account/settings`, `GET /api/schools`).
+Settings show comes from the API (`GET /api/account/settings`, `GET /api/schools`),
+but for the toolbar, which this browser keeps.
 
 ## Opening them
 
@@ -91,6 +92,12 @@ the search.
 The three settings, as the API lists them, each a group of presets with its summary and
 sources; the default is marked in words. A choice applies at once. Choosing the default
 follows it again, so a later change of default applies too.
+
+## The toolbar
+
+Words (the default) or Icons: how the bar above a chart and a day shows its switches
+and actions (see [The toolbar](Standard-Toolbar.md)). The choice applies at once, and
+this browser keeps it, not the account: another browser keeps its own.
 
 ## Changes
 

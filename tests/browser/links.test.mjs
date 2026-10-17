@@ -4,7 +4,7 @@
 // them again.
 import {
   assert, describe, it, engineName, profiles, openChart, openLink, fillChart, settled, showDisplay,
-  withPage, signIn, HELSINKI,
+  withPage, signIn, HELSINKI, press,
 } from './chart-helpers.mjs';
 
 // The canonical chart's link, as the app writes it.
@@ -84,7 +84,7 @@ for (const profile of profiles) {
       assert.deepEqual({ ...(await onScreen(page)), title: await page.title() }, before);
       assert.deepEqual(await linkParts(page), CANONICAL);
       // The birth is in the form, for Edit.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.deepEqual(await fields(page), { date: '1988-02-04', time: '16:30', location: 'Chengdu, Sichuan, China' });
       assert.equal(await page.locator('#create-chart-btn').isDisabled(), false);
     });
@@ -162,7 +162,7 @@ for (const profile of profiles) {
     check('Edit and New chart are steps back to the form; Back returns to the chart', async (page) => {
       await openChart(page, { lang: 'en' });
       const first = await onScreen(page);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await linkParts(page), '');
       await step(page, -1);
       assert.deepEqual(await onScreen(page), first);
@@ -170,7 +170,7 @@ for (const profile of profiles) {
       assert.equal((await onScreen(page)).view, 'form');
       await page.locator('#create-chart-btn').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       assert.deepEqual(await fields(page), { date: '', time: '', location: '' });
       await fillChart(page, { date: '1990-01-01', time: '12:00' });
       const second = await onScreen(page);
@@ -243,7 +243,7 @@ for (const profile of profiles) {
 
     check('an answer that arrives after a later step is not drawn', async (page) => {
       await openChart(page, { lang: 'en' });
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       await fillChart(page, { date: '1990-01-01', time: '12:00' });
       await step(page, -1);
       let release;
@@ -286,13 +286,13 @@ for (const profile of profiles) {
       await page.locator('button[data-context="roots"]').click();
       const toast = page.locator('.toast[role="status"]');
       assert.equal(await toast.textContent(), '');
-      await page.locator('#copy-link-btn').click();
+      await press(page, '#copy-link-btn');
       await page.waitForFunction(() => document.querySelector('.toast').classList.contains('is-shown'));
       assert.deepEqual(await page.evaluate(() => window.__copied), [page.url()]);
       assert.equal(await toast.textContent(), 'Link copied');
       assert.equal(await toast.evaluate((node) => node.classList.contains('is-error')), false);
       await page.evaluate(() => { window.__refuse = true; });
-      await page.locator('#copy-link-btn').click();
+      await press(page, '#copy-link-btn');
       await page.waitForFunction(() => document.querySelector('.toast').textContent === 'Could not copy the link');
       assert.equal(await toast.evaluate((node) => node.classList.contains('is-error')), true);
       assert.equal(await page.evaluate(() => window.__copied.length), 1);

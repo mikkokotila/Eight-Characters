@@ -5,6 +5,7 @@ import { before, after, describe, it } from 'node:test';
 import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
+import { press } from './bar-helpers.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -194,12 +195,14 @@ async function signIn(page) {
 
 export {
   assert, describe, it, engineName, profiles, openChart, openLink, fillChart, count, settled, geometry, natalColors,
-  longPress, screenshot, showDisplay, openRelationships, signIn, playwright, CHENGDU, HELSINKI, TROMSO,
+  longPress, screenshot, showDisplay, openRelationships, signIn, press, playwright, CHENGDU, HELSINKI, TROMSO,
 };
-// `signedIn: false` opens the page as a visitor without an account.
-export async function withPage(profile, run, { signedIn = true } = {}) {
+// `signedIn: false` opens the page as a visitor without an account; `toolbar` opens it with
+// this browser keeping that way of the toolbar (words is the default).
+export async function withPage(profile, run, { signedIn = true, toolbar = null } = {}) {
   const { name, ...options } = profile;
   const page = await browser.newPage(options);
+  if (toolbar !== null) await page.addInitScript((way) => localStorage.setItem('eight_characters_toolbar', way), toolbar);
   if (signedIn) await signIn(page);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));

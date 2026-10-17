@@ -4018,6 +4018,131 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .panel-close.icon-control,
   .luck-today.icon-control { min-width: var(--control-touch); min-height: var(--control-touch); }
 }
+/* ── The toolbar in words (toolbar.js), the default: every switch says what it does, and
+   the actions gather in one menu. In icons the same controls stand as icons, as above;
+   the page's <html data-toolbar> says which. ── */
+:root[data-toolbar='words'] :is([data-control-words='label'], [data-control-words='icon-label']) > .control-label.sr-only {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip: auto;
+}
+:root[data-toolbar='words'] [data-control-words='label'] > .control-icon { display: none; }
+:root[data-toolbar='words'] .segmented button.icon-control[data-control-words='label'] {
+  min-width: 0;
+  padding: var(--space-1) var(--space-3);
+}
+/* A topic keeps its icon and its count, and says its name between them. */
+.control-title { display: none; }
+:root[data-toolbar='words'] .control-title { display: inline; }
+:root[data-toolbar='words'] :is(.topic-button, .chart-topics .context-toggle).icon-control[data-control-words='title'] {
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+}
+/* The comparison's actions: an icon and its words. */
+:root[data-toolbar='words'] .bar-action.icon-control[data-control-words='icon-label'] {
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+}
+
+/* The menu of actions. In icons it stands aside, and its items are the bar's buttons. */
+.bar-menu,
+.bar-menu-items { display: contents; }
+.bar-menu-button,
+.bar-menu-rule { display: none; }
+/* In words the tools span the bar: the switches from the left, the language and the
+   menu at the right. */
+:root[data-toolbar='words'] .chart-tools { flex: 1 1 100%; justify-content: flex-start; }
+:root[data-toolbar='words'] .chart-tools > :is(#chart-language, #today-language) { margin-inline-start: auto; }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu { position: relative; display: inline-flex; }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-button {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  /* As tall as the switches' pills beside it: a choice, its padding and its border. */
+  min-height: calc(var(--control-2) + 2 * var(--space-1) + 2px);
+  padding: var(--space-1) var(--space-4);
+}
+.bar-menu-button::after {
+  content: '';
+  width: 12px;
+  height: 12px;
+  background: var(--chevron) center / contain no-repeat;
+  transition: transform var(--flow-feedback) var(--flow-feedback-ease);
+}
+.bar-menu-button[aria-expanded='true'] { background: var(--surface-2); border-color: var(--line-2); }
+.bar-menu-button[aria-expanded='true']::after { transform: rotate(180deg); }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  z-index: 35;
+  display: none;
+  flex-direction: column;
+  min-width: 220px;
+  padding: var(--space-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-4);
+  background: var(--surface-3);
+  box-shadow: var(--shadow-2);
+}
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items.is-open {
+  display: flex;
+  animation: bar-menu-in var(--flow-feedback) var(--flow-feedback-ease);
+}
+@keyframes bar-menu-in {
+  from { opacity: 0; transform: translateY(calc(-1 * var(--space-1))); }
+}
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  min-width: 0;
+  min-height: var(--control-2);
+  padding: var(--space-1) var(--space-3);
+  border: 0;
+  border-radius: var(--radius-3);
+  background: none;
+  font-size: var(--text-2);
+  text-align: start;
+  white-space: nowrap;
+}
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action:hover { background: var(--surface-2); }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action:focus-visible {
+  background: var(--surface-2);
+  outline: 2px solid var(--ink-2);
+  outline-offset: -2px;
+}
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action[aria-disabled='true'] { opacity: 0.5; cursor: default; }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action > .control-icon { margin: 0; color: var(--ink-2); }
+:root[data-toolbar='words']:not(.is-embedded) .bar-menu-rule {
+  display: block;
+  height: 1px;
+  margin: var(--space-1) var(--space-2);
+  background: var(--line-1);
+}
+/* A comparison's frame keeps only Copy as text, standing in its bar as a button, as in
+   icons: the menu's rules above hold outside the frames alone. */
+/* On a phone: the page and the menu on the first line, the display across the second,
+   the luck pillar and the language on the third. */
+@media (max-width: 640px) {
+  :root[data-toolbar='words'] .chart-tools > .page-switch { order: 1; }
+  :root[data-toolbar='words'] .chart-tools > .bar-menu { order: 2; margin-inline-start: auto; }
+  :root[data-toolbar='words'] .chart-tools > :not(.page-switch, .bar-menu) { order: 3; }
+  :root[data-toolbar='words'] .chart-tools > :is(#chart-language, #today-language) { order: 4; }
+}
+@media (max-width: 640px), (pointer: coarse) {
+  :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action { min-height: var(--control-touch); }
+  :root[data-toolbar='words']:not(.is-embedded) .bar-menu-button { min-height: calc(var(--control-touch) + 2 * var(--space-1) + 2px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items.is-open { animation: none; }
+  .bar-menu-button::after { transition: none; }
+}
+
 /* On a phone every control is a touch target at least the touch height tall. Last in the
    sheet, so that no control's own height, set above, undoes it. */
 @media (max-width: 640px) {

@@ -5,7 +5,7 @@
 // The address names the chart, the day, whose day, the partner in view and the topic; a
 // step replaces it and a topic adds to it; late answers are dropped.
 import {
-  assert, describe, it, engineName, profiles, openLink, settled, withPage, playwright, HELSINKI,
+  assert, describe, it, engineName, profiles, openLink, settled, withPage, playwright, HELSINKI, press,
 } from './chart-helpers.mjs';
 import { newAccount, asAccount, signInPage, stubTurnstile } from './account-helpers.mjs';
 import { dialogOpens, signInThroughDialog } from './account-page.mjs';
@@ -507,12 +507,12 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-copy-text').getAttribute('aria-disabled'), 'true');
       assert.equal(await page.locator('#today-print').getAttribute('aria-disabled'), 'true');
       // Pressed anyway: the button says it is unavailable, and copies nothing.
-      await page.locator('#today-copy-text').click({ force: true });
+      await press(page, '#today-copy-text', { force: true });
       assert.deepEqual(await page.evaluate(() => window.__copied), [], 'nothing is copied while the day is on its way');
       release();
       await shown(page);
       assert.equal(await page.locator('#today-copy-text').getAttribute('aria-disabled'), 'false');
-      await page.locator('#today-copy-text').click();
+      await press(page, '#today-copy-text');
       await page.waitForFunction(() => window.__copied.length === 1);
       const copied = await page.evaluate(() => window.__copied[0]);
       const { payload } = answers.at(-1);
@@ -553,8 +553,8 @@ for (const profile of profiles) {
       assert.match(await page.locator('#today-notice').textContent(), /could not be shown/);
       assert.equal(await page.locator('#today-body').isHidden(), true);
       assert.equal(await page.locator('#today-copy-text').getAttribute('aria-disabled'), 'true');
-      await page.locator('#today-copy-text').click({ force: true });
-      await page.locator('#today-print').click({ force: true });
+      await press(page, '#today-copy-text', { force: true });
+      await press(page, '#today-print', { force: true });
       await page.waitForTimeout(100);
       assert.deepEqual(await page.evaluate(() => [window.__copied, window.__printed]), [[], 0]);
     });
@@ -1883,7 +1883,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     // To the start page, whose account menu signs out; the page stays as it is.
     await page.locator('#today-page-switch [data-page="chart"]').click();
     await page.locator('#chart-view').waitFor({ state: 'visible' });
-    await page.locator('#new-chart-btn').click();
+    await press(page, '#new-chart-btn');
     await page.locator('#account-btn').click();
     await page.locator('#account-sign-out').click();
     // Signed in to another account in the same page, whose settings cannot be read now.

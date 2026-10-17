@@ -5,6 +5,7 @@
 import {
   assert, describe, it, engineName, profiles, openChart, settled, withPage,
 } from './chart-helpers.mjs';
+import { press as pressBar } from './bar-helpers.mjs';
 
 // The element with focus: a card by its pillar and side, anything else by its id or text.
 function focused(page) {
@@ -244,7 +245,7 @@ for (const profile of profiles) {
       await settled(page);
       assert.equal(await topicOf(page), 'season');
       // Only while a chart is shown.
-      await page.locator('#back-btn').click();
+      await pressBar(page, '#back-btn');
       await press(page, 'ControlOrMeta+k');
       assert.deepEqual(await openDialogs(page), []);
     });
