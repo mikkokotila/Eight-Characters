@@ -182,24 +182,30 @@
     // through dates not known yet, up to the engine's end once it is reached (null past
     // it). With no days known (a day the API refused, or another reading on its way),
     // every step is a calendar day.
-    const stepFrom = (from, by) => {
-      if (known === null) return stepDay(from, by);
-      const way = by > 0 ? 'ahead' : 'back';
-      const edge = way === 'ahead' ? known.last : known.first;
-      let target;
-      if (from < known.first || from > known.last) {
-        target = stepDay(from, by);
-      } else {
-        // Where the date stands among the days known: on one, or (a skipped date) between
-        // two.
-        const at = known.dates.indexOf(from);
-        const before = known.dates.filter((date) => date < from).length;
-        const index = at >= 0 ? at + by : (by > 0 ? before + by - 1 : before + by);
-        target = index >= 0 && index < known.dates.length ? known.dates[index]
-          : stepDay(edge, index < 0 ? index : index - known.dates.length + 1);
+    const stepOnce = (from, way) => {
+      if (known === null) return stepDay(from, way);
+      const ahead = way > 0;
+      const inside = (date) => date >= known.first && date <= known.last;
+      const next = stepDay(from, way);
+      if (inside(from) || inside(next)) {
+        // In the span, or entering it: the next day known that way, so a date the clocks
+        // skipped is passed over; past its last, the date past its edge.
+        const found = ahead ? known.dates.find((date) => date > from) : known.dates.findLast((date) => date < from);
+        if (found !== undefined) return found;
+        return known.ends[ahead ? 'ahead' : 'back'] ? null : stepDay(ahead ? known.last : known.first, way);
       }
-      const beyond = way === 'ahead' ? target > known.last : target < known.first;
-      return beyond && known.ends[way] ? null : target;
+      // Outside the span: a calendar day not known yet, up to the engine's end.
+      return known.ends[ahead ? 'ahead' : 'back'] && (ahead ? next > known.last : next < known.first) ? null : next;
+    };
+    const stepFrom = (from, by) => {
+      let date = from;
+      for (let step = 0; step < Math.abs(by); step += 1) {
+        const next = stepOnce(date, Math.sign(by));
+        // At the engine's end the steps stop there; with no step at all, null.
+        if (next === null) return step === 0 ? null : date;
+        date = next;
+      }
+      return date;
     };
     const stepped = (by) => stepFrom(state.day, by) ?? state.day;
     // A step from the day shown; at the engine's end, none.
@@ -556,10 +562,11 @@
       known = null;
       relayAfterDrag = false;
     };
-    // A day that disagrees with the day known for its date: an error, said.
-    const disagree = (what) => {
+    // A day that disagrees with the day known for its date: an error, said as what it
+    // led to (`key`).
+    const disagree = (what, key) => {
       console.error('Today: a day disagrees with the day known for its date.', what);
-      toast(t('today_days_disagree'), true);
+      toast(t(key), true);
     };
     // The dates an answer's run covers, from its offsets, and its days without them.
     const runCover = (reply) => {
@@ -576,21 +583,23 @@
       const { first, last, list } = runCover(reply);
       if (known !== null && known.basis === basis && touches(known, first, last)) {
         if (mergeInto(known, first, last, list)) return;
-        disagree(reply.date);
+        disagree(reply.date, 'today_days_disagree_drawn');
       }
       known = newSpan(basis, body, first, last, list);
     };
     // An answer that came too late to be drawn: its run, checked against its own request,
     // still joins the days known for its reading when it touches them. Nothing else of
-    // it is drawn.
-    const absorb = async (response, asked, basis) => {
+    // it is drawn. One that disagrees is refused whole, and the span fetches no more.
+    const absorb = (value, asked, basis) => {
       try {
-        const reply = checked(await response.json(), asked);
+        const reply = checked(value, asked);
         if (known === null || known.basis !== basis) return;
         const { first, last, list } = runCover(reply);
         if (!touches(known, first, last)) return;
         if (!mergeInto(known, first, last, list)) {
-          disagree(reply.date);
+          known.stopped.back = true;
+          known.stopped.ahead = true;
+          disagree(reply.date, 'today_days_disagree');
           return;
         }
         relayDays();
@@ -598,6 +607,16 @@
       } catch (err) {
         console.error(err);
       }
+    };
+    const absorbResponse = async (response, asked, basis) => {
+      let value;
+      try {
+        value = await response.json();
+      } catch (err) {
+        console.error(err);
+        return;
+      }
+      absorb(value, asked, basis);
     };
     // A days answer, checked against its own request: the dates it covers run from the
     // date asked to `through`, beyond it unless the engine's end is there, and every day
@@ -633,7 +652,9 @@
         if (known !== span) return;
         if (response.status === 401) {
           span.fetching[way] = null;
-          if (!(await account.recheck(() => known === span))) await account.signIn();
+          const holds = await account.recheck(() => known === span);
+          if (known !== span) return;
+          if (!holds) await account.signIn();
           if (known === span) fetchAhead(null);
           return;
         }
@@ -649,7 +670,7 @@
         span.fetching[way] = null;
         if (found.covers && !mergeInto(span, found.first, found.last, found.list)) {
           span.stopped[way] = true;
-          disagree(frontier);
+          disagree(frontier, 'today_days_disagree');
           return;
         }
         span.ends[way] = found.end;
@@ -1142,14 +1163,17 @@
         // What the day is read for, its date apart: days known for another reading (its
         // place or schools changed, read anew) go.
         const basis = canonical({ ...body, date: null });
-        if (known !== null && known.basis !== basis) dropKnown();
+        if (known !== null && known.basis !== basis) {
+          dropKnown();
+          cancelDrag();
+        }
         const response = await fetch('/api/today', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body),
         });
         if (mine !== asked) {
-          if (response.ok) absorb(response, { date: body.date, chart: body.chart }, basis);
+          if (response.ok) absorbResponse(response, { date: body.date, chart: body.chart }, basis);
           return;
         }
         if (response.status === 401) {
@@ -1164,7 +1188,10 @@
         } catch (err) {
           throw new Error(t('today_answer_error'), { cause: err });
         }
-        if (mine !== asked) return;
+        if (mine !== asked) {
+          if (response.ok) absorb(value, { date: body.date, chart: body.chart }, basis);
+          return;
+        }
         if (!response.ok) {
           instead(typeof value?.detail === 'string' ? value.detail : t('today_answer_error'), [['retry', t('today_retry')]]);
           return;

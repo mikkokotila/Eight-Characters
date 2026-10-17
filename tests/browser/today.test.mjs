@@ -146,11 +146,12 @@ async function recordToday(page) {
   return { answers, hold, pause };
 }
 // Every request for days (POST /api/today/days), with what the page asked and, once
-// answered, what it was answered; `hold` keeps back the next answer, `fail` answers the
-// next request with a status of its own, and `tamper` changes the next answer.
+// answered, what it was answered; `hold` keeps back the next answer (with `match`, the
+// next one whose request it matches), `fail` answers the next request with a status of
+// its own, and `tamper` changes the next answer.
 async function recordDays(page) {
   const asked = [];
-  let holding = null;
+  const holds = [];
   let failing = null;
   let tampering = null;
   await page.route('**/api/today/days', async (route) => {
@@ -168,19 +169,17 @@ async function recordDays(page) {
       json = tampering(json);
       tampering = null;
     }
-    if (holding !== null) {
-      const wait = holding;
-      holding = null;
-      await wait;
-    }
+    const gate = holds.findIndex((held) => held.match(entry.request));
+    if (gate >= 0) await holds.splice(gate, 1)[0].released;
     entry.payload = json;
     return route.fulfill({ response, json });
   });
   return {
     asked,
-    hold: () => {
+    hold: (match = () => true) => {
       let release;
-      holding = new Promise((resolve) => { release = resolve; });
+      const released = new Promise((resolve) => { release = resolve; });
+      holds.push({ match, released });
       return release;
     },
     fail: (status) => { failing = status; },
@@ -1472,14 +1471,14 @@ for (const profile of profiles) {
       await setSettings(page);
       await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
       await shown(page);
-      const releaseOld = fetched.hold();
+      const releaseOld = fetched.hold((request) => request.after === '2026-10-25');
       await stepDays(page, 11);
       await shown(page);
       await until(page, () => fetched.asked.length === 1);
       // Another language read while those days are on their way: they arrive late.
       await page.locator('#today-language [data-today-lang="fi"]').click();
       await shown(page);
-      const releaseNew = fetched.hold();
+      const releaseNew = fetched.hold((request) => request.after !== '2026-10-25');
       releaseOld();
       await until(page, () => fetched.asked[0].payload !== undefined);
       // Past the new reading's run its days are still on their way, as is its own day: a
@@ -1567,12 +1566,46 @@ for (const profile of profiles) {
       // A day drawn whose run covers 1 November reads it as the API does, and the page
       // says the day fetched disagreed.
       await shown(page);
-      await page.waitForFunction(() => window.__toasts.includes('A day fetched disagrees with the one shown: no more are fetched that way.'));
+      // Said whichever answer finds it first: a late one (fetching stops) or the one drawn
+      // (the day's own is shown).
+      await page.waitForFunction(() => window.__toasts.some((said) => [
+        'A day fetched disagrees with the one shown: no more are fetched that way.',
+        'A day fetched disagreed with the day’s own answer: the day’s own is shown.',
+      ].includes(said)));
       await stepDays(page, 10);
       await dayIs(page, '2026-11-01');
       await shown(page);
       const own = answers.at(-1).payload.run.find((day) => day.date === '2026-11-01');
       assert.equal(await centreOf(page).locator('.today-day-pull').textContent(), pull(own));
+    });
+
+    check('a drag from a date not known yet into the days known passes over Apia’s skipped day', async (page) => {
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page, { place: APIA });
+      // 5 January 2012: its run starts on 29 December 2011, then 31 December.
+      await page.goto(new URL(todayLink({ day: '2012-01-05' }), process.env.EC_BASE_URL).href);
+      await shown(page);
+      // The days before the run are held on their way: 28 December is not known yet.
+      fetched.hold();
+      const resume = pause();
+      await stepDays(page, 7, 'ArrowLeft');
+      await dayIs(page, '2011-12-28');
+      await settled(page);
+      assert.equal(await centreOf(page).evaluate((node) => node.classList.contains('is-pending')), true);
+      // Two days ahead by a drag: 29 December, then 31 December, never the 30th.
+      const box = await centreOf(page).boundingBox();
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 3;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (const step of [20, 60, 120, 2.2 * box.width]) await page.mouse.move(x - step, y + 3);
+      await page.mouse.up();
+      await dayIs(page, '2011-12-31');
+      resume();
+      await shown(page);
+      assert.ok(!answers.some((answer) => answer.request.date === '2011-12-30'), '30 December was never the day');
     });
 
     check('Home and End go to the strip’s ends, never against their way, past the strip and while the day’s own answer is held', async (page) => {
