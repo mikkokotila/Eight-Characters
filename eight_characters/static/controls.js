@@ -3,7 +3,7 @@
   if (!window.EC_ICONS || !window.EC_I18N) throw new Error('Control resources are missing.');
   const { markup } = window.EC_ICONS;
   const selectors = [
-    '#display-switch button', '#view-switch button', '#luck-switch button',
+    '#display-switch button', '#luck-switch button',
     '#chart-language button', '#compare-language button', '.lang-btn',
     '#copy-link-btn', '#copy-text-btn', '#back-btn', '#new-chart-btn', '#compare-btn',
     '#relationships-topic', '#context-controls button', '.canon-day-master-line',
@@ -45,8 +45,6 @@
     else if (node.matches('#display-switch button')) {
       [icon, key] = { characters: ['languages', 'characters'], 'ten-gods': ['orbit', 'gods'], 'hidden-stems': ['layers-2', 'hidden'] }[node.dataset.display];
       only = true;
-    } else if (node.matches('#view-switch button')) {
-      [icon, key] = node.dataset.view === 'standard' ? ['columns-4', 'standard'] : ['workflow', 'evolution']; only = true;
     } else if (node.matches('#luck-switch button')) {
       [icon, key] = node.dataset.luckShow === 'off' ? ['circle-dot', 'natal'] : ['calendar-range', 'with_luck']; only = true;
     } else if (node.matches('#page-switch button, #today-page-switch button')) {

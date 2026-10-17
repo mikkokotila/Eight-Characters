@@ -68,13 +68,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const chartDate = document.getElementById('chart-date');
   const chartSolarTime = document.getElementById('chart-solar-time');
   const displaySwitch = document.getElementById('display-switch');
-  const viewSwitch = document.getElementById('view-switch');
   const chartLanguage = document.getElementById('chart-language');
   const newChartBtn = document.getElementById('new-chart-btn');
   const relationshipsTopic = document.getElementById('relationships-topic');
   const relationshipsSection = document.getElementById('relationships-panel');
   const chartPanel = document.getElementById('chart-panel');
-  if (!chartDate || !chartSolarTime || !displaySwitch || !viewSwitch || !chartLanguage || !newChartBtn
+  if (!chartDate || !chartSolarTime || !displaySwitch || !chartLanguage || !newChartBtn
     || !relationshipsTopic || !relationshipsSection || !chartPanel) throw new Error('Chart view is incomplete.');
   const locale = () => (currentLanguage === 'en' ? 'en' : 'fi');
   // A clock reading, held as a UTC date so that formatting never moves it into the
@@ -856,23 +855,6 @@ document.addEventListener('DOMContentLoaded', () => {
     currentLanguage = i18n.setLanguage(button.dataset.chartLang === 'en' ? 'en' : 'fi');
     applyLanguage();
     reshow({ lang: currentLanguage }, `button[data-chart-lang="${currentLanguage}"]`);
-  });
-
-  // The same birth in the Evolution explorer.
-  viewSwitch.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-view="evolution"]');
-    if (!button) return;
-    const { request } = shown;
-    const query = new URLSearchParams({
-      date: request.date,
-      time: request.time,
-      latitude: String(request.location.latitude),
-      longitude: String(request.location.longitude),
-      timezone: request.location.timezone,
-      lang: currentLanguage,
-    });
-    if (request.location.fold !== undefined) query.set('fold', String(request.location.fold));
-    window.location.assign(`/explorer/?${query.toString()}`);
   });
 
   // Edit keeps the birth, so another chart for it only needs what changed. Both steps
@@ -2624,14 +2606,11 @@ document.addEventListener('DOMContentLoaded', () => {
         add(requiredTranslation('luck_switch_label'), button.textContent, () => button.click(), window.EC_CONTROLS.icon(button));
       });
     }
-    // Embedded, the comparison's page holds the language, the view and the chart's
-    // other actions.
+    // Embedded, the comparison's page holds the language and the chart's other actions.
     if (!embedded) {
       chartLanguage.querySelectorAll('button[data-chart-lang][aria-pressed="false"]').forEach((button) => {
         add(requiredTranslation('language_label'), button.textContent, () => button.click(), null);
       });
-      const evolution = viewSwitch.querySelector('button[data-view="evolution"]');
-      add(requiredTranslation('view_label'), evolution.textContent, () => evolution.click(), 'workflow');
     }
     const chart = requiredTranslation('palette_chart');
     (embedded ? [copyTextBtn] : [copyLinkBtn, copyTextBtn, backBtn, newChartBtn, compareBtn])

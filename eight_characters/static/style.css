@@ -3124,7 +3124,6 @@ kbd {
 /* ── A chart in a comparison's frame (?embed=1) ──
    The comparison's page holds the view, the language and the actions on the pair;
    the frame keeps the chart's own display and Copy as text, and uses its room. */
-.is-embedded #view-switch,
 .is-embedded #chart-language,
 .is-embedded #copy-link-btn,
 .is-embedded #back-btn,
