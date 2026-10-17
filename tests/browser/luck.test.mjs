@@ -6,7 +6,7 @@
 // without one: the luck pillar, its ribbon and its column show only once it is shown.
 import {
   assert, describe, it, engineName, profiles, openChart, openLink, settled, geometry, screenshot, withPage,
-  openRelationships, showDisplay, HELSINKI, CHENGDU,
+  openRelationships, showDisplay, HELSINKI, CHENGDU, press,
 } from './chart-helpers.mjs';
 import { SAMPLE, TODAY, DECADES, sampleLink, TAB, openSample, linkPart, click, showLuck } from './luck-helpers.mjs';
 
@@ -572,7 +572,7 @@ for (const profile of profiles) {
       assert.deepEqual(await page.locator('#pillars .card.is-spotlit').evaluateAll((nodes) =>
         nodes.map((node) => node.dataset.pillar).sort()), ['day', 'luck', 'month']);
       // Edit keeps the birth with its gender; a new chart starts without one.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await page.locator('input[name="gender"]:checked').getAttribute('value'), 'female');
       await page.locator('#create-chart-btn').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
@@ -580,7 +580,7 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'gender'), 'female');
       // It opens natal, the switch ready to show the luck pillar.
       assert.deepEqual([await page.locator('#luck-switch').isVisible(), await page.locator('#luck-ribbon').isVisible()], [true, false]);
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       assert.equal(await page.locator('input[name="gender"]:checked').getAttribute('value'), '');
     });
 

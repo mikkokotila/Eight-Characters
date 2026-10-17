@@ -2,7 +2,7 @@
 // Page foundations of the Standard view: typography, contrast, form, location list, identity.
 import {
   assert, describe, it, engineName, profiles, openChart, count, settled, withPage, showDisplay, openRelationships,
-  HELSINKI, TROMSO,
+  HELSINKI, TROMSO, press,
 } from './chart-helpers.mjs';
 import { newAddress, stubTurnstile, turnstileAnswered } from './account-helpers.mjs';
 
@@ -164,7 +164,7 @@ async function visitLuck(page, lang, inspect) {
 async function visitStates(page, inspect) {
   for (const lang of ['en', 'fi']) {
     await openChart(page, { lang });
-    await page.locator('#back-btn').click();
+    await press(page, '#back-btn');
     await page.locator('#location').fill('Chengdu');
     await page.locator('.location-suggestion').first().waitFor();
     await inspect(`${lang} landing with suggestions`);
@@ -179,6 +179,11 @@ async function visitStates(page, inspect) {
     await page.locator('#chart-view').waitFor({ state: 'visible' });
     await settled(page);
     await inspect(`${lang} chart`);
+    // In the toolbar's words, its Actions menu open over the chart.
+    await page.locator('#chart-actions-button').click();
+    await settled(page);
+    await inspect(`${lang} chart with its Actions menu open`);
+    await page.keyboard.press('Escape');
     await page.locator('.card.stem[data-pillar="day"]').hover();
     await page.locator('.card-hint').waitFor({ state: 'visible' });
     await inspect(`${lang} chart with the long-press hint`);
@@ -266,7 +271,7 @@ for (const profile of profiles) {
       await installAudit(page);
       for (const lang of ['en', 'fi']) {
         await openChart(page, { lang });
-        await page.locator('#back-btn').click();
+        await press(page, '#back-btn');
         await page.locator('#location').fill('Chengdu');
         await page.locator('.location-suggestion').first().waitFor();
         assert.deepEqual(await fontFamilyFailures(page, BRAND_FAMILIES), [], `${lang} landing with suggestions`);
@@ -304,7 +309,7 @@ for (const profile of profiles) {
       const failures = [];
       for (const lang of ['en', 'fi']) {
         await openChart(page, { lang });
-        await page.locator('#back-btn').click();
+        await press(page, '#back-btn');
         await page.locator('#location').fill('Chengdu');
         await page.locator('.location-suggestion').first().waitFor();
         failures.push(...await systemGlyphFailures(page, cdp, `${lang} landing`));
@@ -495,7 +500,7 @@ for (const profile of profiles) {
 
     check('the birth-data fields share one height and one text alignment', async (page) => {
       await openChart(page, { lang: 'en' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       const fields = await page.locator('#date, #time, #location').evaluateAll((inputs) => inputs.map((input) => ({
         height: input.getBoundingClientRect().height, align: getComputedStyle(input).textAlign,
       })));
@@ -511,7 +516,7 @@ for (const profile of profiles) {
       const messages = { en: 'Charts can be calculated for 1949–2100.', fi: 'Karttoja voi laskea vuosille 1949–2100.' };
       for (const [lang, message] of Object.entries(messages)) {
         await openChart(page, { lang });
-        await page.locator('#back-btn').click();
+        await press(page, '#back-btn');
         for (const date of ['1948-12-31', '2101-01-01']) {
           await page.locator('#date').fill(date);
           await page.locator('#create-chart-btn').click();
@@ -532,7 +537,7 @@ for (const profile of profiles) {
 
     check('a missing date or time is named on its own field', async (page) => {
       await openChart(page, { lang: 'en' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await page.locator('#date').fill('');
       await page.locator('#time').fill('');
       await page.locator('#create-chart-btn').click();
@@ -544,7 +549,7 @@ for (const profile of profiles) {
 
     check('a chart that cannot be created is reported above the button, not under the place', async (page) => {
       await openChart(page, { lang: 'en' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       const placeStatus = await page.locator('#location-status').textContent();
       await page.route('**/api/four_pillars', (route) => route.fulfill({ status: 500, json: { detail: 'Stopped by the test.' } }));
       await page.locator('#create-chart-btn').click();
@@ -562,7 +567,7 @@ for (const profile of profiles) {
 
     check('creating a chart shows progress and takes no second submit', async (page) => {
       await openChart(page, { lang: 'fi' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       let release;
       const held = new Promise((resolve) => { release = resolve; });
       let requests = 0;
@@ -579,7 +584,7 @@ for (const profile of profiles) {
       release();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       assert.equal(requests, 1);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await button.isEnabled(), true);
       assert.equal(await button.textContent(), 'Luo kartta');
       assert.equal(await page.locator('#chart-form').getAttribute('aria-busy'), null);
@@ -682,7 +687,7 @@ for (const profile of profiles) {
       assert.equal(await page.title(), 'Eight Chord — Neljä pilaria');
       await openChart(page, { lang: 'en' });
       assert.equal(await page.title(), 'February 4, 1988 · 16:30 · Chengdu — Eight Chord');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await page.title(), 'Eight Chord — Four pillars');
     });
 
@@ -691,7 +696,7 @@ for (const profile of profiles) {
       page.on('response', (response) => { if (response.status() >= 400) failed.push(`${response.status()} ${response.url()}`); });
       page.on('requestfailed', (request) => failed.push(`failed ${request.url()}`));
       await openChart(page, { lang: 'en' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.deepEqual(failed, []);
       // Fetched outside the page: Playwright's routing blocks a page's own /favicon.ico fetch.
       const icons = [];

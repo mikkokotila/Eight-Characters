@@ -153,7 +153,9 @@ no line height keeps its font's own.
 A group of choices (a pill of them, the gender, the partner in view) is a control's
 height plus its `--space-1` padding and hairline: 46px, and 54px on a phone. The
 start page's language switch is itself a control's height, its two choices within
-it, so it stands level with the account's button beside it.
+it, so it stands level with the account's button beside it. In the toolbar's words the
+Actions button stands as tall as the groups beside it, 46px and 54px; its menu's items
+are a control's height, and the touch height on a phone.
 
 ## One card
 

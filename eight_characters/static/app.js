@@ -15,6 +15,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // page's history is the comparison's, and it tells the page each new address.
   const embedded = new URLSearchParams(location.search).get('embed') === '1';
   document.documentElement.classList.toggle('is-embedded', embedded);
+  if (!window.EC_TOOLBAR) throw new Error('The toolbar is unavailable.');
+  if (embedded) window.EC_TOOLBAR.embed();
   const inputView = document.getElementById('input-view');
   const chartView = document.getElementById('chart-view');
   const form = document.getElementById('chart-form');

@@ -3,8 +3,8 @@
 ## 0.61.0
 
 The last details of the look-and-feel review: one name, numbers and quotes set as a
-typesetter sets them, labels that say what they mean, and a day that asks where you
-are instead of sending you away.
+typesetter sets them, labels that say what they mean, a day that asks where you are
+instead of sending you away, and the toolbar in words or in icons.
 
 ### Changed
 - **One name**: the app is Eight Chord everywhere: the tab, the start page, the
@@ -25,6 +25,12 @@ are instead of sending you away.
   the day opens at it. Before, the page said so in one boxed sentence and sent you to
   Settings.
 - Settings' place search is now `place-search.js`, shared with Today.
+- **The toolbar in two ways** (#123). In words, the default, every switch in the bar
+  says what it does (Chart, Today; Characters, Ten Gods, Hidden stems; Natal, With luck),
+  the chart's topics say their names with their counts, and the chart's and the day's
+  actions gather in one menu, Actions, which takes a menu's keys. Icons, chosen in
+  Settings for this browser, is the bar as it was, pixel for pixel. On a phone the
+  chart's bar is three lines where it was four.
 
 ### Tests
 - New checks for the minus sign, the years before a first decade within the year (in

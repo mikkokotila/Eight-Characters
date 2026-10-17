@@ -3,7 +3,7 @@
 // for the second birth; the pair then shows as two charts, each the chart view embedded in
 // a frame of its own, with its own topics. The pair has an address of its own.
 import {
-  assert, describe, it, engineName, profiles, openChart, settled, withPage, CHENGDU,
+  assert, describe, it, engineName, profiles, openChart, settled, withPage, CHENGDU, press,
 } from './chart-helpers.mjs';
 
 const SECOND = { date: '1990-05-09', time: '12:00' };
@@ -52,7 +52,7 @@ async function compareWithSecond(page, lang = 'en') {
 }
 // On a chart: Compare, and the second birth.
 async function askForSecond(page) {
-  await page.locator('#compare-btn').click();
+  await press(page, '#compare-btn');
   await page.locator('#compare-note').waitFor({ state: 'visible' });
   await page.locator('#date').fill(SECOND.date);
   await page.locator('#time').fill(SECOND.time);
@@ -92,7 +92,7 @@ for (const profile of profiles) {
     check('Compare asks for the second birth, naming the first, and Cancel goes back to it', async (page) => {
       await openChart(page, { lang: 'en' });
       const first = await page.locator('#chart-date').textContent();
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#compare-note-text').textContent(), `Second chart, to compare with ${first}`);
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Compare');
@@ -129,7 +129,9 @@ for (const profile of profiles) {
       assert.deepEqual([a.stems, a.branches], [expectedA.stems, expectedA.branches]);
       assert.deepEqual([b.stems, b.branches], [expectedB.stems, expectedB.branches]);
       // Each frame keeps the chart's own display and Copy as text; the page holds the rest.
-      assert.deepEqual(await (profile.name === 'mobile' ? b : a).frame.locator('.chart-tools > *').evaluateAll((nodes) => nodes.filter((node) => node.checkVisibility()).map((node) => node.id)),
+      // Copy as text stands in the bar from the actions' box, which the frame sets aside.
+      assert.deepEqual(await (profile.name === 'mobile' ? b : a).frame.locator('.chart-tools > *, .chart-tools .bar-menu-items > *')
+        .evaluateAll((nodes) => nodes.filter((node) => node.checkVisibility()).map((node) => node.id)),
         ['display-switch', 'copy-text-btn']);
       assert.deepEqual(await page.locator('.compare-frame').evaluateAll((frames) => frames.map((frame) => frame.title)), [
         'Chart 1: February 4, 1988 · 16:30 · Chengdu', 'Chart 2: May 9, 1990 · 12:00 · Chengdu']);

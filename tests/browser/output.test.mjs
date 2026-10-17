@@ -3,7 +3,7 @@
 // pillars and a line with the birth, the true solar time and the convention; printing
 // gives the chart, its precision line and the open topic. Both match the screen.
 import {
-  assert, describe, it, engineName, profiles, openChart, settled, openRelationships, withPage, HELSINKI,
+  assert, describe, it, engineName, profiles, openChart, settled, openRelationships, withPage, HELSINKI, press,
 } from './chart-helpers.mjs';
 
 // The clipboard, kept in the page; a refusal can be asked for.
@@ -44,7 +44,7 @@ for (const profile of profiles) {
       await stubClipboard(page);
       for (const lang of ['en', 'fi']) {
         const payload = await openChart(page, { lang });
-        await page.locator('#copy-text-btn').click();
+        await press(page, '#copy-text-btn');
         await page.waitForFunction(() => document.querySelector('.toast').classList.contains('is-shown'));
         const [pillars, line] = (await page.evaluate(() => window.__copied.at(-1))).split('\n');
         assert.equal(pillars, written(payload));
@@ -62,7 +62,7 @@ for (const profile of profiles) {
       await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '00:50' });
       const copy = async () => {
         const copied = await page.evaluate(() => window.__copied.length);
-        await page.locator('#copy-text-btn').click();
+        await press(page, '#copy-text-btn');
         await page.waitForFunction((count) => window.__copied.length > count, copied);
         return page.evaluate(() => window.__copied.at(-1).split('\n'));
       };
@@ -86,7 +86,7 @@ for (const profile of profiles) {
       await stubClipboard(page);
       await openChart(page, { lang: 'en' });
       await page.evaluate(() => { window.__refuse = true; });
-      await page.locator('#copy-text-btn').click();
+      await press(page, '#copy-text-btn');
       await page.waitForFunction(() => document.querySelector('.toast').textContent === 'Could not copy the text');
       assert.equal(await page.locator('.toast').evaluate((node) => node.classList.contains('is-error')), true);
       assert.deepEqual(await page.evaluate(() => window.__copied), []);

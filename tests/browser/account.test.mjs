@@ -6,7 +6,7 @@
 // account-sessions.test.mjs.
 import { readFile } from 'node:fs/promises';
 import {
-  assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU,
+  assert, describe, it, engineName, profiles, settled, withPage, playwright, CHENGDU, press,
 } from './chart-helpers.mjs';
 import { newAddress, readMail, newAccount, asAccount, signInPage, turnstileAnswered } from './account-helpers.mjs';
 import {
@@ -220,7 +220,7 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
       // Edit: the form, with the chart's address a step back. Signed out there.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await page.locator('#chart-form').waitFor({ state: 'visible' });
       await page.locator('#account-btn').click();
       await dialogOpens(page);
@@ -310,7 +310,7 @@ for (const profile of profiles) {
       await askForChart(page);
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
-      await page.locator('#compare-btn').click();
+      await press(page, '#compare-btn');
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-05-09');
       await page.locator('#time').fill('12:00');

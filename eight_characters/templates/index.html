@@ -139,11 +139,19 @@
           <button type="button" data-chart-lang="fi" aria-pressed="false">FI</button>
           <button type="button" data-chart-lang="en" aria-pressed="false">EN</button>
         </div>
-        <button type="button" id="copy-link-btn" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
-        <button type="button" id="copy-text-btn" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
-        <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
-        <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
-        <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
+        <!-- The chart's actions: in words, one menu; in icons, a button each (toolbar.js). -->
+        <div class="bar-menu" data-bar-menu>
+          <button type="button" class="bar-action bar-menu-button" id="chart-actions-button" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="chart-actions"><span data-i18n="actions">Toiminnot</span></button>
+          <div class="bar-menu-items" id="chart-actions">
+            <button type="button" id="copy-link-btn" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+            <button type="button" id="copy-text-btn" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
+            <span class="bar-menu-rule"></span>
+            <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
+            <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
+            <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
+          </div>
+        </div>
       </div>
       <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
       <ul id="chart-notices" class="chart-notices hidden"></ul>
@@ -275,10 +283,18 @@
           <button type="button" data-today-lang="fi" aria-pressed="false">FI</button>
           <button type="button" data-today-lang="en" aria-pressed="false">EN</button>
         </div>
-        <button type="button" id="today-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
-        <button type="button" id="today-copy-text" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
-        <button type="button" id="today-print" class="bar-action" data-i18n="print">Tulosta</button>
-        <button type="button" id="today-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
+        <!-- The day's actions: in words, one menu; in icons, a button each (toolbar.js). -->
+        <div class="bar-menu" data-bar-menu>
+          <button type="button" class="bar-action bar-menu-button" id="today-actions-button" aria-haspopup="menu"
+            aria-expanded="false" aria-controls="today-actions"><span data-i18n="actions">Toiminnot</span></button>
+          <div class="bar-menu-items" id="today-actions">
+            <button type="button" id="today-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+            <button type="button" id="today-copy-text" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
+            <button type="button" id="today-print" class="bar-action" data-i18n="print">Tulosta</button>
+            <span class="bar-menu-rule"></span>
+            <button type="button" id="today-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
+          </div>
+        </div>
       </div>
     </header>
     <!-- What the page cannot show yet, or says about what it shows. -->
@@ -390,6 +406,25 @@
       <h2 id="settings-schools-title" class="settings-heading" data-i18n="settings_schools">Koulukunnat</h2>
       <p class="settings-note" data-i18n="settings_schools_note"></p>
       <div id="settings-schools-body" class="settings-schools"></div>
+    </section>
+    <!-- How the bar shows its switches and actions: this browser's own (toolbar.js). -->
+    <section id="settings-toolbar" class="settings-section" aria-labelledby="settings-toolbar-title">
+      <h2 id="settings-toolbar-title" class="settings-heading" data-i18n="settings_toolbar">Työkalurivi</h2>
+      <p class="settings-note" data-i18n="settings_toolbar_note"></p>
+      <fieldset class="settings-school" id="settings-toolbar-choice">
+        <legend class="sr-only" data-i18n="settings_toolbar">Työkalurivi</legend>
+        <div class="settings-preset">
+          <input type="radio" id="settings-toolbar-words" name="settings-toolbar" value="words" aria-describedby="settings-toolbar-words-summary">
+          <label for="settings-toolbar-words"><span class="settings-preset-name" data-i18n="settings_toolbar_words">Sanat</span>
+            <span class="settings-default" data-i18n="settings_school_default">(oletus)</span></label>
+          <p class="settings-summary" id="settings-toolbar-words-summary" data-i18n="settings_toolbar_words_summary"></p>
+        </div>
+        <div class="settings-preset">
+          <input type="radio" id="settings-toolbar-icons" name="settings-toolbar" value="icons" aria-describedby="settings-toolbar-icons-summary">
+          <label for="settings-toolbar-icons"><span class="settings-preset-name" data-i18n="settings_toolbar_icons">Kuvakkeet</span></label>
+          <p class="settings-summary" id="settings-toolbar-icons-summary" data-i18n="settings_toolbar_icons_summary"></p>
+        </div>
+      </fieldset>
     </section>
   </div>
 </div>
@@ -604,6 +639,7 @@
 <script id="account-state" type="application/json">{{ account | tojson }}</script>
 
 <script src="/static/localization.js?v={{ app_version }}"></script>
+<script src="/static/toolbar.js?v={{ app_version }}"></script>
 <script src="/static/motion.js?v={{ app_version }}"></script>
 <script src="/static/icons.js?v={{ app_version }}"></script>
 <script src="/static/controls.js?v={{ app_version }}"></script>

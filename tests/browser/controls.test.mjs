@@ -1,4 +1,5 @@
-// Real charts retain their actions and names when the classic controls become icons.
+// Real charts retain their actions and names when the classic controls become icons: the
+// toolbar's icons, which Settings chooses (toolbar.test.mjs reads its words).
 import {
   assert, describe, it, engineName, profiles, openChart, settled, withPage,
   HELSINKI, screenshot,
@@ -10,7 +11,7 @@ const tipClosed = (page) => page.waitForFunction(() => !document.getElementById(
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / classic icon controls`, { concurrency: false }, () => {
-    const check = (name, run) => it(name, { timeout: 120000 }, () => withPage(profile, run));
+    const check = (name, run) => it(name, { timeout: 120000 }, () => withPage(profile, run, { toolbar: 'icons' }));
 
     check('icon actions retain their names, language, state and original command labels', async (page) => {
       for (const lang of ['en', 'fi']) {

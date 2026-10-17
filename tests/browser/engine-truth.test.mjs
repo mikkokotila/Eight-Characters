@@ -1,7 +1,7 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Stage 2 of the Standard view (#17): the chart shows what the engine computed.
 import {
-  assert, describe, it, settled, engineName, profiles, openChart, withPage, openRelationships, HELSINKI, TROMSO,
+  assert, describe, it, settled, engineName, profiles, openChart, withPage, openRelationships, HELSINKI, TROMSO, press,
 } from './chart-helpers.mjs';
 
 async function identities(page) {
@@ -110,7 +110,7 @@ for (const profile of profiles) {
     check('only a pillar within 30 minutes of a change is marked, on either side of it', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.deepEqual(await marks(page), { hour: 'changed 12\u00a0min 24\u00a0s ago', day: '', month: '', year: '' });
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await page.locator('#time').fill('18:10');
       await page.locator('#create-chart-btn').click();
       await page.waitForFunction(() => document.querySelector('.pillar-mark')?.textContent.startsWith('changes'));
@@ -217,7 +217,7 @@ for (const profile of profiles) {
     check('no switch is offered where both conventions give the same pillars', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.equal(await page.locator('#zi-switch').isHidden(), true);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       // Clock 01:45 is true solar 00:24: in the Zi hour, but the same day under either convention.
       const payload = await openChart(page, { lang: 'en', place: HELSINKI, date: '1988-06-15', time: '01:45' });
       assert.equal(payload.flags.zi_hour_window, true);
@@ -242,7 +242,7 @@ for (const profile of profiles) {
         'The birthplace lies above latitude 66°, near the polar circle, where the Sun can stay above or below'
           + ' the horizon for days. True solar time is calculated as usual.',
       ]);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await openChart(page, { lang: 'en' });
       assert.equal(await page.locator('#chart-notices').isHidden(), true);
     });

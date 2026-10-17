@@ -2,7 +2,7 @@
 // Stage 4 of the Standard view (#19): the chart as a workbench. One bar above it, and a panel
 // that explains the chosen topic beside it (a sheet over the foot of the page below 1200px).
 import {
-  assert, describe, it, engineName, profiles, openChart, count, settled, showDisplay, openRelationships, withPage,
+  assert, describe, it, engineName, profiles, openChart, count, settled, showDisplay, openRelationships, withPage, press,
 } from './chart-helpers.mjs';
 
 // Where the pillars stand on the page, to a tenth of a pixel.
@@ -39,7 +39,7 @@ async function fields(page) {
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / workbench`, { concurrency: false }, () => {
-    const check = (name, run) => it(name, { timeout: 60000 }, () => withPage(profile, run));
+    const check = (name, run, options) => it(name, { timeout: 60000 }, () => withPage(profile, run, options));
 
     if (profile.name === 'desktop') {
       it('at 1440×900 a topic shows its highlighted cards and its explanation together, without scrolling', {
@@ -218,45 +218,52 @@ for (const profile of profiles) {
       await count(page, '.card.is-flipped', 8);
       assert.equal(await page.locator('.card.stem[data-pillar="year"] .ten-god-name').textContent(), 'Epäsuora voimavara');
       // Back at the form, the page speaks Finnish too.
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Luo kartta');
     });
 
-    check('while the chart is asked for again it takes no other clicks', async (page) => {
-      await openChart(page, { lang: 'en' });
-      let release;
-      const held = new Promise((resolve) => { release = resolve; });
-      const langs = [];
-      // Held until the other clicks are made, then handed on to the real API.
-      await page.route('**/api/four_pillars', async (route) => {
-        langs.push(route.request().postDataJSON().lang);
-        await held;
-        await route.fallback();
-      });
-      await page.locator('#chart-language button[data-chart-lang="fi"]').click();
-      await page.waitForFunction(() => document.getElementById('chart-view').getAttribute('aria-busy') === 'true');
-      for (const control of ['#chart-language button[data-chart-lang="en"]', '#back-btn', '#new-chart-btn']) {
-        await page.locator(control).click();
-      }
-      release();
-      await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy'));
-      assert.deepEqual(langs, ['fi']);
-      assert.equal(await page.locator('#chart-view').isVisible(), true);
-      assert.equal(await page.locator('#input-view').isVisible(), false);
-      assert.equal(await page.locator('#chart-date').textContent(), '4. helmikuuta 1988 · 16.30 · Chengdu');
-      assert.equal(await page.locator('#chart-language button[data-chart-lang="fi"]').getAttribute('aria-pressed'), 'true');
-      assert.equal(await page.locator('[data-context="roots"]').textContent(), 'Juuria 3 haarassa');
-    });
+    // In the toolbar's words, Edit and New chart are items of the Actions menu, which takes
+    // no click either while the chart is asked for again: it stays closed. In icons they
+    // stand in the bar, and each is pressed.
+    for (const [toolbar, controls] of [
+      ['words', ['#chart-language button[data-chart-lang="en"]', '#chart-actions-button']],
+      ['icons', ['#chart-language button[data-chart-lang="en"]', '#back-btn', '#new-chart-btn']],
+    ]) {
+      check(`while the chart is asked for again it takes no other clicks (${toolbar})`, async (page) => {
+        await openChart(page, { lang: 'en' });
+        let release;
+        const held = new Promise((resolve) => { release = resolve; });
+        const langs = [];
+        // Held until the other clicks are made, then handed on to the real API.
+        await page.route('**/api/four_pillars', async (route) => {
+          langs.push(route.request().postDataJSON().lang);
+          await held;
+          await route.fallback();
+        });
+        await page.locator('#chart-language button[data-chart-lang="fi"]').click();
+        await page.waitForFunction(() => document.getElementById('chart-view').getAttribute('aria-busy') === 'true');
+        for (const control of controls) await page.locator(control).click();
+        assert.equal(await page.locator('#chart-actions').evaluate((menu) => menu.classList.contains('is-open')), false);
+        release();
+        await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy'));
+        assert.deepEqual(langs, ['fi']);
+        assert.equal(await page.locator('#chart-view').isVisible(), true);
+        assert.equal(await page.locator('#input-view').isVisible(), false);
+        assert.equal(await page.locator('#chart-date').textContent(), '4. helmikuuta 1988 · 16.30 · Chengdu');
+        assert.equal(await page.locator('#chart-language button[data-chart-lang="fi"]').getAttribute('aria-pressed'), 'true');
+        assert.equal(await page.locator('[data-context="roots"]').textContent(), 'Juuria 3 haarassa');
+      }, { toolbar });
+    }
 
     check('Edit keeps the birth for another chart; New chart starts from an empty form', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.equal(await page.locator('#back-btn').textContent(), 'Edit');
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.deepEqual(await fields(page), { date: '1988-02-04', time: '16:30', location: 'Chengdu, Sichuan, China' });
       await page.locator('#create-chart-btn').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await page.locator('[data-context="roots"]').click();
-      await page.locator('#new-chart-btn').click();
+      await press(page, '#new-chart-btn');
       assert.deepEqual(await fields(page), { date: '', time: '', location: '' });
       assert.equal(await page.evaluate(() => document.activeElement.id), 'date');
       assert.equal(await page.locator('#location-status').textContent(), '');

@@ -16,8 +16,9 @@ This folder contains practical user documentation for running and using the Ba Z
 - Luck pillars, the ribbon of decades and a decade's page: `Standard-Luck-Pillars.md`
 - What the canon says of a chart, in its pages: `Standard-Readings.md`
 - The chart by keyboard, `?` and the commands: `Standard-Keyboard.md`
+- The toolbar, in words or in icons: `Standard-Toolbar.md`
 - The chart's day, Today: `Standard-Today.md`
-- Settings for the day: a partner's chart, where you are, the schools: `Standard-Settings.md`
+- Settings for the day: a partner's chart, where you are, the schools; and the toolbar: `Standard-Settings.md`
 - Developer endpoint internals: `Developer/API.md`
 - Standard view design tokens, and the dark theme: `Developer/Design-Tokens.md`
 - Convention settings and output shape: `conventions-and-output.md`

@@ -3,6 +3,7 @@
 import assert from 'node:assert/strict';
 import { before, after, describe, it } from 'node:test';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
+import { press } from './bar-helpers.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -255,14 +256,14 @@ for (const profile of profiles) {
       await page.locator('.location-suggestion').first().click();
       const picked = await formState(page);
       assert.deepEqual((await createChart(page)).location, locationOf(HELSINKI));
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       assert.deepEqual(await formState(page), picked);
       await page.locator('#date').fill('1991-07-13');
       const again = await createChart(page);
       assert.equal(again.date, '1991-07-13');
       assert.deepEqual(again.location, locationOf(HELSINKI));
       assert.match(await page.locator('#chart-date').textContent(), /1991 · 09:40 · Helsinki$/);
-      await page.locator('#back-btn').click();
+      await press(page, '#back-btn');
       await page.locator('#location').fill(HELSINKI.display.slice(0, -1));
       const edited = await formState(page);
       assert.equal(edited.createDisabled, true);

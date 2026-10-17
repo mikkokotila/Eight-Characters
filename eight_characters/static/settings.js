@@ -31,9 +31,11 @@
     const placeSave = view.querySelector('#settings-place-save');
     const placeRemove = view.querySelector('#settings-place-remove');
     const schoolsBody = view.querySelector('#settings-schools-body');
+    const toolbarChoice = view.querySelector('#settings-toolbar-choice');
     const closeButton = view.querySelector('#settings-close');
     if (!statusLine || !mineBody || !couplesBody || !chartsBody || !placeNow || !placeForm || !placeInput || !suggestionList || !placeStatus
-      || !placeSave || !placeRemove || !schoolsBody || !closeButton) throw new Error('Settings view is incomplete.');
+      || !placeSave || !placeRemove || !schoolsBody || !toolbarChoice || !closeButton) throw new Error('Settings view is incomplete.');
+    if (!window.EC_TOOLBAR) throw new Error('Settings need the toolbar.');
 
     // The settings as the API last gave them, and the schools it lists.
     let settings = null;
@@ -609,6 +611,18 @@
           </fieldset>`;
       }).join('') + (language() === 'fi' && catalog.finnish_provisional ? `<p class="settings-note">${esc(t('settings_finnish_provisional'))}</p>` : '');
     };
+    // ── The toolbar: this browser's own, taken at once (toolbar.js) ──
+    const drawToolbar = () => {
+      toolbarChoice.querySelectorAll('input[name="settings-toolbar"]').forEach((radio) => {
+        radio.checked = radio.value === window.EC_TOOLBAR.way();
+      });
+    };
+    toolbarChoice.addEventListener('change', (event) => {
+      const radio = event.target.closest('input[name="settings-toolbar"]');
+      if (radio?.checked) window.EC_TOOLBAR.choose(radio.value);
+    });
+    // Chosen in another tab meanwhile: the choice shown follows, so either can be chosen.
+    window.EC_TOOLBAR.watch(drawToolbar);
     schoolsBody.addEventListener('change', async (event) => {
       const radio = event.target.closest('input[type="radio"]');
       if (!radio) return;
@@ -657,6 +671,7 @@
     const show = async (note = '') => {
       const mine = ++showing;
       say('');
+      drawToolbar();
       view.classList.remove('hidden');
       view.setAttribute('aria-busy', 'true');
       try {

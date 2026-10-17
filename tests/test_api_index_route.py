@@ -167,6 +167,7 @@ class TestApiIndexRoute(unittest.TestCase):
         for asset in (
             'style.css',
             'localization.js',
+            'toolbar.js',
             'icons.js',
             'controls.js',
             'relationships.js',
