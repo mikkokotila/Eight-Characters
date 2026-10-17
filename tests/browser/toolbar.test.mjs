@@ -32,6 +32,9 @@ function seen(node) {
     const parent = walker.currentNode.parentElement;
     if (parent.checkVisibility() && !clipped(parent)) words.push(walker.currentNode.textContent);
   }
+  // A topic's title and its count are drawn from their attributes.
+  const title = node.querySelector(':scope > .control-title');
+  if (title?.checkVisibility()) words.unshift(title.dataset.title);
   const caption = node.querySelector(':scope > .control-caption');
   if (caption?.checkVisibility()) words.push(` ${caption.dataset.caption}`);
   return [words.join('').replace(/\s+/g, ' ').trim(), node.querySelector('[data-control-icon]')?.checkVisibility() ?? false];
@@ -79,6 +82,9 @@ for (const profile of profiles) {
       // A topic: its icon, its name and its count; its full name for a screen reader.
       assert.deepEqual(await shown(page, '#relationships-topic'), [['Relationships 3', true]]);
       assert.equal(await page.locator('#relationships-topic .control-label').textContent(), 'Relationships (3)');
+      // Its title adds nothing to its text, which the commands (⌘K) read.
+      assert.equal(await page.locator('#relationships-topic').textContent(), 'Relationships (3)');
+      assert.equal(await page.locator('[data-context="roles"]').evaluate((node) => node.textContent.trim()), 'Roles');
       assert.deepEqual(await shown(page, '[data-context="roles"]'), [['Roles', true]]);
       // The actions: one button, its menu closed and out of sight.
       assert.deepEqual(await shown(page, '#chart-actions-button'), [['Actions', false]]);

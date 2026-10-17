@@ -12,6 +12,8 @@
   // Each menu's parts: in words a menu button and its menu of items, in icons nothing but
   // the buttons themselves, standing in the bar.
   const menus = [];
+  // Who draws the way chosen (Settings' choice): told whenever it changes.
+  const watchers = [];
   // In a comparison's frame (app.js says so) the bar keeps only Copy as text: no menu.
   let embedded = false;
   const roles = (menu, words) => {
@@ -47,6 +49,7 @@
       menu.close(false);
       roles(menu, next === 'words' && !embedded);
     });
+    watchers.forEach((watcher) => watcher(next));
   };
   take(kept ?? 'words');
 
@@ -133,6 +136,10 @@
     choose: (next) => {
       take(next);
       localStorage.setItem(KEY, next);
+    },
+    // Calls `watcher` with the way whenever it changes, here or in another tab.
+    watch: (watcher) => {
+      watchers.push(watcher);
     },
     // A comparison's frame: its bar's buttons stand in the bar, in either way.
     embed: () => {

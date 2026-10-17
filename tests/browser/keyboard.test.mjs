@@ -45,7 +45,7 @@ const openDialogs = (page) => page.evaluate(() => [...document.querySelectorAll(
 
 for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / keyboard`, { concurrency: false }, () => {
-    const check = (name, run) => it(name, { timeout: 60000 }, () => withPage(profile, run));
+    const check = (name, run, options) => it(name, { timeout: 60000 }, () => withPage(profile, run, options));
 
     check('the cards take one tab stop, and the arrows move between them', async (page) => {
       await openChart(page, { lang: 'en' });
@@ -250,8 +250,8 @@ for (const profile of profiles) {
       assert.deepEqual(await openDialogs(page), []);
     });
 
-    check('every control of the chart is reached by Tab, the cards at one stop', async (page) => {
-      await openChart(page, { lang: 'en' });
+    // Every control Tab reaches in the chart, from its first.
+    async function tabStops(page) {
       await page.locator('#page-switch button').first().focus();
       const reached = [];
       for (let presses = 0; presses < 40; presses += 1) {
@@ -260,13 +260,27 @@ for (const profile of profiles) {
         reached.push(await focused(page));
         await press(page, TAB);
       }
-      assert.deepEqual(reached, ['Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems',
-        'FI', 'EN',
-        // In English the Day Master line opens the Day Master's page of readings.
-        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn',
-        'Day Master · Ji — Yin Earth',
-        'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
-        '壬申 Ren Shen', 'hour stem', '己丑 Ji Chou', '癸丑 Gui Chou', '丁卯 Ding Mao']);
+      return reached;
+    }
+    // In English the Day Master line opens the Day Master's page of readings.
+    const AFTER_BAR = [
+      'Day Master · Ji — Yin Earth',
+      'Chou month', 'Roots in 3 branches', 'Roles', 'relationships-topic',
+      '壬申 Ren Shen', 'hour stem', '己丑 Ji Chou', '癸丑 Gui Chou', '丁卯 Ding Mao',
+    ];
+
+    check('every control of the chart is reached by Tab, the cards at one stop, and the actions at their menu', async (page) => {
+      await openChart(page, { lang: 'en' });
+      // In the toolbar's words the actions are one stop, their menu's button; the arrows
+      // reach its items (toolbar.test.mjs).
+      assert.deepEqual(await tabStops(page), [
+        'Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN', 'chart-actions-button', ...AFTER_BAR]);
     });
+
+    check('in the toolbar\'s icons every action of the chart is a stop of its own', async (page) => {
+      await openChart(page, { lang: 'en' });
+      assert.deepEqual(await tabStops(page), ['Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN',
+        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', ...AFTER_BAR]);
+    }, { toolbar: 'icons' });
   });
 }

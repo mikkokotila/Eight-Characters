@@ -148,7 +148,8 @@
       if (node.dataset.controlWords !== spec.words) node.dataset.controlWords = spec.words;
     } else if (node.dataset.controlWords) delete node.dataset.controlWords;
     // A topic's title, shown in words between its icon and its count; its full name is
-    // its label's, for a screen reader, as in icons.
+    // its label's, for a screen reader, as in icons. Drawn from its attribute, as the
+    // count is, it adds nothing to the button's text, which the commands read.
     let title = node.querySelector(':scope > .control-title');
     if (spec.words === 'title') {
       if (!title) {
@@ -159,7 +160,7 @@
         if (icon) icon.after(title);
         else node.prepend(title);
       }
-      if (title.textContent !== spec.title) title.textContent = spec.title;
+      if (title.dataset.title !== spec.title) title.dataset.title = spec.title;
     } else title?.remove();
   };
   window.EC_CONTROLS = { label: labelOf, icon: (node) => info(node).icon };

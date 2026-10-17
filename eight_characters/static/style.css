@@ -4035,6 +4035,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 /* A topic keeps its icon and its count, and says its name between them. */
 .control-title { display: none; }
+.control-title::before { content: attr(data-title); }
 :root[data-toolbar='words'] .control-title { display: inline; }
 :root[data-toolbar='words'] :is(.topic-button, .chart-topics .context-toggle).icon-control[data-control-words='title'] {
   gap: var(--space-2);

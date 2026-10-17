@@ -710,6 +710,8 @@
       const radio = event.target.closest('input[name="settings-toolbar"]');
       if (radio?.checked) window.EC_TOOLBAR.choose(radio.value);
     });
+    // Chosen in another tab meanwhile: the choice shown follows, so either can be chosen.
+    window.EC_TOOLBAR.watch(drawToolbar);
     schoolsBody.addEventListener('change', async (event) => {
       const radio = event.target.closest('input[type="radio"]');
       if (!radio) return;

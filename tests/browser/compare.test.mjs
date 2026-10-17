@@ -129,7 +129,9 @@ for (const profile of profiles) {
       assert.deepEqual([a.stems, a.branches], [expectedA.stems, expectedA.branches]);
       assert.deepEqual([b.stems, b.branches], [expectedB.stems, expectedB.branches]);
       // Each frame keeps the chart's own display and Copy as text; the page holds the rest.
-      assert.deepEqual(await (profile.name === 'mobile' ? b : a).frame.locator('.chart-tools > *').evaluateAll((nodes) => nodes.filter((node) => node.checkVisibility()).map((node) => node.id)),
+      // Copy as text stands in the bar from the actions' box, which the frame sets aside.
+      assert.deepEqual(await (profile.name === 'mobile' ? b : a).frame.locator('.chart-tools > *, .chart-tools .bar-menu-items > *')
+        .evaluateAll((nodes) => nodes.filter((node) => node.checkVisibility()).map((node) => node.id)),
         ['display-switch', 'copy-text-btn']);
       assert.deepEqual(await page.locator('.compare-frame').evaluateAll((frames) => frames.map((frame) => frame.title)), [
         'Chart 1: February 4, 1988 · 16:30 · Chengdu', 'Chart 2: May 9, 1990 · 12:00 · Chengdu']);
