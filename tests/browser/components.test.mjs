@@ -74,6 +74,11 @@ function cards(page) {
         const outer = getComputedStyle(card);
         found.push({
           selector, size, part, element, resting,
+          // A card that stands alone rounds every corner: the life grid's head on a
+          // desktop (each pillar's stem beside its branch), a phone's luck pillar (its stem
+          // beside its branch, over the chart).
+          alone: (card.matches('.life-mini') && getComputedStyle(card.parentElement).gridTemplateColumns.split(' ').length > 1)
+            || (card.matches('.card') && !!card.closest('.pillar.is-luck') && getComputedStyle(card.closest('.pillar-cards')).gridTemplateColumns.split(' ').length > 1),
           sheen: style.backgroundImage.startsWith('linear-gradient'),
           ground: style.backgroundColor === colour(root.getPropertyValue(`--${element}-${resting ? 'tint' : 'bg'}`)),
           ink: outer.color === colour(root.getPropertyValue(`--${element}-text`)),
@@ -91,7 +96,8 @@ function cards(page) {
 }
 
 // Every label on the page, and how it is set; a label in a column too narrow for its
-// capitals says so.
+// capitals says so, and so does one set beside a line of notes, whose leading it takes
+// so that the two read on one baseline (a role's occurrences).
 function labels(page) {
   return page.evaluate((selectors) => {
     const found = [];
@@ -104,6 +110,7 @@ function labels(page) {
           selector,
           text: label.textContent.trim().slice(0, 30),
           narrow: column ? column.getBoundingClientRect().width <= 100 : false,
+          beside: !!label.closest('.role-occurrence-place'),
           set: {
             family: s.fontFamily.split(',')[0].replaceAll('"', ''), size: s.fontSize, weight: s.fontWeight,
             line: s.lineHeight, tracking: s.letterSpacing, transform: s.textTransform, color: s.color,
@@ -138,9 +145,9 @@ async function keepCouple(page) {
   }, { place: PLACE, self: SELF, partner: PARTNER });
 }
 
-// The views read: the start page and its account dialog, a chart with its luck pillar,
-// the relationships and the life grid, the day master's and a pillar's pages, Today for
-// a chart in a couple, and Settings.
+// The views read: the start page and its account dialog, a chart with its luck pillar
+// and the life grid, open at its relationships, the Day Master's, the roles', a pillar's
+// and a decade's pages; Today for a chart in a couple; and Settings.
 async function eachView(page, visit) {
   await page.goto(new URL('/', process.env.EC_BASE_URL).href);
   await keepCouple(page);
@@ -153,8 +160,9 @@ async function eachView(page, visit) {
   await settled(page);
   await visit('the account dialog');
   await page.keyboard.press('Escape');
-  for (const topic of ['relationships', 'day-master', 'pillar/day', 'luck/5/branch']) {
-    await openLink(page, `/#chart?${BIRTH}&luck=5/stem&topic=${topic}`, { place: HELSINKI });
+  // A decade's page shows the phase standing in the chart.
+  for (const [topic, luck] of [['relationships', '5/stem'], ['day-master', '5/stem'], ['roles', '5/stem'], ['pillar/day', '5/stem'], ['luck/5/branch', '5/branch']]) {
+    await openLink(page, `/#chart?${BIRTH}&luck=${luck}&topic=${topic}`, { place: HELSINKI });
     await visit(`a chart with its luck pillar, ${topic} open`);
   }
   await page.goto(new URL(`/#today?${BIRTH}&day=${DAY}`, process.env.EC_BASE_URL).href);
@@ -186,7 +194,7 @@ for (const profile of profiles) {
         if (!card.ground) problems.push(`${where} is not on its element's ${card.resting ? 'tint' : 'colour'}`);
         if (!card.ink) problems.push(`${where} is not in its element's ink`);
         const [outer, join] = SHAPES[card.size];
-        const expected = card.selector === '.life-mini' && !profile.isMobile ? [outer, outer, outer, outer]
+        const expected = card.alone ? [outer, outer, outer, outer]
           : card.part === 'stem' ? [outer, outer, join, join] : [join, join, outer, outer];
         // An opened branch runs on into its hidden stems.
         if (JSON.stringify(card.corners) !== JSON.stringify(expected) && !(card.selector === '#pillars .card' && card.corners[2] === 0)) {
@@ -220,11 +228,13 @@ for (const profile of profiles) {
       const expected = {
         family: 'Cormorant Garamond', size: '13px', weight: '500', line: '17.55px', tracking: '2.34px', transform: 'uppercase',
       };
+      // Lengths to a hundredth of a pixel: WebKit gives back 17.549999px for 17.55px.
+      const same = (a, b) => Object.keys(b).every((key) => (/px$/.test(b[key])
+        ? Math.abs(parseFloat(a[key]) - parseFloat(b[key])) < 0.01 : a[key] === b[key]));
       for (const label of found) {
-        const set = { ...label.set };
-        delete set.color;
-        const own = label.narrow ? { ...expected, tracking: '0.26px', transform: 'none' } : expected;
-        if (JSON.stringify(set) !== JSON.stringify(own)) problems.push(`${label.view}: ${label.selector} "${label.text}" is set ${JSON.stringify(set)}`);
+        const own = label.narrow ? { ...expected, tracking: '0.26px', transform: 'none' }
+          : label.beside ? { ...expected, line: '22.1px' } : expected;
+        if (!same(label.set, own)) problems.push(`${label.view}: ${label.selector} "${label.text}" is set ${JSON.stringify(label.set)}`);
       }
       const colours = new Set(found.map((label) => label.set.color));
       assert.deepEqual(problems, []);
