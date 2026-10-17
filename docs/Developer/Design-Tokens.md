@@ -1,10 +1,10 @@
 # Design Tokens (Standard view)
 
 The Standard view's stylesheet, `eight_characters/static/style.css`, takes every
-colour, space, font size and tracking from tokens defined once on `:root`.
-Outside those definitions it holds no raw spacing, font size, tracking or ink
-value: `tests/test_api_index_route.py`
-(`test_stylesheet_takes_spacing_type_and_ink_from_its_tokens`) fails on any.
+colour, space, font size, tracking and corner radius from tokens defined once on
+`:root`. Outside those definitions it holds no raw spacing, font size, tracking,
+radius or ink value: `tests/test_api_index_route.py`
+(`test_stylesheet_takes_its_values_from_its_tokens`) fails on any.
 
 ![Every token, drawn with the app's own stylesheet](design-tokens-specimen.png)
 
@@ -68,6 +68,31 @@ foundations suite measures this in every state of both themes.
 
 `--space-1` to `--space-8`: 4, 8, 12, 16, 24, 32, 48 and 64px. Margins, padding
 and gaps use only these, or `calc()` of them.
+
+## Shape
+
+| Token | Radius | Use |
+|---|---|---|
+| `--radius-1` | 2px | a mark; a ring drawn around a line of text |
+| `--radius-2` | 4px | a key; a ring around a block; where a stem meets its branch |
+| `--radius-3` | 8px | an option or a row in a list; a tooltip; a toast |
+| `--radius-4` | 12px | a control or a surface: a field, a button, a chip, a notice, the panel; a tile |
+| `--radius-5` | 16px | a card; a dialog |
+| `--radius-6` | 24px | a group of controls; the lane around a pillar |
+| `--radius-pill` | 999px | a pill, whatever its height |
+| `--radius-round` | 50% | a dot |
+
+- A control that is a pill (a button, a choice, a topic, a chip) takes
+  `--radius-pill`, so it stays a pill at a phone's taller touch height. The group
+  around a row of them takes `--radius-6`: a pill while it holds one row, a rounded
+  box when its choices wrap.
+- A stem card rounds its top corners with `--radius-5` and meets its branch with
+  `--radius-2`; the branch mirrors it. A tile (a saved chart's, the life grid's)
+  does the same with `--radius-4`.
+- The lane behind the luck pillar and the life grid's Luck column takes
+  `--radius-6`: the cards' `--radius-5` plus the lane's `--space-2` inset.
+- The gua's lines keep `--line-r`, 1px; the relationship arcs are half-ellipses,
+  drawn in percentages of their box.
 
 ## Type
 

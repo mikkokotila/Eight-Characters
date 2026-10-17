@@ -124,6 +124,16 @@
   --tracking-2: 0.18em;  /* capitals */
   --tracking-3: 0.3em;   /* the eyebrow above a title */
 
+  /* ── Shape: six corner radii, a pill and a circle ── */
+  --radius-1: 2px;   /* a mark; a ring drawn around a line of text */
+  --radius-2: 4px;   /* a key; a ring around a block; where a stem meets its branch */
+  --radius-3: 8px;   /* an option or a row in a list; a tooltip; a toast */
+  --radius-4: 12px;  /* a control or a surface: a field, a button, a chip, a notice, the panel; a tile */
+  --radius-5: 16px;  /* a card; a dialog */
+  --radius-6: 24px;  /* a group of controls; the lane around a pillar */
+  --radius-pill: 999px;  /* a pill, whatever its height */
+  --radius-round: 50%;   /* a dot */
+
   /* ── The page, the pillars and the panel beside them ── */
   /* The page's margin above and below what it shows; the panel beside the chart keeps
      it too, so a full panel never makes the page scroll. */
@@ -252,7 +262,7 @@
   max-width: min(280px, calc(100vw - var(--space-4)));
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   background: var(--bg);
   color: var(--ink-1);
   box-shadow: var(--shadow-2);
@@ -315,7 +325,7 @@ body {
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line-1);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-1);
 }
 
@@ -327,7 +337,7 @@ body {
   letter-spacing: var(--tracking-2);
   text-transform: uppercase;
   padding: var(--space-1) var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition: all var(--flow-feedback) var(--flow-feedback-ease);
 }
@@ -403,7 +413,7 @@ body {
   color: var(--ink-1);
   background: var(--surface-2);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   /* One height and alignment for all three fields; native date and time
      controls would otherwise stand taller than the text field. */
   height: 48px;
@@ -457,7 +467,7 @@ body {
   left: 0;
   width: 100%;
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: var(--surface-3);
   box-shadow: var(--shadow-2);
   overflow: hidden;
@@ -548,7 +558,7 @@ body {
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line-1);
-  border-radius: 20px;
+  border-radius: var(--radius-6);
   background: var(--surface-1);
 }
 .gender-option { position: relative; display: inline-flex; }
@@ -558,7 +568,7 @@ body {
   align-items: center;
   min-height: 32px;
   padding: var(--space-1) var(--space-3);
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   font-family: var(--font-sans);
   font-size: var(--text-1);
   font-weight: 500;
@@ -603,7 +613,7 @@ body {
   color: var(--ink-1);
   background: var(--surface-2);
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   padding: var(--space-4) var(--space-7);
   cursor: pointer;
   transition: all var(--flow-feedback) var(--flow-feedback-ease);
@@ -699,14 +709,14 @@ body {
   gap: var(--space-1);
   padding: var(--space-1);
   border: 1px solid var(--line-1);
-  border-radius: 20px;
+  border-radius: var(--radius-6);
   background: var(--surface-1);
 }
 .segmented button {
   min-height: 32px;
   padding: var(--space-1) var(--space-3);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: none;
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -725,7 +735,7 @@ body {
   min-height: 32px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: none;
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -791,7 +801,7 @@ body {
   min-height: 36px;
   padding: var(--space-1) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 18px;
+  border-radius: var(--radius-pill);
   background: var(--surface-1);
   font-family: var(--font-sans);
   font-size: var(--text-2);
@@ -862,7 +872,7 @@ body {
   min-width: 56px;
   padding: var(--space-1) var(--space-2);
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: var(--surface-1);
   font-family: var(--font-sans);
   color: var(--ink-1);
@@ -878,7 +888,7 @@ body {
 .luck-chip.is-selected .luck-chip-age { color: inherit; }
 /* The decade's two phases: the chosen one full, today's half. */
 .luck-chip-phases { display: flex; gap: var(--space-1); width: 100%; margin-top: var(--space-1); }
-.luck-chip-phases i { flex: 1; height: 3px; border-radius: 2px; background: currentColor; opacity: 0.18; }
+.luck-chip-phases i { flex: 1; height: 3px; border-radius: var(--radius-1); background: currentColor; opacity: 0.18; }
 .luck-chip-phases i[data-today] { opacity: 0.5; }
 .luck-chip-phases i.is-chosen { opacity: 1; }
 .luck-chip.is-before { align-content: center; min-width: 0; font-size: var(--text-1); color: var(--ink-2); }
@@ -892,7 +902,7 @@ body {
   width: 10px;
   height: 10px;
   border: 2px solid var(--bg);
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--ink-1);
 }
 .luck-chip.is-selected .luck-today-dot { border-color: var(--ink-1); background: var(--bg); }
@@ -905,7 +915,7 @@ body {
   width: 28px;
   padding: 0;
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: var(--surface-1);
   color: var(--ink-2);
   cursor: pointer;
@@ -916,7 +926,7 @@ body {
   flex: 0 0 auto;
   padding: 0 var(--space-2);
   border: 1px solid var(--line-2);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: none;
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -974,7 +984,7 @@ body {
   gap: var(--space-1);
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-1);
   font-family: var(--font-sans);
   text-align: left;
@@ -1020,7 +1030,7 @@ body {
 }
 .luck-element-name { display: inline-flex; align-items: center; gap: var(--space-2); }
 .luck-element-cells { display: flex; flex-wrap: wrap; gap: var(--space-1); }
-.luck-element-cells i { width: 12px; height: 12px; border-radius: 3px; background: var(--ink-2); opacity: 0.45; }
+.luck-element-cells i { width: 12px; height: 12px; border-radius: var(--radius-1); background: var(--ink-2); opacity: 0.45; }
 .luck-element-cells i.is-luck { background: var(--ink-1); opacity: 1; }
 .luck-element-count { font-variant-numeric: tabular-nums; }
 .luck-element-count b { font-weight: 600; }
@@ -1095,7 +1105,7 @@ body {
   margin: 0 auto;
   padding: var(--space-1) var(--space-4);
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   background: none;
   color: var(--ink-1);
   cursor: pointer;
@@ -1158,7 +1168,7 @@ body {
   position: absolute;
   inset: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-3));
   z-index: -1;
-  border-radius: 20px;
+  border-radius: var(--radius-6);
   background: var(--surface-1);
   box-shadow: inset 0 0 0 1px var(--line-1);
 }
@@ -1280,7 +1290,7 @@ body {
 .life-head-state { color: var(--ink-1); }
 /* The Luck column's lane runs up into the head. */
 .life-head-cell.is-luck {
-  border-radius: 20px 20px 0 0;
+  border-radius: var(--radius-6) var(--radius-6) 0 0;
   background: var(--surface-1);
   box-shadow: inset 1px 0 0 var(--line-1), inset -1px 0 0 var(--line-1), inset 0 1px 0 var(--line-1);
 }
@@ -1302,7 +1312,7 @@ body {
   justify-items: center;
   width: 44px;
   padding: var(--space-1) 0;
-  border-radius: 9px;
+  border-radius: var(--radius-4);
   background: var(--sheen), var(--el-bg);
   color: var(--el-text);
 }
@@ -1327,7 +1337,7 @@ body {
 .life-lane {
   grid-column: 5;
   z-index: -2;
-  border-radius: 0 0 20px 20px;
+  border-radius: 0 0 var(--radius-6) var(--radius-6);
   background: var(--surface-1);
   box-shadow: inset 1px 0 0 var(--line-1), inset -1px 0 0 var(--line-1), inset 0 -1px 0 var(--line-1);
 }
@@ -1399,7 +1409,7 @@ body {
   height: 22px;
   padding: 0 var(--space-2);
   border: 1px solid var(--line-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--bg);
   box-shadow: var(--shadow-1);
   font-size: var(--text-1);
@@ -1448,7 +1458,7 @@ body {
   right: -4px;
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   background: var(--ink-1);
 }
 
@@ -1469,7 +1479,7 @@ body {
   align-content: center;
   min-width: 0;
   padding: 0 var(--space-2) 0 calc(var(--space-6) + var(--space-5));
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   cursor: pointer;
 }
 .life-phase:hover { background: color-mix(in srgb, var(--ink-1) 4%, transparent); }
@@ -1487,12 +1497,12 @@ body {
   font-size: var(--text-3);
   font-weight: 500;
 }
-.life-phase[data-part='stem'] .life-tile { bottom: 1px; border-radius: 10px 10px 3px 3px; }
-.life-phase[data-part='branch'] .life-tile { top: 1px; border-radius: 3px 3px 10px 10px; }
+.life-phase[data-part='stem'] .life-tile { bottom: 1px; border-radius: var(--radius-4) var(--radius-4) var(--radius-2) var(--radius-2); }
+.life-phase[data-part='branch'] .life-tile { top: 1px; border-radius: var(--radius-2) var(--radius-2) var(--radius-4) var(--radius-4); }
 .life-phase.is-before .life-tile {
   top: 50%;
   height: 30px;
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: transparent;
   box-shadow: inset 0 0 0 1px var(--line-2);
   transform: translateY(-50%);
@@ -1513,7 +1523,7 @@ body {
 .life-now {
   display: none;
   padding: 0 var(--space-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--ink-1);
   color: var(--bg);
   font-family: var(--font-sans);
@@ -1577,11 +1587,11 @@ body {
     gap: var(--space-1);
     width: 100%;
     padding: var(--space-1) 0;
-    border-radius: 6px;
+    border-radius: var(--radius-3);
   }
   .life-mini-char { font-size: var(--text-1); }
   .life-mark { display: none; }
-  .life-phase { padding: 0 0 0 calc(var(--space-5) + var(--space-2)); border-radius: 8px; }
+  .life-phase { padding: 0 0 0 calc(var(--space-5) + var(--space-2)); border-radius: var(--radius-3); }
   .life-tile { left: var(--space-1); width: 24px; height: 32px; font-size: var(--text-1); }
   .life-phase.is-before .life-tile { height: 24px; }
   .life-phase-name { font-size: var(--text-1); }
@@ -1666,14 +1676,14 @@ body {
   pointer-events: none;
 }
 
-.card.stem   { border-radius: 14px 14px 3px 3px; }
+.card.stem   { border-radius: var(--radius-5) var(--radius-5) var(--radius-2) var(--radius-2); }
 .card.branch {
-  border-radius: 3px 3px 14px 14px;
+  border-radius: var(--radius-2) var(--radius-2) var(--radius-5) var(--radius-5);
   cursor: pointer;
   transition: transform var(--flow-settle) var(--flow-spring), border-radius var(--flow-settle) var(--flow-spring);
 }
 .card.branch.is-expanded {
-  border-radius: 3px 3px 0 0;
+  border-radius: var(--radius-2) var(--radius-2) 0 0;
   transition: transform var(--flow-settle) var(--flow-spring), border-radius var(--flow-settle) var(--flow-spring);
 }
 .card.branch.is-expanded:hover {
@@ -1696,7 +1706,7 @@ body {
   position: fixed;
   z-index: 20;
   padding: var(--space-1) var(--space-2);
-  border-radius: 6px;
+  border-radius: var(--radius-3);
   background: var(--ink-1);
   color: var(--bg);
   font-family: var(--font-sans);
@@ -1715,7 +1725,7 @@ body {
   z-index: 40;
   max-width: calc(100% - 2 * var(--space-4));
   padding: var(--space-2) var(--space-4);
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   background: var(--ink-1);
   color: var(--bg);
   font-family: var(--font-sans);
@@ -1754,7 +1764,7 @@ body {
   height: 0;
   opacity: 0;
   overflow: hidden;
-  border-radius: 0 0 14px 14px;
+  border-radius: 0 0 var(--radius-5) var(--radius-5);
   transition: height var(--flow-settle) var(--flow-spring), opacity var(--flow-feedback) var(--flow-feedback-ease);
 }
 .hidden-stems-panel.is-expanded {
@@ -1786,7 +1796,7 @@ body {
 .hidden-stem-dot {
   width: 8px;
   height: 8px;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   flex-shrink: 0;
 }
 /* The element's own colour, ringed in its ink: the ring keeps the dot at 3:1 or
@@ -1945,7 +1955,7 @@ body {
 .hidden-stem-item.is-context-evidence {
   outline: 1px solid currentColor;
   outline-offset: 3px;
-  border-radius: 2px;
+  border-radius: var(--radius-1);
 }
 /* In the panel a stem is a line of text, never a box: its element's swatch, the
    stem and a hidden stem's qi position, and below them what the page says of it. */
@@ -2027,7 +2037,7 @@ body {
   min-width: 0;
   min-height: 40px;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   background: none;
   color: var(--ink-1);
   text-align: left;
@@ -2047,7 +2057,7 @@ body {
 /* A role the chart lacks stays a choice, in the secondary ink. */
 .role-choice.is-absent .role-choice-name { color: var(--ink-2); font-weight: 400; }
 /* Drawn, not typed (the page fonts have none of these): ● visible, ○ hidden, · absent. */
-.role-mark { justify-self: center; width: 10px; height: 10px; border-radius: 50%; }
+.role-mark { justify-self: center; width: 10px; height: 10px; border-radius: var(--radius-round); }
 .role-mark[data-mark='visible'] { background: var(--ink-1); }
 .role-mark[data-mark='hidden'] { box-shadow: inset 0 0 0 1.5px var(--ink-1); }
 .role-mark[data-mark='absent'] { width: 4px; height: 4px; background: var(--ink-2); }
@@ -2158,7 +2168,7 @@ body {
   color: var(--ink-2);
   background: var(--surface-1);
   border: 1px solid var(--line-1);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   cursor: pointer;
   transition: background var(--flow-feedback) var(--flow-feedback-ease), border-color var(--flow-feedback) var(--flow-feedback-ease), color var(--flow-feedback) var(--flow-feedback-ease);
 }
@@ -2328,12 +2338,12 @@ body {
 #pillars[data-spotlight] .card:not(.is-spotlit),
 #pillars[data-spotlight] .hidden-stem-item:not(.is-spotlit) { outline-color: transparent; }
 #pillars .card.is-spotlit { outline: 2px solid var(--ink-1); outline-offset: 0; }
-#pillars .hidden-stem-item.is-spotlit { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 2px; }
+#pillars .hidden-stem-item.is-spotlit { outline: 2px solid currentColor; outline-offset: 2px; border-radius: var(--radius-1); }
 #pillars[data-spotlight] .relationship-arc { --arc-ink: var(--line-2); }
 #pillars[data-spotlight] .relationship-arc.is-spotlit { --arc-ink: var(--ink-1); }
 /* In the panel: a line that points (a control keeps its own look), the line pointing
    now, and a line a click keeps. The shade spreads past the line without moving it. */
-.chart-panel [data-spot]:not(button) { border-radius: 4px; cursor: pointer; }
+.chart-panel [data-spot]:not(button) { border-radius: var(--radius-2); cursor: pointer; }
 .chart-panel .is-spot-source:not(button),
 .chart-panel .is-spot-pinned {
   background: var(--surface-2);
@@ -2376,7 +2386,7 @@ body {
   min-height: 32px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: none;
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -2395,7 +2405,7 @@ body {
   margin: 12vh auto auto;
   padding: var(--space-5);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: var(--radius-5);
   background: var(--bg);
   color: var(--ink-1);
   box-shadow: var(--shadow-2);
@@ -2434,7 +2444,7 @@ kbd {
   min-width: 2em;
   padding: 0 var(--space-2);
   border: 1px solid var(--line-2);
-  border-radius: 6px;
+  border-radius: var(--radius-2);
   background: var(--surface-2);
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -2463,7 +2473,7 @@ kbd {
   width: 100%;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-2);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-3);
   font-size: var(--text-2);
   color: var(--ink-1);
@@ -2483,7 +2493,7 @@ kbd {
   justify-content: space-between;
   gap: var(--space-4);
   padding: var(--space-2) var(--space-3);
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   font-family: var(--font-sans);
   font-size: var(--text-2);
   cursor: pointer;
@@ -2519,7 +2529,7 @@ kbd {
 .account-notice {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-2);
   font-size: var(--text-2);
   line-height: 1.5;
@@ -2553,7 +2563,7 @@ kbd {
   height: 48px;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-2);
   font-size: var(--text-2);
   color: var(--ink-1);
@@ -2667,7 +2677,7 @@ kbd {
     overflow-y: auto;
     padding: var(--space-5);
     border: 1px solid var(--line-1);
-    border-radius: 12px;
+    border-radius: var(--radius-4);
   }
 }
 /* Narrower, it is a sheet over the foot of the page; the chart keeps room to
@@ -2873,7 +2883,7 @@ kbd {
 }
 .canon-day-master-line:hover,
 .canon-day-master-line[aria-expanded='true'] { text-decoration-color: var(--line-2); }
-.canon-day-master-line:focus-visible { outline: 2px solid var(--ink-2); outline-offset: var(--space-1); border-radius: 2px; }
+.canon-day-master-line:focus-visible { outline: 2px solid var(--ink-2); outline-offset: var(--space-1); border-radius: var(--radius-1); }
 
 .canon-lines { margin-top: var(--space-5); }
 .role-occurrence-body > .canon-lines { margin-top: var(--space-2); }
@@ -2931,7 +2941,7 @@ kbd {
 }
 .canon-line-toggle[aria-expanded='true'] .canon-line-chevron { transform: rotate(180deg); }
 .canon-line-toggle:hover .canon-line-chevron { color: var(--ink-1); }
-.canon-line-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 4px; }
+.canon-line-toggle:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: var(--radius-2); }
 .canon-line-passage {
   max-width: 35em;
   padding: 0 var(--space-6) var(--space-4) 0;
@@ -2960,7 +2970,7 @@ kbd {
   min-height: 32px;
   padding: var(--space-1) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: var(--surface-1);
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -2977,7 +2987,7 @@ kbd {
 /* A pillar's relationships, each with its own first sentence. */
 .canon-here { padding: var(--space-3) 0; }
 .canon-here .canon-links { margin-top: var(--space-2); }
-.canon-here .canon-link { border-radius: 10px; }
+.canon-here .canon-link { border-radius: var(--radius-4); }
 .canon-link-quote {
   display: block;
   margin-top: var(--space-1);
@@ -3007,7 +3017,7 @@ kbd {
   flex-wrap: wrap;
   justify-content: flex-start;
   text-align: left;
-  border-radius: 14px;
+  border-radius: var(--radius-5);
 }
 .canon-chip-line {
   flex-basis: 100%;
@@ -3043,7 +3053,7 @@ kbd {
   text-underline-offset: var(--space-1);
 }
 .canon-clause:hover { text-decoration-color: var(--line-2); }
-.canon-clause:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 2px; }
+.canon-clause:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: var(--radius-1); }
 .canon-ring { display: block; width: 100%; max-width: 340px; margin: 0 auto var(--space-4); }
 .canon-ring text { font-family: var(--font-sans); font-size: var(--text-1); fill: var(--ink-2); }
 .canon-ring .canon-ring-stage.is-on { fill: var(--ink-1); font-weight: 700; }
@@ -3107,8 +3117,8 @@ kbd {
   .pillar.is-luck .card.stem { grid-area: 1 / 1; }
   .pillar.is-luck .card.branch { grid-area: 1 / 2; margin-top: 0; }
   .pillar.is-luck .hidden-stems-panel { grid-area: 2 / 2; }
-  .pillar.is-luck .card { border-radius: 14px; }
-  .pillar.is-luck .card.branch.is-expanded { border-radius: 14px 14px 0 0; }
+  .pillar.is-luck .card { border-radius: var(--radius-5); }
+  .pillar.is-luck .card.branch.is-expanded { border-radius: var(--radius-5) var(--radius-5) 0 0; }
   /* Two pillars to a row leave no line for the arcs to span; the relationships
      are listed in the sheet. Their rows are left empty, so they take no room,
      and the headers keep their own room above the cards. */
@@ -3200,7 +3210,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .settings-status {
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-2);
   color: var(--ink-1);
 }
@@ -3229,7 +3239,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   gap: var(--space-2);
   padding: var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: var(--radius-5);
   background: var(--surface-1);
 }
 .saved-head {
@@ -3247,7 +3257,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .saved-mark {
   padding: 0 var(--space-2);
   border: 1px solid var(--line-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   font-size: var(--text-1);
   color: var(--ink-2);
 }
@@ -3271,8 +3281,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   background: var(--sheen), var(--el-bg);
   color: var(--el-text);
 }
-.saved-glyph.stem { border-radius: 10px 10px 3px 3px; }
-.saved-glyph.branch { border-radius: 3px 3px 10px 10px; }
+.saved-glyph.stem { border-radius: var(--radius-4) var(--radius-4) var(--radius-2) var(--radius-2); }
+.saved-glyph.branch { border-radius: var(--radius-2) var(--radius-2) var(--radius-4) var(--radius-4); }
 .saved-glyph.wood { --el-bg: var(--wood-bg); --el-text: var(--wood-text); }
 .saved-glyph.fire { --el-bg: var(--fire-bg); --el-text: var(--fire-text); }
 .saved-glyph.earth { --el-bg: var(--earth-bg); --el-text: var(--earth-text); }
@@ -3311,7 +3321,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   max-width: 100%;
   padding: var(--space-2) var(--space-3);
   border: 1px solid var(--line-2);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-2);
   color: var(--ink-1);
   font: inherit;
@@ -3333,7 +3343,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   margin-top: var(--space-2);
   padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
   border: 1px solid var(--line-1);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: var(--surface-1);
   color: var(--ink-2);
   font: inherit;
@@ -3359,7 +3369,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   width: 100%;
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 14px;
+  border-radius: var(--radius-5);
   background: var(--surface-1);
   color: inherit;
   font: inherit;
@@ -3392,7 +3402,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   gap: var(--space-3);
   padding: var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   min-width: 0;
 }
 .settings-school-name {
@@ -3426,7 +3436,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   margin-top: var(--space-4);
   padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: 10px;
+  border-radius: var(--radius-4);
   background: var(--surface-2);
   color: var(--ink-1);
 }
@@ -3441,7 +3451,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   gap: var(--space-2);
   padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 20px;
+  border-radius: var(--radius-6);
   background: var(--surface-1);
 }
 .today-partner-label { font-size: var(--text-1); color: var(--ink-2); }
@@ -3450,7 +3460,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   max-width: 14em;
   padding: var(--space-1) var(--space-3);
   border: none;
-  border-radius: 16px;
+  border-radius: var(--radius-pill);
   background: var(--surface-2);
   color: var(--ink-1);
   font: inherit;
@@ -3481,7 +3491,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   touch-action: pan-y;
   user-select: none;
   -webkit-user-select: none;
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   outline: none;
 }
 .today-days:focus-visible { box-shadow: inset 0 0 0 2px var(--ink-1); }
@@ -3544,8 +3554,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   line-height: 1.2;
 }
 .today-card::before { content: ''; position: absolute; inset: 0; background: var(--sheen); pointer-events: none; }
-.today-card.is-stem { border-radius: 14px 14px 3px 3px; }
-.today-card.is-branch { border-radius: 3px 3px 14px 14px; }
+.today-card.is-stem { border-radius: var(--radius-5) var(--radius-5) var(--radius-2) var(--radius-2); }
+.today-card.is-branch { border-radius: var(--radius-2) var(--radius-2) var(--radius-5) var(--radius-5); }
 .today-card.metal { background: var(--metal-bg); color: var(--metal-text); }
 .today-card.fire { background: var(--fire-bg); color: var(--fire-text); }
 .today-card.wood { background: var(--wood-bg); color: var(--wood-text); }
@@ -3572,9 +3582,9 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-cards.is-tiny .today-card-glyph { font-size: var(--text-2); }
 .today-gua { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); opacity: 0.65; }
 .today-line { display: flex; justify-content: space-between; width: 30px; height: 3px; }
-.today-line.is-whole { background: currentColor; border-radius: 1px; }
+.today-line.is-whole { background: currentColor; border-radius: var(--line-r); }
 .today-line.is-broken::before,
-.today-line.is-broken::after { content: ''; width: 11px; height: 3px; border-radius: 1px; background: currentColor; }
+.today-line.is-broken::after { content: ''; width: 11px; height: 3px; border-radius: var(--line-r); background: currentColor; }
 
 /* ── The run: the 22 days as a strip of bars around a zero line ── */
 .today-run { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
@@ -3593,7 +3603,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   min-width: 0;
   padding: var(--space-1) 0;
   border: 1px solid transparent;
-  border-radius: 8px;
+  border-radius: var(--radius-3);
   background: none;
   color: var(--ink-1);
   font: inherit;
@@ -3617,7 +3627,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   right: 0;
   height: calc(var(--size) * 50% + 1px);
   border: 1px solid var(--ink-2);
-  border-radius: 2px;
+  border-radius: var(--radius-1);
 }
 .today-run-bar.is-for::after { bottom: 50%; background: var(--for); }
 .today-run-bar.is-against::after { top: 50%; background: var(--against); }
@@ -3648,7 +3658,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   display: block;
   height: 14px;
   border: 1px solid var(--ink-2);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: linear-gradient(90deg, var(--against) 0%, color-mix(in srgb, var(--against) 30%, var(--bg)) 40%, var(--bg) 50%, color-mix(in srgb, var(--for) 30%, var(--bg)) 60%, var(--for) 100%);
 }
 .today-scale-track.is-neutral { background: var(--surface-2); }
@@ -3668,7 +3678,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   bottom: -6px;
   left: var(--at);
   width: 4px;
-  border-radius: 2px;
+  border-radius: var(--radius-1);
   background: var(--ink-1);
   box-shadow: 0 0 0 2px var(--bg);
   transform: translateX(-50%);
@@ -3676,7 +3686,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-scale-track.is-mini .today-scale-marker { top: -4px; bottom: -4px; width: 3px; }
 .today-five-gods { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-4); margin-top: var(--space-2); font-size: var(--text-1); color: var(--ink-1); }
 .today-god { display: inline-flex; align-items: center; gap: var(--space-1); }
-.today-god-chip { width: 10px; height: 10px; border-radius: 3px; border: 1px solid var(--ink-2); }
+.today-god-chip { width: 10px; height: 10px; border-radius: var(--radius-1); border: 1px solid var(--ink-2); }
 .today-god-chip.metal { background: var(--metal-bg); }
 .today-god-chip.fire { background: var(--fire-bg); }
 .today-god-chip.wood { background: var(--wood-bg); }
@@ -3694,16 +3704,16 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   height: 10px;
   margin-right: var(--space-1);
   border: 1.5px solid currentColor;
-  border-radius: 50%;
+  border-radius: var(--radius-round);
   vertical-align: baseline;
 }
 .band-strongly_supportive :is(.today-run-mark, .today-band-mark) { background: currentColor; }
 .band-mixed :is(.today-run-mark, .today-band-mark) { height: 0; border-width: 1.5px 0 0; border-radius: 0; vertical-align: middle; }
-.band-draining :is(.today-run-mark, .today-band-mark) { border-radius: 1px; }
-.band-strongly_draining :is(.today-run-mark, .today-band-mark) { border-radius: 1px; background: currentColor; }
+.band-draining :is(.today-run-mark, .today-band-mark) { border-radius: var(--radius-1); }
+.band-strongly_draining :is(.today-run-mark, .today-band-mark) { border-radius: var(--radius-1); background: currentColor; }
 .call-protect .today-call-mark { background: currentColor; }
 .call-mixed .today-call-mark { height: 0; border-width: 1.5px 0 0; border-radius: 0; vertical-align: middle; }
-.call-avoid .today-call-mark { border-radius: 1px; background: currentColor; }
+.call-avoid .today-call-mark { border-radius: var(--radius-1); background: currentColor; }
 .today-pillars {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -3717,7 +3727,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   min-width: 0;
   padding: var(--space-3);
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: var(--surface-1);
   text-align: center;
 }
@@ -3743,7 +3753,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   text-align: left;
   cursor: pointer;
 }
-.today-pillar-open:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: 4px; }
+.today-pillar-open:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; border-radius: var(--radius-2); }
 .today-pillar-open[aria-expanded='true'] .today-chars { text-decoration: underline; text-underline-offset: 4px; }
 .today-pillar-open .today-chars { font-family: var(--font-glyph); font-size: var(--text-5); line-height: 1.1; }
 .today-pinyin { font-size: var(--text-1); color: var(--ink-2); }
@@ -3800,10 +3810,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-couple-side { display: flex; align-items: baseline; gap: var(--space-2); }
 .today-couple-name { font-weight: 500; color: var(--ink-1); }
 .today-couple-key { width: 12px; height: 12px; align-self: center; border: 2px solid var(--ink-1); }
-.today-couple-side.is-first .today-couple-key { border-radius: 50%; background: var(--ink-1); }
-.today-couple-side.is-second .today-couple-key { border-radius: 2px; background: var(--bg); }
+.today-couple-side.is-first .today-couple-key { border-radius: var(--radius-round); background: var(--ink-1); }
+.today-couple-side.is-second .today-couple-key { border-radius: var(--radius-1); background: var(--bg); }
 .today-couple-scale { display: block; max-width: 520px; }
-.today-scale-marker.is-first { border-radius: 50%; width: 12px; top: -1px; bottom: auto; height: 12px; }
+.today-scale-marker.is-first { border-radius: var(--radius-round); width: 12px; top: -1px; bottom: auto; height: 12px; }
 .today-scale-marker.is-second { width: 12px; top: -1px; bottom: auto; height: 12px; border: 2px solid var(--ink-1); background: var(--bg); }
 .today-couple-apart { color: var(--ink-1); }
 
@@ -3911,7 +3921,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   width: 100%;
   height: 100%;
   border: 1px solid var(--line-1);
-  border-radius: 12px;
+  border-radius: var(--radius-4);
   background: var(--bg);
 }
 .compare-sides { display: none; }
@@ -4030,7 +4040,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   :is(.relationship-arcs, .luck-arcs) { position: relative; inset: auto; }
 }
 
-/* Icon controls keep the existing component states with one consistent hit area. */
+/* Icon controls keep the existing component states with one consistent hit area, and
+   their own shape: a pill, and the luck ribbon's Today a step's corners. */
 .segmented button.icon-control,
 .bar-action.icon-control,
 .topic-button.icon-control,
@@ -4044,7 +4055,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   min-width: 36px;
   min-height: 36px;
   padding: var(--space-2);
-  border-radius: 999px;
 }
 @media screen and (max-width: 640px), screen and (pointer: coarse) {
   .segmented button.icon-control,

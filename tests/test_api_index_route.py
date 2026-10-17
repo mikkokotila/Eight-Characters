@@ -30,6 +30,7 @@ EXPLORER_ASSETS = (
 SPACING_PROPERTIES = re.compile(
     r'^(margin|padding)(-(top|right|bottom|left|block|inline)(-(start|end))?)?$|^(row-|column-)?gap$'
 )
+RADIUS_PROPERTIES = re.compile(r'^border(-(top|bottom|start|end)-(left|right|start|end))?-radius$')
 RAW_LENGTH = re.compile(r'(?<![\w.-])-?\d*\.?\d+(px|em|rem)\b')
 # A size from the type scale; or one held against a scale, as Today's days recede by
 # theirs while their words keep the smallest size for content (the token times the
@@ -295,8 +296,9 @@ class TestApiIndexRoute(unittest.TestCase):
                     if lang == 'en':
                         self.assertEqual(found.group(2), stage['name'])
 
-    def test_stylesheet_takes_spacing_type_and_ink_from_its_tokens(self) -> None:
-        # Values are defined once, as tokens on :root; everything else refers to them.
+    def test_stylesheet_takes_its_values_from_its_tokens(self) -> None:
+        # Values are defined once, as tokens on :root; everything else refers to them:
+        # spacing, type, tracking, ink and corner radii.
         problems: list[str] = []
         css = self.client.get('/static/style.css').text
         for selector, name, value in _css_declarations(css):
@@ -314,6 +316,9 @@ class TestApiIndexRoute(unittest.TestCase):
                 problems.append(f'tracking off the scale: {where}')
             elif SPACING_PROPERTIES.match(name) and RAW_LENGTH.search(tokens_removed):
                 problems.append(f'raw spacing: {where}')
+            # A radius is a token, or a share of the box (the arcs' half-ellipses).
+            elif RADIUS_PROPERTIES.match(name) and RAW_LENGTH.search(tokens_removed):
+                problems.append(f'raw radius: {where}')
         self.assertEqual(problems, [])
 
     def test_tab_icon_is_linked_and_served(self) -> None:
