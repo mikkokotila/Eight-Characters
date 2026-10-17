@@ -64,6 +64,8 @@ async function openLibrary(page) {
   await page.locator('#library-dialog').waitFor({ state: 'visible' });
   await page.waitForFunction(() => !document.getElementById('library-dialog').hasAttribute('aria-busy'));
 }
+// The charts a list offers, by name, in its order.
+const offered = (page, select) => page.locator(`${select} option`).evaluateAll((items) => items.map((item) => item.textContent.split(' · ')[0]));
 async function openSettings(page) {
   await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
   await page.locator('#settings-view').waitFor({ state: 'visible' });
@@ -473,9 +475,128 @@ for (const profile of profiles) {
       const remove = page.locator(`#settings-charts-body [data-settings-action="remove"][data-chart="${mine}"]`);
       await remove.click();
       assert.equal(await remove.textContent(), 'Remove Mine? It is your chart, and its couples with First, an unnamed chart (born January 2, 1981), Third, and 1 more end too.');
-      // Pairing a chart in a couple waits for #96: Pair offers charts in no couple, and
-      // there are none.
+      // My chart is paired with every other: Pair offers the others, and never pairs one
+      // with my chart again.
+      assert.deepEqual(await offered(page, '#settings-pair-first'), ['First', 'Unnamed chart', 'Third', 'Fourth']);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Unnamed chart', 'Third', 'Fourth']);
+    });
+
+    check('Pair: the second list follows the first, without the chart or its partners; with no pair left the page says so, and a new birth can still be a partner', async (page) => {
+      await reset(page);
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      const first = await saveElsewhere(page, partnerNamed('First', '1980-01-02'));
+      const second = await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
+      await changeElsewhere(page, 'PUT', '/api/account/my-chart', { chart: mine });
+      await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
+      await openSettings(page);
+      // The first list starts at my chart; the second offers what it can pair with.
+      assert.deepEqual(await offered(page, '#settings-pair-first'), ['Mine', 'First', 'Second']);
+      assert.equal(await page.locator('#settings-pair-first').inputValue(), mine);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Second']);
+      // Another first: the second list follows it, and the first keeps focus.
+      await page.locator('#settings-pair-first').focus();
+      await page.locator('#settings-pair-first').selectOption(second);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Mine', 'First']);
+      assert.equal(await page.evaluate(() => document.activeElement?.id), 'settings-pair-first');
+      await page.locator('#settings-pair-first').selectOption(first);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Second']);
+      // Paired from the lists: my chart is in two couples now.
+      await page.locator('#settings-pair-first').selectOption(second);
+      await page.locator('#settings-pair-second').selectOption(mine);
+      await page.locator('[data-settings-action="pair"]').click();
+      await page.waitForFunction(() => document.querySelectorAll('#settings-couples-body .couple-card').length === 2);
+      assert.deepEqual((await read(page)).couples.map((couple) => couple.charts), [[mine, first], [second, mine]]);
+      // My chart is paired with every other now: the lists start at the first chart left.
+      assert.deepEqual(await offered(page, '#settings-pair-first'), ['First', 'Second']);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Second']);
+      await page.locator('[data-settings-action="pair"]').click();
+      await page.waitForFunction(() => document.querySelectorAll('#settings-couples-body .couple-card').length === 3);
+      // No pair is left to form: the page says so instead of offering Pair.
       assert.equal(await page.locator('#settings-pair-first').count(), 0);
+      assert.ok((await page.locator('#settings-couples-body').textContent()).includes('No pair is left to form: each chart is paired with every other it can be.'));
+      // A new birth can still be the partner of a chart paired with every other.
+      assert.deepEqual(await offered(page, '#settings-partner-of'), ['Mine', 'First', 'Second']);
+      assert.equal(await page.locator('#settings-partner-of').inputValue(), mine);
+      await page.locator('[data-settings-action="add-partner"]').click();
+      await page.locator('#save-note').waitFor({ state: 'visible' });
+      await page.locator('#save-name').fill('Fourth');
+      await page.locator('#date').fill('1983-01-02');
+      await page.locator('#time').fill('07:45');
+      await page.locator('#location').fill('Helsinki');
+      await page.locator('#location-suggestions .location-suggestion').click();
+      await page.locator('.gender-option input[value="female"]').check();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#settings-view').waitFor({ state: 'visible' });
+      const now = await read(page);
+      const fourth = now.charts.find((chart) => chart.name === 'Fourth').id;
+      assert.deepEqual(now.couples.map((couple) => couple.charts).at(-1), [mine, fourth]);
+      assert.equal(now.couples.filter((couple) => couple.charts.includes(mine)).length, 3);
+    });
+
+    check('under a plan’s cap a chart at it is in neither list, the page says why, and marked past it your chart says the partner kept from before did not pair', async (page) => {
+      await reset(page);
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      const first = await saveElsewhere(page, partnerNamed('First', '1980-01-02'));
+      await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
+      const third = await saveElsewhere(page, partnerNamed('Third', '1982-01-02'));
+      await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
+      // A plan that keeps one couple per chart, as one may once plans are sold, and Third
+      // waiting as a partner kept from before charts: given to the page's reads.
+      await page.route('**/api/account/settings', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        const response = await route.fetch();
+        return route.fulfill({ response, json: { ...(await response.json()), couples_per_chart: 1, pending_partner: third } });
+      });
+      await openSettings(page);
+      assert.deepEqual(await offered(page, '#settings-pair-first'), ['Second', 'Third']);
+      assert.deepEqual(await offered(page, '#settings-pair-second'), ['Third']);
+      assert.deepEqual(await offered(page, '#settings-partner-of'), ['Second', 'Third']);
+      assert.ok((await page.locator('#settings-couples-body').textContent()).includes('On your plan a chart is in one couple at most: a chart in a couple already is not offered.'));
+      // Mine, at the cap, marked as yours: the API's answer has no couple with Third, and
+      // the page says why.
+      await page.locator('#settings-mine-choice').selectOption(mine);
+      await page.locator('[data-settings-action="mark"]').click();
+      await page.waitForFunction(() => document.querySelector('.toast').textContent !== '');
+      assert.equal(await page.locator('.toast').textContent(), 'Your chart is marked. It is in as many couples as your plan allows, so Third did not pair with it and waits no longer.');
+    });
+
+    check('a chart with many partners names three and how many more, and stays inside the page', async (page) => {
+      await reset(page);
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      for (let index = 0; index < 10; index += 1) {
+        const partner = await saveElsewhere(page, partnerNamed(`Partner ${index + 1}`, `${1970 + index}-03-04`));
+        await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partner] });
+      }
+      await openSettings(page);
+      const marks = await page.locator(`#settings-charts-body .saved-card[data-chart="${mine}"] .saved-head`).textContent();
+      assert.ok(marks.includes('Couple with Partner 1, Partner 2, Partner 3, and 7 more'), marks);
+      assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 10);
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');
+    });
+
+    check('a pair formed already is refused in the page’s language, without asking', async (page) => {
+      await reset(page);
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      const first = await saveElsewhere(page, partnerNamed('First', '1980-01-02'));
+      await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
+      await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
+      await openSettings(page);
+      // The lists never offer it; chosen all the same (as a stale list might), it is
+      // refused before the API is asked.
+      const asked = [];
+      page.on('request', (request) => {
+        if (new URL(request.url()).pathname === '/api/account/couples') asked.push(request.method());
+      });
+      await page.locator('#settings-pair-first').selectOption(mine);
+      await page.locator('#settings-pair-second').evaluate((select, id) => {
+        select.add(new Option('First', id));
+        select.value = id;
+      }, first);
+      await page.locator('[data-settings-action="pair"]').click();
+      await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('These two charts are a couple already.'));
+      assert.deepEqual(asked, []);
+      assert.equal((await read(page)).couples.length, 1);
     });
 
     check('an answer naming one chart twice in a couple, or the same pair twice, is refused, never drawn', async (page) => {
@@ -496,6 +617,21 @@ for (const profile of profiles) {
         await openSettings(page);
         await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('could not be read'));
         assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 0);
+      }
+      // Nor without the plan's cap, or with one that is no count of couples.
+      for (const cap of [undefined, 0, '1', 1.5]) {
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
+        await page.route('**/api/account/settings', async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback();
+          const response = await route.fetch();
+          const value = await response.json();
+          if (cap === undefined) delete value.couples_per_chart;
+          else value.couples_per_chart = cap;
+          return route.fulfill({ response, json: value });
+        });
+        await openSettings(page);
+        await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('could not be read'));
+        assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 0, String(cap));
       }
     });
 

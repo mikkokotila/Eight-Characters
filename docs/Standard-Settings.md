@@ -37,13 +37,22 @@ Settings have three parts for them:
   saved charts to mark; and **Add a new birth**, saved as yours. Signed in, the site's
   bare address opens your chart (see below).
 - **Couples**: each couple, with both charts' pillars, and End the couple, which ends
-  that couple alone and keeps both charts. A chart can be in several couples, each with
-  its own card, in the order paired; pairing a chart that is in a couple already comes
-  with #96, so for now two saved charts not in a couple can be paired, and **Add the
-  partner as a new birth** saves one and pairs it with the chosen chart in one write.
-  A partner's chart kept from before accounts kept charts is listed as waiting, and
-  pairs with your chart once you mark one; marking it, or saving a new birth as yours,
-  then says with whom it paired.
+  that couple alone and keeps both charts. A chart can be in any number of couples,
+  each with its own card, in the order paired.
+  - **Pair** joins two saved charts. Its first list offers each chart that can take
+    another couple and is not yet paired with every chart it could be, starting at
+    yours; its second list follows the first, offering only the charts the first can
+    pair with (never itself or one of its partners). With no pair left to form, the
+    page says so instead.
+  - **Add the partner as a new birth** saves one and pairs it with the chosen chart in
+    one write, for any chart that can take another couple, even one paired with every
+    other.
+  - On a plan that caps how many couples a chart may be in (none does for now), a
+    chart at the cap is in neither list, and the page says why.
+  - A partner's chart kept from before accounts kept charts is listed as waiting, and
+    pairs with your chart once you mark one; marking it, or saving a new birth as
+    yours, then says with whom it paired, or, with your chart at its plan's cap, that
+    it did not and waits no longer.
 - **Saved charts**: each with Open, Rename, Correct the birth and Remove. Rename starts
   from the name as it is, quotes and all. Remove asks once more on its own button,
   saying what else ends: the chart's being yours, each of its couples (naming the other
