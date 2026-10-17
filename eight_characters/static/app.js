@@ -96,6 +96,7 @@ document.addEventListener('DOMContentLoaded', () => {
     timeStyle: withSeconds ? 'medium' : 'short', hourCycle: 'h23', timeZone: 'UTC',
   }).format(reading);
   // Whole seconds, or with `tenths` to a tenth of a second (the exact values on demand).
+  // A number and its unit are joined by a no-break space, so a line never parts them.
   const formatDuration = (totalSeconds, tenths = false) => {
     const scale = tenths ? 10 : 1;
     let remaining = Math.round(totalSeconds * scale);
@@ -103,13 +104,13 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const [size, unit] of [[86400, 'unit_days'], [3600, 'unit_hours'], [60, 'unit_minutes']]) {
       const amount = Math.floor(remaining / (size * scale));
       remaining -= amount * size * scale;
-      if (amount) parts.push(`${amount} ${requiredTranslation(unit)}`);
+      if (amount) parts.push(`${amount}\u00a0${requiredTranslation(unit)}`);
     }
     if (remaining || tenths || !parts.length) {
       const digits = tenths ? 1 : 0;
       const seconds = new Intl.NumberFormat(locale(), { minimumFractionDigits: digits, maximumFractionDigits: digits })
         .format(remaining / scale);
-      parts.push(`${seconds} ${requiredTranslation('unit_seconds')}`);
+      parts.push(`${seconds}\u00a0${requiredTranslation('unit_seconds')}`);
     }
     return parts.join(' ');
   };
@@ -281,6 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (pending) {
       createChartBtn.textContent = t('creating_chart');
     }
+    // Room for the working label, so the button keeps its width while it works.
+    createChartBtn.dataset.reserve = t('creating_chart');
     const placeholderNodes = document.querySelectorAll('[data-i18n-placeholder]');
     placeholderNodes.forEach((node) => {
       const key = node.getAttribute('data-i18n-placeholder');

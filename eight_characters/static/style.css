@@ -19,6 +19,15 @@
   font-display: swap;
   src: url('/explorer/vendor/fonts/CormorantGaramond-normal-400.woff2') format('woff2');
 }
+/* Its italic, so that an italic line is drawn in Cormorant's own italic rather than
+   slanted by the browser. Manrope has no italic: italic text takes the serif. */
+@font-face {
+  font-family: 'Cormorant Garamond';
+  font-style: italic;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url('/explorer/vendor/fonts/CormorantGaramond-italic-400.woff2') format('woff2');
+}
 /* The ten stems and twelve branches, and nothing else: other characters fall
    through to the next font in the stack. Every stack names it after its Latin
    face, so these characters look the same wherever they appear.
@@ -52,10 +61,11 @@
   --line-1: rgba(42, 37, 32, 0.12);
   --line-2: rgba(42, 37, 32, 0.3);
   /* Surfaces over the page: at rest, raised (hover, a pressed control), and
-     nearly opaque for what floats over content. */
+     opaque for what floats over content (white at 80% on the page's tone), so
+     nothing beneath reads through it. */
   --surface-1: rgba(255, 255, 255, 0.3);
   --surface-2: rgba(255, 255, 255, 0.5);
-  --surface-3: rgba(255, 255, 255, 0.8);
+  --surface-3: color-mix(in srgb, white 80%, var(--bg));
   /* The page's own tone over a surface: an option under the pointer, and the
      active one. */
   --surface-page-1: rgba(245, 240, 232, 0.85);
@@ -66,6 +76,8 @@
   /* Behind a dialog over the chart. */
   --backdrop: rgba(42, 37, 32, 0.28);
   --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
+  /* The place fields' pin, drawn in the ink: the dark theme draws it in its own. */
+  --pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z' stroke='%232A2520' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='10' r='2.7' stroke='%232A2520' stroke-width='1.8'/%3E%3C/svg%3E");
 
   --metal-bg: #C8C2B8;
   --metal-text: #33302C;
@@ -106,6 +118,8 @@
   --text-4: 22px;  /* a detail's heading; a pillar's characters */
   --text-5: 32px;  /* a page's title */
   --text-6: 52px;  /* the character on a card */
+  /* A control's outline icon. */
+  --control-icon: 18px;
   --tracking-1: 0.02em;  /* text */
   --tracking-2: 0.18em;  /* capitals */
   --tracking-3: 0.3em;   /* the eyebrow above a title */
@@ -163,7 +177,7 @@
     --line-2: rgba(238, 231, 220, 0.34);
     --surface-1: rgba(255, 255, 255, 0.04);
     --surface-2: rgba(255, 255, 255, 0.08);
-    --surface-3: rgba(44, 40, 36, 0.96);
+    --surface-3: color-mix(in srgb, #2C2824 96%, var(--bg));
     --surface-page-1: rgba(28, 25, 22, 0.85);
     --surface-page-2: rgba(28, 25, 22, 0.92);
     --shadow-1: 0 2px 16px rgba(0, 0, 0, 0.35);
@@ -171,6 +185,7 @@
     --shadow-sheet: 0 -8px 24px rgba(0, 0, 0, 0.45);
     --backdrop: rgba(0, 0, 0, 0.55);
     --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%);
+    --pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z' stroke='%23EEE7DC' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='10' r='2.7' stroke='%23EEE7DC' stroke-width='1.8'/%3E%3C/svg%3E");
 
     --metal-bg: #5C5851;
     --metal-text: #F3EFE8;
@@ -185,13 +200,20 @@
   }
 }
 
+/* The browser's own parts take the page's ink: a radio button's mark, and the
+   scrollbars where the system always shows them (a thumb in the stronger line). */
+:root {
+  accent-color: var(--ink-1);
+  scrollbar-color: var(--line-2) transparent;
+}
+
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 /* One control vocabulary: the page's ink, local Lucide outlines, and original labels. */
 .control-icon {
   display: inline-block;
-  width: 18px;
-  height: 18px;
+  width: var(--control-icon);
+  height: var(--control-icon);
   flex: 0 0 auto;
   vertical-align: -0.2em;
   margin-inline-end: var(--space-2);
@@ -261,6 +283,8 @@ body {
   background: var(--bg);
   color: var(--ink-1);
   font-family: var(--font-sans);
+  /* Text that sets no size of its own is running text, not the browser's 16px. */
+  font-size: var(--text-2);
   min-height: 100vh;
   display: flex;
   align-items: center;
@@ -342,14 +366,15 @@ body {
 }
 .page-tools .language-switch { margin: 0; }
 
-/* Date/time row */
+/* Date/time row. The place's status room below it (three lines, kept so the form stays
+   put) already parts it from what follows, so its margin is the fields' own gap. */
 .datetime-row {
   display: flex;
   gap: var(--space-5);
   justify-content: center;
   align-items: flex-start;
   flex-wrap: wrap;
-  margin-bottom: var(--space-7);
+  margin-bottom: var(--space-5);
 }
 
 .field-group {
@@ -415,7 +440,7 @@ body {
   text-align: left;
   padding-left: var(--space-4);
   padding-right: var(--space-7);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z' stroke='%232A2520' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='10' r='2.7' stroke='%232A2520' stroke-width='1.8'/%3E%3C/svg%3E");
+  background-image: var(--pin);
   background-repeat: no-repeat;
   background-position: right 14px center;
 }
@@ -604,6 +629,17 @@ body {
   cursor: progress;
 }
 
+/* Room for that label at rest too (app.js names it in data-reserve), so the button keeps
+   its width while it works: an empty line as wide as the icon and the working label. */
+.submit-btn[data-reserve]::after {
+  content: attr(data-reserve);
+  display: block;
+  height: 0;
+  overflow: hidden;
+  visibility: hidden;
+  padding-inline-start: calc(var(--control-icon) + var(--space-2));
+}
+
 
 /* ═══════════════════════════════════════════════════════
    CHART VIEW — exact match to template
@@ -642,6 +678,7 @@ body {
   font-size: var(--text-2);
   letter-spacing: var(--tracking-1);
   color: var(--ink-2);
+  text-wrap: balance;
 }
 .chart-tools {
   display: flex;
@@ -1078,6 +1115,8 @@ body {
   line-height: 18px;
   letter-spacing: var(--tracking-1);
   color: var(--ink-1);
+  /* Wrapped, its lines even: no word is left alone on the last. */
+  text-wrap: balance;
 }
 .pillar-mark:not(:empty)::before {
   content: '';
@@ -1492,6 +1531,8 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* A role and what is new in it wrap whole rather than lose their end. */
+.life-phase-role { overflow: visible; white-space: normal; text-wrap: balance; }
 .life-new { font-weight: 600; color: var(--ink-1); }
 .life-phase-years { font-variant-numeric: tabular-nums; }
 /* What only the life path lists: a phase's age, and its stem's element or its branch's
@@ -2350,6 +2391,7 @@ body {
 .chart-dialog {
   width: min(560px, calc(100% - 2 * var(--space-4)));
   max-height: min(70vh, 640px);
+  scrollbar-width: thin;
   margin: 12vh auto auto;
   padding: var(--space-5);
   border: 1px solid var(--line-1);
@@ -2433,6 +2475,7 @@ kbd {
   margin-top: var(--space-3);
   overflow-y: auto;
   list-style: none;
+  scrollbar-width: thin;
 }
 .palette-option {
   display: flex;
@@ -2491,6 +2534,8 @@ kbd {
   min-width: 0;
   border: 0;
 }
+/* A switch is as wide as its choices, not the dialog. */
+.account-field > .segmented { justify-self: start; }
 .account-field label,
 .account-field legend,
 .account-label {
@@ -2541,7 +2586,6 @@ kbd {
 .account-language-options input {
   width: 18px;
   height: 18px;
-  accent-color: var(--ink-1);
 }
 .account-note {
   max-width: 35em;
@@ -2578,6 +2622,8 @@ kbd {
   flex-wrap: wrap;
   gap: var(--space-2);
 }
+/* Deleting the account stands apart from the rest, in the error's ink. */
+.account-actions.account-danger { margin-top: var(--space-2); }
 .account-delete {
   display: grid;
   gap: var(--space-3);
@@ -3087,7 +3133,7 @@ kbd {
 .is-embedded #page-switch,
 .is-embedded #library-btn,
 .is-embedded .account-btn { display: none; }
-.is-embedded { --page-block: var(--space-4); }
+.is-embedded { --page-block: var(--space-4); scrollbar-width: thin; }
 .is-embedded body { padding: var(--page-block) var(--space-4); }
 
 /* ── A comparison: two charts side by side, each in its own frame ──
@@ -3249,6 +3295,16 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
+/* A label with its list: they wrap together, the list under its label when the line is
+   too short for both. */
+.settings-pick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
+  min-width: 0;
+  max-width: 100%;
+}
 .settings-choose label { font-size: var(--text-1); color: var(--ink-2); }
 .settings-choose select,
 .settings-rename input {
@@ -3290,13 +3346,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .library-btn:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 .library-btn .control-icon { width: 15px; height: 15px; }
 .library-dialog { width: min(640px, calc(100% - 2 * var(--space-4))); }
-.library-dialog h2 {
-  margin-bottom: var(--space-4);
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: var(--text-4);
-  letter-spacing: var(--tracking-1);
-}
 .library-dialog[aria-busy='true'] { cursor: progress; }
 .library-list {
   list-style: none;
@@ -3329,6 +3378,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   gap: var(--space-3);
   max-width: 560px;
 }
+/* Settings reads from the left, its field's label and status with it; a page that flows
+   needs room for one status line, not the start page's three. */
+.settings-place-form .field-group { align-items: flex-start; }
+.settings-place-form .location-group .field-status { min-height: 1lh; text-align: start; }
 .settings-schools {
   display: flex;
   flex-direction: column;
@@ -3437,10 +3490,16 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-day {
   --x: 0px;
   --s: 1;
+  /* The days recede by their scale; their words keep their size against it, so none is
+     drawn under the smallest size for content (motion.js moves the scale in a step). */
+  --held: calc(1 / var(--flow-day-scale, var(--s)));
   position: absolute;
   top: var(--space-2);
   left: 50%;
   display: grid;
+  /* As wide as a card, whatever its words: a long verdict wraps, it never widens its
+     day into the next. */
+  grid-template-columns: minmax(0, 1fr);
   justify-items: center;
   gap: var(--space-2);
   width: var(--card);
@@ -3459,9 +3518,15 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-day[data-place='after'] { --x: calc(2.1 * var(--card) + 3 * var(--gap)); --s: 0.4; visibility: hidden; }
 .today-days.is-dragging .today-day { transition: none; }
 .today-day-when { display: grid; justify-items: center; text-align: center; }
-.today-day-weekday { font-family: var(--font-serif); font-size: var(--text-3); color: var(--ink-1); }
-.today-day-date { font-size: var(--text-1); color: var(--ink-2); }
-.today-day-pull { font-size: var(--text-1); color: var(--ink-1); white-space: nowrap; }
+.today-day-weekday { font-family: var(--font-serif); font-size: max(var(--text-3), calc(var(--text-1) * var(--held))); color: var(--ink-1); }
+.today-day-date { font-size: calc(var(--text-1) * var(--held)); color: var(--ink-2); }
+.today-day :is(.today-card-pinyin, .today-card-name) { font-size: calc(var(--text-1) * var(--held)); }
+/* A neighbour's verdict wraps within its day, its mark with its first word; the middle
+   day's, under everything else, keeps to one line. The mark keeps its size too. */
+.today-day-pull { font-size: calc(var(--text-1) * var(--held)); color: var(--ink-1); text-align: center; text-wrap: balance; }
+.today-day.is-centre .today-day-pull { white-space: nowrap; }
+.today-pull-lead { white-space: nowrap; }
+.today-day .today-band-mark { scale: var(--held); margin-right: calc(var(--space-1) * var(--held)); }
 /* A date not known yet: the cards' outlines, and "…" for the pull. */
 .today-cards.is-pending .today-card { min-height: 96px; border: 1px dashed var(--line-2); background: var(--surface-1); }
 .today-cards.is-pending .today-card::before { content: none; }
@@ -3717,7 +3782,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 .today-relationship-kind { font-weight: 500; color: var(--ink-1); }
 .today-relationship-members { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); color: var(--ink-2); }
-.today-relationship-line { flex-basis: 100%; color: var(--ink-2); font-style: italic; }
+.today-relationship-line { flex-basis: 100%; color: var(--ink-2); font-family: var(--font-serif); font-size: var(--text-3); font-style: italic; }
 /* The pillars a relationship joins: the day's and the chart's own, each named. */
 .today-relationship-figure {
   display: flex;

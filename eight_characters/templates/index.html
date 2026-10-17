@@ -473,13 +473,15 @@
 
 <!-- The saved charts, from the chart's heading (library.js). -->
 <dialog id="library-dialog" class="chart-dialog library-dialog" aria-labelledby="library-title">
-  <h2 id="library-title" data-i18n="library_title">Tallennetut kartat</h2>
+  <div class="chart-dialog-bar">
+    <h2 id="library-title" class="chart-dialog-title" data-i18n="library_title">Tallennetut kartat</h2>
+    <button type="button" id="library-close" class="panel-close" data-i18n="panel_close">Sulje</button>
+  </div>
   <p id="library-status" class="settings-status hidden" role="status"></p>
   <ul id="library-list" class="library-list"></ul>
   <div class="account-actions">
     <button type="button" id="library-save" class="bar-action hidden" data-i18n="library_save">Tallenna tämä kartta</button>
     <button type="button" id="library-settings" class="bar-action" data-i18n="library_settings">Asetukset</button>
-    <button type="button" id="library-close" class="bar-action" data-i18n="library_close">Sulje</button>
   </div>
 </dialog>
 
@@ -564,7 +566,10 @@
       <button type="button" id="account-export" class="bar-action" data-i18n="account_export">Lataa tietoni</button>
       <button type="button" id="account-sign-out" class="bar-action" data-i18n="account_sign_out">Kirjaudu ulos</button>
       <button type="button" id="account-sign-out-everywhere" class="bar-action" data-i18n="account_sign_out_everywhere">Kirjaudu ulos kaikilta laitteilta</button>
-      <button type="button" id="account-delete-open" class="bar-action" aria-expanded="false" aria-controls="account-delete" data-i18n="account_delete">Poista tili</button>
+    </div>
+    <!-- Deleting the account, apart from the rest. -->
+    <div class="account-actions account-danger">
+      <button type="button" id="account-delete-open" class="bar-action is-danger" aria-expanded="false" aria-controls="account-delete" data-i18n="account_delete">Poista tili</button>
     </div>
     <form id="account-delete" class="account-delete hidden" novalidate>
       <p class="account-note" data-i18n="account_delete_note"></p>

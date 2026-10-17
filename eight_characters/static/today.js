@@ -460,10 +460,15 @@
         placeDay(node, node.dataset.place);
       }
     };
+    // A verdict wraps on a narrow day; its mark stays with its first word.
+    const pullMarkup = (day) => {
+      const [lead, ...rest] = pull(day).split(' ');
+      return `<span class="today-day-pull band-${esc(day.band)}"><span class="today-pull-lead"><span class="today-band-mark" aria-hidden="true"></span>${esc(lead)}</span>${rest.length ? esc(` ${rest.join(' ')}`) : ''}</span>`;
+    };
     const dayMarkup = (day) => `${cards(day.pillar, 'large')}
       <span class="today-day-when"><span class="today-day-weekday">${esc(weekdayOf(day.date))}</span>
         <span class="today-day-date">${esc(dayMonthOf(day.date))}</span></span>
-      <span class="today-day-pull band-${esc(day.band)}"><span class="today-band-mark" aria-hidden="true"></span>${esc(pull(day))}</span>`;
+      ${pullMarkup(day)}`;
     // A date not known yet: its date, and "…" for the pillar and the pull ("loading" to a
     // screen reader).
     const pendingMarkup = (date) => `<span class="today-cards is-large is-pending" aria-hidden="true"><span class="today-card is-stem"></span><span class="today-card is-branch"></span></span>

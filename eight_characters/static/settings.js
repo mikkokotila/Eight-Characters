@@ -283,8 +283,8 @@
       const others = settings.charts.filter((chart) => chart.id !== settings.my_chart);
       const choose = others.length === 0 ? '' : `
         <div class="settings-choose">
-          <label for="settings-mine-choice">${esc(t(mine === null ? 'settings_mine_choose' : 'settings_mine_change'))}</label>
-          <select id="settings-mine-choice">${options(others)}</select>
+          <span class="settings-pick"><label for="settings-mine-choice">${esc(t(mine === null ? 'settings_mine_choose' : 'settings_mine_change'))}</label>
+          <select id="settings-mine-choice">${options(others)}</select></span>
           ${action('mark', null, t('settings_mine_mark'))}
         </div>`;
       mineBody.innerHTML = `${mine === null
@@ -344,16 +344,16 @@
         ${capped ? `<p class="settings-note">${esc(cap())}</p>` : ''}
         ${first !== null ? `
           <div class="settings-choose settings-pair">
-            <label for="settings-pair-first">${esc(t('settings_pair_first'))}</label>
-            <select id="settings-pair-first">${options(firsts, first.id)}</select>
-            <label for="settings-pair-second">${esc(t('settings_pair_second'))}</label>
-            <select id="settings-pair-second"></select>
+            <span class="settings-pick"><label for="settings-pair-first">${esc(t('settings_pair_first'))}</label>
+            <select id="settings-pair-first">${options(firsts, first.id)}</select></span>
+            <span class="settings-pick"><label for="settings-pair-second">${esc(t('settings_pair_second'))}</label>
+            <select id="settings-pair-second"></select></span>
             ${action('pair', null, t('settings_pair'))}
           </div>` : settings.charts.length < 2 ? '' : `<p class="settings-note">${esc(t('settings_pair_none'))}</p>`}
         ${partnerOf === null ? '' : `
           <div class="settings-choose">
-            <label for="settings-partner-of">${esc(t('settings_partner_of'))}</label>
-            <select id="settings-partner-of">${options(open, partnerOf.id)}</select>
+            <span class="settings-pick"><label for="settings-partner-of">${esc(t('settings_partner_of'))}</label>
+            <select id="settings-partner-of">${options(open, partnerOf.id)}</select></span>
             ${action('add-partner', null, t('settings_partner_new_birth'))}
           </div>`}`;
       drawPairSecond();

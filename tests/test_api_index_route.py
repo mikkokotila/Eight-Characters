@@ -31,6 +31,14 @@ SPACING_PROPERTIES = re.compile(
     r'^(margin|padding)(-(top|right|bottom|left|block|inline)(-(start|end))?)?$|^(row-|column-)?gap$'
 )
 RAW_LENGTH = re.compile(r'(?<![\w.-])-?\d*\.?\d+(px|em|rem)\b')
+# A size from the type scale; or one held against a scale, as Today's days recede by
+# theirs while their words keep the smallest size for content (the token times the
+# inverse of the scale, `--held`), at least the token itself.
+FONT_SIZE = re.compile(
+    r'var\(--text-\d\)'
+    r'|calc\(var\(--text-\d\) \* var\(--held\)\)'
+    r'|max\(var\(--text-\d\), calc\(var\(--text-\d\) \* var\(--held\)\)\)'
+)
 
 
 def _css_declarations(css: str) -> list[tuple[str, str, str]]:
@@ -295,7 +303,7 @@ class TestApiIndexRoute(unittest.TestCase):
             if 'rgba(42,37,32' in re.sub(r'\s+', '', value):
                 problems.append(f'raw ink: {where}')
             tokens_removed = re.sub(r'var\(--[a-z0-9-]+\)', '', value)
-            if name == 'font-size' and not re.fullmatch(r'var\(--text-\d\)', value):
+            if name == 'font-size' and not re.fullmatch(FONT_SIZE, value):
                 problems.append(f'font size off the scale: {where}')
             elif name == 'letter-spacing' and not re.fullmatch(
                 r'var\(--tracking-\d\)|0|normal', value
