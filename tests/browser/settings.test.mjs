@@ -443,6 +443,62 @@ for (const profile of profiles) {
       assert.equal(after.charts.length, 2);
     });
 
+    check('a chart in several couples, as #96 will keep them: every partner named, past three as so many more, and removal naming each couple', async (page) => {
+      await reset(page);
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      const partners = [];
+      for (const [index, name] of ['First', null, 'Third', 'Fourth'].entries()) {
+        partners.push(await saveElsewhere(page, { ...partnerNamed(name, `198${index}-01-02`), name }));
+      }
+      await changeElsewhere(page, 'PUT', '/api/account/my-chart', { chart: mine });
+      await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partners[0]] });
+      // The other couples, as #96's release keeps them: this release reads them, and
+      // cannot pair them yet.
+      const extra = partners.slice(1).map((id, index) => ({ id: `${'a'.repeat(31)}${index}`, charts: [id, mine] }));
+      await page.route('**/api/account/settings', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        const response = await route.fetch();
+        const value = await response.json();
+        return route.fulfill({ response, json: { ...value, couples: [...value.couples, ...extra] } });
+      });
+      await openSettings(page);
+      // My chart names every partner in the order paired, an unnamed one by its birth
+      // date, and past three says how many more.
+      const marks = await page.locator(`#settings-charts-body .saved-card[data-chart="${mine}"] .saved-head`).textContent();
+      assert.match(marks, /Couple with First, an unnamed chart born [^,]+, Third, and 1 more/);
+      // Each partner names my chart; each couple has its own card.
+      assert.match(await page.locator(`#settings-charts-body .saved-card[data-chart="${partners[3]}"] .saved-head`).textContent(), /Couple with Mine/);
+      assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 4);
+      // Removing my chart names each couple it ends.
+      const remove = page.locator(`#settings-charts-body [data-settings-action="remove"][data-chart="${mine}"]`);
+      await remove.click();
+      assert.match(await remove.textContent(), /^Remove Mine\? It is your chart, and its couples with First, an unnamed chart born [^,]+, Third, and 1 more end too\.$/);
+      // Pairing a chart in a couple waits for #96: Pair offers charts in no couple, and
+      // there are none.
+      assert.equal(await page.locator('#settings-pair-first').count(), 0);
+    });
+
+    check('an answer naming one chart twice in a couple, or the same pair twice, is refused, never drawn', async (page) => {
+      await reset(page);
+      const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
+      const partner = await saveElsewhere(page, partnerNamed('Partner'));
+      await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partner] });
+      for (const couples of [
+        [{ id: 'b'.repeat(32), charts: [mine, mine] }],
+        [{ id: 'b'.repeat(32), charts: [mine, partner] }, { id: 'c'.repeat(32), charts: [partner, mine] }],
+      ]) {
+        await page.unrouteAll({ behavior: 'ignoreErrors' });
+        await page.route('**/api/account/settings', async (route) => {
+          if (route.request().method() !== 'GET') return route.fallback();
+          const response = await route.fetch();
+          return route.fulfill({ response, json: { ...(await response.json()), couples } });
+        });
+        await openSettings(page);
+        await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('could not be read'));
+        assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 0);
+      }
+    });
+
     check('Cancel on a birth added from Settings saves nothing and goes back', async (page) => {
       await reset(page);
       await openSettings(page);

@@ -73,7 +73,10 @@ see [Comparing two charts](Standard-Compare.md).
 ## Today and Settings
 
 A chart's day has an address of its own: `#today?` with the chart's link parts, then
-`day`, and `who` and `topic` where they apply. See [Today](Standard-Today.md#its-address).
+`day`, and `who`, `partner` and `topic` where they apply. See
+[Today](Standard-Today.md#its-address). `partner` is the one part that is not a birth: it
+is a saved chart's id in the account that opens the link, so in another account it names
+none of its charts, and the page says so.
 Settings are at `#settings` ([Settings](Standard-Settings.md)).
 
 ## Copy link

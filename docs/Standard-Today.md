@@ -23,8 +23,8 @@ From the top:
 
 - **The bar:** the date, the chart and where you are; Chart · Today; the day before,
   Today (where you are) and the day after; whose day, when the chart is in a couple;
-  FI · EN; Copy link; Copy as text; Print; Settings. Below 640px the actions show as
-  their icons.
+  With, the partner in view, when it is in several; FI · EN; Copy link; Copy as text;
+  Print; Settings. Below 640px the actions show as their icons.
 - **The days.** The chosen day in the middle, as the chart's cards: a stem card over
   its branch card, each in its own element's colours, its character with its pinyin,
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's
@@ -114,14 +114,29 @@ distance, never through the days between. With reduced motion, the days change i
 
 ## A partner's day
 
-When the chart on screen is a saved chart in a couple, the bar names its partner beside
-This chart. The partner's day turns the whole page to the partner's chart, counted at
-where you are, and the page says so; opening the partner's chart itself reads the same
-couple from its side. Marriage reads both: each pull, whether the day pulls you apart,
-the day at the spouse palace, and the day's relationships with the other chart. A chart
-that is not saved, or not in a couple, has no partner side. If the couple ends
-elsewhere, or the partner's chart no longer charts, the partner's day says so and
-offers the chart's own.
+When the chart on screen is a saved chart in a couple, the bar names its partner in
+view beside This chart. A chart can be in several couples: then **With** chooses the
+partner in view among its partners, in the order the couples were formed, an unnamed
+one by its birth and one that no longer charts shown but not chosen. Without a partner
+in the address, the first couple's partner is in view, and the page writes it into the
+address. Choosing another replaces the address, keeps whose day and the open topic, and
+on the partner's side turns to the chosen partner's side.
+
+The partner's day turns the whole page to the partner's chart, counted at where you
+are, and the page says so. Opening a partner's chart opens its own Today, which reads
+its own first couple unless its address names one. Marriage, the couple, In your chart,
+Copy as text and Print read the couple in view: each pull, whether the day pulls you
+apart, the day at the spouse palace, and the day's relationships with the other chart.
+A chart that is not saved, or not in a couple, has no partner side.
+
+A chart the address names that is not one of this chart's partners in your account (one
+unpaired, removed, from another account, or this chart itself) is never swapped for
+another partner: this chart's own day is read without a couple, and the page says why,
+with With offering its partners; on the partner's side the page says so and offers
+This chart, which goes back to this chart's own day with its first partner in view. If
+the partner's chart no longer charts, the page says so in the same way. A late answer
+for another partner is never drawn, copied or printed: the partner is part of what the
+day is read for.
 
 ## Its address
 
@@ -129,6 +144,7 @@ offers the chart's own.
 [Chart links](Standard-Links.md)), then:
 - `day`, the day shown, `YYYY-MM-DD`;
 - `who=partner` for the partner's day;
+- `partner`, the partner in view: a saved chart's id in your account (see above);
 - `topic`: `day`, `marriage`, `work`, `health`, or `pillar/day`, `pillar/month`,
   `pillar/year`, `pillar/luck`.
 

@@ -431,10 +431,8 @@ class Settings:
             raise RecordError('The same two charts form two couples.')
         if any(not set(couple.charts) <= set(ids) for couple in self.couples):
             raise RecordError('A couple names a chart the account does not keep.')
-        paired = [chart for couple in self.couples for chart in couple.charts]
-        if len(set(paired)) != len(paired):
-            # On every plan for now; a plan that allows more lifts this check alone.
-            raise RecordError('A chart is in one couple at most.')
+        # A chart is in any number of couples here: how many a chart may join is a
+        # rule for asking for a couple, never for reading a record (#96).
         if self.pending_partner is not None and (
             self.pending_partner not in ids or self.my_chart is not None
         ):
@@ -453,9 +451,15 @@ class Settings:
             (chart for chart in self.charts if chart.birth.chart_key() == key), None
         )
 
-    def couple_of(self, chart_id: str) -> Couple | None:
+    def couples_of(self, chart_id: str) -> tuple[Couple, ...]:
+        """The couples a saved chart is in, in the order they were formed."""
+        return tuple(couple for couple in self.couples if chart_id in couple.charts)
+
+    def couple_between(self, first: str, second: str) -> Couple | None:
+        """The couple two saved charts form, in either order, if they form one."""
+        pair = {first, second}
         return next(
-            (couple for couple in self.couples if chart_id in couple.charts), None
+            (couple for couple in self.couples if set(couple.charts) == pair), None
         )
 
 

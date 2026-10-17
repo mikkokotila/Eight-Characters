@@ -100,7 +100,10 @@
         && (value.my_chart === null || ids.has(value.my_chart))
         && (value.pending_partner === null || ids.has(value.pending_partner))
         && Array.isArray(value.couples) && value.couples.every((couple) => isId(couple?.id)
-          && Array.isArray(couple.charts) && couple.charts.length === 2 && couple.charts.every((id) => ids.has(id)))
+          && Array.isArray(couple.charts) && couple.charts.length === 2 && couple.charts.every((id) => ids.has(id))
+          && couple.charts[0] !== couple.charts[1])
+        // A chart can be in any number of couples (#98), each pair once.
+        && new Set(value.couples.map((couple) => [...couple.charts].sort().join(' '))).size === value.couples.length
         && Number.isInteger(value.chart_limit) && value.chart_limit > 0
         && (value.place === null || typeof value.place === 'object');
       if (!ok) throw new Error(t('settings_answer_error', { status: 200 }));
@@ -236,12 +239,20 @@
       return [format.date(reading), format.time(reading, birth.time.length > 5), birth.place.city].join(' · ');
     };
     const chartName = (chart) => chart.name ?? t('library_unnamed');
+    // A chart's partners as one list, in the order formed, past three "and N more"; an
+    // unnamed one by its birth date.
+    const listName = (chart) => chart.name ?? t('library_unnamed_born', {
+      date: format.date(format.parseWallClock(`${chart.date}T${chart.time}`)),
+    });
+    const names = (charts) => library.partnerList(charts, {
+      lang: language(), nameOf: listName, more: (count) => t('names_more', { count }),
+    });
     // A saved chart as a card: its name, its marks, its birth and its pillars.
     const card = (kept, chart, actions) => {
-      const partner = library.partnerOf(kept, chart.id);
+      const partners = library.partnersOf(kept, chart.id);
       const marks = [
         chart.id === kept.my_chart ? `<span class="saved-mark is-mine">${esc(t('library_mine'))}</span>` : '',
-        partner === null ? '' : `<span class="saved-mark">${esc(t('library_with', { name: chartName(partner) }))}</span>`,
+        partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', { names: names(partners) }))}</span>`,
         chart.id === kept.pending_partner ? `<span class="saved-mark">${esc(t('settings_waiting'))}</span>` : '',
       ].join('');
       return `<li class="saved-card" data-chart="${esc(chart.id)}">
@@ -274,7 +285,9 @@
     };
 
     const drawCouples = () => {
-      const single = settings.charts.filter((chart) => library.coupleOf(settings, chart.id) === null);
+      // Pairing a chart in a couple with another waits for #96: Pair offers charts in no
+      // couple, as before.
+      const single = settings.charts.filter((chart) => library.couplesOf(settings, chart.id).length === 0);
       const couples = settings.couples.map((couple) => {
         const [first, second] = couple.charts.map((id) => library.chartWith(settings, id));
         return `<li class="couple-card" data-couple="${esc(couple.id)}">
@@ -354,18 +367,20 @@
         if (latest === mine) latest = null;
       }
     };
-    // Removing a chart says first what else it ends: being your chart, its couple, or
-    // its wait to pair with your chart.
+    // Removing a chart says first what else it ends: being your chart, each of its
+    // couples, or its wait to pair with your chart.
     const removing = (chart) => {
       const name = chartName(chart);
-      const partner = library.partnerOf(drawn, chart.id);
-      const partnerName = partner === null ? null : chartName(partner);
+      const partners = library.partnersOf(drawn, chart.id);
+      const ends = partners.length === 0 ? null
+        : partners.length === 1 ? { key: 'couple', vars: { partner: chartName(partners[0]) } }
+          : { key: 'couples', vars: { partners: names(partners) } };
       if (chart.id === drawn.my_chart) {
-        return partner === null
+        return ends === null
           ? t('settings_chart_remove_confirm_mine', { name })
-          : t('settings_chart_remove_confirm_mine_couple', { name, partner: partnerName });
+          : t(`settings_chart_remove_confirm_mine_${ends.key}`, { name, ...ends.vars });
       }
-      if (partner !== null) return t('settings_chart_remove_confirm_couple', { name, partner: partnerName });
+      if (ends !== null) return t(`settings_chart_remove_confirm_${ends.key}`, { name, ...ends.vars });
       if (chart.id === drawn.pending_partner) return t('settings_chart_remove_confirm_pending', { name });
       return t('settings_chart_remove_confirm', { name });
     };

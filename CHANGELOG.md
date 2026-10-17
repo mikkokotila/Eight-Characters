@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.53.0
+
+Couples, step 1 (#98): everything that reads couples now reads a chart in any number of
+them. Pairing a chart that is in a couple already waits for #96, which can then roll
+back to this release safely.
+
+### Changed
+- **The record reads a chart in several couples**, as do the export, the backup and
+  its restore. The store still pairs a chart in one couple at most.
+- **Settings and the library name every partner of a chart**, in the order paired,
+  an unnamed one by its birth date, and past three say how many more. Removing a chart
+  names each couple it ends. A settings answer naming one chart twice in a couple, or
+  the same pair twice, is refused, never drawn.
+- **Today has a partner in view.** The address names it (`partner`, a saved chart's
+  id in your account); without one, the first couple's partner is written in. With
+  chooses among several. A chart named that is not one of this chart's partners in
+  your account is never swapped for another: this chart's own day is read without a
+  couple and the page says why. A late answer for another partner is never drawn.
+
+### Tests
+- `test_accounts_settings.py`: several couples per chart in the record, in a stored row,
+  in the export, and through an encrypted backup and its restore; a second couple is
+  still refused.
+- `settings.test.mjs`: every partner named, past three as so many more, an unnamed one
+  told apart; removal naming each couple; a malformed couples answer refused.
+  `today.test.mjs`: With and the address, a late answer for another partner never drawn,
+  a chart that is not a partner never swapped, on this chart's own day and the
+  partner's; a partner that no longer charts shown but never chosen; the partner kept
+  through a choice, the commands, steps, the language, reload and history, and left out
+  of the chart's own link; a malformed or repeated `partner` refused by name; With
+  emptied by a sign-out and by another account taken.
+
 ## 0.52.0
 
 ### Changed

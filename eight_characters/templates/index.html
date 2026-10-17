@@ -270,6 +270,11 @@
           <button type="button" data-who="self" aria-pressed="true" data-i18n="today_self">Tämä kartta</button>
           <button type="button" data-who="partner" aria-pressed="false"><span class="today-who-name"></span></button>
         </div>
+        <!-- With the chart in several couples: the partner in view. -->
+        <label class="today-partner hidden" id="today-partner-choice">
+          <span class="today-partner-label" data-i18n="today_partner_with">Kenen kanssa</span>
+          <select id="today-partner"></select>
+        </label>
         <div class="segmented" id="today-language" role="group" aria-labelledby="today-language-label">
           <span id="today-language-label" class="sr-only" data-i18n="language_label">Kieli</span>
           <button type="button" data-today-lang="fi" aria-pressed="false">FI</button>

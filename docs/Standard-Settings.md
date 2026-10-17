@@ -36,17 +36,21 @@ Settings have three parts for them:
 - **Your chart**: the chart marked as yours, with Open and Unmark; a choice from the
   saved charts to mark; and **Add a new birth**, saved as yours. Signed in, the site's
   bare address opens your chart (see below).
-- **Couples**: each couple, with both charts' pillars, and End the couple, which keeps
-  both charts. Two saved charts not in a couple can be paired; **Add the partner as a
-  new birth** saves one and pairs it with the chosen chart in one write. A chart is in
-  one couple at most. A partner's chart kept from before accounts kept charts is
-  listed as waiting, and pairs with your chart once you mark one; marking it, or saving
-  a new birth as yours, then says with whom it paired.
+- **Couples**: each couple, with both charts' pillars, and End the couple, which ends
+  that couple alone and keeps both charts. A chart can be in several couples, each with
+  its own card, in the order paired; pairing a chart that is in a couple already comes
+  with #96, so for now two saved charts not in a couple can be paired, and **Add the
+  partner as a new birth** saves one and pairs it with the chosen chart in one write.
+  A partner's chart kept from before accounts kept charts is listed as waiting, and
+  pairs with your chart once you mark one; marking it, or saving a new birth as yours,
+  then says with whom it paired.
 - **Saved charts**: each with Open, Rename, Correct the birth and Remove. Rename starts
   from the name as it is, quotes and all. Remove asks once more on its own button,
-  saying what else ends: the chart's being yours, its couple (naming the other chart),
-  or its wait to pair with your chart. A chart the engine no longer charts says why, and
-  can still be renamed or removed.
+  saying what else ends: the chart's being yours, each of its couples (naming the other
+  charts), or its wait to pair with your chart. Each saved chart names its partners in
+  the order paired, an unnamed one by its birth date, and past three says how many
+  more ("Couple with A, B, C, and 2 more"). A chart the engine no longer charts says
+  why, and can still be renamed or removed.
 
 **Add a new birth**, **Add the partner as a new birth** and **Correct the birth** open
 the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or

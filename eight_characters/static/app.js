@@ -1787,7 +1787,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // Today: the chart's day (today.js), at #today? with the chart's link parts, the day
-  // (day), whose day (who=partner) and the open topic. Chart · Today in the chart's bar
+  // (day), whose day (who=partner), the partner in view (partner, a saved chart's id)
+  // and the open topic. Chart · Today in the chart's bar
   // opens it for the chart on screen, on today's date where you are.
   const TODAY_ROUTE = '#today?';
   const todayView = document.getElementById('today-view');
@@ -1800,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const readTodayLink = (hash) => {
     const params = new URLSearchParams(hash.slice(TODAY_ROUTE.length));
     const own = {};
-    for (const key of ['day', 'who', 'topic']) {
+    for (const key of ['day', 'who', 'partner', 'topic']) {
       if (params.getAll(key).length > 1) throw linkError(key);
       own[key] = params.get(key);
       params.delete(key);
@@ -1810,8 +1811,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const chart = readChartLink(`${CHART_ROUTE}${params}`);
     if (own.day === null || !window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`)) throw linkError('day');
     if (own.who !== null && own.who !== 'partner') throw linkError('who');
+    if (own.partner !== null && !/^[0-9a-f]{32}$/.test(own.partner)) throw linkError('partner');
     if (own.topic !== null && !window.EC_TODAY.TOPIC_PATH.test(own.topic)) throw linkError('topic');
-    return { chart, chartParams: params.toString(), lang: chart.lang, day: own.day, who: own.who ?? 'self', topic: own.topic };
+    return { chart, chartParams: params.toString(), lang: chart.lang, day: own.day, who: own.who ?? 'self', partner: own.partner, topic: own.topic };
   };
   const today = window.EC_TODAY.create({
     view: todayView,
