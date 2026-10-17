@@ -30,7 +30,9 @@ EXPLORER_ASSETS = (
 SPACING_PROPERTIES = re.compile(
     r'^(margin|padding)(-(top|right|bottom|left|block|inline)(-(start|end))?)?$|^(row-|column-)?gap$'
 )
-RADIUS_PROPERTIES = re.compile(r'^border(-(top|bottom|start|end)-(left|right|start|end))?-radius$')
+RADIUS_PROPERTIES = re.compile(
+    r'^border(-(top|bottom|start|end)-(left|right|start|end))?-radius$'
+)
 # A leading token, a token of a row's own height, or 1: a character alone, in a line of its
 # own height.
 LINE_HEIGHT = re.compile(r'var\(--[a-z0-9-]+\)|1')
