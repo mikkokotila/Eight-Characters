@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.56.0
+
+Today, part a (#105): the request Today's carousel will use to go past a day's own run
+(#97). The page does not use it yet.
+
+### Added
+- **`POST /api/today/days`**: the days of the 21 dates after a date, or before it, each
+  as a day's run has it (without `offset`), for the chart read at a place by the
+  schools chosen. `through` is the last date read and `end` says the engine's first or
+  last date is reached; a date the place's clocks skipped is left out inside the
+  dates covered, so a missing date is never one not read.
+
+### Changed
+- The run is built from the same day card, so a day read either way is the same day.
+
+### Tests
+- `test_api_today.py`: each day the run's own, for both charts and two sets of schools;
+  three weeks either way; Apia's skipped day covered and left out; the engine's first
+  and last dates, and the empty answer at the end itself; every refusal; an account
+  needed, and the answer kept private. `test_accounts_app.py` lists the route among
+  those that need an account.
+
 ## 0.55.0
 
 Couples, step 2b (#96): Settings' Pair joins any two charts that can take another
