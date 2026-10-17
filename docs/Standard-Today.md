@@ -30,7 +30,9 @@ From the top:
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's
   polarity and element, the branch's animal); under them its weekday, date, band (word
   and mark) and score. Two days on either side, one below 640px, smaller: they recede
-  by size alone, never by opacity or blur, so their text keeps its contrast. They come
+  by size alone, never by opacity or blur, so their text keeps its contrast; and their
+  words keep the smallest size for content, so a neighbour's verdict wraps within its
+  day, its mark with its first word, and never reaches into the next. They come
   from the days known: the run of each answer for the reading shown, and the days
   fetched beyond them (`POST /api/today/days`, three weeks at a time) as you near
   either end, so the carousel goes past the run. A date the place's clocks skipped is

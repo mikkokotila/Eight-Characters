@@ -1,5 +1,46 @@
 # Changelog
 
+## 0.58.0
+
+The finish (#108): the defects the look-and-feel review of 2026-10-17 found on screen,
+those #99–#107 brought, and no way into the Evolution explorer from the classic view.
+
+### Changed
+- **The Evolution explorer** is reached at its address only: the chart bar's
+  Standard/Evolution switch and the command palette's Evolution entry are gone, with
+  the words and the icon only they used. `/explorer/` is unchanged.
+- **Today's days**: a day is as wide as its card whatever its verdict, so a long one
+  wraps (its mark with its first word) instead of widening the day into the next; the
+  days recede by their scale while their words keep the smallest size for content
+  (`--held`). Today's canon lines are set in Cormorant's italic.
+
+### Fixed
+- A number and its unit no longer part across lines (a no-break space joins them);
+  the pillar marks and the solar-time line wrap balanced, leaving no word alone.
+- A list floating over the page (the place suggestions) is opaque: `--surface-3` is
+  white at 80% on the page tone, mixed opaque, by day and at night.
+- Radio buttons (Settings' schools) and scrollbars take the page's ink instead of the
+  system's blue and grey.
+- Italics are drawn in Cormorant's own italic face, now declared, never slanted by
+  the browser.
+- The place pin follows the theme (`--pin`); it was invisible at night.
+- The account dialog's language switch hugs its two options; Delete account stands
+  apart, in the error's ink.
+- The life grid's role lines wrap whole instead of losing their end.
+- Settings' place label and status read from the field's edge, with room for one
+  status line; the start page's fields row no longer doubles its status room.
+- Saved charts closes from its title bar, as Keys and Account do.
+- The Create button keeps its width while it works.
+- Settings keeps each label with its list in the pair form (#104).
+- Text that sets no size of its own takes the running size, not the browser's 16px
+  (Settings' schools, Today's relationships and couple, #99).
+
+### Tests
+- `finish.test.mjs`: one test per defect, each failing on 0.57.0, in both profiles.
+- The controls, foundations, keyboard, location and settings suites follow the
+  switch's removal; engine-truth reads durations with their no-break spaces.
+- `test_api_index_route.py`: the stylesheet guard accepts a size held against a scale.
+
 ## 0.57.0
 
 Today, part b (#97): the carousel goes past the run of the day drawn, fetching days as

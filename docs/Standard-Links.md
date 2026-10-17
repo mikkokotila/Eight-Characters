@@ -25,7 +25,7 @@ The chart lives in the address's fragment, the part after `#`:
 - `fold`, only for a time the place's clocks repeat: `0` for its first pass, `1` for
   its second. The form makes no such link; a saved birth that names its pass, opened
   from the library or [Settings](Standard-Settings.md), does, and the chart keeps it for
-  the library and the Evolution explorer.
+  the library.
 - `display`, only when it is not Characters: `ten-gods` or `hidden-stems`.
 - `luck`, only while a luck pillar stands in the chart: `before`, or
   `<decade>/<stem|branch>` such as `5/stem` (see

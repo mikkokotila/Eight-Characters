@@ -562,12 +562,13 @@ Response always includes `graph_data`; in mode B it also includes
 `graph_data.parameters` reports what the run used: its `run` settings, its
 `conventions`, and every model parameter in `model`.
 
-The explorer page reads the birth from its URL and calls this endpoint. The
-start page links to it with the picked place's coordinates:
+The explorer page reads the birth from its URL and calls this endpoint. No control
+in the app leads to it: it opens at its address, which names the place by its
+coordinates:
 `/explorer/?date=1988-02-04&time=15:40&latitude=26.36828&longitude=115.34289&timezone=Asia%2FShanghai`.
 Links with `city` and `country` instead of the coordinates, made before the
-coordinates were passed, still work in mode B. A chart whose link names a `fold`
-(a time the place's clocks repeat) passes it on, `0` or `1`. A link with only part
+coordinates were passed, still work in mode B. An address may name a `fold` (a time
+the place's clocks repeat), `0` or `1`. A link with only part
 of the date, time or place, with both coordinates and a city, or with another
 `fold`, shows an error;
 `/explorer/` with no birth in the URL shows a bundled sample chart.

@@ -18,15 +18,21 @@ value: `tests/test_api_index_route.py`
 | `--ink-3` | ink at 65% | placeholders (4.6:1) |
 | `--ink-found`, `--ink-error` | `#3F6246`, `#8B4E45` | a found place; an error (6.1:1, 5.7:1) |
 | `--line-1`, `--line-2` | ink at 12%, 30% | a hairline at rest; hover, focus, a current choice |
-| `--surface-1`, `--surface-2`, `--surface-3` | white at 30%, 50%, 80% | at rest; raised or pressed; floating over content |
+| `--surface-1`, `--surface-2`, `--surface-3` | white at 30%, 50%; white at 80% on the page tone, opaque | at rest; raised or pressed; floating over content, which nothing beneath reads through |
 | `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% | an option under the pointer; the active option |
 | `--shadow-1`, `--shadow-2`, `--shadow-sheet` | | a focused field; anything raised; the sheet over the foot of the page |
 | `--sheen` | | the light across a card's face |
+| `--pin` | the place fields' pin, drawn in `--ink-1` | the pin at the end of a place field |
 | `--<element>-bg`, `--<element>-text`, `--<element>-tint` | the tint: its element at 20% on the page tone (22% for metal and water), mixed opaque with `color-mix()` | each element's cards, their ink, and its hidden-stem panels |
 
 `--ink-1` and `--ink-2` meet WCAG AA (4.5:1) on the page and on every
 element-tinted panel. De-emphasis comes from size, case and tracking, not from a
 lighter ink.
+
+The browser's own parts take the page's ink: a radio button's mark (`accent-color`)
+and, where the system always shows scrollbars, their thumb in `--line-2`
+(`scrollbar-color`). Lists and dialogs that scroll inside themselves, and a
+comparison's frames, draw thin ones.
 
 ### The dark theme
 
@@ -43,7 +49,8 @@ pickers, follow it. Paper keeps the day's colours.
 | `--ink-3` | the ink at 60% |
 | `--ink-found`, `--ink-error` | `#93C29B`, `#E6A094` |
 | `--line-1`, `--line-2` | the ink at 14%, 34% |
-| `--surface-1`, `--surface-2`, `--surface-3` | white at 4%, 8%; `#2C2824` at 96% |
+| `--surface-1`, `--surface-2`, `--surface-3` | white at 4%, 8%; `#2C2824` at 96% on the page, opaque |
+| `--pin` | the pin drawn in the dark `--ink-1` |
 | `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% |
 | `--shadow-*`, `--backdrop`, `--sheen` | black at 35–55%; white light at 8% |
 | `--metal-bg` / `--metal-text` | `#5C5851` / `#F3EFE8` |
@@ -73,6 +80,14 @@ and gaps use only these, or `calc()` of them.
 | `--text-5` | 32px | a page's title |
 | `--text-6` | 52px (44px up to 640px wide) | the character on a card |
 
+Text that sets no size of its own is running text: the page's body takes `--text-2`,
+never the browser's 16px. A control's outline icon is `--control-icon`, 18px.
+
+Today's days recede by their scale. Their words keep their size against it: on a
+day, `--held` is the inverse of its scale, and a word's size is its token times
+`--held` (the weekday at least `--text-3`), so no word is drawn under `--text-1`.
+The stylesheet's guard accepts these held sizes, and no other size off the scale.
+
 - Families: `--font-serif` (Cormorant Garamond), `--font-sans` (Manrope), and
   `--font-glyph` (the Noto Serif TC subset of the 22 stems and branches). The
   serif and sans stacks name the Noto face second, so the stems and branches look
@@ -81,6 +96,9 @@ and gaps use only these, or `calc()` of them.
   capitals, `--tracking-3` (0.3em) for the eyebrow above a title. They are in em,
   so they follow the size.
 - Weight 300 is not used below display sizes.
+- Italic is Cormorant's own italic face, declared beside its upright one. Manrope
+  has no italic, so italic text takes the serif; the browser never slants a face.
+- A number and its unit are one word: durations join them with a no-break space.
 
 ## The pillars and the panel
 

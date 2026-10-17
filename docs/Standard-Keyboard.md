@@ -65,7 +65,7 @@ focus that was on them goes to the chart's cards. See
   - the topics, each relationship, each role's page and each pillar's changes, and in
     a chart with a gender the years before the luck pillars and each decade, which
     open as a link opens them, in one step of the history;
-  - the display, the other language and the Evolution view;
+  - the display and the other language;
   - Copy link, Copy as text, Edit, New chart, Compare, Saved charts, Print, Close
     (when a topic is open), Keys and Settings.
 

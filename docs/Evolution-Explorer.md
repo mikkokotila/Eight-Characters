@@ -6,6 +6,8 @@ Evolution Explorer is a visual interface for reading the probability landscape p
 
 The visualization does not interpret. It shows what the simulation found — which configurations are probable, where energy flows, where it's blocked, what's missing, and how the topology modifies itself through clashes, harmonies, punishments, and transformations.
 
+No control in the app leads here: the explorer opens at its address, which names the birth and the place by its coordinates, `/explorer/?date=1988-02-04&time=15:40&latitude=26.36828&longitude=115.34289&timezone=Asia%2FShanghai` (see [the API](api.md)). With no birth in the address it shows a bundled sample chart.
+
 ---
 
 ## Header Bar
@@ -133,7 +135,7 @@ A compact summary panel showing basin-level signals and comparison tools.
 
 ## Parameters
 
-The Parameters button opens a pane that changes what the simulation computes with. Recompute asks for the chart again with the changes. It works for a chart opened from the start page; the bundled sample chart has nothing to recompute.
+The Parameters button opens a pane that changes what the simulation computes with. Recompute asks for the chart again with the changes. It works for a chart opened at its address; the bundled sample chart has nothing to recompute.
 
 The pane lists, in groups:
 
