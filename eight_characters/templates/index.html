@@ -289,7 +289,8 @@
       <span class="today-place-mark" aria-hidden="true"></span>
       <h2 id="today-place-title" class="today-place-title" data-i18n="today_place_title">Missä olet tänään?</h2>
       <p class="today-place-lead" data-i18n="today_place_lead"></p>
-      <form id="today-place-form" class="today-place-form" novalidate>
+      <!-- Not a form: a place is chosen from the list, and nothing is submitted. -->
+      <div id="today-place-form" class="today-place-form">
         <div class="field-group location-group">
           <label for="today-location" id="today-location-label" data-i18n="settings_place_search">Etsi paikka</label>
           <div class="location-search-wrap">
@@ -301,7 +302,7 @@
           </div>
           <div id="today-location-status" class="field-status" aria-live="polite"></div>
         </div>
-      </form>
+      </div>
       <p id="today-place-note" class="today-place-note" data-i18n="today_place_note"></p>
     </section>
     <!-- Printed while a day is on its way, instead of the day before. -->

@@ -846,10 +846,15 @@ for (const profile of profiles) {
       // The field has the focus at once, but on a touch screen, whose keyboard would cover
       // the question.
       assert.equal(await page.evaluate(() => document.activeElement.id), profile.name === 'mobile' ? '' : 'today-location');
-      // The day's keys leave the field to its typing.
+      // The day's keys leave the field to its typing, and Enter, with no list to choose
+      // from yet, neither submits nor reloads anything.
+      await page.evaluate(() => { window.__sameDocument = true; });
       await page.locator('#today-location').fill('Hels');
+      await page.locator('#today-location').press('Enter');
       await page.locator('#today-location').press('ArrowRight');
       assert.equal(await part(page, 'day'), DAY);
+      assert.equal(await page.evaluate(() => window.__sameDocument), true);
+      assert.equal(await page.locator('#today-location').inputValue(), 'Hels');
       await page.locator('#today-location-suggestions .location-suggestion').waitFor();
       assert.deepEqual(await page.locator('#today-location-suggestions .location-suggestion-city').allTextContents(), [HELSINKI.display]);
       // Chosen, the place is kept for the account, and the day opens at it, its heading
