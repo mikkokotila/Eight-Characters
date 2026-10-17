@@ -906,6 +906,45 @@ for (const profile of profiles) {
       assert.deepEqual(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), PLACE);
     });
 
+    check('a place kept, and removed elsewhere before the day reads it, is asked for again with the field free', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      await recordToday(page);
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page, { place: null });
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await page.locator('#today-place').waitFor({ state: 'visible' });
+      // Another tab removes the place just after this one keeps it.
+      const removeElsewhere = async (route) => {
+        if (route.request().method() !== 'PUT') return route.fallback();
+        const response = await route.fetch();
+        assert.equal(await page.evaluate(async () => {
+          const read = await (await fetch('/api/account/settings')).json();
+          const reply = await fetch('/api/account/place', {
+            method: 'DELETE', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key: read.key, updated_at: read.updated_at }),
+          });
+          return reply.status;
+        }), 200);
+        return route.fulfill({ response });
+      };
+      await page.route('**/api/account/place', removeElsewhere);
+      await page.locator('#today-location').fill('Hels');
+      await page.locator('#today-location-suggestions .location-suggestion').click();
+      await page.waitForFunction(() => document.getElementById('today-location-status').classList.contains('is-error'));
+      assert.equal(await page.locator('#today-location-status').textContent(), 'Your settings changed elsewhere. They are shown as they are now: choose again.');
+      assert.equal(await page.locator('#today-location').evaluate((input) => input.readOnly), false);
+      assert.equal(await page.locator('#today-place-form').getAttribute('aria-busy'), null);
+      assert.equal(await page.locator('#today-body').isHidden(), true);
+      await page.unroute('**/api/account/place', removeElsewhere);
+      // Chosen again, it is kept, and the day opens.
+      await page.locator('#today-location').fill('Helsinki');
+      await page.locator('#today-location-suggestions .location-suggestion').click();
+      await shown(page);
+      await page.locator('#today-body').waitFor({ state: 'visible' });
+      assert.deepEqual(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), PLACE);
+    });
+
     check('a link with an unknown, repeated or wrong part is refused, naming it', async (page) => {
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       for (const [link, why] of [

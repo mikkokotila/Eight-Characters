@@ -1160,6 +1160,15 @@
         leaveDay();
         placeFrom = from;
         placeSection.classList.remove('hidden');
+        // A place was kept, and the settings read again have none: it was removed, or
+        // the settings replaced, elsewhere meanwhile. The question says so, and takes a
+        // place again.
+        if (placeInput.readOnly) {
+          placing += 1;
+          placeInput.readOnly = false;
+          placeForm.removeAttribute('aria-busy');
+          placeSearch.setStatus(t('settings_changed_elsewhere'), 'is-error');
+        }
       });
       if (asking && !window.matchMedia('(pointer: coarse)').matches) placeInput.focus();
     };
