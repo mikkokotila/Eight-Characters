@@ -34,9 +34,10 @@ const BANDS = {
   strongly_supportive: 'Strongly supportive', supportive: 'Supportive', mixed: 'Mixed',
   draining: 'Draining', strongly_draining: 'Strongly draining',
 };
+// A negative score takes the minus sign (−), never a hyphen.
 const score = (value) => new Intl.NumberFormat('en', {
   minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'exceptZero',
-}).format(value);
+}).format(value).replaceAll('-', '\u2212');
 const pull = (value) => `${BANDS[value.band]} (${score(value.score)})`;
 const ELEMENT_NAMES = { wood: 'Wood', fire: 'Fire', earth: 'Earth', metal: 'Metal', water: 'Water' };
 const GOD_NAMES = { useful: 'Useful', favourable: 'Favourable', idle: 'Idle', enemy: 'Enemy', unfavourable: 'Unfavourable' };
@@ -860,6 +861,26 @@ for (const profile of profiles) {
         assert.match(await page.locator('#form-error').textContent(), new RegExp(named), link);
         assert.equal(await page.locator('#today-view').isHidden(), true);
       }
+    });
+
+    check('a score below zero takes the minus sign, never a hyphen', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const { payload } = answers.at(-1);
+      const below = payload.run.filter((day) => day.score < 0);
+      assert.ok(below.length > 0, 'the sample run has a day below zero');
+      const chips = await page.locator('.today-run-day').evaluateAll((nodes) => Object.fromEntries(nodes.map((node) => [
+        node.dataset.todayDay, node.querySelector('.today-run-score').textContent])));
+      for (const day of below) assert.equal(chips[day.date], `−${Math.abs(day.score).toFixed(2)}`);
+      const texts = [
+        ...Object.values(chips), await page.locator('#today-pull-line').textContent(),
+        ...await page.locator('.today-pillar-pull').allTextContents(),
+      ];
+      for (const text of texts) assert.doesNotMatch(text, /-\d/, text);
     });
 
     check('in Finnish the day has no readings, and its numbers are written the Finnish way', async (page) => {

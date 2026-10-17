@@ -129,12 +129,15 @@
 
     // ── Words and numbers in the page's language ──
     const lang = () => state?.lang ?? 'fi';
-    const score = (value) => new Intl.NumberFormat(locale(), {
+    // A negative number takes the minus sign (−), as a typesetter sets it, never a hyphen:
+    // English formats give a hyphen; Finnish ones already give the sign.
+    const minus = (text) => text.replaceAll('-', '\u2212');
+    const score = (value) => minus(new Intl.NumberFormat(locale(), {
       minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'exceptZero',
-    }).format(value);
-    const number = (value, digits = 1) => new Intl.NumberFormat(locale(), {
+    }).format(value));
+    const number = (value, digits = 1) => minus(new Intl.NumberFormat(locale(), {
       minimumFractionDigits: digits, maximumFractionDigits: digits,
-    }).format(value);
+    }).format(value));
     const bandName = (band) => {
       if (!BANDS.includes(band)) throw new Error(t('today_answer_error'));
       return t('today_band_' + band);
