@@ -1,5 +1,38 @@
 # Changelog
 
+## 0.60.0
+
+Stage 2 of the look-and-feel review, part two: one card and one label. The stem and
+branch cards were three designs, and labels were set four ways; each is now one thing,
+set once in `style.css` and drawn the same in every view.
+
+### Changed
+- **One card**: the chart's cards, Today's, a saved chart's pillars and the life grid's
+  tiles share one palette rule per element, one face (the sheen over the element's
+  colour, now under the ink rather than over it), one shape (a stem rounds over its
+  branch and meets it at 4px; tiles at 12px, Today's relationships at 8px) and one set
+  of words: the character at weight 500 (the tiles' were 400), the pinyin in Manrope
+  600 (Today's was 400), and the names in Cormorant 600.
+- A branch names its element as a stem does, in the serif name under its animal: the
+  chart's branch read "Yang Earth" in small sans before. Today's day cards draw their
+  lines at the chart's width and their names as the chart's cards do, a branch's
+  animal now over its element; the days are taller for it (472px, 432px on a phone).
+  A card too narrow for an animal's capitals (Today's days) sets it in the name's case.
+- On a phone, the life grid's head stacks each pillar's tiles as a stem over its
+  branch.
+- **One label**: Cormorant 500 at the smallest size, in tracked capitals and the
+  secondary ink. Today's pillar names were sans capitals, the life grid's sans title
+  case, the field labels weight 400; Today's "Days" and "At noon", its relationships'
+  places and Settings' list labels were sans. A life-grid column too narrow for
+  capitals (a phone's five) keeps the name's case.
+- Settings' lists wear their labels above them, as the start page's fields do, with
+  their actions level beside them.
+
+### Tests
+- `components.test.mjs`: every card in the views is the one card at its size, and
+  every label is set one way, on a desktop and a phone.
+- `today.test.mjs` reads a day card's lines as the chart draws them.
+
 ## 0.59.0
 
 Stage 2 of the look-and-feel review, part one: the token set finished. Corner radii,
