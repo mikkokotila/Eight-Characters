@@ -1029,9 +1029,7 @@ def _store_change(change: Callable[[], _Changed]) -> _Changed:
 def _changed(
     accounts: Accounts, user: User, change: Callable[[], Settings | None]
 ) -> SettingsView:
-    return settings_view(
-        user, _store_change(change), accounts.store.limits(user.plan)
-    )
+    return settings_view(user, _store_change(change), accounts.store.limits(user.plan))
 
 
 @router.get('/settings')
@@ -1145,7 +1143,8 @@ def delete_chart(
     _named(user, payload.key)
     return _changed(
         accounts,
-        user, lambda: accounts.store.delete_chart(user.id, chart_id, payload.updated_at)
+        user,
+        lambda: accounts.store.delete_chart(user.id, chart_id, payload.updated_at),
     )
 
 
@@ -1180,7 +1179,8 @@ def unmark_my_chart(
     _named(user, payload.key)
     return _changed(
         accounts,
-        user, lambda: accounts.store.clear_my_chart(user.id, payload.updated_at)
+        user,
+        lambda: accounts.store.clear_my_chart(user.id, payload.updated_at),
     )
 
 
@@ -1243,7 +1243,8 @@ def save_place(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(
         accounts,
-        user, lambda: accounts.store.put_place(user.id, place, payload.updated_at)
+        user,
+        lambda: accounts.store.put_place(user.id, place, payload.updated_at),
     )
 
 
@@ -1259,8 +1260,7 @@ def delete_place(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
-        accounts,
-        user, lambda: accounts.store.delete_place(user.id, payload.updated_at)
+        accounts, user, lambda: accounts.store.delete_place(user.id, payload.updated_at)
     )
 
 
