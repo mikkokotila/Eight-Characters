@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.61.0
+
+The last details of the look-and-feel review: one name, numbers and quotes set as a
+typesetter sets them, labels that say what they mean, and a day that asks where you
+are instead of sending you away.
+
+### Changed
+- **One name**: the app is Eight Chord everywhere: the tab, the start page, the
+  explorer, the account's emails and its export file (`eight-chord-account.json`).
+- **Typesetting**: Today's negative numbers take the minus sign (−0.79), never a
+  hyphen. The canon and the app's own words use typographic quotes and apostrophes
+  (“ ” ’); a canon test keeps it so.
+- **The years before the first luck pillar** end at the age it starts at, in whole
+  years from the first year on and within it in its largest unit that is not zero
+  (0–2 mo, 0–6 d, 0–6 h), never 0–0. Their page gives the exact onset as its parts
+  that are not zero (8 y 4 mo 4 d), and a span within one year is that year (1988,
+  never 1988–1988).
+- **Links that open nothing** say which part is missing, not valid, given more than
+  once or unknown, each named in words as the page names it ("the birth date is not
+  valid"), never as the address spells it ("date").
+- **Today without a place** asks "Where are you today?" in the room the day will take,
+  with the place search Settings has. A place chosen there is kept for the account and
+  the day opens at it. Before, the page said so in one boxed sentence and sent you to
+  Settings.
+- Settings' place search is now `place-search.js`, shared with Today.
+
+### Tests
+- New checks for the minus sign, the years before a first decade within the year (in
+  the luck ribbon, column, page and life grid, in both languages), every kind of bad
+  link in both languages, and Today's question for a place, kept and refused.
+
 ## 0.60.1
 
 Stage 2's follow-ups, found by the full browser suites and the WebKit pixel diff on main.
