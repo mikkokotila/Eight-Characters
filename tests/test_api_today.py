@@ -1,4 +1,4 @@
-"""POST /api/today and GET /api/schools (docs/Today.md)."""
+"""POST /api/today, POST /api/today/days and GET /api/schools (docs/Today.md)."""
 
 import re
 import unittest
@@ -453,6 +453,141 @@ class TestToday(unittest.TestCase):
                     self.client.post('/api/today', json=refused).status_code, 400
                 )
 
+
+# What the page sends for days: a day's body, without its date and language.
+DAYS_BODY: dict[str, Any] = {
+    'place': HELSINKI,
+    'charts': {'self': CHART, 'partner': PARTNER},
+}
+# Samoa moved across the date line and skipped 30 December 2011 entirely.
+APIA = {
+    'name': 'Apia, Tuamasaga, Samoa',
+    'city': 'Apia',
+    'timezone': 'Pacific/Apia',
+    'latitude': -13.83333,
+    'longitude': -171.76666,
+}
+
+
+def _dates(first: date, count: int) -> list[str]:
+    return [(first + timedelta(days=n)).isoformat() for n in range(count)]
+
+
+class TestDays(unittest.TestCase):
+    accounts: ClassVar[Accounts]
+    client: ClassVar[TestClient]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.accounts = install_accounts(cls)
+        cls.client = site_client()
+        sign_in(cls.client, cls.accounts, 'days@example.com')
+
+    def days(self, body: dict[str, Any] = DAYS_BODY, **parts: Any) -> dict[str, Any]:
+        reply = self.client.post('/api/today/days', json={**body, **parts})
+        self.assertEqual(reply.status_code, 200, reply.text)
+        return reply.json()
+
+    def test_each_day_is_the_runs_own(self) -> None:
+        # A day a run and a request for days both read is the same day, but for the
+        # run's offset: for either chart, by two sets of schools.
+        climate = {'favourable': 'climate', 'season': 'commander', 'transits': 'whole'}
+        for chart, schools in (('self', {}), ('partner', climate)):
+            with self.subTest(chart=chart, schools=schools):
+                today = self.client.post(
+                    '/api/today', json={**BODY, 'chart': chart, 'schools': schools}
+                )
+                self.assertEqual(today.status_code, 200, today.text)
+                known = {
+                    day['date']: {k: v for k, v in day.items() if k != 'offset'}
+                    for day in today.json()['run']
+                }
+                for asked in ({'after': '2026-10-10'}, {'before': '2026-10-12'}):
+                    answer = self.days(chart=chart, schools=schools, **asked)
+                    self.assertEqual(answer['policy'], 'today_days_v1')
+                    self.assertEqual(answer['chart'], chart)
+                    shared = [day for day in answer['days'] if day['date'] in known]
+                    self.assertGreaterEqual(len(shared), 8)
+                    for day in shared:
+                        self.assertEqual(day, known[day['date']])
+
+    def test_three_weeks_after_or_before_a_date(self) -> None:
+        ahead = self.days(after='2026-10-11')
+        self.assertEqual(ahead['after'], '2026-10-11')
+        self.assertNotIn('before', ahead)
+        self.assertEqual((ahead['through'], ahead['end']), ('2026-11-01', False))
+        self.assertEqual(
+            [day['date'] for day in ahead['days']], _dates(date(2026, 10, 12), 21)
+        )
+        self.assertNotIn('offset', ahead['days'][0])
+        back = self.days(before='2026-10-11')
+        self.assertEqual(back['before'], '2026-10-11')
+        self.assertNotIn('after', back)
+        self.assertEqual((back['through'], back['end']), ('2026-09-20', False))
+        self.assertEqual(
+            [day['date'] for day in back['days']], _dates(date(2026, 9, 20), 21)
+        )
+
+    def test_a_day_the_clocks_skipped_is_covered_and_left_out(self) -> None:
+        body = {'place': APIA, 'charts': {'self': CHART}}
+        ahead = self.days(body, after='2011-12-22')
+        back = self.days(body, before='2012-01-13')
+        self.assertEqual(ahead['through'], '2012-01-12')
+        self.assertEqual(back['through'], '2011-12-23')
+        for answer in (ahead, back):
+            dates = [day['date'] for day in answer['days']]
+            self.assertNotIn('2011-12-30', dates)
+            self.assertEqual(len(dates), 20)
+            self.assertIn('2011-12-29', dates)
+            self.assertIn('2011-12-31', dates)
+
+    def test_the_engines_first_and_last_dates_end_them(self) -> None:
+        last = self.days(after='2100-12-20')
+        self.assertEqual((last['through'], last['end']), ('2100-12-31', True))
+        self.assertEqual(
+            [day['date'] for day in last['days']], _dates(date(2100, 12, 21), 11)
+        )
+        first = self.days(before='1949-01-10')
+        self.assertEqual((first['through'], first['end']), ('1949-01-01', True))
+        self.assertEqual(
+            [day['date'] for day in first['days']], _dates(date(1949, 1, 1), 9)
+        )
+        # Asked at the end itself: nothing more that way.
+        for asked, through in (({'after': '2100-12-31'}, '2100-12-31'),
+                               ({'before': '1949-01-01'}, '1949-01-01')):
+            with self.subTest(asked=asked):
+                none = self.days(**asked)
+                self.assertEqual(
+                    (none['through'], none['end'], none['days']), (through, True, [])
+                )
+        # A day short of the end is not the end.
+        self.assertFalse(self.days(after='2100-12-09')['end'])
+        self.assertFalse(self.days(before='1949-01-23')['end'])
+
+    def test_days_are_asked_for_after_or_before_one_readable_date(self) -> None:
+        for refused in (
+            DAYS_BODY,
+            {**DAYS_BODY, 'after': '2026-10-11', 'before': '2026-10-11'},
+            {**DAYS_BODY, 'after': '2026-02-30'},
+            {**DAYS_BODY, 'after': '2026-1-1'},
+            {**DAYS_BODY, 'after': 20261011},
+            {**DAYS_BODY, 'after': '1948-12-31'},
+            {**DAYS_BODY, 'before': '2101-01-01'},
+            {**DAYS_BODY, 'after': '9999-12-31'},
+            {**DAYS_BODY, 'charts': {'self': CHART}, 'chart': 'partner', 'after': DAY},
+            {**DAYS_BODY, 'after': DAY, 'lang': 'en'},
+            {**DAYS_BODY, 'after': DAY, 'date': DAY},
+            {**DAYS_BODY, 'after': DAY, 'schools': {'favourable': 'structure'}},
+        ):
+            with self.subTest(refused=refused):
+                reply = self.client.post('/api/today/days', json=refused)
+                self.assertEqual(reply.status_code, 400, reply.text)
+
+    def test_days_need_an_account_and_are_its_own(self) -> None:
+        asked = {**DAYS_BODY, 'after': DAY}
+        self.assertEqual(site_client().post('/api/today/days', json=asked).status_code, 401)
+        reply = self.client.post('/api/today/days', json=asked)
+        self.assertEqual(reply.headers['cache-control'], 'private, no-cache')
 
 # ── A year of days, against the daily briefing's own formula ──
 

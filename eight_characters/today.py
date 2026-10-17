@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Final, Literal, cast
 
-from typing_extensions import TypedDict
+from typing_extensions import NotRequired, TypedDict
 
 from eight_characters import first_chart
 from eight_characters.accounts.records import Birth, Language, Place, Schools
@@ -83,6 +83,12 @@ from eight_characters.time_convert import (
 POLICY: Final = 'today_v1'
 RUN_BEFORE: Final = 7
 RUN_AFTER: Final = 14
+# The dates whose days can be read: the engine's years, whole.
+FIRST_DAY: Final = date(MIN_SUPPORTED_YEAR, 1, 1)
+LAST_DAY: Final = date(MAX_SUPPORTED_YEAR, 12, 31)
+# How many calendar dates one request for days reads beyond the date it names: three
+# weeks, about what a run costs.
+DAYS_PER_REQUEST: Final = 21
 SECONDS_PER_DAY: Final = 86400.0
 LAYERS: Final[tuple[LayerName, ...]] = ('day', 'month', 'year', 'luck')
 # Each pillar of the day takes the fifth place beside the natal four under its own
@@ -494,6 +500,30 @@ class RunDay(TypedDict):
     relationships: list[Interaction]
 
 
+class DayCard(TypedDict):
+    # A day as a run has it, without the offset a run counts from its own date.
+    date: str
+    pillar: CardPillar
+    score: float
+    band: str
+    relationships: list[Interaction]
+
+
+class DaysAnswer(TypedDict):
+    policy: Literal['today_days_v1']
+    chart: Whose
+    # The date the days run from, as asked: one of the two.
+    after: NotRequired[str]
+    before: NotRequired[str]
+    # The last date read, inclusive: the dates covered run from the date asked to it.
+    through: str
+    # Whether no date beyond `through` can be read that way.
+    end: bool
+    # The days of the dates covered, in date order; a date the place's clocks skipped
+    # has none.
+    days: list[DayCard]
+
+
 class HourSpan(TypedDict):
     # On the clock at the place, with the UTC offset, to the second.
     start: str
@@ -622,6 +652,40 @@ def _touching(relationships: Sequence[Relationship], pillar: str) -> list[Relati
     ]
 
 
+def _day_card(
+    natal: Natal,
+    day: date,
+    place: Place,
+    weights: Mapping[ElementName, float],
+    schools: Schools,
+) -> DayCard | None:
+    """A date's day for the chart: its pillar at noon at the place, its pull and band,
+    and its meetings with the chart. None for a date the place's clocks skipped, which
+    has no noon to read (docs/Today.md, The day)."""
+    try:
+        at = _noon(day, place)
+    except TodayInputError:
+        return None
+    pair = _pair(at.day.pillar.stem_idx, at.day.pillar.branch_idx)
+    found = pull(
+        pair[0],
+        pair[1],
+        weights,
+        _season_now(at, schools)['standings'],
+        layer='day',
+        transits=schools.transits,
+    )
+    return {
+        'date': day.isoformat(),
+        'pillar': _card(first_chart.pillar_view('Day', pair[0], pair[1])),
+        'score': found['score'],
+        'band': found['band'],
+        'relationships': detect_luck_interactions(
+            natal.pillars, pair, position=POSITIONS['day']
+        )['interactions'],
+    }
+
+
 def _run(
     natal: Natal,
     day: date,
@@ -631,35 +695,77 @@ def _run(
 ) -> list[RunDay]:
     days: list[RunDay] = []
     for offset in range(-RUN_BEFORE, RUN_AFTER + 1):
-        other = day + timedelta(days=offset)
-        try:
-            at = _noon(other, place)
-        except TodayInputError:
-            # A date the place's clocks skipped has no noon to read: the run leaves
-            # it out (docs/Today.md, The day).
-            continue
-        pair = _pair(at.day.pillar.stem_idx, at.day.pillar.branch_idx)
-        found = pull(
-            pair[0],
-            pair[1],
-            weights,
-            _season_now(at, schools)['standings'],
-            layer='day',
-            transits=schools.transits,
-        )
-        days.append(
-            {
-                'date': other.isoformat(),
-                'offset': offset,
-                'pillar': _card(first_chart.pillar_view('Day', pair[0], pair[1])),
-                'score': found['score'],
-                'band': found['band'],
-                'relationships': detect_luck_interactions(
-                    natal.pillars, pair, position=POSITIONS['day']
-                )['interactions'],
-            }
-        )
+        card = _day_card(natal, day + timedelta(days=offset), place, weights, schools)
+        # A date the place's clocks skipped is left out.
+        if card is not None:
+            days.append(
+                {
+                    'date': card['date'],
+                    'offset': offset,
+                    'pillar': card['pillar'],
+                    'score': card['score'],
+                    'band': card['band'],
+                    'relationships': card['relationships'],
+                }
+            )
     return days
+
+
+def build_days(
+    subject: Birth,
+    place: Place,
+    schools: Schools,
+    chart: Whose,
+    *,
+    after: date | None = None,
+    before: date | None = None,
+) -> DaysAnswer:
+    """The days of the DAYS_PER_REQUEST calendar dates after a date, or before it, for
+    `subject`'s chart at a place by the schools chosen: each as the run has it, up to
+    the engine's first or last date. For the carousel to go past a day's own run.
+    TodayInputError for both dates or neither, or one outside the engine's years."""
+    if (after is None) == (before is None):
+        raise TodayInputError('Days are asked for after one date, or before one.')
+    frontier = after if after is not None else before
+    if frontier is None or not FIRST_DAY <= frontier <= LAST_DAY:
+        raise TodayInputError(f'Days can be read from {FIRST_DAY} to {LAST_DAY}.')
+    if after is not None:
+        through = min(frontier + timedelta(days=DAYS_PER_REQUEST), LAST_DAY)
+        dates = [
+            frontier + timedelta(days=n)
+            for n in range(1, (through - frontier).days + 1)
+        ]
+        end = through == LAST_DAY
+    else:
+        through = max(frontier - timedelta(days=DAYS_PER_REQUEST), FIRST_DAY)
+        dates = [
+            through + timedelta(days=n) for n in range((frontier - through).days)
+        ]
+        end = through == FIRST_DAY
+    natal = chart_birth(subject)
+    weights = favourable_for(natal, schools)['weights']
+    days = [
+        card
+        for day in dates
+        if (card := _day_card(natal, day, place, weights, schools)) is not None
+    ]
+    if after is not None:
+        return {
+            'policy': 'today_days_v1',
+            'chart': chart,
+            'after': frontier.isoformat(),
+            'through': through.isoformat(),
+            'end': end,
+            'days': days,
+        }
+    return {
+        'policy': 'today_days_v1',
+        'chart': chart,
+        'before': frontier.isoformat(),
+        'through': through.isoformat(),
+        'end': end,
+        'days': days,
+    }
 
 
 def _clock(instant: datetime, place: Place) -> str:

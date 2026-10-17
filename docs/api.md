@@ -9,8 +9,8 @@
 ## Accounts
 
 Charts need a signed-in account: `POST /api/four_pillars`, `POST /api/chart`,
-`POST /api/hidden_stems`, `POST /api/evolution_explorer` and `POST /api/today`
-answer `401` (`{"detail": "Sign in to continue."}`) without one,
+`POST /api/hidden_stems`, `POST /api/evolution_explorer`, `POST /api/today` and
+`POST /api/today/days` answer `401` (`{"detail": "Sign in to continue."}`) without one,
 before the request is validated. The first chart, `POST /api/first_chart`, is for
 someone without one, a limited number an hour per client. The place search,
 `GET /api/evolution_controls` and `GET /api/schools` need none.
@@ -640,6 +640,32 @@ The answer, by [Today: the rules](Today.md):
   in the canon's words;
 - `readings`: the canon's passages for each pillar, as the decade page's; `null` in
   Finnish.
+
+### `POST /api/today/days`
+
+The days of three weeks after a date, or before it, each as a day's `run` has it: for
+Today's carousel to go past the run of the day drawn. It asks for the same `place`,
+`charts`, `chart` and `schools` as `POST /api/today`, without `date` and `lang` (a
+day's card is the same in both languages), and exactly one of:
+
+- `after`: the days of the 21 dates after this one;
+- `before`: the days of the 21 dates before this one.
+
+The answer:
+
+- `policy` (`today_days_v1`), `chart`, and the `after` or `before` asked;
+- `through`: the last date read, inclusive, so the dates covered run from the date
+  asked to it; it stops at the engine's first or last date (1949-01-01, 2100-12-31);
+- `end`: whether no date beyond `through` can be read that way; asked at the end
+  itself, the answer has `end`, no days, and `through` the date asked;
+- `days`: the days of the dates covered, in date order, each with `date`, `pillar`,
+  `score`, `band` and `relationships`, as in `run` but without `offset`. A date the
+  place's clocks skipped has none, so a date missing inside the dates covered is one
+  of those, and never one not read.
+
+`400` for both dates or neither, a malformed date or one outside 1949-01-01 to
+2100-12-31, and anything `POST /api/today` refuses in what both take. The answer is
+sent with `Cache-Control: private, no-cache`.
 
 ### `GET /api/evolution_controls`
 

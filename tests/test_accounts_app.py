@@ -47,6 +47,7 @@ NEEDS_ACCOUNT = {
     ('POST', '/api/evolution_explorer'),
     ('POST', '/api/hidden_stems'),
     ('POST', '/api/today'),
+    ('POST', '/api/today/days'),
 }
 OPEN = {
     ('POST', '/api/first_chart'),
