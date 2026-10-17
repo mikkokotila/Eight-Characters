@@ -2,7 +2,8 @@
 // Stage 2 of the look-and-feel review (2026-10-17): the token set finished. Every corner
 // the views draw is on the radius scale, every line height on the leading scale, and
 // every control one of the control heights, wherever it stands: the start page, a chart
-// with its luck pillar and a topic open, the life grid, Today, Settings and the dialogs.
+// with its luck pillar and a topic open, the life grid, Today (for a chart in two couples,
+// with the partner in view to choose), Settings and the dialogs.
 import {
   assert, describe, it, engineName, profiles, openLink, settled, withPage, HELSINKI,
 } from './chart-helpers.mjs';
@@ -17,6 +18,13 @@ const PLACE = {
   latitude: HELSINKI.latitude, longitude: HELSINKI.longitude,
 };
 const DAY = '2026-10-07';
+// The chart on screen, saved, in two couples: Today then names the partner in view with a
+// choice of its own.
+const SELF = { date: '1975-08-14', time: '07:45', place: PLACE, gender: 'female', zi: 'split_midnight' };
+const PARTNERS = [
+  { name: 'Partner one', date: '1988-02-04', time: '16:30', place: PLACE, gender: 'male', zi: 'split_midnight' },
+  { name: 'Partner two', date: '1990-06-21', time: '09:15', place: PLACE, gender: 'male', zi: 'split_midnight' },
+];
 // The scales, as style.css defines them: radii in px (and 1px, the gua's lines), and
 // leading as a share of the font size; a row of its own height (a hidden stem's line, the
 // luck ribbon's direction) is in px.
@@ -85,16 +93,27 @@ function offHeight(page, mobile) {
   }, { controls: CONTROLS, groups: GROUPS, at: mobile ? 1 : 0 });
 }
 
-// The account's place, written as Settings writes it, so that Today reads a day.
-async function keepPlace(page) {
-  await page.evaluate(async (place) => {
-    const read = await (await fetch('/api/account/settings')).json();
-    const response = await fetch('/api/account/place', {
-      method: 'PUT', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ place, key: read.key, updated_at: read.updated_at }),
-    });
-    if (!response.ok) throw new Error(`PUT /api/account/place: ${response.status}`);
-  }, PLACE);
+// The account's place and charts, written as Settings writes them, so that Today reads a
+// day for the chart on screen, in two couples. Every chart saved before is removed first.
+async function keepCouples(page) {
+  await page.evaluate(async ({ place, self, partners }) => {
+    const write = async (method, path, body) => {
+      const read = await (await fetch('/api/account/settings')).json();
+      const response = await fetch(path, {
+        method, headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...body, key: read.key, updated_at: read.updated_at }),
+      });
+      const value = await response.json();
+      if (!response.ok) throw new Error(`${method} ${path}: ${response.status} ${JSON.stringify(value)}`);
+      return value;
+    };
+    for (const chart of (await (await fetch('/api/account/settings')).json()).charts) {
+      await write('DELETE', `/api/account/charts/${chart.id}`, {});
+    }
+    await write('PUT', '/api/account/place', { place });
+    const mine = await write('POST', '/api/account/charts', self);
+    for (const partner of partners) await write('POST', '/api/account/charts', { ...partner, couple_with: mine.saved });
+  }, { place: PLACE, self: SELF, partners: PARTNERS });
 }
 
 // The views the audits read, each once nothing moves.
@@ -128,12 +147,13 @@ async function eachView(page, visit) {
   await page.keyboard.press('Escape');
   await openLink(page, `/#chart?${BIRTH}&topic=roles`, { place: HELSINKI });
   await visit('a chart with its roles open');
-  await keepPlace(page);
+  await keepCouples(page);
   await page.goto(new URL(`/#today?${BIRTH}&day=${DAY}`, process.env.EC_BASE_URL).href);
   await page.locator('#today-body:not(.hidden)').waitFor();
   await page.waitForFunction(() => !document.getElementById('today-view').hasAttribute('aria-busy'));
+  await page.locator('#today-partner-choice:not(.hidden)').waitFor();
   await settled(page);
-  await visit('Today');
+  await visit('Today, for a chart in two couples');
   await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
   await page.locator('#settings-schools-body .settings-school').first().waitFor();
   await settled(page);
