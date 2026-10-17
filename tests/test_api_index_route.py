@@ -98,7 +98,6 @@ class TestApiIndexRoute(unittest.TestCase):
         response = self.client.get('/')
         for element_id in (
             'display-switch',
-            'view-switch',
             'chart-language',
             'copy-link-btn',
             'copy-text-btn',
@@ -110,8 +109,12 @@ class TestApiIndexRoute(unittest.TestCase):
             'compare-charts',
         ):
             self.assertIn(f'id="{element_id}"', response.text)
-        # The view is chosen on a chart, not before one.
+        # No control leads to the Evolution explorer, before a chart or on one: it opens
+        # at its address only.
         self.assertNotIn('data-mode=', response.text)
+        self.assertNotIn('id="view-switch"', response.text)
+        self.assertNotIn('data-view=', response.text)
+        self.assertNotIn('/explorer/?', response.text)
 
     def test_day_master_context_has_accessible_controls_and_versioned_module(
         self,
