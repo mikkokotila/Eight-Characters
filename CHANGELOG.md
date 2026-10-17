@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.60.1
+
+Stage 2's follow-ups, found by the full browser suites and the WebKit pixel diff on main.
+
+### Fixed
+- The life grid keeps each phase's years line whole. Under a role on two lines, at
+  stage 2's leading, a phase squeezed its years below their line height and clipped
+  them (15.4 to 16.2px of a 17.55px line, in both engines).
+
+### Tests
+- The contrast audits measure a control's tooltip once it has faded in. A tooltip
+  shows half a second after the pointer rests on a control, so the audit could read
+  it part of the way in (1.3 to 1.7:1) wherever stage 2 left the pointer over one.
+- `life.test.mjs` checks that no phase squeezes its years line.
+
 ## 0.60.0
 
 Stage 2 of the look-and-feel review, part two: one card and one label. The stem and
