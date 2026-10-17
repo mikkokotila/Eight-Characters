@@ -897,7 +897,7 @@
         }
         const partner = partnerOf(kept);
         let gone = null;
-        if (state.partner !== null && partner === null) {
+        if (partner === null && (state.who === 'partner' || state.partner !== null)) {
           if (state.who === 'partner') {
             instead(partnerGone(kept), [['self', t('today_self')], ['settings', t('settings_open')]]);
             return;
@@ -1253,11 +1253,15 @@
       // Another account taken in this browser: the day drawn with the settings of the one
       // before (its place, its schools, its couple) goes, shown or hidden, so that Today
       // opened again draws nothing of it; shown, the day is asked for again with this
-      // account's.
+      // account's. The partner in view was the account before's: it goes from the address,
+      // and this account's first couple's partner is written in instead.
       renew: () => {
-        const next = state;
+        const next = state === null ? null : { ...state, partner: null };
         keepingFocus(clear);
-        if (next !== null) show(next);
+        if (next !== null) {
+          go(address(next), 'replaceState');
+          show(next);
+        }
       },
       // Settings changed: the day is asked for again with them.
       refresh: () => {

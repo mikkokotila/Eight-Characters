@@ -105,7 +105,13 @@ async function keepSecondCouple(page, { problem = null } = {}) {
   });
   return ids;
 }
-// Every answer to POST /api/today, with what the page asked; `hold` keeps one back.
+// Waits until `ready()` holds, for what reaches the server rather than what the page draws.
+async function until(page, ready) {
+  for (let tries = 0; tries < 200 && !ready(); tries += 1) await page.waitForTimeout(25);
+  assert.ok(ready(), 'still not so after 5 s');
+}
+// Every answer to POST /api/today, with what the page asked; `hold` keeps back the next
+// answer for a day, and with `match`, the next one whose request it matches.
 async function recordToday(page) {
   const answers = [];
   const held = [];
@@ -113,16 +119,16 @@ async function recordToday(page) {
     const response = await route.fetch();
     const entry = { request: route.request().postDataJSON(), payload: await response.json() };
     answers.push(entry);
-    if (held.length && held[0].day === entry.request.date) {
+    if (held.length && held[0].day === entry.request.date && held[0].match(entry.request)) {
       const wait = held.shift();
       await wait.released;
     }
     await route.fulfill({ response });
   });
-  const hold = (day) => {
+  const hold = (day, match = () => true) => {
     let release;
     const released = new Promise((resolve) => { release = resolve; });
-    held.push({ day, released });
+    held.push({ day, match, released });
     return release;
   };
   return { answers, hold };
@@ -294,8 +300,10 @@ for (const profile of profiles) {
       await page.keyboard.press('ControlOrMeta+k');
       assert.equal(await page.locator('#command-palette').isVisible(), true);
       assert.ok((await page.locator('#palette-list').textContent()).includes('The day after'));
+      // Dialogs fade out (motion.css), so the palette is still drawn for a moment after
+      // Escape: it closes, rather than being gone at once.
       await page.keyboard.press('Escape');
-      assert.equal(await page.locator('#command-palette').isVisible(), false);
+      await page.locator('#command-palette').waitFor({ state: 'hidden' });
       // A field's own keys are its own.
       await page.locator('#today-copy-link').focus();
       await page.evaluate(() => document.activeElement.blur());
@@ -515,9 +523,10 @@ for (const profile of profiles) {
       assert.deepEqual(await page.locator('#today-couple .today-couple-name').allTextContents(), ['This chart', SECOND.name]);
       // An answer for the first partner, still on its way when the second is chosen
       // again, is never drawn.
-      const release = hold(DAY);
+      const before = answers.length;
+      const release = hold(DAY, (request) => request.charts.partner?.name === PARTNER.name);
       await page.locator('#today-partner').selectOption(ids.first);
-      await page.waitForFunction((first) => new URLSearchParams(location.hash.split('?')[1]).get('partner') === first, ids.first);
+      await until(page, () => answers.slice(before).some((entry) => entry.request.charts.partner?.name === PARTNER.name));
       await page.locator('#today-partner').selectOption(ids.second);
       await shown(page);
       release();
@@ -550,6 +559,22 @@ for (const profile of profiles) {
       await shown(page);
       assert.deepEqual([await part(page, 'who'), await part(page, 'partner')], [null, ids.first]);
       assert.equal(answers.at(-1).request.charts.partner.name, PARTNER.name);
+    });
+
+    check('the partner’s day of a chart in no couple, with no partner named, says why and asks for nothing', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink({ who: 'partner' }), process.env.EC_BASE_URL).href);
+      await page.locator('[data-today-action="self"]').waitFor({ state: 'visible' });
+      assert.match(await page.locator('#today-notice').textContent(), /^This chart is not in a couple: pair it in Settings\./);
+      assert.equal(await page.locator('#today-body').isHidden(), true);
+      assert.equal(answers.length, 0, 'no day is asked for');
+      await page.locator('[data-today-action="self"]').click();
+      await shown(page);
+      assert.deepEqual([await part(page, 'who'), await part(page, 'partner')], [null, null]);
+      assert.deepEqual([answers.at(-1).request.chart, answers.at(-1).request.charts.partner], ['self', undefined]);
     });
 
     check('the partner in view stays through a choice, the commands, steps, the language, reload and history, and out of the chart’s own link', async (page) => {
@@ -1423,11 +1448,12 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     await signInPage(page, first);
     const { answers } = await recordToday(page);
     await page.goto(new URL('/', process.env.EC_BASE_URL).href);
-    await keepSecondCouple(page);
+    const ids = await keepSecondCouple(page);
     await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
     await shown(page);
     assert.equal(await page.locator('.today-who-name').textContent(), 'First partner');
     assert.deepEqual(await page.locator('#today-partner option').allTextContents(), ['First partner', SECOND.name]);
+    assert.equal(await part(page, 'partner'), ids.first);
     // Another tab signs out of the first account and in to the second: the next read of
     // the settings here is refused for want of a session, and the page takes the second.
     let refused = false;
@@ -1447,6 +1473,10 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     assert.doesNotMatch(await page.locator('#today-view').textContent(), /First partner|Second partner/);
     assert.equal(await page.locator('#today-partner-choice').isHidden(), true);
     assert.equal(await page.locator('#today-partner option').count(), 0);
+    // The partner the page wrote in was the first account's: it goes from the address,
+    // and nothing says this chart is not in a couple.
+    assert.equal(await part(page, 'partner'), null);
+    assert.equal(await page.locator('#today-notice').isHidden(), true);
     assert.equal(answers.at(-1).request.date, '2026-10-12');
     assert.equal(answers.at(-1).request.charts.partner, undefined);
   }, { signedIn: false }));

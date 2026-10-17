@@ -465,14 +465,14 @@ for (const profile of profiles) {
       // My chart names every partner in the order paired, an unnamed one by its birth
       // date, and past three says how many more.
       const marks = await page.locator(`#settings-charts-body .saved-card[data-chart="${mine}"] .saved-head`).textContent();
-      assert.match(marks, /Couple with First, an unnamed chart born [^,]+, Third, and 1 more/);
+      assert.ok(marks.includes('Couple with First, an unnamed chart (born January 2, 1981), Third, and 1 more'), marks);
       // Each partner names my chart; each couple has its own card.
       assert.match(await page.locator(`#settings-charts-body .saved-card[data-chart="${partners[3]}"] .saved-head`).textContent(), /Couple with Mine/);
       assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 4);
       // Removing my chart names each couple it ends.
       const remove = page.locator(`#settings-charts-body [data-settings-action="remove"][data-chart="${mine}"]`);
       await remove.click();
-      assert.match(await remove.textContent(), /^Remove Mine\? It is your chart, and its couples with First, an unnamed chart born [^,]+, Third, and 1 more end too\.$/);
+      assert.equal(await remove.textContent(), 'Remove Mine? It is your chart, and its couples with First, an unnamed chart (born January 2, 1981), Third, and 1 more end too.');
       // Pairing a chart in a couple waits for #96: Pair offers charts in no couple, and
       // there are none.
       assert.equal(await page.locator('#settings-pair-first').count(), 0);

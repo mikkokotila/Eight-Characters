@@ -10,7 +10,8 @@ back to this release safely.
 - **The record reads a chart in several couples**, as do the export, the backup and
   its restore. The store still pairs a chart in one couple at most.
 - **Settings and the library name every partner of a chart**, in the order paired,
-  an unnamed one by its birth date, and past three say how many more. Removing a chart
+  an unnamed one by its birth date (in parentheses, so its comma never reads as the
+  list's), and past three say how many more. Removing a chart
   names each couple it ends. A settings answer naming one chart twice in a couple, or
   the same pair twice, is refused, never drawn.
 - **Today has a partner in view.** The address names it (`partner`, a saved chart's
@@ -18,6 +19,7 @@ back to this release safely.
   chooses among several. A chart named that is not one of this chart's partners in
   your account is never swapped for another: this chart's own day is read without a
   couple and the page says why. A late answer for another partner is never drawn.
+  Another account taken drops the partner written in for the one before.
 
 ### Tests
 - `test_accounts_settings.py`: several couples per chart in the record, in a stored row,
@@ -30,7 +32,11 @@ back to this release safely.
   partner's; a partner that no longer charts shown but never chosen; the partner kept
   through a choice, the commands, steps, the language, reload and history, and left out
   of the chart's own link; a malformed or repeated `partner` refused by name; With
-  emptied by a sign-out and by another account taken.
+  emptied by a sign-out and by another account taken, and the partner written in for
+  the account before dropped; the partner's side of a chart in no couple, with no
+  partner named, asks for nothing.
+- `today.test.mjs`: the palette's close is waited for, since dialogs fade out (0.52.0);
+  checked at once, it failed on main in engines that keep a closing dialog drawn.
 
 ## 0.52.0
 
