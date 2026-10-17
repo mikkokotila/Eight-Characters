@@ -147,7 +147,7 @@ no line height keeps its font's own.
 | `--control-1` | 28px | a chip set in a line: the library button beside the chart's name |
 | `--control-2` | 36px | a button, a choice in a pill, a topic, a list's row |
 | `--control-3` | 48px | a field, and the main action |
-| `--control-touch` | 44px | on a phone, every control grows to it |
+| `--control-touch` | 44px | on a phone, buttons, topics and the choices in a group grow to it; the start page's language switch grows to it whole, and a chip set in a line keeps its height |
 
 A group of choices (a pill of them, the gender, the partner in view) is a control's
 height plus its `--space-1` padding and hairline: 46px, and 54px on a phone. The

@@ -143,7 +143,7 @@
   --control-1: 28px;  /* a chip set in a line: the library button beside the chart's name */
   --control-2: 36px;  /* a button, a choice in a pill, a topic, a list's row */
   --control-3: 48px;  /* a field, and the main action */
-  --control-touch: 44px;  /* on a phone, every control grows to it */
+  --control-touch: 44px;  /* on a phone, buttons, topics and the choices in a group grow to it */
 
   /* ── The page, the pillars and the panel beside them ── */
   /* The page's margin above and below what it shows; the panel beside the chart keeps
@@ -2842,9 +2842,12 @@ kbd {
   .topic-button,
   .role-choice,
   .chart-topics .context-toggle,
+  .gender-option span,
   .today-partner select,
   .settings-choose select,
   .settings-rename input { min-height: var(--control-touch); }
+  /* The start page's language switch stands level with the account's button. */
+  .language-switch { min-height: var(--control-touch); }
 }
 @container panel (max-width: 640px) {
   .relationship-members { grid-template-columns: 1fr; }
