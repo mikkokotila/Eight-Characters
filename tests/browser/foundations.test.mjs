@@ -21,6 +21,11 @@ const AUDIT = () => {
       if (!walker.currentNode.textContent.trim() || elements.has(element)) continue;
       if (element.closest('.sr-only, script, style, title')) continue;
       if (!element.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true })) continue;
+      // A control's tooltip shows half a second after the pointer comes to rest on it, and
+      // fades in: settled() cannot wait for a fade that has not begun. It is measured once
+      // it has arrived, never part of the way in or out.
+      const tip = element.closest('.control-tooltip');
+      if (tip && getComputedStyle(tip).opacity !== '1') continue;
       const box = element.getBoundingClientRect();
       if (box.width === 0 || box.height === 0) continue;
       // Collapsed hidden-stem panels clip their rows to nothing.
