@@ -1201,11 +1201,6 @@ body {
   border-radius: inherit;
   pointer-events: none;
 }
-.card.metal[data-luck-part='resting'] .card-face { background: var(--metal-tint); }
-.card.fire[data-luck-part='resting'] .card-face { background: var(--fire-tint); }
-.card.wood[data-luck-part='resting'] .card-face { background: var(--wood-tint); }
-.card.earth[data-luck-part='resting'] .card-face { background: var(--earth-tint); }
-.card.water[data-luck-part='resting'] .card-face { background: var(--water-tint); }
 .luck-set-aside {
   position: absolute;
   top: var(--space-2);
@@ -1250,6 +1245,105 @@ body {
   content: '';
   position: absolute;
   inset: 0 0 -2px;
+}
+
+/* ── One card: a stem or a branch in its element's colours, wherever it stands: the
+   chart's cards, Today's, a saved chart's pillars, and the life grid's head and Luck
+   column. Its face is the sheen over its element's colour, in its element's ink. A stem
+   rounds over its branch and the branch under it, and the two meet close. Its words are
+   its character (.glyph); its pinyin where nothing beside it names the pillar
+   (.card-pinyin); and on a full card its lines (.gua) and its names: a stem's element
+   (.element-name), a branch's animal (.animal-name) over its element (.animal-element).
+   It comes in four sizes: full (the chart's, Today's day), small (Today's pillars at
+   noon, the couple's day), tile (a saved chart's, the life grid's) and tiny (Today's
+   relationships). ── */
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile).wood { --el-bg: var(--wood-bg); --el-text: var(--wood-text); --el-tint: var(--wood-tint); }
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile).fire { --el-bg: var(--fire-bg); --el-text: var(--fire-text); --el-tint: var(--fire-tint); }
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile).earth { --el-bg: var(--earth-bg); --el-text: var(--earth-text); --el-tint: var(--earth-tint); }
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile).metal { --el-bg: var(--metal-bg); --el-text: var(--metal-text); --el-tint: var(--metal-tint); }
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile).water { --el-bg: var(--water-bg); --el-text: var(--water-text); --el-tint: var(--water-tint); }
+:is(.card, .today-card, .saved-glyph, .life-mini, .life-tile) {
+  --card-radius: var(--radius-4);
+  --card-join: var(--radius-2);
+  color: var(--el-text);
+}
+.card,
+.today-cards.is-large .today-card { --card-radius: var(--radius-5); }
+.today-cards.is-tiny .today-card { --card-radius: var(--radius-3); --card-join: var(--radius-1); }
+/* Its face: the chart's two sides, or the card itself. */
+.card-face,
+.today-card,
+.saved-glyph,
+.life-mini,
+.life-tile { background: var(--sheen), var(--el-bg); }
+/* Set aside (a luck pillar's stem in its branch phase), it takes its element's tint. */
+.card[data-luck-part='resting'] .card-face,
+.is-stem-resting .today-card.is-stem,
+.life-mini.is-resting,
+.life-phase.is-resting .life-tile { background: var(--sheen), var(--el-tint); }
+/* Its shape. A tile in the life grid's head stands alone, beside its pillar's other. */
+.card.stem,
+.today-card.is-stem,
+.saved-glyph.stem,
+.life-phase[data-part='stem'] .life-tile { border-radius: var(--card-radius) var(--card-radius) var(--card-join) var(--card-join); }
+.card.branch,
+.today-card.is-branch,
+.saved-glyph.branch,
+.life-phase[data-part='branch'] .life-tile { border-radius: var(--card-join) var(--card-join) var(--card-radius) var(--card-radius); }
+.life-mini { border-radius: var(--card-radius); }
+/* Its words: the character, by the card's size; its pinyin; its names. */
+.glyph {
+  font-family: var(--font-glyph);
+  font-weight: 500;
+  line-height: 1;
+}
+.card .glyph,
+.today-cards.is-large .glyph { font-size: var(--text-6); }
+.today-cards.is-small .glyph { font-size: var(--text-4); }
+.today-cards.is-tiny .glyph { font-size: var(--text-2); }
+.saved-glyph .glyph,
+.life-mini .glyph,
+.life-tile { font-size: var(--text-3); line-height: var(--leading-1); }
+.card-pinyin {
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  font-weight: 600;
+  line-height: var(--leading-1);
+}
+.element-name,
+.animal-element,
+.ten-god-name {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--text-3);
+  line-height: var(--leading-1);
+  letter-spacing: var(--tracking-1);
+  text-align: center;
+}
+.animal-name {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: var(--text-2);
+  line-height: var(--leading-1);
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  text-align: center;
+}
+/* The animal and its element read as one name, closer than the card's gap. */
+.animal-element { margin-top: calc(-1 * var(--space-1)); }
+/* A full card measures itself: too narrow for an animal's capitals (Today's days, the
+   chart beside the panel or on the narrowest phone), the animal takes the name's case. */
+.card-face,
+.today-cards.is-large .today-card { container-type: inline-size; }
+@container (max-width: 130px) {
+  .animal-name { text-transform: none; letter-spacing: var(--tracking-1); }
+}
+/* Its lines, as the chart draws them on a card. */
+:is(.card, .today-card) .gua {
+  --line-w: 34px;
+  --line-h: 3px;
+  --line-gap: 4px;
+  --break-gap: 8px;
 }
 
 /* ── The life grid (life.js): under the chart, its five columns run on through the life,
@@ -1318,27 +1412,16 @@ body {
   width: 100%;
   min-height: 46px;
 }
-/* A character, small, in its element: in the head, and as a tile in the Luck column. */
-:is(.life-mini, .life-tile).wood { --el-bg: var(--wood-bg); --el-text: var(--wood-text); --el-tint: var(--wood-tint); }
-:is(.life-mini, .life-tile).fire { --el-bg: var(--fire-bg); --el-text: var(--fire-text); --el-tint: var(--fire-tint); }
-:is(.life-mini, .life-tile).earth { --el-bg: var(--earth-bg); --el-text: var(--earth-text); --el-tint: var(--earth-tint); }
-:is(.life-mini, .life-tile).metal { --el-bg: var(--metal-bg); --el-text: var(--metal-text); --el-tint: var(--metal-tint); }
-:is(.life-mini, .life-tile).water { --el-bg: var(--water-bg); --el-text: var(--water-text); --el-tint: var(--water-tint); }
+/* A character, small, in its element: in the head a tile (the card), each pillar's stem
+   beside its branch. */
 .life-mini {
   display: grid;
   justify-items: center;
   width: 44px;
   padding: var(--space-1) 0;
-  border-radius: var(--radius-4);
-  background: var(--sheen), var(--el-bg);
-  color: var(--el-text);
 }
-.life-mini-char { font-family: var(--font-glyph); font-size: var(--text-3); line-height: var(--leading-1); }
-.life-mini-name { font-size: var(--text-1); font-weight: 600; line-height: var(--leading-1); }
 /* What the chosen phase's relationships touch. */
 .life-mini.is-ringed { box-shadow: 0 0 0 2px var(--bg), 0 0 0 3.5px var(--ink-1); }
-/* The luck pillar's stem, set aside in the branch phase, takes its element's tint. */
-.life-mini.is-resting { background: var(--el-tint); color: var(--ink-1); }
 
 .life-body { position: relative; isolation: isolate; }
 /* A row's parts share its grid row. A decade's phase is as tall as its marks need. */
@@ -1501,6 +1584,8 @@ body {
 }
 .life-phase:hover { background: color-mix(in srgb, var(--ink-1) 4%, transparent); }
 .life-phase:focus-visible { outline: 2px solid var(--ink-2); outline-offset: -3px; }
+/* Each phase's character is a tile (the card), the stem's over the branch's at the line
+   between the phases. */
 .life-tile {
   position: absolute;
   left: var(--space-3);
@@ -1508,14 +1593,9 @@ body {
   place-items: center;
   width: 32px;
   height: 40px;
-  background: var(--sheen), var(--el-bg);
-  color: var(--el-text);
-  font-family: var(--font-glyph);
-  font-size: var(--text-3);
-  font-weight: 500;
 }
-.life-phase[data-part='stem'] .life-tile { bottom: 1px; border-radius: var(--radius-4) var(--radius-4) var(--radius-2) var(--radius-2); }
-.life-phase[data-part='branch'] .life-tile { top: 1px; border-radius: var(--radius-2) var(--radius-2) var(--radius-4) var(--radius-4); }
+.life-phase[data-part='stem'] .life-tile { bottom: 1px; }
+.life-phase[data-part='branch'] .life-tile { top: 1px; }
 .life-phase.is-before .life-tile {
   top: 50%;
   height: 30px;
@@ -1524,7 +1604,6 @@ body {
   box-shadow: inset 0 0 0 1px var(--line-2);
   transform: translateY(-50%);
 }
-.life-phase.is-resting .life-tile { background: var(--el-tint); color: var(--ink-1); }
 .life-phase.is-chosen .life-tile { box-shadow: 0 0 0 2px var(--surface-2), 0 0 0 3.5px var(--ink-1); }
 .life-phase-name {
   display: flex;
@@ -1604,9 +1683,11 @@ body {
     gap: var(--space-1);
     width: 100%;
     padding: var(--space-1) 0;
-    border-radius: var(--radius-3);
   }
-  .life-mini-char { font-size: var(--text-1); }
+  /* Stacked, a pillar's stem and branch meet as the chart's cards do. */
+  .life-mini[data-part='stem'] { border-radius: var(--card-radius) var(--card-radius) var(--card-join) var(--card-join); }
+  .life-mini[data-part='branch'] { border-radius: var(--card-join) var(--card-join) var(--card-radius) var(--card-radius); }
+  .life-mini .glyph { font-size: var(--text-1); }
   .life-mark { display: none; }
   .life-phase { padding: 0 0 0 calc(var(--space-5) + var(--space-2)); border-radius: var(--radius-3); }
   .life-tile { left: var(--space-1); width: 24px; height: 32px; font-size: var(--text-1); }
@@ -1685,38 +1766,18 @@ body {
 .card:focus-visible .card-face { box-shadow: inset 0 0 0 2px var(--ink-1); }
 .card.branch:hover:focus-visible .card-face { box-shadow: inset 0 0 0 2px var(--ink-1), var(--shadow-2); }
 
-.card-face::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--sheen);
-  pointer-events: none;
-}
-
-.card.stem   { border-radius: var(--radius-5) var(--radius-5) var(--radius-2) var(--radius-2); }
 .card.branch {
-  border-radius: var(--radius-2) var(--radius-2) var(--radius-5) var(--radius-5);
   cursor: pointer;
   transition: transform var(--flow-settle) var(--flow-spring), border-radius var(--flow-settle) var(--flow-spring);
 }
+/* Opened, the branch runs on into its hidden stems. */
 .card.branch.is-expanded {
-  border-radius: var(--radius-2) var(--radius-2) 0 0;
+  border-radius: var(--card-join) var(--card-join) 0 0;
   transition: transform var(--flow-settle) var(--flow-spring), border-radius var(--flow-settle) var(--flow-spring);
 }
 .card.branch.is-expanded:hover {
   transform: none;
 }
-
-.card.metal { color: var(--metal-text); }
-.card.fire  { color: var(--fire-text); }
-.card.wood  { color: var(--wood-text); }
-.card.earth { color: var(--earth-text); }
-.card.water { color: var(--water-text); }
-.card.metal .card-face { background: var(--metal-bg); }
-.card.fire  .card-face { background: var(--fire-bg); }
-.card.wood  .card-face { background: var(--wood-bg); }
-.card.earth .card-face { background: var(--earth-bg); }
-.card.water .card-face { background: var(--water-bg); }
 
 /* ── The long-press hint, over the card under the pointer ── */
 .card-hint {
@@ -1881,14 +1942,6 @@ body {
   .card-back .hidden-stem-item { column-gap: var(--space-1); }
 }
 
-/* ── The card's character: its main glyph ── */
-.glyph {
-  font-family: var(--font-glyph);
-  font-weight: 500;
-  font-size: var(--text-6);
-  line-height: 1;
-}
-
 /* ── CSS-drawn gua lines, secondary to the character ── */
 .gua {
   display: flex;
@@ -1896,12 +1949,6 @@ body {
   gap: var(--line-gap);
   align-items: center;
   opacity: 0.65;
-}
-.card .gua {
-  --line-w: 34px;
-  --line-h: 3px;
-  --line-gap: 4px;
-  --break-gap: 8px;
 }
 
 /* Solid line */
@@ -1928,38 +1975,10 @@ body {
   background: currentColor;
 }
 
-/* ── Text ── */
-.element-name,
-.ten-god-name {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: var(--text-3);
-  letter-spacing: var(--tracking-1);
-  text-align: center;
-}
-
+/* A ten god's name, on the card's back, wraps within it. */
 .ten-god-name {
   max-width: 100%;
   overflow-wrap: break-word;
-}
-
-.animal-name {
-  font-family: var(--font-serif);
-  font-weight: 600;
-  font-size: var(--text-2);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  text-align: center;
-}
-
-/* The animal and its element read as one label, closer than the card's gap. */
-.animal-element {
-  font-family: var(--font-sans);
-  font-weight: 400;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-1);
-  text-align: center;
-  margin-top: calc(-1 * var(--space-1));
 }
 
 /* ── Day Master context: evidence in the existing chart's ink ── */
@@ -3240,18 +3259,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   justify-items: center;
   width: 46px;
   padding: var(--space-1) 0;
-  background: var(--sheen), var(--el-bg);
-  color: var(--el-text);
 }
-.saved-glyph.stem { border-radius: var(--radius-4) var(--radius-4) var(--radius-2) var(--radius-2); }
-.saved-glyph.branch { border-radius: var(--radius-2) var(--radius-2) var(--radius-4) var(--radius-4); }
-.saved-glyph.wood { --el-bg: var(--wood-bg); --el-text: var(--wood-text); }
-.saved-glyph.fire { --el-bg: var(--fire-bg); --el-text: var(--fire-text); }
-.saved-glyph.earth { --el-bg: var(--earth-bg); --el-text: var(--earth-text); }
-.saved-glyph.metal { --el-bg: var(--metal-bg); --el-text: var(--metal-text); }
-.saved-glyph.water { --el-bg: var(--water-bg); --el-text: var(--water-text); }
-.saved-char { font-family: var(--font-glyph); font-size: var(--text-3); line-height: var(--leading-1); }
-.saved-pinyin { font-size: var(--text-1); font-weight: 600; line-height: var(--leading-1); }
 .couple-names {
   display: flex;
   flex-wrap: wrap;
@@ -3448,7 +3456,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   --card: 136px;
   --gap: var(--space-3);
   position: relative;
-  height: 440px;
+  /* Room for the middle day: its cards, named as the chart's are, its date and its pull. */
+  height: 472px;
   overflow: hidden;
   touch-action: pan-y;
   user-select: none;
@@ -3491,7 +3500,9 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-day-when { display: grid; justify-items: center; text-align: center; }
 .today-day-weekday { font-family: var(--font-serif); font-size: max(var(--text-3), calc(var(--text-1) * var(--held))); color: var(--ink-1); }
 .today-day-date { font-size: calc(var(--text-1) * var(--held)); color: var(--ink-2); }
-.today-day :is(.today-card-pinyin, .today-card-name) { font-size: calc(var(--text-1) * var(--held)); }
+.today-day .card-pinyin { font-size: calc(var(--text-1) * var(--held)); }
+.today-day :is(.element-name, .animal-element) { font-size: max(var(--text-3), calc(var(--text-1) * var(--held))); }
+.today-day .animal-name { font-size: max(var(--text-2), calc(var(--text-1) * var(--held))); }
 /* A neighbour's verdict wraps within its day, its mark with its first word; the middle
    day's, under everything else, keeps to one line. The mark keeps its size too. */
 .today-day-pull { font-size: calc(var(--text-1) * var(--held)); color: var(--ink-1); text-align: center; text-wrap: balance; }
@@ -3500,10 +3511,9 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-day .today-band-mark { scale: var(--held); margin-right: calc(var(--space-1) * var(--held)); }
 /* A date not known yet: the cards' outlines, and "…" for the pull. */
 .today-cards.is-pending .today-card { min-height: 96px; border: 1px dashed var(--line-2); background: var(--surface-1); }
-.today-cards.is-pending .today-card::before { content: none; }
 .today-day-pull.is-pending { color: var(--ink-3); }
 
-/* ── The chart's cards: a stem over its branch, each in its element's colours ── */
+/* ── The chart's cards: a stem over its branch, each the card (above) at its size ── */
 .today-cards { display: grid; gap: var(--space-1); width: 100%; }
 .today-card {
   position: relative;
@@ -3515,42 +3525,15 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   overflow: hidden;
   line-height: var(--leading-1);
 }
-.today-card::before { content: ''; position: absolute; inset: 0; background: var(--sheen); pointer-events: none; }
-.today-card.is-stem { border-radius: var(--radius-5) var(--radius-5) var(--radius-2) var(--radius-2); }
-.today-card.is-branch { border-radius: var(--radius-2) var(--radius-2) var(--radius-5) var(--radius-5); }
-.today-card.metal { background: var(--metal-bg); color: var(--metal-text); }
-.today-card.fire { background: var(--fire-bg); color: var(--fire-text); }
-.today-card.wood { background: var(--wood-bg); color: var(--wood-text); }
-.today-card.earth { background: var(--earth-bg); color: var(--earth-text); }
-.today-card.water { background: var(--water-bg); color: var(--water-text); }
 /* A relationship's member, outlined on its card. */
 .today-card.is-member { box-shadow: inset 0 0 0 2px currentColor; }
-/* By phase, a luck pillar's stem rests in its branch phase. */
-.is-stem-resting .today-card.is-stem.metal { background: var(--metal-tint); }
-.is-stem-resting .today-card.is-stem.fire { background: var(--fire-tint); }
-.is-stem-resting .today-card.is-stem.wood { background: var(--wood-tint); }
-.is-stem-resting .today-card.is-stem.earth { background: var(--earth-tint); }
-.is-stem-resting .today-card.is-stem.water { background: var(--water-tint); }
-.today-card-glyph { font-family: var(--font-glyph); font-weight: 500; line-height: 1; }
-.today-card-pinyin,
-.today-card-name { font-size: var(--text-1); }
-.today-card-name { font-family: var(--font-serif); font-weight: 600; text-align: center; }
-.today-cards.is-large .today-card-glyph { font-size: var(--text-6); }
 .today-cards.is-large .today-card { gap: var(--space-2); }
 .today-cards.is-small .today-card { padding: var(--space-2) var(--space-1); }
-.today-cards.is-small .today-card-glyph { font-size: var(--text-4); }
 .today-cards.is-tiny { width: auto; }
 .today-cards.is-tiny .today-card { padding: var(--space-1) var(--space-2); }
-.today-cards.is-tiny .today-card-glyph { font-size: var(--text-2); }
-.today-gua { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); opacity: 0.65; }
-.today-line { display: flex; justify-content: space-between; width: 30px; height: 3px; }
-.today-line.is-whole { background: currentColor; border-radius: var(--line-r); }
-.today-line.is-broken::before,
-.today-line.is-broken::after { content: ''; width: 11px; height: 3px; border-radius: var(--line-r); background: currentColor; }
 
 /* ── The run: the 22 days as a strip of bars around a zero line ── */
 .today-run { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
-.today-run-label { font-size: var(--text-1); color: var(--ink-2); }
 .today-run-track {
   display: grid;
   grid-template-columns: repeat(22, minmax(0, 1fr));
@@ -3829,7 +3812,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .today-hours tbody th { white-space: normal; }
   /* One day on either side, and the run in two rows of eleven. */
-  .today-days { --card: 116px; height: 400px; }
+  .today-days { --card: 116px; height: 432px; }
   .today-day:is([data-place='-2'], [data-place='2']) { visibility: hidden; }
   .today-run-track { grid-template-columns: repeat(11, minmax(0, 1fr)); row-gap: var(--space-2); }
   .today-scale-figure { grid-template-columns: 1fr 1fr; }

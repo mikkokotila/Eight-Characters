@@ -46,7 +46,7 @@ const scaleAt = (value) => `${(50 + (value / 3.5) * 50).toFixed(2)}%`;
 // A place whose clocks skipped a day: Apia, on 30 December 2011.
 const APIA = { name: 'Apia, Samoa', city: 'Apia', timezone: 'Pacific/Apia', latitude: -13.833, longitude: -171.767 };
 // A card's lines as the answer writes them: L a whole line, B a broken one.
-const linesOf = (card) => card.locator('.today-line').evaluateAll((lines) => lines.map((line) => (line.classList.contains('is-whole') ? 'L' : 'B')));
+const linesOf = (card) => card.locator('.gua > *').evaluateAll((lines) => lines.map((line) => line.className));
 
 // The chart on screen as the library keeps it.
 const SELF = { date: CHART.date, time: CHART.time, place: PLACE, gender: CHART.gender, zi: 'split_midnight' };

@@ -73,8 +73,8 @@
       return `<p class="saved-problem">${esc(t('saved_problem', { problem: chart.problem }))}</p>`;
     }
     const tile = (part, glyph) => `<span class="saved-glyph ${part} ${esc(glyph.element)}">
-        <span class="saved-char" lang="zh-Hant">${esc(glyph.chinese)}</span>
-        <span class="saved-pinyin">${esc(glyph.pinyin)}</span>
+        <span class="saved-char glyph" lang="zh-Hant">${esc(glyph.chinese)}</span>
+        <span class="saved-pinyin card-pinyin">${esc(glyph.pinyin)}</span>
       </span>`;
     return `<ol class="saved-strip">${PILLARS.map((name) => {
       const { stem, branch } = chart.pillars[name];

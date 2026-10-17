@@ -40,8 +40,8 @@
 
     // ── The head: the chart, compact, each pillar's stem beside its branch ──
     const mini = (part, char, pinyin, element) => `<span class="life-mini ${esc(element)}" data-part="${part}">
-        <span class="life-mini-char" lang="zh-Hant">${esc(char)}</span>
-        <span class="life-mini-name">${esc(pinyin)}</span>
+        <span class="life-mini-char glyph" lang="zh-Hant">${esc(char)}</span>
+        <span class="life-mini-name card-pinyin">${esc(pinyin)}</span>
       </span>`;
     const drawHead = () => {
       head.innerHTML = `${NATAL.map((pillar, index) => {
@@ -143,7 +143,7 @@
       const age = phase === 'stem' ? decade.startAge : decade.startAge + 5;
       return `<button type="button" class="life-phase" data-life="${decade.sequence}/${phase}" data-part="${phase}"
           tabindex="-1" aria-controls="luck-detail" aria-expanded="false">
-          <span class="life-tile ${esc(card.element)}" lang="zh-Hant">${esc(card.char)}</span>
+          <span class="life-tile glyph ${esc(card.element)}" lang="zh-Hant">${esc(card.char)}</span>
           <span class="life-phase-name">${esc(life.names(card.char))}<span class="life-now">${esc(t('luck_today'))}</span></span>
           <span class="life-phase-role">${esc(t('ten_god_' + brings.ten_god))}${brings.new_to_chart ? `<span class="life-new"> · ${esc(t('life_new'))}</span>` : ''}</span>
           <span class="life-phase-years">${life.year(span.start)}<span class="life-phase-to">–${life.year(span.end)}</span><span class="life-phase-age"> · ${esc(t('life_age', { age }))}</span></span>

@@ -392,17 +392,20 @@
       ].join('');
     };
     // ── The chart's cards, as Standard mode draws a pillar: a stem card over its branch
-    // card, each in its own element's colours, its character with its pinyin. Large, a
-    // card also draws its lines (the stem's trigram, the branch's hexagram, as the answer
-    // gives them) and its name: the stem's polarity and element, the branch's animal. A
+    // card, each the one card (style.css) in its own element's colours, its character with
+    // its pinyin. Large, a card also draws its lines (the stem's trigram, the branch's
+    // hexagram, as the answer gives them) and its names as the chart's cards do: the
+    // stem's polarity and element, the branch's animal over its polarity and element. A
     // relationship's member is outlined on its card. ──
-    const gua = (lines) => `<span class="today-gua" aria-hidden="true">${lines.map((line) => `<i class="today-line is-${line === 'L' ? 'whole' : 'broken'}"></i>`).join('')}</span>`;
+    const gua = (lines) => `<span class="gua" aria-hidden="true">${lines.map((line) => `<i class="${line === 'L' ? 'L' : 'B'}"></i>`).join('')}</span>`;
+    const elementOf = (glyph) => `${glyph.polarity} ${t('element_' + glyph.element)}`;
+    const names = (part, glyph) => (part === 'stem'
+      ? `<span class="element-name">${esc(elementOf(glyph))}</span>`
+      : `<span class="animal-name">${esc(t('animal_' + glyph.sign.toLowerCase()))}</span><span class="animal-element">${esc(elementOf(glyph))}</span>`);
     const card = (part, glyph, large, member) => `<span class="today-card is-${part} ${esc(glyph.element)}${member ? ' is-member' : ''}">
-        <span class="today-card-glyph" lang="zh-Hant">${esc(glyph.chinese)}</span>
-        <span class="today-card-pinyin">${esc(glyph.pinyin)}</span>
-        ${large ? `${gua(glyph.lines)}<span class="today-card-name">${esc(part === 'stem'
-          ? `${glyph.polarity} ${t('element_' + glyph.element)}`
-          : t('animal_' + glyph.sign.toLowerCase()))}</span>` : ''}
+        <span class="today-card-glyph glyph" lang="zh-Hant">${esc(glyph.chinese)}</span>
+        <span class="today-card-pinyin card-pinyin">${esc(glyph.pinyin)}</span>
+        ${large ? `${gua(glyph.lines)}${names(part, glyph)}` : ''}
       </span>`;
     const cards = (pillar, size, member = null) => `<span class="today-cards is-${size}">${card('stem', pillar.stem, size === 'large', member === pillar.stem.chinese)}${card('branch', pillar.branch, size === 'large', member === pillar.branch.chinese)}</span>`;
 
