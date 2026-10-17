@@ -553,8 +553,10 @@ class TestDays(unittest.TestCase):
             [day['date'] for day in first['days']], _dates(date(1949, 1, 1), 9)
         )
         # Asked at the end itself: nothing more that way.
-        for asked, through in (({'after': '2100-12-31'}, '2100-12-31'),
-                               ({'before': '1949-01-01'}, '1949-01-01')):
+        for asked, through in (
+            ({'after': '2100-12-31'}, '2100-12-31'),
+            ({'before': '1949-01-01'}, '1949-01-01'),
+        ):
             with self.subTest(asked=asked):
                 none = self.days(**asked)
                 self.assertEqual(
@@ -585,9 +587,12 @@ class TestDays(unittest.TestCase):
 
     def test_days_need_an_account_and_are_its_own(self) -> None:
         asked = {**DAYS_BODY, 'after': DAY}
-        self.assertEqual(site_client().post('/api/today/days', json=asked).status_code, 401)
+        self.assertEqual(
+            site_client().post('/api/today/days', json=asked).status_code, 401
+        )
         reply = self.client.post('/api/today/days', json=asked)
         self.assertEqual(reply.headers['cache-control'], 'private, no-cache')
+
 
 # ── A year of days, against the daily briefing's own formula ──
 

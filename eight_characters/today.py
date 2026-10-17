@@ -738,9 +738,7 @@ def build_days(
         end = through == LAST_DAY
     else:
         through = max(frontier - timedelta(days=DAYS_PER_REQUEST), FIRST_DAY)
-        dates = [
-            through + timedelta(days=n) for n in range((frontier - through).days)
-        ]
+        dates = [through + timedelta(days=n) for n in range((frontier - through).days)]
         end = through == FIRST_DAY
     natal = chart_birth(subject)
     weights = favourable_for(natal, schools)['weights']
