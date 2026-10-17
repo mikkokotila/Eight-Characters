@@ -24,6 +24,7 @@ fails on any.
 | `--shadow-1`, `--shadow-2`, `--shadow-sheet` | | a focused field; anything raised; the sheet over the foot of the page |
 | `--sheen` | | the light across a card's face |
 | `--pin` | the place fields' pin, drawn in `--ink-1` | the pin at the end of a place field |
+| `--chevron` | a list's chevron, drawn in `--ink-2` | the end of a list (a `select`), which draws its own so that it takes the controls' height and corners in every browser |
 | `--<element>-bg`, `--<element>-text`, `--<element>-tint` | the tint: its element at 20% on the page tone (22% for metal and water), mixed opaque with `color-mix()` | each element's cards, their ink, and its hidden-stem panels |
 
 `--ink-1` and `--ink-2` meet WCAG AA (4.5:1) on the page and on every
@@ -51,7 +52,7 @@ pickers, follow it. Paper keeps the day's colours.
 | `--ink-found`, `--ink-error` | `#93C29B`, `#E6A094` |
 | `--line-1`, `--line-2` | the ink at 14%, 34% |
 | `--surface-1`, `--surface-2`, `--surface-3` | white at 4%, 8%; `#2C2824` at 96% on the page, opaque |
-| `--pin` | the pin drawn in the dark `--ink-1` |
+| `--pin`, `--chevron` | the pin and the chevron drawn in the dark `--ink-1` and `--ink-2` |
 | `--surface-page-1`, `--surface-page-2` | the page tone at 85%, 92% |
 | `--shadow-*`, `--backdrop`, `--sheen` | black at 35–55%; white light at 8% |
 | `--metal-bg` / `--metal-text` | `#5C5851` / `#F3EFE8` |

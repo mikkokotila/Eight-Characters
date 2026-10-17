@@ -28,6 +28,12 @@ set once in `style.css` and drawn the same in every view.
 - Settings' lists wear their labels above them, as the start page's fields do, with
   their actions level beside them.
 
+### Fixed
+- In Safari, Settings' lists and Today's partner choice were drawn as the system's own
+  pop-up lists, 21px tall with their own corners, whatever their tokens said. Each
+  list now draws its own chevron (`--chevron`, in the secondary ink, by day and at
+  night), so it takes the controls' height and corners in every browser.
+
 ### Tests
 - `components.test.mjs`: every card in the views is the one card at its size, and
   every label is set one way, on a desktop and a phone.

@@ -78,6 +78,8 @@
   --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.15) 0%, rgba(255, 255, 255, 0) 60%);
   /* The place fields' pin, drawn in the ink: the dark theme draws it in its own. */
   --pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z' stroke='%232A2520' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='10' r='2.7' stroke='%232A2520' stroke-width='1.8'/%3E%3C/svg%3E");
+  /* A list's chevron, 12px, drawn in the secondary ink: the dark theme draws it in its own. */
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23655F58' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
   --metal-bg: #C8C2B8;
   --metal-text: #33302C;
@@ -207,6 +209,7 @@
     --backdrop: rgba(0, 0, 0, 0.55);
     --sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0) 60%);
     --pin: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='22' height='22' viewBox='0 0 24 24' fill='none'%3E%3Cpath d='M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11z' stroke='%23EEE7DC' stroke-width='1.8'/%3E%3Ccircle cx='12' cy='10' r='2.7' stroke='%23EEE7DC' stroke-width='1.8'/%3E%3C/svg%3E");
+    --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23B2A99C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
 
     --metal-bg: #5C5851;
     --metal-text: #F3EFE8;
@@ -3439,6 +3442,17 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   cursor: pointer;
 }
 .today-partner select:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+/* A list draws its own chevron, so that it takes the controls' shape and height in every
+   browser: Safari draws a native list at its own height and corners. */
+.settings-choose select,
+.today-partner select {
+  -webkit-appearance: none;
+  appearance: none;
+  padding-inline-end: calc(2 * var(--space-3) + var(--space-2));
+  background-image: var(--chevron);
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+}
 .today-view[aria-busy='true'] .today-partner select { cursor: progress; }
 .today-body {
   display: flex;
