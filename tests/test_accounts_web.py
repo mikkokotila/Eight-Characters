@@ -108,7 +108,7 @@ class TestConfig(unittest.TestCase):
             ('EC_APP_ORIGIN', 'https://bazi.nektari.fi/app'),
             ('EC_APP_ORIGIN', 'bazi.nektari.fi'),
             ('EC_SECRET_KEY', 'too short'),
-            ('EC_MAIL_FROM', 'BaZi'),
+            ('EC_MAIL_FROM', 'Eight Chord'),
             ('EC_MAIL_TRANSPORT', 'pigeon'),
             ('EC_MAIL_DIRECTORY', str(self.directory / 'missing')),
             ('EC_CLIENT_IP_HEADER', 'X Real IP'),
@@ -184,7 +184,7 @@ class TestAskingForACode(AccountApiTestCase):
         created = subjects['new@example.com']
         self.assertTrue(created.startswith('Koodi tilisi luomiseen: '))
         no_account = subjects['nobody@example.com']
-        self.assertEqual(no_account, 'No BaZi account for this address')
+        self.assertEqual(no_account, 'No Eight Chord account for this address')
         sent = mails_to(self.directory, 'member@example.com')
         member = [message['Subject'] for message in sent]
         self.assertTrue(member[0].startswith('Your sign-in code: '))
@@ -446,7 +446,7 @@ class TestTheAccount(AccountApiTestCase):
         reply = self.client.post('/api/account/export', json=self.this())
         self.assertEqual(reply.status_code, 200)
         disposition = reply.headers['content-disposition']
-        self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
+        self.assertEqual(disposition, 'attachment; filename="eight-chord-account.json"')
         exported = json.loads(reply.content)
         user = self.accounts.store.user_by_email('reader@example.com')
         assert user is not None
@@ -485,7 +485,7 @@ class TestTheAccount(AccountApiTestCase):
         self.assertEqual(reply.status_code, 200)
         self.assertNotIn('set-cookie', reply.headers)
         disposition = reply.headers['content-disposition']
-        self.assertEqual(disposition, 'attachment; filename="bazi-account.json"')
+        self.assertEqual(disposition, 'attachment; filename="eight-chord-account.json"')
 
     def test_an_account_deleted_meanwhile_answers_as_signed_out(self) -> None:
         gone = UnknownUser('gone')

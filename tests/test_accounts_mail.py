@@ -30,7 +30,7 @@ from eight_characters.accounts.person_check import (
 from eight_characters.accounts.records import LANGUAGES
 from eight_characters.accounts.signin import CodeMessage, MessageKind
 
-SENDER = 'BaZi <kirjaudu@nektari.fi>'
+SENDER = 'Eight Chord <kirjaudu@nektari.fi>'
 ORIGIN = 'https://bazi.nektari.fi'
 
 
@@ -69,7 +69,7 @@ class TestMessages(unittest.TestCase):
             CodeMessage('no_account', 'reader@example.com', 'fi', None), SENDER, ORIGIN
         )
         parsed = email.message_from_bytes(bytes(message), policy=default)
-        self.assertEqual(parsed['Subject'], 'Tällä osoitteella ei ole BaZi-tiliä')
+        self.assertEqual(parsed['Subject'], 'Tällä osoitteella ei ole Eight Chord -tiliä')
         body = parsed.get_body()
         assert body is not None
         self.assertIn('yritettiin kirjautua', body.get_content())

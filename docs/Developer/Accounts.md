@@ -298,7 +298,7 @@ or a database it cannot open, stops it with the reason.
 | `EC_APP_ORIGIN` | `https://bazi.nektari.fi` | `http://127.0.0.1:8000` |
 | `EC_DATABASE_PATH` | `/data/accounts.sqlite3` | any path, made with `init` |
 | `EC_SECRET_KEY` | 32 bytes or more, random | the same |
-| `EC_MAIL_FROM` | `BaZi <kirjaudu@nektari.fi>` | any address |
+| `EC_MAIL_FROM` | `Eight Chord <kirjaudu@nektari.fi>` | any address |
 | `EC_MAIL_TRANSPORT` | `smtp` | `directory` |
 | `EC_SMTP_HOST`, `EC_SMTP_PORT`, `EC_SMTP_USERNAME`, `EC_SMTP_PASSWORD` | `smtp.resend.com`, `465`, `resend`, the Resend key | — |
 | `EC_MAIL_DIRECTORY` | — | a folder; each email becomes a `.eml` file |
@@ -336,7 +336,7 @@ python -m eight_characters.accounts init --database "$LOCAL/accounts.sqlite3"
 export EC_APP_ORIGIN=http://127.0.0.1:8000
 export EC_DATABASE_PATH="$LOCAL/accounts.sqlite3"
 export EC_SECRET_KEY="$(python -c 'import secrets; print(secrets.token_urlsafe(48))')"
-export EC_MAIL_FROM='BaZi <kirjaudu@example.com>'
+export EC_MAIL_FROM='Eight Chord <kirjaudu@example.com>'
 export EC_MAIL_TRANSPORT=directory
 export EC_MAIL_DIRECTORY="$LOCAL/mail"
 export EC_TURNSTILE_SITE_KEY=1x00000000000000000000AA

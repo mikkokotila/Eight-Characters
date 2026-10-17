@@ -105,7 +105,7 @@ def account_environment(directory: Path, **changes: str) -> dict[str, str]:
         'EC_APP_ORIGIN': TEST_ORIGIN,
         'EC_DATABASE_PATH': str(directory / 'accounts.sqlite3'),
         'EC_SECRET_KEY': TEST_SECRET,
-        'EC_MAIL_FROM': 'BaZi <kirjaudu@example.com>',
+        'EC_MAIL_FROM': 'Eight Chord <kirjaudu@example.com>',
         'EC_MAIL_TRANSPORT': 'directory',
         'EC_MAIL_DIRECTORY': str(mail),
         'EC_TURNSTILE_SITE_KEY': '1x00000000000000000000AA',

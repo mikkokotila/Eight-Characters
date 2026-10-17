@@ -26,7 +26,7 @@ _MINUTES: Final = int(CODE_LIFETIME.total_seconds() // 60)
 TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ('sign_in_code', 'en'): (
         'Your sign-in code: {code}',
-        'Your sign-in code for BaZi is\n\n'
+        'Your sign-in code for Eight Chord is\n\n'
         '    {code}\n\n'
         f"It works once, for {_MINUTES} minutes. If you didn't ask for it, you can "
         'ignore this email: no one can sign in without the code.\n\n'
@@ -34,7 +34,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ),
     ('sign_in_code', 'fi'): (
         'Kirjautumiskoodisi: {code}',
-        'Kirjautumiskoodisi BaZiin on\n\n'
+        'Kirjautumiskoodisi Eight Chord -palveluun on\n\n'
         '    {code}\n\n'
         f'Koodi toimii kerran ja {_MINUTES} minuutin ajan. Jos et pyytänyt sitä, '
         'voit jättää tämän viestin huomiotta: ilman koodia kukaan ei pääse '
@@ -43,7 +43,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ),
     ('create_code', 'en'): (
         'Your code to create your account: {code}',
-        'Enter this code on BaZi to create your account:\n\n'
+        'Enter this code on Eight Chord to create your account:\n\n'
         '    {code}\n\n'
         f"It works once, for {_MINUTES} minutes. If you didn't ask for an account, "
         'you can ignore this email: nothing is created without the code.\n\n'
@@ -51,7 +51,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ),
     ('create_code', 'fi'): (
         'Koodi tilisi luomiseen: {code}',
-        'Luo tilisi BaZiin syöttämällä tämä koodi:\n\n'
+        'Luo tilisi Eight Chord -palveluun syöttämällä tämä koodi:\n\n'
         '    {code}\n\n'
         f'Koodi toimii kerran ja {_MINUTES} minuutin ajan. Jos et pyytänyt tiliä, '
         'voit jättää tämän viestin huomiotta: ilman koodia tiliä ei luoda.\n\n'
@@ -59,8 +59,8 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ),
     ('existing_account', 'en'): (
         'You already have an account. Your sign-in code: {code}',
-        'Someone asked to create a BaZi account with this address, but it already '
-        'has one. To sign in, enter this code:\n\n'
+        'Someone asked to create an Eight Chord account with this address, but it '
+        'already has one. To sign in, enter this code:\n\n'
         '    {code}\n\n'
         f"It works once, for {_MINUTES} minutes. If you didn't ask for it, you can "
         'ignore this email.\n\n'
@@ -68,7 +68,7 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
     ),
     ('existing_account', 'fi'): (
         'Sinulla on jo tili. Kirjautumiskoodisi: {code}',
-        'Tällä osoitteella pyydettiin uutta BaZi-tiliä, mutta osoitteella on jo '
+        'Tällä osoitteella pyydettiin uutta Eight Chord -tiliä, mutta osoitteella on jo '
         'tili. Kirjaudu syöttämällä tämä koodi:\n\n'
         '    {code}\n\n'
         f'Koodi toimii kerran ja {_MINUTES} minuutin ajan. Jos et pyytänyt sitä, '
@@ -76,14 +76,14 @@ TEXTS: Final[dict[tuple[MessageKind, Language], tuple[str, str]]] = {
         '{origin}\n',
     ),
     ('no_account', 'en'): (
-        'No BaZi account for this address',
-        'Someone asked to sign in to BaZi with this address, but there is no '
+        'No Eight Chord account for this address',
+        'Someone asked to sign in to Eight Chord with this address, but there is no '
         'account for it. To create one, go to {origin} and choose Create account.\n\n'
         "If you didn't ask, you can ignore this email.\n",
     ),
     ('no_account', 'fi'): (
-        'Tällä osoitteella ei ole BaZi-tiliä',
-        'Tällä osoitteella yritettiin kirjautua BaZiin, mutta osoitteella ei ole '
+        'Tällä osoitteella ei ole Eight Chord -tiliä',
+        'Tällä osoitteella yritettiin kirjautua Eight Chord -palveluun, mutta osoitteella ei ole '
         'tiliä. Luo tili osoitteessa {origin} valitsemalla Luo tili.\n\n'
         'Jos et yrittänyt kirjautua, voit jättää tämän viestin huomiotta.\n',
     ),

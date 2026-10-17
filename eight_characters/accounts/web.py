@@ -161,7 +161,7 @@ def _origin(value: str) -> str:
         or parts.password
     ):
         raise ConfigError(
-            'EC_APP_ORIGIN must be the site origin, like https://bazi.nektari.fi '
+            'EC_APP_ORIGIN must be the site origin, like https://my.eightchord.com '
             '(plain http only for localhost), without a path or a trailing slash.'
         )
     return value
@@ -215,7 +215,7 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
     mail_from = env['EC_MAIL_FROM']
     if '@' not in parseaddr(mail_from)[1]:
         errors.append(
-            'EC_MAIL_FROM must hold an address, like BaZi <kirjaudu@nektari.fi>.'
+            'EC_MAIL_FROM must hold an address, like Eight Chord <kirjaudu@nektari.fi>.'
         )
     if transport not in ('smtp', 'directory'):
         errors.append('EC_MAIL_TRANSPORT must be smtp or directory.')
@@ -844,7 +844,7 @@ def export_account(
         data = accounts.store.account_data(user.id)
     except UnknownUser as exc:
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
-    response.headers['Content-Disposition'] = 'attachment; filename="bazi-account.json"'
+    response.headers['Content-Disposition'] = 'attachment; filename="eight-chord-account.json"'
     return {**data, 'exported_at': timestamp(accounts.clock())}
 
 

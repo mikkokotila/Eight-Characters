@@ -133,7 +133,7 @@ for (const profile of profiles) {
         ['display-switch', 'copy-text-btn']);
       assert.deepEqual(await page.locator('.compare-frame').evaluateAll((frames) => frames.map((frame) => frame.title)), [
         'Chart 1: February 4, 1988 · 16:30 · Chengdu', 'Chart 2: May 9, 1990 · 12:00 · Chengdu']);
-      assert.equal(await page.title(), 'Comparison: February 4, 1988 · 16:30 · Chengdu and May 9, 1990 · 12:00 · Chengdu — BaZi');
+      assert.equal(await page.title(), 'Comparison: February 4, 1988 · 16:30 · Chengdu and May 9, 1990 · 12:00 · Chengdu — Eight Chord');
       const pair = pairIn(page.url());
       assert.deepEqual([pair.a.get('date'), pair.b.get('date'), pair.b.get('time')], ['1988-02-04', SECOND.date, SECOND.time]);
     });

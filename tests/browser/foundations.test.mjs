@@ -591,7 +591,7 @@ for (const profile of profiles) {
         .map((heading) => `${heading.tagName} ${heading.textContent.trim()}`));
       await page.goto(process.env.EC_BASE_URL);
       await page.locator('[data-lang="en"]').click();
-      assert.deepEqual(await headings(), ['H1 Eight characters']);
+      assert.deepEqual(await headings(), ['H1 Eight Chord']);
       await openChart(page, { lang: 'en' });
       assert.deepEqual(await headings(), ['H1 February 4, 1988 · 16:30 · Chengdu', 'H2 Day Master · Ji — Yin Earth']);
     });
@@ -677,13 +677,13 @@ for (const profile of profiles) {
     check('the tab names the page in its language, and the open chart by date and place', async (page) => {
       await page.goto(process.env.EC_BASE_URL);
       await page.locator('[data-lang="en"]').click();
-      assert.equal(await page.title(), 'BaZi — Four pillars');
+      assert.equal(await page.title(), 'Eight Chord — Four pillars');
       await page.locator('[data-lang="fi"]').click();
-      assert.equal(await page.title(), 'BaZi — Neljä pilaria');
+      assert.equal(await page.title(), 'Eight Chord — Neljä pilaria');
       await openChart(page, { lang: 'en' });
-      assert.equal(await page.title(), 'February 4, 1988 · 16:30 · Chengdu — BaZi');
+      assert.equal(await page.title(), 'February 4, 1988 · 16:30 · Chengdu — Eight Chord');
       await page.locator('#back-btn').click();
-      assert.equal(await page.title(), 'BaZi — Four pillars');
+      assert.equal(await page.title(), 'Eight Chord — Four pillars');
     });
 
     check('nothing the landing page or chart loads fails, and both tab icons are served', async (page) => {

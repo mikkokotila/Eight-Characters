@@ -178,10 +178,10 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'fi');
       // Everything kept for the account, as a file.
       const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#account-export').click()]);
-      assert.equal(download.suggestedFilename(), 'bazi-account.json');
+      assert.equal(download.suggestedFilename(), 'eight-chord-account.json');
       const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
       assert.deepEqual([exported.account.email, exported.account.language], [account.email, 'fi']);
-      await page.locator('#account-status').filter({ hasText: 'bazi-account.json' }).waitFor();
+      await page.locator('#account-status').filter({ hasText: 'eight-chord-account.json' }).waitFor();
       // Signing out: the dialog says so and offers signing in again; the session is gone.
       await page.locator('#account-sign-out').click();
       await page.locator('#account-notice').filter({ hasText: 'Olet kirjautunut ulos.' }).waitFor();
