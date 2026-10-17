@@ -145,6 +145,20 @@ for (const profile of profiles) {
       await screenshot(page, `${profile.name}-life`);
     });
 
+    check('each phase keeps its lines whole: its years are never squeezed under a role on two lines', async (page) => {
+      await page.clock.setFixedTime(TODAY);
+      await openSample(page);
+      await showLuck(page);
+      const squeezed = await page.locator('#life').evaluate((life) => [...life.querySelectorAll('.life-phase-years')]
+        .filter((years) => years.checkVisibility())
+        .flatMap((years) => {
+          const height = years.getBoundingClientRect().height;
+          const line = parseFloat(getComputedStyle(years).lineHeight);
+          return height < line - 0.5 ? [`${years.closest('[data-life]').dataset.life}: ${height.toFixed(2)}px of a ${line.toFixed(2)}px line`] : [];
+        }));
+      assert.deepEqual(squeezed, []);
+    });
+
     check('its columns are the chart\'s, and each mark stands under what it touches', async (page) => {
       await openSample(page);
       await showLuck(page);
