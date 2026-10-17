@@ -3462,6 +3462,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-day-weekday { font-family: var(--font-serif); font-size: var(--text-3); color: var(--ink-1); }
 .today-day-date { font-size: var(--text-1); color: var(--ink-2); }
 .today-day-pull { font-size: var(--text-1); color: var(--ink-1); white-space: nowrap; }
+/* A date not known yet: the cards' outlines, and "…" for the pull. */
+.today-cards.is-pending .today-card { min-height: 96px; border: 1px dashed var(--line-2); background: var(--surface-1); }
+.today-cards.is-pending .today-card::before { content: none; }
+.today-day-pull.is-pending { color: var(--ink-3); }
 
 /* ── The chart's cards: a stem over its branch, each in its element's colours ── */
 .today-cards { display: grid; gap: var(--space-1); width: 100%; }

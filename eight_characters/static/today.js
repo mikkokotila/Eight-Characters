@@ -85,12 +85,20 @@
     let shownSettings = null;
     let answer = null;
     let asked = 0;
-    // The run the days and their steps go by: the answer drawn last's, while what is shown
-    // is still read as it was (`daysReading`). None while no day is drawn, and none from
-    // when another chart, language or person is shown, or Today is left (its settings may
-    // change meanwhile), until the next answer is drawn.
-    let daysRun = null;
-    let daysReading = null;
+    // The run drawn last, the strip: Home and End go to its ends. None while no day is
+    // drawn.
+    let stripRun = null;
+    // The days known for the reading shown (#97): one contiguous span of covered dates
+    // (`first` to `last`), its days by date, and for each way (`back`, `ahead`) whether
+    // the engine's end is reached, the request for days on its way, whether the last
+    // one failed, and whether fetching that way has stopped. A date missing inside the
+    // span is one the place's clocks skipped; a date outside it is not known yet. It is
+    // replaced whole when a drawn answer does not touch it, and goes when the reading
+    // changes, Today is left, the account changes or a day is refused: an answer for a
+    // span no longer known changes nothing.
+    let known = null;
+    // Days merged while a drag moves the days are laid out once it ends.
+    let relayAfterDrag = false;
     // The press on the days being followed, if any (the gestures are below).
     let drag = null;
     const dropDrag = () => {
@@ -98,6 +106,10 @@
       drag = null;
       days.classList.remove('is-dragging');
       days.style.removeProperty('--drag');
+      if (relayAfterDrag) {
+        relayAfterDrag = false;
+        relayDays();
+      }
     };
     // The run a press drags by is discarded (another reading shown, the day refused,
     // Today left): the press is still followed to its release, for its click, but moves
@@ -109,6 +121,7 @@
       drag.moving = false;
       days.classList.remove('is-dragging');
       days.style.removeProperty('--drag');
+      relayAfterDrag = false;
     };
     // The clock as the page last drew it: today where you are, and the hour of the day
     // shown that it is in.
@@ -164,15 +177,35 @@
       next.setUTCDate(next.getUTCDate() + by);
       return next.toISOString().slice(0, 10);
     };
-    // A step from the day shown, through the run drawn: as many of its days on as asked,
-    // so a date the place's clocks skipped is passed over; whatever goes past the run's
-    // end is counted in calendar days from that end. With no run drawn (a day the API
-    // refused, or another reading on its way), every step is a calendar day.
-    const stepped = (by) => {
-      const at = daysRun === null ? -1 : daysRun.findIndex((day) => day.date === state.day);
-      if (at < 0) return stepDay(state.day, by);
-      const end = Math.min(Math.max(at + by, 0), daysRun.length - 1);
-      return stepDay(daysRun[end].date, at + by - end);
+    // A step from a date, through the days known: as many of them on as asked, so a date
+    // the place's clocks skipped is passed over; past the span, a calendar day at a time
+    // through dates not known yet, up to the engine's end once it is reached (null past
+    // it). With no days known (a day the API refused, or another reading on its way),
+    // every step is a calendar day.
+    const stepFrom = (from, by) => {
+      if (known === null) return stepDay(from, by);
+      const way = by > 0 ? 'ahead' : 'back';
+      const edge = way === 'ahead' ? known.last : known.first;
+      let target;
+      if (from < known.first || from > known.last) {
+        target = stepDay(from, by);
+      } else {
+        // Where the date stands among the days known: on one, or (a skipped date) between
+        // two.
+        const at = known.dates.indexOf(from);
+        const before = known.dates.filter((date) => date < from).length;
+        const index = at >= 0 ? at + by : (by > 0 ? before + by - 1 : before + by);
+        target = index >= 0 && index < known.dates.length ? known.dates[index]
+          : stepDay(edge, index < 0 ? index : index - known.dates.length + 1);
+      }
+      const beyond = way === 'ahead' ? target > known.last : target < known.first;
+      return beyond && known.ends[way] ? null : target;
+    };
+    const stepped = (by) => stepFrom(state.day, by) ?? state.day;
+    // A step from the day shown; at the engine's end, none.
+    const stepBy = (by) => {
+      const day = stepped(by);
+      if (day !== state.day) move({ day });
     };
 
     // Moves to another state: the address follows, replacing the entry for a step and
@@ -312,23 +345,28 @@
     };
 
     // ── The answer, drawn ──
-    const checked = (value) => {
-      const ok = value && value.policy === 'today_v1' && value.date === state.day && value.chart === state.who
+    // Every pillar is drawn as the chart's cards and every pull on the scale: an answer
+    // without a pillar's lines, or with a pull past the scale's ends, is refused, never
+    // drawn clipped.
+    const lines = (found, count) => Array.isArray(found) && found.length === count && found.every((line) => line === 'L' || line === 'B');
+    const drawable = (pillar) => Boolean(pillar?.stem && pillar.branch && lines(pillar.stem.lines, 3) && lines(pillar.branch.lines, 6)
+      && ELEMENTS.includes(pillar.stem.element) && ELEMENTS.includes(pillar.branch.element));
+    const onScale = (found) => Number.isFinite(found) && Math.abs(found) <= SCALE;
+    // A day as the carousel draws it: a date, a pillar, a pull on the scale and a band.
+    const dayDrawable = (day) => DAY_PATH.test(day?.date ?? '') && drawable(day.pillar) && onScale(day.score)
+      && BANDS.includes(day.band) && Array.isArray(day.relationships);
+    // The answer for the request made: by default the day and side shown.
+    const checked = (value, asked = { date: state.day, chart: state.who }) => {
+      const ok = value && value.policy === 'today_v1' && value.date === asked.date && value.chart === asked.chart
         && LAYERS.every((layer) => Object.hasOwn(value.layers ?? {}, layer))
         && value.layers.day && value.layers.month && value.layers.year
         && Array.isArray(value.run) && value.run.length > 0 && Array.isArray(value.hours) && value.hours.length === 12
         && value.favourable && value.work && value.health && Array.isArray(value.health.elements);
-      // Every pillar is drawn as the chart's cards and every pull on the scale: an answer
-      // without a pillar's lines, or with a pull past the scale's ends, is refused, never
-      // drawn clipped.
-      const lines = (found, count) => Array.isArray(found) && found.length === count && found.every((line) => line === 'L' || line === 'B');
-      const drawable = (pillar) => Boolean(pillar?.stem && pillar.branch && lines(pillar.stem.lines, 3) && lines(pillar.branch.lines, 6)
-        && ELEMENTS.includes(pillar.stem.element) && ELEMENTS.includes(pillar.branch.element));
-      const onScale = (found) => Number.isFinite(found) && Math.abs(found) <= SCALE;
       const whole = ok && value.natal && NATAL.every((name) => drawable(value.natal[name]))
         && LAYERS.every((layer) => value.layers[layer] === null
           || (drawable(value.layers[layer].pillar) && onScale(value.layers[layer].pull.score)))
-        && value.run.every((day) => drawable(day.pillar) && onScale(day.score))
+        && value.run.every((day) => dayDrawable(day) && Number.isInteger(day.offset))
+        && value.run.every((day, index) => index === 0 || day.date > value.run[index - 1].date)
         && GODS.every((god) => ELEMENTS.includes(value.favourable.gods?.[god]))
         && value.hours.every((hour) => ELEMENTS.includes(hour.element))
         && (value.marriage === null || onScale(value.marriage?.partner?.pull?.score));
@@ -420,20 +458,30 @@
       <span class="today-day-when"><span class="today-day-weekday">${esc(weekdayOf(day.date))}</span>
         <span class="today-day-date">${esc(dayMonthOf(day.date))}</span></span>
       <span class="today-day-pull band-${esc(day.band)}"><span class="today-band-mark" aria-hidden="true"></span>${esc(pull(day))}</span>`;
+    // A date not known yet: its date, and "…" for the pillar and the pull ("loading" to a
+    // screen reader).
+    const pendingMarkup = (date) => `<span class="today-cards is-large is-pending" aria-hidden="true"><span class="today-card is-stem"></span><span class="today-card is-branch"></span></span>
+      <span class="today-day-when"><span class="today-day-weekday">${esc(weekdayOf(date))}</span>
+        <span class="today-day-date">${esc(dayMonthOf(date))}</span></span>
+      <span class="today-day-pull is-pending"><span aria-hidden="true">…</span><span class="sr-only">${esc(t('today_day_loading'))}</span></span>`;
     const placeOf = (offset) => (offset < -2 ? 'before' : offset > 2 ? 'after' : String(offset));
     const clearDays = () => {
       dayNodes.forEach((node) => node.remove());
       dayNodes.clear();
     };
-    // Lays the days out around `centre`, from the run drawn; `moved` is the step's way
-    // (1 later, -1 earlier, 0 none). False when the run does not hold the day.
+    // Lays the days out around `centre`, from the days known, a date not known yet as a
+    // pending card; `moved` is the step's way (1 later, -1 earlier, 0 none). False with
+    // no days known.
     const layDays = (centre, moved) => {
-      const at = daysRun === null ? -1 : daysRun.findIndex((day) => day.date === centre);
-      if (at < 0) return false;
-      const near = new Map();
-      for (let offset = -3; offset <= 3; offset += 1) {
-        const day = daysRun[at + offset];
-        if (day) near.set(day.date, { day, offset });
+      if (known === null) return false;
+      const near = new Map([[centre, { day: known.days.get(centre) ?? null, offset: 0 }]]);
+      for (const way of [-1, 1]) {
+        let date = centre;
+        for (let step = 1; step <= 3; step += 1) {
+          date = stepFrom(date, way);
+          if (date === null) break;
+          near.set(date, { day: known.days.get(date) ?? null, offset: way * step });
+        }
       }
       dayNodes.forEach((node, date) => {
         if (near.has(date)) return;
@@ -452,7 +500,8 @@
           dayNodes.set(date, node);
           entering = true;
         }
-        node.innerHTML = dayMarkup(day);
+        node.innerHTML = day === null ? pendingMarkup(date) : dayMarkup(day);
+        node.classList.toggle('is-pending', day === null);
         node.classList.toggle('is-centre', offset === 0);
         node.setAttribute('aria-hidden', String(offset !== 0));
       });
@@ -472,10 +521,176 @@
         else button.removeAttribute('aria-current');
       });
     };
+    // ── The days known (#97): the runs of the answers for the reading shown, and the days
+    // fetched beyond them (POST /api/today/days) ──
+    // A value as text with its keys in order, at every depth: two days agree when these do.
+    const canonical = (value) => (Array.isArray(value) ? `[${value.map(canonical).join(',')}]`
+      : value !== null && typeof value === 'object'
+        ? `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonical(value[key])}`).join(',')}}`
+        : JSON.stringify(value));
+    // What a request for days sends of a day's request: all but its date and language.
+    const daysBody = ({ place, charts, chart, schools }) => ({ place, charts, chart, schools });
+    const newSpan = (basis, body, first, last, list) => {
+      const span = {
+        basis, reading: reading(state), body: daysBody(body), chart: body.chart, first, last,
+        days: new Map(list.map((day) => [day.date, day])), dates: [],
+        ends: { back: false, ahead: false }, fetching: { back: null, ahead: null },
+        failed: { back: false, ahead: false }, stopped: { back: false, ahead: false },
+      };
+      span.dates = [...span.days.keys()].sort();
+      return span;
+    };
+    // Whether the dates first to last overlap the span or touch it.
+    const touches = (span, first, last) => stepDay(span.last, 1) >= first && stepDay(last, 1) >= span.first;
+    // The days of first to last join the span; false, and nothing joins, when one of them
+    // disagrees with a day known.
+    const mergeInto = (span, first, last, list) => {
+      if (list.some((day) => span.days.has(day.date) && canonical(span.days.get(day.date)) !== canonical(day))) return false;
+      for (const day of list) span.days.set(day.date, day);
+      if (first < span.first) span.first = first;
+      if (last > span.last) span.last = last;
+      span.dates = [...span.days.keys()].sort();
+      return true;
+    };
+    const dropKnown = () => {
+      known = null;
+      relayAfterDrag = false;
+    };
+    // A day that disagrees with the day known for its date: an error, said.
+    const disagree = (what) => {
+      console.error('Today: a day disagrees with the day known for its date.', what);
+      toast(t('today_days_disagree'), true);
+    };
+    // The dates an answer's run covers, from its offsets, and its days without them.
+    const runCover = (reply) => {
+      const offsets = reply.run.map((day) => day.offset);
+      return {
+        first: stepDay(reply.date, Math.min(...offsets)),
+        last: stepDay(reply.date, Math.max(...offsets)),
+        list: reply.run.map(({ offset, ...day }) => day),
+      };
+    };
+    // The answer drawn: its run joins the days known; touching none of them (a jump, a
+    // link, Today), it starts a new span, as it does when a day disagrees, which is said.
+    const takeRun = (reply, basis, body) => {
+      const { first, last, list } = runCover(reply);
+      if (known !== null && known.basis === basis && touches(known, first, last)) {
+        if (mergeInto(known, first, last, list)) return;
+        disagree(reply.date);
+      }
+      known = newSpan(basis, body, first, last, list);
+    };
+    // An answer that came too late to be drawn: its run, checked against its own request,
+    // still joins the days known for its reading when it touches them. Nothing else of
+    // it is drawn.
+    const absorb = async (response, asked, basis) => {
+      try {
+        const reply = checked(await response.json(), asked);
+        if (known === null || known.basis !== basis) return;
+        const { first, last, list } = runCover(reply);
+        if (!touches(known, first, last)) return;
+        if (!mergeInto(known, first, last, list)) {
+          disagree(reply.date);
+          return;
+        }
+        relayDays();
+        fetchAhead(null);
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    // A days answer, checked against its own request: the dates it covers run from the
+    // date asked to `through`, beyond it unless the engine's end is there, and every day
+    // lies inside them, in order, drawable.
+    const checkedDays = (value, asked) => {
+      const after = asked.way === 'ahead';
+      const ok = value && value.policy === 'today_days_v1' && value.chart === asked.chart
+        && value[after ? 'after' : 'before'] === asked.frontier && !Object.hasOwn(value, after ? 'before' : 'after')
+        && typeof value.end === 'boolean' && DAY_PATH.test(value.through ?? '') && Array.isArray(value.days);
+      if (!ok) throw new Error(t('today_answer_error'));
+      const covers = after ? value.through > asked.frontier : value.through < asked.frontier;
+      const first = after ? stepDay(asked.frontier, 1) : value.through;
+      const last = after ? value.through : stepDay(asked.frontier, -1);
+      const atEnd = value.end && value.through === asked.frontier && value.days.length === 0;
+      const inside = value.days.every((day, index) => dayDrawable(day) && day.date >= first && day.date <= last
+        && (index === 0 || day.date > value.days[index - 1].date));
+      if (!(covers || atEnd) || !inside) throw new Error(t('today_answer_error'));
+      return { covers, first, last, list: value.days, end: value.end };
+    };
+    // Days fetched one way beyond the span: the day's own request has its own counter and
+    // touches nothing of the day shown. A failure is said and leaves that way open, to be
+    // asked again on the next move that way; a 401 goes through the account's sign-in,
+    // shared with the day's own. An answer for a span no longer known changes nothing.
+    const fetchDays = async (span, way) => {
+      const frontier = way === 'ahead' ? span.last : span.first;
+      span.fetching[way] = frontier;
+      try {
+        const response = await fetch('/api/today/days', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...span.body, [way === 'ahead' ? 'after' : 'before']: frontier }),
+        });
+        if (known !== span) return;
+        if (response.status === 401) {
+          span.fetching[way] = null;
+          if (!(await account.recheck(() => known === span))) await account.signIn();
+          if (known === span) fetchAhead(null);
+          return;
+        }
+        let value;
+        try {
+          value = await response.json();
+        } catch (err) {
+          throw new Error(t('today_answer_error'), { cause: err });
+        }
+        if (known !== span) return;
+        if (!response.ok) throw new Error(typeof value?.detail === 'string' ? value.detail : t('today_answer_error'));
+        const found = checkedDays(value, { chart: span.chart, way, frontier });
+        span.fetching[way] = null;
+        if (found.covers && !mergeInto(span, found.first, found.last, found.list)) {
+          span.stopped[way] = true;
+          disagree(frontier);
+          return;
+        }
+        span.ends[way] = found.end;
+        relayDays();
+        fetchAhead(null);
+      } catch (err) {
+        if (known !== span) return;
+        span.fetching[way] = null;
+        span.failed[way] = true;
+        console.error(err);
+        toast(t(way === 'ahead' ? 'today_days_failed_after' : 'today_days_failed_before', { day: longDate(frontier) }), true);
+      }
+    };
+    // Days are fetched one way while fewer than four days known lie beyond the day shown
+    // that way (a skipped date is none, and a day shown past the span has none beyond it),
+    // the engine's end is not reached, fetching has not stopped, none is on its way and
+    // the last has not failed since a move that way (`moved`). Checked after every move
+    // and every merge, so fetches chain while they are needed.
+    const fetchAhead = (moved) => {
+      if (state === null || known === null) return;
+      for (const way of ['back', 'ahead']) {
+        if (moved === way) known.failed[way] = false;
+        const beyond = known.dates.filter((date) => (way === 'ahead' ? date > state.day : date < state.day)).length;
+        if (beyond >= 4 || known.ends[way] || known.stopped[way] || known.failed[way] || known.fetching[way] !== null) continue;
+        fetchDays(known, way);
+      }
+    };
+    // Days merged: laid out again in place around the day shown, without a slide; while
+    // a drag moves the days, once it ends.
+    const relayDays = () => {
+      if (state === null || known === null) return;
+      if (drag?.moving) {
+        relayAfterDrag = true;
+        return;
+      }
+      keepingFocus(() => layDays(state.day, 0));
+    };
     const drawDays = () => {
-      daysRun = answer.run;
-      daysReading = reading(state);
+      stripRun = answer.run;
       layDays(state.day, 0);
+      fetchAhead(null);
     };
 
     // ── The run: the 22 days as a strip, each a bar around a zero line, up for a positive
@@ -835,8 +1050,9 @@
       // An answer that could not be drawn is neither copied as text nor printed.
       answer = null;
       body.classList.add('hidden');
-      // No run is drawn: steps are calendar days again.
-      daysRun = null;
+      // No day is drawn: the days known go, and steps are calendar days again.
+      dropKnown();
+      stripRun = null;
       cancelDrag();
       clearDays();
       panel.classList.add('hidden');
@@ -855,15 +1071,18 @@
       if (before !== next.day) cancelDrag();
       state = next;
       answer = null;
-      // The run drawn stands for its own reading alone: for another chart, language or
-      // person, the days wait for its own answer, and steps until then are calendar days.
-      if (daysRun !== null && daysReading !== reading(next)) {
-        daysRun = null;
+      // The days known stand for their own reading alone: for another chart, language,
+      // person or partner they go, and steps until its answer is drawn are calendar days.
+      if (known !== null && known.reading !== reading(next)) {
+        dropKnown();
         cancelDrag();
       }
-      // The days move at once, from the run drawn; the rest waits, dimmed, for the day's
-      // own answer.
-      if (before !== null && before !== next.day && layDays(next.day, next.day > before ? 1 : -1)) markRun(next.day);
+      // The days move at once, through the days known, and days are fetched beyond them
+      // as the move needs; the rest waits, dimmed, for the day's own answer.
+      if (before !== null && before !== next.day) {
+        if (layDays(next.day, next.day > before ? 1 : -1)) markRun(next.day);
+        fetchAhead(next.day > before ? 'ahead' : 'back');
+      }
       ready(false);
       const mine = ++asked;
       view.classList.remove('hidden');
@@ -906,19 +1125,27 @@
           // why; With offers its partners.
           gone = partnerGone(kept);
         }
+        const body = {
+          date: state.day,
+          lang: state.lang,
+          place: kept.place,
+          charts: { self: chartBirth(state.chart), ...(partner === null ? {} : { partner: partnerBirth(partner) }) },
+          chart: state.who,
+          schools: kept.chosen,
+        };
+        // What the day is read for, its date apart: days known for another reading (its
+        // place or schools changed, read anew) go.
+        const basis = canonical({ ...body, date: null });
+        if (known !== null && known.basis !== basis) dropKnown();
         const response = await fetch('/api/today', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            date: state.day,
-            lang: state.lang,
-            place: kept.place,
-            charts: { self: chartBirth(state.chart), ...(partner === null ? {} : { partner: partnerBirth(partner) }) },
-            chart: state.who,
-            schools: kept.chosen,
-          }),
+          body: JSON.stringify(body),
         });
-        if (mine !== asked) return;
+        if (mine !== asked) {
+          if (response.ok) absorb(response, { date: body.date, chart: body.chart }, basis);
+          return;
+        }
         if (response.status === 401) {
           // Signed out meanwhile: a sign-in, then the day again.
           if (!(await account.recheck(() => mine === asked))) await account.signIn();
@@ -946,6 +1173,7 @@
           go(address(state), 'replaceState');
           gone = gone ?? partnerGone(kept);
         }
+        takeRun(reply, basis, body);
         answer = reply;
         keepingFocus(draw);
         ready(true);
@@ -964,8 +1192,9 @@
       asked += 1;
       state = null;
       answer = null;
-      // The settings may change meanwhile: the run drawn with them no longer leads steps.
-      daysRun = null;
+      // The settings may change meanwhile: the days known with them no longer lead steps.
+      dropKnown();
+      stripRun = null;
       cancelDrag();
       view.classList.add('hidden');
       view.removeAttribute('aria-busy');
@@ -987,7 +1216,8 @@
       body.classList.add('hidden');
       for (const part of [pullLine, topics, run, scale, pillarsNote, pillars, couple, inChart, hours]) part.replaceChildren();
       couple.classList.add('hidden');
-      daysRun = null;
+      dropKnown();
+      stripRun = null;
       cancelDrag();
       clearDays();
       panel.classList.add('hidden');
@@ -1000,11 +1230,12 @@
     steps.addEventListener('click', (event) => {
       if (state === null) return;
       const step = event.target.closest('[data-today-step]');
-      if (step) move({ day: stepped(Number(step.dataset.todayStep)) });
+      if (step) stepBy(Number(step.dataset.todayStep));
       else if (event.target.closest('[data-today-now]') && shownSettings?.place) move({ day: todayAt(shownSettings.place.timezone) });
     });
     // The days: a press on a neighbour picks it; Left and Right step, Home and End go to
-    // the run's first and last day, while the days have focus (a held key steps once).
+    // the strip's first and last day, never against their way, while the days have focus
+    // (a held key steps once).
     daysTrack.addEventListener('click', (event) => {
       const chosen = event.target.closest('[data-today-pick]');
       if (chosen && state !== null && chosen.dataset.todayPick !== state.day) move({ day: chosen.dataset.todayPick });
@@ -1014,9 +1245,10 @@
       let day = null;
       if (event.key === 'ArrowLeft') day = stepped(-1);
       else if (event.key === 'ArrowRight') day = stepped(1);
-      else if (event.key === 'Home' && daysRun !== null) day = daysRun[0].date;
-      else if (event.key === 'End' && daysRun !== null) day = daysRun.at(-1).date;
-      else return;
+      else if (event.key === 'Home' || event.key === 'End') {
+        const end = stripRun === null ? null : (event.key === 'Home' ? stripRun[0].date : stripRun.at(-1).date);
+        day = end !== null && (event.key === 'Home' ? end <= state.day : end >= state.day) ? end : state.day;
+      } else return;
       event.preventDefault();
       if (day !== state.day) move({ day });
     });
@@ -1057,7 +1289,7 @@
       const width = daysTrack.querySelector('.today-day')?.offsetWidth ?? 0;
       drag = {
         id: event.pointerId, x: event.clientX, y: event.clientY, moving: false, still: true, vertical: false,
-        width, drags: state !== null && daysRun !== null && width > 0 && event.clientX >= 24,
+        width, drags: state !== null && known !== null && width > 0 && event.clientX >= 24,
       };
     });
     // Followed wherever it goes, off the days too: a press that went out more than 10px
@@ -1196,8 +1428,8 @@
     const keydown = (event) => {
       if (state === null || event.metaKey || (event.ctrlKey && !event.altKey) || event.repeat) return false;
       const plain = !event.ctrlKey && !event.altKey;
-      if (event.key === '[') move({ day: stepped(-1) });
-      else if (event.key === ']') move({ day: stepped(1) });
+      if (event.key === '[') stepBy(-1);
+      else if (event.key === ']') stepBy(1);
       else if (plain && event.key.toLowerCase() === 'n' && shownSettings?.place) move({ day: todayAt(shownSettings.place.timezone) });
       else if (event.key === 'Escape' && state.topic !== null) closeTopic();
       else return false;
@@ -1207,8 +1439,8 @@
     const commands = () => {
       if (state === null) return [];
       const list = [
-        { label: t('today_previous'), run: () => move({ day: stepped(-1) }), icon: 'chevron-left' },
-        { label: t('today_next'), run: () => move({ day: stepped(1) }), icon: 'chevron-right' },
+        { label: t('today_previous'), run: () => stepBy(-1), icon: 'chevron-left' },
+        { label: t('today_next'), run: () => stepBy(1), icon: 'chevron-right' },
       ];
       if (shownSettings?.place) list.push({ label: t('today_now'), run: () => move({ day: todayAt(shownSettings.place.timezone) }), icon: 'calendar-check' });
       const partner = shownSettings === null ? null : partnerOf(shownSettings);

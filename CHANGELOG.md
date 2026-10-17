@@ -1,5 +1,37 @@
 # Changelog
 
+## 0.57.0
+
+Today, part b (#97): the carousel goes past the run of the day drawn, fetching days as
+you near either end (POST /api/today/days, #105).
+
+### Changed
+- **The days known**: the run of every answer for the reading shown (the one drawn,
+  and earlier ones arriving late) and the days fetched beyond them, kept as one span of
+  dates. Steps go through them, so a date the clocks skipped is passed over; past them
+  a step is a calendar day onto a pending card (its date, "…" for the pillar and the
+  pull, "loading" to a screen reader), up to the engine's end.
+- **Fetching ahead**: when fewer than four days known lie beyond the day shown, after
+  every move and every arrival, one request a way at a time. A failure is said and
+  asked again on the next move that way; a 401 goes through the sign-in with the day's
+  own; a day fetched that disagrees with one shown is said, and no more are fetched
+  that way. Nothing else of a request for days is drawn.
+- **The reading**: the days known go when another chart, language, person, partner,
+  place or schools is read, when Today is left, the account changes or a day is
+  refused; a day drawn that touches none of them (Today, a link) starts them anew.
+- **Home and End** go to the strip's ends (the run drawn last), never against their
+  way. Days arriving during a drag are laid out once it ends.
+
+### Tests
+- `today.test.mjs`: past the run with the day's own answers held; the trigger at four
+  and three days, one request a way, both ways apart, a pending card; Apia's skipped
+  day both ways, never asked for as the day; the engine's ends; disjoint runs both
+  ways; days for a reading left never merged; days before the day's own answer
+  (Copy and Print wait); a failure and an answer extending nothing said and asked
+  again; a disagreeing day said and the day's own drawn; Home and End past the strip;
+  days arriving mid-drag. `recordToday` pauses the day's own answers; `recordDays`
+  records the requests for days.
+
 ## 0.56.0
 
 Today, part a (#105): the request Today's carousel will use to go past a day's own run

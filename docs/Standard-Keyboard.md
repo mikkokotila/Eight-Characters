@@ -79,9 +79,10 @@ focus that was on them goes to the chart's cards. See
 On [Today](Standard-Today.md), while its page has focus and no field does, `[` and `]`
 step to the day before and after, N goes to today where you are, Escape closes a topic
 and ? lists the day's keys. The days are one tab stop: while they have focus, Left and
-Right step a day and Home and End go to the run's first and last day; elsewhere the
-arrows keep their own meaning. Every step goes through the run's own days, so a date the
-place's clocks skipped is passed over. Brackets are typed with Alt or AltGr on many
+Right step a day and Home and End go to the run's first and last day, never against
+their way; elsewhere the arrows keep their own meaning. Every step goes through the days
+known (the runs and the days fetched beyond them), so a date the place's clocks skipped
+is passed over; past them a step is a calendar day. Brackets are typed with Alt or AltGr on many
 keyboards; a held key steps once. ⌘K or Ctrl+K holds the day's own commands: the steps,
 the partner's day, its topics, the chart, Copy link, Copy as text, Print and Settings.
 

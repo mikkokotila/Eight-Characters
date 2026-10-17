@@ -168,6 +168,14 @@ The Today suite (`today.test.mjs`) checks every number against the API's answer,
   they have focus (a held key steps once, and elsewhere the arrows are not the day's),
   and by a drag that asks once when let go; a drag up, or cancelled, moves nothing;
   reduced motion moves the days in place; a step passes over Apia's skipped day;
+- the days known past the run (#97): fetched when fewer than four lie ahead or behind,
+  one request a way at a time, a date not known yet as a pending card, Apia's skipped
+  day passed over and never asked for as the day, the engine's first and last dates,
+  disjoint runs never joined, days for a reading left never merged, a failure said and
+  asked again, a disagreeing day said, Home and End on the strip, and days arriving
+  mid-drag. `recordToday` records the day's own requests (`POST /api/today`), with
+  `pause` to hold them all; `recordDays` records the requests for days, and can hold,
+  fail or change the next one;
 - the scale: the marker at the score, the band ticks, both ends and the five gods in
   words, each layer on the same scale, and a pull past its ends refused;
 - In your chart: every relationship's pillars, the chart's own among them, three

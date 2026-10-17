@@ -29,11 +29,14 @@ From the top:
   its branch card, each in its own element's colours, its character with its pinyin,
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's
   polarity and element, the branch's animal); under them its weekday, date, band (word
-  and mark) and score. Two days of the run on either side, one below 640px, smaller:
-  they recede by size alone, never by opacity or blur, so their text keeps its contrast.
-  They come from the answer's run, so moving asks for nothing more, and a date the
-  place's clocks skipped is never drawn. The cards are pictures: they do not turn, hold
-  or take keys.
+  and mark) and score. Two days on either side, one below 640px, smaller: they recede
+  by size alone, never by opacity or blur, so their text keeps its contrast. They come
+  from the days known: the run of each answer for the reading shown, and the days
+  fetched beyond them (`POST /api/today/days`, three weeks at a time) as you near
+  either end, so the carousel goes past the run. A date the place's clocks skipped is
+  never drawn; a date not known yet is a pending card, its date with "…" for the
+  pillar and the pull, until its days arrive; past the engine's first or last date
+  there is none. The cards are pictures: they do not turn, hold or take keys.
 - **The run:** 22 days, 7 back and 14 ahead, as a strip of bars around a zero line, up
   for a positive pull and down for a negative one, their length on the pull's scale.
   Each day is a button named by its date, pillar and pull; the chosen day is marked,
@@ -83,20 +86,34 @@ not the body: it is not health advice.
 
 ## Moving through the days
 
-Every way of moving goes to the run's next or previous day, in date order, so a date
+Every way of moving goes to the next or previous day known, in date order, so a date
 the place's clocks skipped is passed over (Apia, 30 December 2011): `[` and `]` from
-anywhere, the bar's steps, Left and Right while the days have focus (Home and End go to
-the run's first and last day), a press on a neighbour, a pick in the run, and a swipe or
-drag on the days. A step past the run's end counts the run's days to that end, then
-calendar days. With no run drawn (a day the API refused), a step is a calendar day. A
-day the API refuses, near the first and last of the engine's years, shows its reason.
+anywhere, the bar's steps, Left and Right while the days have focus, a press on a
+neighbour, a pick in the run, and a swipe or drag on the days. Past the days known a
+step goes a calendar day at a time onto pending cards, up to the engine's end once it
+is reached. Home and End go to the run's first and last day (the strip of the day
+drawn last), never against their way: past the run's last day, End does nothing, and
+Home before its first. With no day drawn (a day the API refused), a step is a calendar
+day. A day the API refuses, near the first and last of the engine's years, shows its
+reason.
 
-A move draws the days at once from the run, and the date in the bar; the rest of the
-page is dimmed until the day's own answer is drawn. Keys, presses and picks ask at
+Days are fetched one way while fewer than four days known lie beyond the day shown,
+after every move and every arrival, so they chain while you keep moving; at most one
+request each way is on its way. A request that fails says so and is asked again on the
+next move that way; one refused for want of a session goes through the sign-in, with
+the day's own. A day fetched that disagrees with one already shown is said, and no more
+are fetched that way. Nothing else of a request for days is drawn: the strip, the
+pull, the hours, the couple, Copy as text and Print stay the day's own answer's.
+
+A move draws the days at once from the days known, and the date in the bar; the rest of
+the page is dimmed until the day's own answer is drawn. Keys, presses and picks ask at
 once; a drag asks once, when it is let go. Only the answer to the latest request is
-drawn. The run drawn leads only its own reading: while another chart, language or
-person is on its way, or Today is opened again (its settings may have changed), the
-days wait for that answer, and a step until then is a calendar day.
+drawn; an earlier one arriving late still adds its run to the days known. The days
+known lead only their own reading: when another chart, language, person, partner,
+place or schools is read, or Today is opened again (its settings may have changed),
+they go, and a step until the new answer is drawn is a calendar day. A day drawn that
+does not touch the days known (Today, a link, a far pick) starts them anew: the days
+between are not known, never taken as skipped.
 
 A drag follows the pointer that started it, once it has gone 40px across (more than a
 touch hold's 10px), and never from the screen's left edge, which is iOS's Back. Let go,
@@ -172,8 +189,9 @@ says why.
 
 While the page has focus and no field does: `[` and `]` the day before and after, N
 today where you are, Escape closes a topic, ? lists the day's keys. The days are one
-tab stop: while they have focus, Left and Right step and Home and End go to the run's
-ends; elsewhere the arrows keep their own meaning. A held key steps once. A topic, a
+tab stop: while they have focus, Left and Right step through the days known and Home
+and End go to the run's ends, never against their way; elsewhere the arrows keep their
+own meaning. A held key steps once. A topic, a
 day of the run or an action chosen from the keyboard keeps the focus on its button once
 the day is drawn again, and the days keep theirs; Today, which is then unavailable,
 hands it to the day's heading. Chart · Today hands the focus across: to Today on the day's bar,

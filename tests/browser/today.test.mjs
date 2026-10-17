@@ -110,11 +110,14 @@ async function until(page, ready) {
   for (let tries = 0; tries < 200 && !ready(); tries += 1) await page.waitForTimeout(25);
   assert.ok(ready(), 'still not so after 5 s');
 }
-// Every answer to POST /api/today, with what the page asked; `hold` keeps back the next
-// answer for a day, and with `match`, the next one whose request it matches.
+// Every answer to POST /api/today, the day's own (requests for days are recordDays'),
+// with what the page asked; `hold` keeps back the next answer for a day, and with
+// `match`, the next one whose request it matches; `pause` keeps back every answer until
+// its release.
 async function recordToday(page) {
   const answers = [];
   const held = [];
+  let paused = null;
   await page.route('**/api/today', async (route) => {
     const response = await route.fetch();
     const entry = { request: route.request().postDataJSON(), payload: await response.json() };
@@ -123,6 +126,7 @@ async function recordToday(page) {
       const wait = held.shift();
       await wait.released;
     }
+    if (paused !== null) await paused;
     await route.fulfill({ response });
   });
   const hold = (day, match = () => true) => {
@@ -131,7 +135,74 @@ async function recordToday(page) {
     held.push({ day, match, released });
     return release;
   };
-  return { answers, hold };
+  const pause = () => {
+    let release;
+    paused = new Promise((resolve) => { release = resolve; });
+    return () => {
+      paused = null;
+      release();
+    };
+  };
+  return { answers, hold, pause };
+}
+// Every request for days (POST /api/today/days), with what the page asked and, once
+// answered, what it was answered; `hold` keeps back the next answer, `fail` answers the
+// next request with a status of its own, and `tamper` changes the next answer.
+async function recordDays(page) {
+  const asked = [];
+  let holding = null;
+  let failing = null;
+  let tampering = null;
+  await page.route('**/api/today/days', async (route) => {
+    const entry = { request: route.request().postDataJSON() };
+    asked.push(entry);
+    if (failing !== null) {
+      const status = failing;
+      failing = null;
+      entry.payload = null;
+      return route.fulfill({ status, json: { detail: 'Stopped by the test.' } });
+    }
+    const response = await route.fetch();
+    let json = await response.json();
+    if (tampering !== null) {
+      json = tampering(json);
+      tampering = null;
+    }
+    if (holding !== null) {
+      const wait = holding;
+      holding = null;
+      await wait;
+    }
+    entry.payload = json;
+    return route.fulfill({ response, json });
+  });
+  return {
+    asked,
+    hold: () => {
+      let release;
+      holding = new Promise((resolve) => { release = resolve; });
+      return release;
+    },
+    fail: (status) => { failing = status; },
+    tamper: (change) => { tampering = change; },
+  };
+}
+// Every toast the page shows from now on, in turn, as `window.__toasts`.
+const recordToasts = (page) => page.evaluate(() => {
+  window.__toasts = [];
+  new MutationObserver(() => {
+    const said = document.querySelector('.toast')?.textContent ?? '';
+    if (said !== '' && window.__toasts.at(-1) !== said) window.__toasts.push(said);
+  }).observe(document.body, { subtree: true, childList: true, characterData: true });
+});
+const toastsSaid = (page) => page.evaluate(() => window.__toasts);
+// The day the address names, and the carousel's centre.
+const dayIs = (page, day) => page.waitForFunction((day) => new URLSearchParams(location.hash.split('?')[1]).get('day') === day, day);
+const centreOf = (page) => page.locator('.today-day.is-centre');
+// Steps the days `count` times one way by the arrow keys, the days having focus.
+async function stepDays(page, count, key = 'ArrowRight') {
+  await page.locator('#today-days').focus();
+  for (let step = 0; step < count; step += 1) await page.keyboard.press(key);
 }
 async function shown(page) {
   await page.locator('#today-view').waitFor({ state: 'visible' });
@@ -1076,7 +1147,7 @@ for (const profile of profiles) {
       assert.equal(await part(page, 'day'), '2026-10-12');
     });
 
-    check('a drag while the day shown is past the run drawn steps by the days it went, in calendar days', async (page) => {
+    check('a drag while the day shown is past the strip steps by the days it went', async (page) => {
       await page.clock.setFixedTime(NOW);
       const { answers } = await recordToday(page);
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
@@ -1101,7 +1172,7 @@ for (const profile of profiles) {
       await page.keyboard.press(']');
       await page.waitForFunction((day) => new URLSearchParams(location.hash.split('?')[1]).get('day') === day, calendarDay(last, 1));
       await settled(page);
-      // The days stay on the run's last day; dragged one day's width, the day steps once.
+      // Past the strip, dragged one day's width, the day steps once.
       const box = await page.locator('.today-day.is-centre .today-cards').boundingBox();
       const x = box.x + box.width / 2;
       const y = box.y + box.height / 2;
@@ -1182,7 +1253,7 @@ for (const profile of profiles) {
       assert.equal(await part(page, 'day'), '2011-12-29');
     });
 
-    check('a drag past the run’s end counts the run’s days to its end, then calendar days: Apia’s skipped day once', async (page) => {
+    check('a drag past the run’s end goes on through the days known: Apia’s skipped day once', async (page) => {
       const { answers } = await recordToday(page);
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       await setSettings(page, { place: APIA });
@@ -1221,6 +1292,343 @@ for (const profile of profiles) {
       await shown(page);
       assert.ok(answers.some((answer) => answer.request.date === '2011-12-28'), 'asked for 28 December');
       assert.equal(await page.locator('.today-day.is-centre').getAttribute('data-today-pick'), '2011-12-28');
+    });
+
+    check('past the run, the days go on through days fetched beyond it, while the day’s own answers are held', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const run = answers.at(-1).payload.run;
+      assert.equal(fetched.asked.length, 0, 'four days known or more each way: nothing fetched');
+      const resume = pause();
+      // Ten steps ahead leave four days known ahead: nothing is fetched.
+      await stepDays(page, 10);
+      await dayIs(page, '2026-10-21');
+      await page.waitForTimeout(200);
+      assert.equal(fetched.asked.length, 0);
+      // The eleventh leaves three: the days after the run's last are asked for, once, with
+      // the day's own request but its date and language.
+      await page.keyboard.press('ArrowRight');
+      await until(page, () => fetched.asked.length === 1 && fetched.asked[0].payload !== undefined);
+      const { request, payload } = fetched.asked[0];
+      assert.equal(request.after, run.at(-1).date);
+      assert.deepEqual(Object.keys(request).sort(), ['after', 'chart', 'charts', 'place', 'schools']);
+      assert.deepEqual(request.place, answers[0].request.place);
+      // Past the run's last day the days go on, drawn from those fetched.
+      await stepDays(page, 6);
+      await dayIs(page, '2026-10-28');
+      await settled(page);
+      assert.equal(await centreOf(page).getAttribute('data-today-pick'), '2026-10-28');
+      assert.equal(await centreOf(page).locator('.today-day-pull').textContent(), pull(payload.days.find((day) => day.date === '2026-10-28')));
+      assert.equal(await page.locator('#today-view').getAttribute('aria-busy'), 'true', 'the day’s own answer is on its way');
+      resume();
+      await shown(page);
+      assert.equal(await part(page, 'day'), '2026-10-28');
+    });
+
+    check('a date not known yet is a pending card until its days arrive; one request a way at a time, the two ways apart', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const run = answers.at(-1).payload.run;
+      const resume = pause();
+      const releaseAhead = fetched.hold();
+      // A day past the run, its days still on their way: a pending card, said as loading.
+      await stepDays(page, 15);
+      await dayIs(page, '2026-10-26');
+      await settled(page);
+      assert.equal(await centreOf(page).evaluate((node) => node.classList.contains('is-pending')), true);
+      assert.equal(await centreOf(page).locator('.today-day-pull .sr-only').textContent(), 'Loading');
+      assert.equal(fetched.asked.length, 1, 'one request ahead while it is on its way');
+      // The other way meanwhile: Home goes to the strip's first day, and the days before
+      // it are asked for, apart from those ahead.
+      await page.keyboard.press('Home');
+      await dayIs(page, run[0].date);
+      await until(page, () => fetched.asked.length === 2);
+      assert.equal(fetched.asked[1].request.before, run[0].date);
+      // The days ahead arrive: the pending day is a day.
+      releaseAhead();
+      await until(page, () => fetched.asked[0].payload !== undefined);
+      await page.keyboard.press('End');
+      await stepDays(page, 1);
+      await dayIs(page, '2026-10-26');
+      await settled(page);
+      assert.equal(await centreOf(page).evaluate((node) => node.classList.contains('is-pending')), false);
+      resume();
+      await shown(page);
+    });
+
+    check('Apia: the days fetched pass over the skipped 30 December both ways, and it is never asked for as the day', async (page) => {
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page, { place: APIA });
+      for (const [start, key, near, past, beyond] of [
+        ['2011-12-09', 'ArrowRight', 11, 9, '2011-12-29'],
+        ['2012-01-20', 'ArrowLeft', 4, 16, '2011-12-31'],
+      ]) {
+        // Each way from no days known: Today left, then opened on the day.
+        await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+        await page.goto(new URL(todayLink({ day: start }), process.env.EC_BASE_URL).href);
+        await shown(page);
+        const asked = fetched.asked.length;
+        const resume = pause();
+        // Near the run's end the days beyond it are fetched, and the steps wait for them.
+        await stepDays(page, near, key);
+        await until(page, () => fetched.asked.length > asked && fetched.asked.at(-1).payload !== undefined);
+        assert.ok(!fetched.asked.at(-1).payload.days.some((day) => day.date === '2011-12-30'));
+        await stepDays(page, past, key);
+        await dayIs(page, beyond);
+        // One more step passes over 30 December.
+        await stepDays(page, 1, key);
+        await dayIs(page, beyond === '2011-12-29' ? '2011-12-31' : '2011-12-29');
+        resume();
+        await shown(page);
+      }
+      assert.ok(!answers.some((answer) => answer.request.date === '2011-12-30'), '30 December was never the day');
+    });
+
+    check('the engine’s ends: the days reach 31 December 2100 and 1 January 1949 and stop there; a date beyond the day’s own reach says why', async (page) => {
+      const { pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      for (const [start, key, near, end] of [
+        ['2100-11-27', 'ArrowRight', 11, '2100-12-31'],
+        ['1949-01-28', 'ArrowLeft', 4, '1949-01-01'],
+      ]) {
+        await page.goto(new URL(todayLink({ day: start }), process.env.EC_BASE_URL).href);
+        await shown(page);
+        const asked = fetched.asked.length;
+        const resume = pause();
+        await stepDays(page, near, key);
+        await until(page, () => fetched.asked.length === asked + 1 && fetched.asked.at(-1).payload !== undefined);
+        const { payload } = fetched.asked.at(-1);
+        assert.deepEqual([payload.through, payload.end], [end, true]);
+        // On to the end, and no further: nothing more is asked for that way.
+        await stepDays(page, 40, key);
+        await dayIs(page, end);
+        await page.waitForTimeout(200);
+        assert.equal(await part(page, 'day'), end);
+        assert.equal(fetched.asked.length, asked + 1);
+        // The day's own answer for a date its run cannot reach is refused, with the API's
+        // reason.
+        resume();
+        await page.locator('#today-notice').waitFor({ state: 'visible' });
+        assert.match(await page.locator('#today-notice').textContent(), /can be read/);
+      }
+    });
+
+    check('a past day, then Today: the days between the two runs are fetched, never stepped over; and the other way round', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink({ day: '2026-09-01' }), process.env.EC_BASE_URL).href);
+      await shown(page);
+      await page.locator('#today-days').focus();
+      await page.keyboard.press('n');
+      await shown(page);
+      assert.equal(await part(page, 'day'), DAY);
+      let resume = pause();
+      await stepDays(page, 4, 'ArrowLeft');
+      await until(page, () => fetched.asked.some((entry) => entry.request.before === '2026-10-04' && entry.payload !== undefined));
+      await stepDays(page, 4, 'ArrowLeft');
+      await dayIs(page, '2026-10-03');
+      resume();
+      await shown(page);
+      // From Today to a past day by a link: stepping on from its run's last day goes on to
+      // the next date, never to Today's run.
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      await page.goto(new URL(todayLink({ day: '2026-09-01' }), process.env.EC_BASE_URL).href);
+      await shown(page);
+      resume = pause();
+      await stepDays(page, 11);
+      await until(page, () => fetched.asked.some((entry) => entry.request.after === '2026-09-15' && entry.payload !== undefined));
+      await stepDays(page, 4);
+      await dayIs(page, '2026-09-16');
+      resume();
+      await shown(page);
+    });
+
+    check('days on their way for a reading left are never merged into the next', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const releaseOld = fetched.hold();
+      await stepDays(page, 11);
+      await shown(page);
+      await until(page, () => fetched.asked.length === 1);
+      // Another language read while those days are on their way: they arrive late.
+      await page.locator('#today-language [data-today-lang="fi"]').click();
+      await shown(page);
+      const releaseNew = fetched.hold();
+      releaseOld();
+      await until(page, () => fetched.asked[0].payload !== undefined);
+      // Past the new reading's run its days are still on their way, as is its own day: a
+      // pending card, not the old reading's day.
+      const run = answers.at(-1).payload.run;
+      const resume = pause();
+      await page.locator('#today-days').focus();
+      await page.keyboard.press('End');
+      await stepDays(page, 1);
+      await settled(page);
+      assert.equal(await centreOf(page).getAttribute('data-today-pick') > run.at(-1).date, true);
+      assert.equal(await centreOf(page).evaluate((node) => node.classList.contains('is-pending')), true);
+      releaseNew();
+      resume();
+      await shown(page);
+    });
+
+    check('days fetched before the day’s own answer change only the carousel: Copy and Print wait for the day’s own', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const strip = await page.locator('.today-run-day').evaluateAll((nodes) => nodes.map((node) => node.dataset.todayDay));
+      const resume = pause();
+      await page.locator('#today-days').focus();
+      await page.keyboard.press('End');
+      await until(page, () => fetched.asked.length === 1 && fetched.asked[0].payload !== undefined);
+      await stepDays(page, 1);
+      await dayIs(page, '2026-10-26');
+      await settled(page);
+      // The carousel draws the day fetched; the strip, Copy and Print wait for its own.
+      assert.equal(await centreOf(page).evaluate((node) => node.classList.contains('is-pending')), false);
+      assert.deepEqual(await page.locator('.today-run-day').evaluateAll((nodes) => nodes.map((node) => node.dataset.todayDay)), strip);
+      assert.equal(await page.locator('#today-copy-text').getAttribute('aria-disabled'), 'true');
+      resume();
+      await shown(page);
+      assert.equal(await page.locator('#today-copy-text').getAttribute('aria-disabled'), 'false');
+    });
+
+    check('a request for days that fails says so, leaves the way open and is asked again on the next move that way', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const resume = pause();
+      fetched.fail(500);
+      await recordToasts(page);
+      await stepDays(page, 11);
+      await until(page, () => fetched.asked.length === 1);
+      await page.waitForFunction(() => window.__toasts.length > 0);
+      assert.deepEqual(await toastsSaid(page), ['The days after Sunday, October 25, 2026 could not be fetched.']);
+      // An answer that extends nothing is a failure too.
+      fetched.tamper((value) => ({ ...value, through: value.after, days: [] }));
+      await stepDays(page, 1);
+      await until(page, () => fetched.asked.length === 2 && fetched.asked[1].payload !== undefined);
+      // The next move that way asks again, and the days arrive.
+      await stepDays(page, 1);
+      await until(page, () => fetched.asked.length === 3 && fetched.asked[2].payload !== undefined);
+      assert.equal(fetched.asked[2].request.after, '2026-10-25');
+      resume();
+      await shown(page);
+    });
+
+    check('a day fetched that disagrees with the day’s own answer is said, and the day’s own is drawn', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      fetched.tamper((value) => ({
+        ...value,
+        days: value.days.map((day) => (day.date === '2026-11-01' ? { ...day, score: day.score > 0 ? day.score - 1 : day.score + 1 } : day)),
+      }));
+      await recordToasts(page);
+      await stepDays(page, 11);
+      await until(page, () => fetched.asked.length === 1 && fetched.asked[0].payload !== undefined);
+      // A day drawn whose run covers 1 November reads it as the API does, and the page
+      // says the day fetched disagreed.
+      await shown(page);
+      await page.waitForFunction(() => window.__toasts.includes('A day fetched disagrees with the one shown: no more are fetched that way.'));
+      await stepDays(page, 10);
+      await dayIs(page, '2026-11-01');
+      await shown(page);
+      const own = answers.at(-1).payload.run.find((day) => day.date === '2026-11-01');
+      assert.equal(await centreOf(page).locator('.today-day-pull').textContent(), pull(own));
+    });
+
+    check('Home and End go to the strip’s ends, never against their way, past the strip and while the day’s own answer is held', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers, pause } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      const run = answers.at(-1).payload.run;
+      const resume = pause();
+      await stepDays(page, 11);
+      await until(page, () => fetched.asked.length === 1 && fetched.asked[0].payload !== undefined);
+      await stepDays(page, 5);
+      await dayIs(page, '2026-10-27');
+      // Past the strip's last day, End does nothing; Home goes to its first, End to its last.
+      await page.keyboard.press('End');
+      await page.waitForTimeout(150);
+      assert.equal(await part(page, 'day'), '2026-10-27');
+      await page.keyboard.press('Home');
+      await dayIs(page, run[0].date);
+      await page.keyboard.press('End');
+      await dayIs(page, run.at(-1).date);
+      resume();
+      await shown(page);
+    });
+
+    check('days arriving during a drag wait for it to end, and the drag steps as it would have', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      const fetched = await recordDays(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink({ day: '2026-10-22' }), process.env.EC_BASE_URL).href);
+      await shown(page);
+      // From the run's first days, four back asks for the days before it: held.
+      const releaseBack = fetched.hold();
+      await page.locator('#today-days').focus();
+      await page.keyboard.press('Home');
+      await shown(page);
+      await until(page, () => fetched.asked.length === 1);
+      const asked = answers.length;
+      const box = await centreOf(page).locator('.today-cards').boundingBox();
+      const x = box.x + box.width / 2;
+      const y = box.y + box.height / 2;
+      await page.mouse.move(x, y);
+      await page.mouse.down();
+      for (const step of [20, 60]) await page.mouse.move(x - step, y + 3);
+      // The days before arrive mid-drag: the drag goes on.
+      releaseBack();
+      await until(page, () => fetched.asked[0].payload !== undefined);
+      assert.equal(await page.locator('#today-days').evaluate((node) => node.classList.contains('is-dragging')), true);
+      for (const step of [120, 1.4 * box.width]) await page.mouse.move(x - step, y + 3);
+      await page.mouse.up();
+      await shown(page);
+      assert.equal(answers.length, asked + 1, 'one request for the drag');
+      assert.equal(answers.at(-1).request.date, '2026-10-16');
     });
 
     check('the pull on one scale, its ends and the five gods named in words; a pull past the scale is refused', async (page) => {
