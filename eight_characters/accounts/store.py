@@ -207,7 +207,9 @@ def _paired(settings: Settings, charts: tuple[str, str]) -> Settings:
     most. A partner kept from before accounts kept charts waits no longer once paired."""
     for chart_id in charts:
         _saved(settings, chart_id)
-        if settings.couple_of(chart_id) is not None:
+        # A record reads a chart in any number of couples (#98); pairing it with a
+        # second waits for #96.
+        if settings.couples_of(chart_id):
             raise CoupleLimit('A chart is in one couple at most.')
     waiting = settings.pending_partner
     return replace(
@@ -227,8 +229,8 @@ def _marked(settings: Settings, chart_id: str) -> Settings:
     if (
         waiting is not None
         and waiting != chart_id
-        and settings.couple_of(chart_id) is None
-        and settings.couple_of(waiting) is None
+        and not settings.couples_of(chart_id)
+        and not settings.couples_of(waiting)
     ):
         couples = (*couples, Couple(new_id(), (chart_id, waiting)))
     return replace(settings, my_chart=chart_id, couples=couples, pending_partner=None)

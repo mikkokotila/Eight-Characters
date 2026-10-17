@@ -52,7 +52,9 @@ An account's settings are part of its record:
   second, fold, timezone, coordinates, gender and Zi convention are one chart.
 - `my_chart`: the person's own chart, a saved chart's id, or `null`.
 - `couples`: each an `id` and `charts`, two different saved charts' ids in the order
-  paired. A chart is in one couple at most.
+  paired; the same two charts at most once, in either order. The record reads a chart
+  in any number of couples (#98); the store still pairs a chart in one couple at most,
+  until #96 lifts that.
 - `pending_partner`: the chart kept from a schema 2 partner, waiting to pair with the
   first chart marked as the person's own, or `null`.
 - `place` (where the person is: `name`, `city`, `timezone`, `latitude`, `longitude`,
@@ -136,6 +138,18 @@ so the database alone cannot be used to test guesses or take over a session.
 | `PUT /api/account/place` | where you are: `{key, updated_at, place}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
 | `DELETE /api/account/place` | forgets where you are; `{"key": …, "updated_at": …}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
 | `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay. `{key, updated_at, …}` | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409`, `412` |
+
+### Couples: the rollout
+
+A chart in any number of couples comes in two releases. #98 (this release) teaches
+every reader to read it: the record, the backup, the restore, the export and the
+pages. #96 then lets the store and the API pair a chart that is in a couple already.
+The order matters because a release before #98 refuses a row with a chart in two
+couples, and its backup snapshot reads every changed account at once: one such row
+would stop the backup for every account, and that release could not restore the
+newest backup. So once #96 is live and any account has a chart in two couples, roll
+back to #98 at most. Going further back needs a restore from a backup commit made
+before the first such couple, and loses every account's changes since.
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`. An id that is not 32 lowercase hex digits answers `400`; the

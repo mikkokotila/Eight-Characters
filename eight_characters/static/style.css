@@ -3381,6 +3381,33 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-view[aria-busy='true'] :is(.today-body, .chart-panel) { opacity: 0.6; }
 .today-view[aria-busy='true'] button { cursor: progress; }
 .today-view .bar-action[aria-disabled='true'] { opacity: 0.5; cursor: default; }
+/* The partner in view, with the chart in several couples: a pill like the switches
+   beside it, its label and its choice. */
+.today-partner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: 20px;
+  background: var(--surface-1);
+}
+.today-partner-label { font-size: var(--text-1); color: var(--ink-2); }
+.today-partner select {
+  min-height: 32px;
+  max-width: 14em;
+  padding: var(--space-1) var(--space-3);
+  border: none;
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--ink-1);
+  font: inherit;
+  font-size: var(--text-1);
+  font-weight: 500;
+  cursor: pointer;
+}
+.today-partner select:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.today-view[aria-busy='true'] .today-partner select { cursor: progress; }
 .today-body {
   display: flex;
   flex-direction: column;

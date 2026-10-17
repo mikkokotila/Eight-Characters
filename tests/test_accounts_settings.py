@@ -245,14 +245,6 @@ class TestSettingsRecords(unittest.TestCase):
                     Couple('5' * 32, (PARTNER_ID, MINE_ID)),
                 ),
             ),
-            'a chart in two couples': lambda: replace(
-                SETTINGS,
-                charts=(*SETTINGS.charts, SavedChart('4' * 32, born(1))),
-                couples=(
-                    Couple(COUPLE_ID, (MINE_ID, PARTNER_ID)),
-                    Couple('5' * 32, (MINE_ID, '4' * 32)),
-                ),
-            ),
             'a waiting partner beside my chart': lambda: replace(
                 SETTINGS, pending_partner=PARTNER_ID
             ),
@@ -441,6 +433,28 @@ class TestSettingsRecords(unittest.TestCase):
             decode_user(canonical_json(value))
 
 
+class TestSeveralCouples(unittest.TestCase):
+    def test_a_chart_can_be_in_several_couples(self) -> None:
+        # A record reads a chart in any number of couples (#98).
+        third = '4' * 32
+        settings = replace(
+            SETTINGS,
+            charts=(*SETTINGS.charts, SavedChart(third, born(1))),
+            couples=(
+                Couple(COUPLE_ID, (MINE_ID, PARTNER_ID)),
+                Couple('5' * 32, (third, MINE_ID)),
+            ),
+        )
+        # In the order formed, whichever side the chart is on.
+        self.assertEqual(settings.couples_of(MINE_ID), settings.couples)
+        self.assertEqual(settings.couples_of(PARTNER_ID), settings.couples[:1])
+        self.assertEqual(
+            settings.couple_between(PARTNER_ID, MINE_ID), settings.couples[0]
+        )
+        self.assertIsNone(settings.couple_between(PARTNER_ID, third))
+        self.assertEqual(decode_settings(encode_settings(settings)), settings)
+
+
 class StoreCase(unittest.TestCase):
     def setUp(self) -> None:
         self.directory = Path(tempfile.mkdtemp())
@@ -454,6 +468,34 @@ class StoreCase(unittest.TestCase):
         """The version of the reader's settings a change is made from."""
         settings = self.store.settings(self.user.id)
         return None if settings is None else settings.updated_at
+
+    def keep_several_couples(self) -> Settings:
+        """Gives the reader a chart in two couples, kept as #96's release writes them:
+        this release reads them, and does not pair them (#98)."""
+        ids = []
+        for birth in (BIRTH, PARTNER, born(5)):
+            _, chart_id = self.store.save_chart(self.user.id, birth, self.read())
+            ids.append(chart_id)
+        kept = self.store.settings(self.user.id)
+        assert kept is not None
+        mine, partner, third = ids
+        several = replace(
+            kept,
+            couples=(
+                Couple('5' * 32, (mine, partner)),
+                Couple('6' * 32, (third, mine)),
+            ),
+        )
+        connection = sqlite3.connect(self.path)
+        try:
+            connection.execute(
+                'UPDATE settings SET record = ? WHERE user_id = ?',
+                (encode_settings(several), self.user.id),
+            )
+            connection.commit()
+        finally:
+            connection.close()
+        return several
 
 
 class TestSettingsStore(StoreCase):
@@ -507,7 +549,7 @@ class TestSettingsStore(StoreCase):
             ),
         )
         self.assertEqual(kept.my_chart, mine)
-        couple = kept.couple_of(partner)
+        couple = kept.couple_between(mine, partner)
         assert couple is not None
         self.assertEqual(couple.charts, (mine, partner))
 
@@ -649,6 +691,22 @@ class TestSettingsStore(StoreCase):
                 self.store.add_couple(self.user.id, charts, self.read())
         self.assertEqual(self.store.settings(self.user.id), before)
         self.assertEqual(self.store.backup_snapshot().changes, ())
+
+    def test_a_chart_in_several_couples_is_read_exported_and_kept(self) -> None:
+        several = self.keep_several_couples()
+        self.assertEqual(self.store.settings(self.user.id), several)
+        self.assertEqual(
+            self.store.account_data(self.user.id)['settings'], settings_value(several)
+        )
+        # A change to something else keeps every couple.
+        changed = self.store.put_place(self.user.id, LISBON, self.read())
+        assert changed is not None
+        self.assertEqual(changed.couples, several.couples)
+        # Pairing a chart in a couple with another still waits for #96.
+        partner, third = several.charts[1].id, several.charts[2].id
+        with self.assertRaises(CoupleLimit):
+            self.store.add_couple(self.user.id, (partner, third), self.read())
+        self.assertEqual(self.store.settings(self.user.id), changed)
 
     def test_an_id_the_account_does_not_keep_changes_nothing(self) -> None:
         _, mine = self.save(BIRTH)
@@ -932,6 +990,23 @@ class TestSettingsBackup(StoreCase):
         target = self.directory / 'restored.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         self.assertEqual(AccountStore.open(target).settings(self.user.id), settings)
+
+    def test_a_chart_in_several_couples_backs_up_and_restores(self) -> None:
+        several = self.keep_several_couples()
+        result = run_backup(self.store, self.checkout, self.recipient)
+        self.assertEqual(result.written, 1)
+        self.assertEqual(decode_user(self._record(self.user.id)), (self.user, several))
+        target = self.directory / 'restored.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        restored = AccountStore.open(target)
+        self.assertEqual(restored.settings(self.user.id), several)
+        # And the restored database goes on with the same backup: once the account
+        # changes, its next run writes it with every couple kept.
+        moved = restored.put_place(self.user.id, LISBON, several.updated_at)
+        assert moved is not None
+        self.assertEqual(moved.couples, several.couples)
+        self.assertEqual(run_backup(restored, self.checkout, self.recipient).written, 1)
+        self.assertEqual(decode_user(self._record(self.user.id)), (self.user, moved))
 
     def test_a_backup_from_before_charts_restores_its_partner_as_a_saved_chart(
         self,

@@ -22,11 +22,22 @@
   // The saved chart drawn from a birth, or null.
   const savedOf = (kept, birth) => kept.charts.find((chart) => keyOf(chart) === keyOf(birth)) ?? null;
   const chartWith = (kept, id) => kept.charts.find((chart) => chart.id === id) ?? null;
-  const coupleOf = (kept, id) => kept.couples.find((couple) => couple.charts.includes(id)) ?? null;
-  // The other chart of a saved chart's couple, or null.
-  const partnerOf = (kept, id) => {
-    const couple = coupleOf(kept, id);
-    return couple === null ? null : chartWith(kept, couple.charts.find((other) => other !== id));
+  // The couples a saved chart is in, in the order they were formed: any number of
+  // them (#98).
+  const couplesOf = (kept, id) => kept.couples.filter((couple) => couple.charts.includes(id));
+  // The other chart of each of a saved chart's couples, in the order they were formed.
+  const partnersOf = (kept, id) => couplesOf(kept, id).map((couple) => chartWith(kept, couple.charts.find((other) => other !== id)));
+  // The couple two saved charts form, in either order, or null.
+  const coupleBetween = (kept, first, second) => kept.couples
+    .find((couple) => couple.charts.includes(first) && couple.charts.includes(second)) ?? null;
+  // Names as one list in the page's language: "A, B and C".
+  const listOf = (names, lang) => new Intl.ListFormat(lang, { style: 'long', type: 'conjunction' }).format(names);
+  // A chart's partners as one list, in the order their couples were formed: "A, B and
+  // C", and past three "A, B, C and N more" (#98). `nameOf` names an unnamed partner by
+  // its birth date, so two can be told apart.
+  const partnerList = (partners, { lang, nameOf, more }) => {
+    const names = partners.map(nameOf);
+    return listOf(names.length > 3 ? [...names.slice(0, 3), more(names.length - 3)] : names, lang);
   };
   // The chart a write paired with chart `id`, by the settings before it and after: a
   // partner kept from before charts pairs with the chart marked as yours. Null when the
@@ -88,6 +99,10 @@
     if (!label) throw new Error('The library button is incomplete.');
 
     const nameOf = (chart) => chart.name ?? t('library_unnamed');
+    // A partner named in a list: an unnamed one by its birth date.
+    const listName = (chart) => chart.name ?? t('library_unnamed_born', {
+      date: format.date(format.parseWallClock(`${chart.date}T${chart.time}`)),
+    });
     const birthLine = (chart) => {
       const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
       if (!reading) throw new Error(t('settings_answer_error', { status: 200 }));
@@ -117,10 +132,12 @@
       list.innerHTML = kept.charts.length === 0
         ? `<li class="library-empty">${esc(t('library_empty'))}</li>`
         : kept.charts.map((chart) => {
-          const partner = partnerOf(kept, chart.id);
+          const partners = partnersOf(kept, chart.id);
           const marks = [
             chart.id === kept.my_chart ? `<span class="saved-mark is-mine">${esc(t('library_mine'))}</span>` : '',
-            partner === null ? '' : `<span class="saved-mark">${esc(t('library_with', { name: nameOf(partner) }))}</span>`,
+            partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', {
+              names: partnerList(partners, { lang: language(), nameOf: listName, more: (count) => t('names_more', { count }) }),
+            }))}</span>`,
             chart.id === saved?.id ? `<span class="saved-mark is-here">${esc(t('library_here'))}</span>` : '',
           ].join('');
           return `<li>
@@ -204,5 +221,5 @@
     };
   };
 
-  window.EC_LIBRARY = { create, keyOf, savedOf, chartWith, coupleOf, partnerOf, pairedSince, chartParams, strip };
+  window.EC_LIBRARY = { create, keyOf, savedOf, chartWith, couplesOf, partnersOf, coupleBetween, listOf, partnerList, pairedSince, chartParams, strip };
 })();

@@ -21,7 +21,8 @@
   // A drag moves the days once it has gone this far across.
   const DRAG = 40;
 
-  // ── The address: the chart's link parts, then the day, whose day, and the topic ──
+  // ── The address: the chart's link parts, then the day, whose day, the partner in view
+  // and the topic ──
   // The chart's own link, in the language the day is shown in.
   const chartLink = (state) => {
     const params = new URLSearchParams(state.chartParams);
@@ -32,12 +33,13 @@
     const params = new URLSearchParams(chartLink(state));
     params.set('day', state.day);
     if (state.who === 'partner') params.set('who', 'partner');
+    if (state.partner !== null) params.set('partner', state.partner);
     if (state.topic !== null) params.set('topic', state.topic);
     return `#today?${params}`;
   };
-  // What a day is read for, its day and topic apart: the chart, in its language, and whose
-  // day it is.
-  const reading = (state) => `${chartLink(state)} ${state.who}`;
+  // What a day is read for, its day and topic apart: the chart, in its language, whose
+  // day it is, and the partner in view.
+  const reading = (state) => `${chartLink(state)} ${state.who} ${state.partner ?? ''}`;
 
   const create = ({ view, translate: t, escape: esc, locale, settings, format, account, go, onChart, onSettings, onEdit, onLanguage, toast }) => {
     const need = (selector) => {
@@ -52,6 +54,8 @@
     const nowButton = need('[data-today-now]');
     const whoSwitch = need('#today-who');
     const partnerLabel = need('.today-who-name');
+    const partnerChoice = need('#today-partner-choice');
+    const partnerSelect = need('#today-partner');
     const languageSwitch = need('#today-language');
     const copyLink = need('#today-copy-link');
     const copyText = need('#today-copy-text');
@@ -202,15 +206,30 @@
       gender: chart.gender,
       zi: chart.zi,
     });
-    // The other chart of the couple the chart on screen is in, as saved: null when the
-    // chart is not saved or not in a couple.
-    const coupleOf = (kept) => {
+    // The partners of the chart on screen, as saved, in the order its couples were
+    // formed: none when the chart is not saved or in no couple. A chart can be in any
+    // number of couples (#98).
+    const partnersOf = (kept) => {
       const saved = window.EC_LIBRARY.savedOf(kept, chartBirth(state.chart));
-      return saved === null ? null : window.EC_LIBRARY.partnerOf(kept, saved.id);
+      return saved === null ? [] : window.EC_LIBRARY.partnersOf(kept, saved.id);
     };
+    // The partner in view: the one the address names, when it is one of the chart's
+    // partners in this account (show() writes the first couple's partner in when the
+    // address names none); null otherwise.
+    const partnerInView = (kept) => (state.partner === null ? null
+      : partnersOf(kept).find((chart) => chart.id === state.partner) ?? null);
+    // The partner in view, when its chart can be read.
     const partnerOf = (kept) => {
-      const other = coupleOf(kept);
+      const other = partnerInView(kept);
       return other === null || other.problem !== null ? null : other;
+    };
+    // The partner in view's id, as the settings last read name it: null for none.
+    const shownPartnerId = () => (shownSettings === null ? null : partnerInView(shownSettings)?.id ?? null);
+    // Why no partner is read: the chart is in no couple, the chart named is not one of
+    // its partners in this account, or the partner's chart no longer charts.
+    const partnerGone = (kept) => {
+      if (partnerInView(kept) !== null) return t('today_partner_problem');
+      return t(partnersOf(kept).length === 0 ? 'today_partner_gone' : 'today_partner_unpaired');
     };
     // What the API takes of a saved chart: its birth, without the library's id or the
     // drawn pillars.
@@ -237,10 +256,13 @@
       if (action === 'settings') onSettings();
       else if (action === 'edit') onEdit(chartLink(state));
       else if (action === 'retry') show(state);
-      else if (action === 'self') move({ who: 'self', topic: null });
+      // This chart's own day, with the first couple's partner in view again.
+      else if (action === 'self') move({ who: 'self', partner: null, topic: null });
     });
 
     // ── The bar ──
+    // The choice of partners as last drawn.
+    let partnerChoices = '';
     const chartHeading = (chart) => {
       const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
       return [format.date(reading), format.time(reading, chart.time.length > 5), chart.place.city].join(' · ');
@@ -255,6 +277,27 @@
       chartLine.textContent = place ? `${whose} · ${t('today_at', { place: place.city })}` : whose;
       whoSwitch.classList.toggle('hidden', partner === null);
       partnerLabel.textContent = partner === null ? '' : partnerName(partner);
+      // With the chart in several couples, or one named that is not its partner, the
+      // partner in view is chosen here: an unnamed one by its birth, one that no longer
+      // charts shown but not chosen.
+      const partners = shownSettings === null ? [] : partnersOf(shownSettings);
+      const inView = shownSettings === null ? null : partnerInView(shownSettings);
+      const choosing = partners.length > 1 || (partners.length > 0 && inView === null && state.partner !== null);
+      partnerChoice.classList.toggle('hidden', !choosing);
+      const choiceLabel = (chart) => [
+        chart.name ?? `${t('library_unnamed')} · ${chartHeading(chart)}`,
+        chart.problem === null ? '' : ` ${t('today_partner_cannot')}`,
+      ].join('');
+      // Hidden, it keeps no names.
+      const choices = choosing ? [
+        inView === null ? `<option value="" selected disabled>${esc(t('today_partner'))}</option>` : '',
+        ...partners.map((chart) => `<option value="${esc(chart.id)}"${chart.id === inView?.id ? ' selected' : ''}${chart.problem === null ? '' : ' disabled'}>${esc(choiceLabel(chart))}</option>`),
+      ].join('') : '';
+      // Drawn again only when it changes: an open choice is left alone.
+      if (choices !== partnerChoices) {
+        partnerSelect.innerHTML = choices;
+        partnerChoices = choices;
+      }
       whoSwitch.querySelectorAll('button[data-who]').forEach((button) => {
         button.setAttribute('aria-pressed', String(button.dataset.who === state.who));
       });
@@ -842,10 +885,26 @@
           instead(t('today_needs_place'), [['settings', t('settings_open')]]);
           return;
         }
+        // The partner in view (#98): the one the address names, else the first couple's
+        // partner, written into the address. A chart named that is not one of this
+        // chart's partners in this account, or no longer charts, is never swapped for
+        // another.
+        const partners = partnersOf(kept);
+        if (state.partner === null && partners.length > 0) {
+          state = { ...state, partner: partners[0].id };
+          go(address(state), 'replaceState');
+          keepingFocus(drawBar);
+        }
         const partner = partnerOf(kept);
-        if (state.who === 'partner' && partner === null) {
-          instead(t(coupleOf(kept) === null ? 'today_partner_gone' : 'today_partner_problem'), [['self', t('today_self')], ['settings', t('settings_open')]]);
-          return;
+        let gone = null;
+        if (partner === null && (state.who === 'partner' || state.partner !== null)) {
+          if (state.who === 'partner') {
+            instead(partnerGone(kept), [['self', t('today_self')], ['settings', t('settings_open')]]);
+            return;
+          }
+          // On this chart's own day the day is read without a couple, and the page says
+          // why; With offers its partners.
+          gone = partnerGone(kept);
         }
         const response = await fetch('/api/today', {
           method: 'POST',
@@ -880,13 +939,12 @@
         const reply = checked(value);
         // Marriage is read exactly when a partner's chart is sent with the day.
         if ((partner === null) !== (reply.marriage === null)) throw new Error(t('today_answer_error'));
-        let gone = null;
         if (state.topic === 'marriage' && reply.marriage === null) {
           // The partner's chart was removed, or no longer charts, since Marriage was
           // opened: it is no longer one of the day's topics, and the page says why.
           state = { ...state, topic: null };
           go(address(state), 'replaceState');
-          gone = t(coupleOf(kept) === null ? 'today_partner_gone' : 'today_partner_problem');
+          gone = gone ?? partnerGone(kept);
         }
         answer = reply;
         keepingFocus(draw);
@@ -922,6 +980,9 @@
       chartLine.textContent = '';
       partnerLabel.textContent = '';
       whoSwitch.classList.add('hidden');
+      partnerChoice.classList.add('hidden');
+      partnerSelect.replaceChildren();
+      partnerChoices = '';
       clearNotice();
       body.classList.add('hidden');
       for (const part of [pullLine, topics, run, scale, pillarsNote, pillars, couple, inChart, hours]) part.replaceChildren();
@@ -1063,6 +1124,12 @@
       const button = event.target.closest('button[data-who]');
       if (button && state !== null && button.dataset.who !== state.who) move({ who: button.dataset.who, topic: null });
     });
+    // Another partner chosen: its couple is the one read, from the side shown, with the
+    // topic left open.
+    partnerSelect.addEventListener('change', () => {
+      const chosen = partnerSelect.value;
+      if (state !== null && chosen !== '' && chosen !== shownPartnerId()) move({ partner: chosen });
+    });
     languageSwitch.addEventListener('click', (event) => {
       const button = event.target.closest('button[data-today-lang]');
       if (!button || state === null || button.dataset.todayLang === state.lang) return;
@@ -1186,11 +1253,15 @@
       // Another account taken in this browser: the day drawn with the settings of the one
       // before (its place, its schools, its couple) goes, shown or hidden, so that Today
       // opened again draws nothing of it; shown, the day is asked for again with this
-      // account's.
+      // account's. The partner in view was the account before's: it goes from the address,
+      // and this account's first couple's partner is written in instead.
       renew: () => {
-        const next = state;
+        const next = state === null ? null : { ...state, partner: null };
         keepingFocus(clear);
-        if (next !== null) show(next);
+        if (next !== null) {
+          go(address(next), 'replaceState');
+          show(next);
+        }
       },
       // Settings changed: the day is asked for again with them.
       refresh: () => {
