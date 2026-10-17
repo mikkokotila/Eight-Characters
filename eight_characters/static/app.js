@@ -1793,10 +1793,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const todayView = document.getElementById('today-view');
   const pageSwitch = document.getElementById('page-switch');
   if (!todayView || !pageSwitch) throw new Error('Today is incomplete.');
-  // The date on the clock in a time zone: where you are, or without a place, here.
-  const dateIn = (zone) => new Intl.DateTimeFormat('en-CA', {
-    timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit',
-  }).format(new Date());
+  // The date on the clock in a time zone (where you are, or without a place, here), as
+  // YYYY-MM-DD. It is built from the date's named parts: a locale's written pattern is
+  // for reading, not a format, and en-CA's is M/D/YYYY in some runtimes (#100).
+  const dateIn = (zone) => {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone, calendar: 'gregory', numberingSystem: 'latn', year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const part = (type) => parts.find((found) => found.type === type)?.value;
+    const day = `${part('year')}-${part('month')}-${part('day')}`;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) throw new Error(`The date on the clock in ${zone} could not be read: ${day}.`);
+    return day;
+  };
   const readTodayLink = (hash) => {
     const params = new URLSearchParams(hash.slice(TODAY_ROUTE.length));
     const own = {};
@@ -1819,7 +1827,7 @@ document.addEventListener('DOMContentLoaded', () => {
     escape: esc,
     locale,
     settings: settingsPage,
-    format: { parseWallClock, date: formatDate, time: formatTime },
+    format: { parseWallClock, date: formatDate, time: formatTime, dateIn },
     account,
     go: (hash, method) => history[method](null, '', `${formAddress()}${hash}`),
     // Today's Chart hands its focus to the chart's own, so the chart's keys act at once.

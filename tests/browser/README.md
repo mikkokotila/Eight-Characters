@@ -162,7 +162,9 @@ The Today suite (`today.test.mjs`) checks every number against the API's answer,
 - the couple: both pulls, the pull-apart sentence, turned around on the partner's day,
   and none without a couple;
 - copy and print: the five gods in Copy as text; print while a day is on its way says
-  so, and a drawn day prints the chosen day alone, without the dial.
+  so, and a drawn day prints the chosen day alone, without the dial;
+- the date on the clock: read from its parts, so Chart · Today, Today and today's mark
+  still find it where `en-CA` writes dates as `M/D/YYYY`.
 
 The readings suite (`reading.test.mjs`) reads the canon's own example chart and
 charts with each kind of relationship, each well clear of an hour's or a month's

@@ -151,9 +151,9 @@
     const godLine = (god, element) => t('today_god_element', { god: t('today_god_' + god), element: t('element_' + element) });
 
     // ── The date on the clock at where you are, and calendar steps ──
-    const todayAt = (timezone) => new Intl.DateTimeFormat('en-CA', {
-      timeZone: timezone, year: 'numeric', month: '2-digit', day: '2-digit',
-    }).format(new Date());
+    // The date on the clock in a time zone, YYYY-MM-DD, as app.js reads it (from the
+    // date's parts).
+    const todayAt = (timezone) => format.dateIn(timezone);
     // A calendar step: a day before or after, not 86,400 seconds of some clock.
     const stepDay = (day, by) => {
       const next = calendar(day);

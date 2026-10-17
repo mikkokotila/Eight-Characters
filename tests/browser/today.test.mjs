@@ -180,6 +180,38 @@ for (const profile of profiles) {
       assert.match(await page.evaluate(() => location.hash), /^#chart\?/);
     });
 
+    check('the date on the clock is read from its parts, even where en-CA writes dates as M/D/YYYY', async (page) => {
+      // As a runtime without en-CA's own pattern writes them (#100): like en-US.
+      await page.addInitScript(() => {
+        const Native = Intl.DateTimeFormat;
+        const Wrapped = function DateTimeFormat(locales, options) {
+          return new Native(String(locales).toLowerCase() === 'en-ca' ? 'en-US' : locales, options);
+        };
+        Wrapped.prototype = Native.prototype;
+        Wrapped.supportedLocalesOf = Native.supportedLocalesOf.bind(Native);
+        Intl.DateTimeFormat = Wrapped;
+      });
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await openLink(page, `/#chart?${chartParams()}`, { place: HELSINKI });
+      assert.equal(await page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC' }).format(new Date(Date.UTC(2026, 9, 11)))), '10/11/2026');
+      await setSettings(page);
+      // Chart · Today opens on the date where you are, and the day knows it is today.
+      await page.locator('#page-switch [data-page="today"]').click();
+      await shown(page);
+      assert.equal(await part(page, 'day'), DAY);
+      assert.equal(answers.at(-1).request.date, DAY);
+      assert.equal(await page.locator('.today-run-day.is-today').getAttribute('data-today-day'), DAY);
+      assert.equal(await page.locator('[data-today-now]').isDisabled(), true);
+      // A day on, Today goes back to it.
+      await page.locator('.today-step[data-today-step="1"]').click();
+      await shown(page);
+      assert.equal(await part(page, 'day'), '2026-10-12');
+      await page.locator('[data-today-now]').click();
+      await shown(page);
+      assert.equal(await part(page, 'day'), DAY);
+    });
+
     check('a day step replaces the address, a topic adds to it, and Back and reload keep the place', async (page) => {
       await page.clock.setFixedTime(NOW);
       await recordToday(page);

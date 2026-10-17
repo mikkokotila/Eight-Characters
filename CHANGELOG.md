@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.52.1
+
+### Fixed
+- **The date on the clock is read from its parts** (#100). Today's date where you are
+  (Chart · Today, the bar's Today and N, today's mark) came from
+  `Intl.DateTimeFormat('en-CA')`'s written pattern, which some runtimes write as
+  `10/11/2026`, so Today could not open there. One helper now builds `YYYY-MM-DD`
+  from the date's named parts, and throws if a part is missing.
+
+### Tests
+- `today.test.mjs`: with `en-CA` writing dates as `M/D/YYYY`, Chart · Today opens on
+  today's date, the day knows it is today, and Today goes back to it.
+
 ## 0.52.0
 
 ### Changed
