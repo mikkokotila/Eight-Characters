@@ -204,5 +204,11 @@ export async function withPage(profile, run, { signedIn = true } = {}) {
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   try { await run(page); assert.deepEqual(errors, [], 'Uncaught browser errors'); }
-  finally { await page.close(); }
+  finally {
+    // A request still on its way when the test is over is no longer the test's: its
+    // routes stop first, so one that ends as the page closes is not reported as an
+    // unhandled rejection after the test (as Playwright advises).
+    if (!page.isClosed()) await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await page.close();
+  }
 }

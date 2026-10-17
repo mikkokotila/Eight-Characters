@@ -12,6 +12,8 @@
 ### Tests
 - `today.test.mjs`: with `en-CA` writing dates as `M/D/YYYY`, Chart · Today opens on
   today's date, the day knows it is today, and Today goes back to it.
+- `chart-helpers.mjs`: a page's routes stop before it closes, so a request still on its
+  way when a test ends no longer fails the file as an unhandled rejection.
 
 ## 0.53.0
 
