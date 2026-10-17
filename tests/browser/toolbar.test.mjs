@@ -235,6 +235,28 @@ for (const profile of profiles) {
       assert.equal(await other(), 'words');
     });
 
+    check('Settings\' choice follows a choice made in another page, so either way can be chosen again', async (page) => {
+      await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
+      await page.locator('#settings-toolbar').waitFor({ state: 'visible' });
+      await page.evaluate(() => new Promise((resolve) => {
+        const frame = document.createElement('iframe');
+        frame.id = 'other-page';
+        frame.src = '/';
+        frame.addEventListener('load', resolve, { once: true });
+        document.body.append(frame);
+      }));
+      await page.evaluate(() => document.getElementById('other-page').contentWindow.EC_TOOLBAR.choose('icons'));
+      await page.waitForFunction(() => document.documentElement.dataset.toolbar === 'icons');
+      // The other page has chosen; it goes, as a tab closed would.
+      await page.evaluate(() => document.getElementById('other-page').remove());
+      assert.equal(await page.locator('#settings-toolbar-icons').isChecked(), true);
+      assert.equal(await page.locator('#settings-toolbar-words').isChecked(), false);
+      // Words, chosen again here, is taken.
+      await page.locator('#settings-toolbar-words').check();
+      assert.equal(await way(page), 'words');
+      assert.equal(await page.evaluate(() => localStorage.getItem('eight_characters_toolbar')), 'words');
+    });
+
     for (const toolbar of ['words', 'icons']) {
       check(`a comparison's frames keep Copy as text in their bar, and no menu (${toolbar})`, async (page) => {
         const second = { ...BIRTH, date: '1979-03-21', time: '06:10', gender: 'male' };
