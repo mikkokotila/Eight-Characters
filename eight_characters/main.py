@@ -1407,10 +1407,12 @@ async def hidden_stems(
 _DAY = re.compile(r'[0-9]{4}-[0-9]{2}-[0-9]{2}')
 
 
-def _day(text: str) -> date:
+def _day(text: str, field: str = 'date') -> date:
+    """The date a request names in `field`; 400 naming that field, or the date, if it
+    is not one."""
     if _DAY.fullmatch(text) is None:
         raise HTTPException(
-            status_code=400, detail='date must be in YYYY-MM-DD format.'
+            status_code=400, detail=f'{field} must be in YYYY-MM-DD format.'
         )
     try:
         return date.fromisoformat(text)
@@ -1480,8 +1482,8 @@ def today_days_from_request(payload: DaysRequest, response: Response) -> DaysAns
         raise HTTPException(
             status_code=400, detail='Send after or before: the date the days run from.'
         )
-    after = None if payload.after is None else _day(payload.after)
-    before = None if payload.before is None else _day(payload.before)
+    after = None if payload.after is None else _day(payload.after, 'after')
+    before = None if payload.before is None else _day(payload.before, 'before')
     place, subject, _other, schools_used = _today_basis(payload)
     try:
         answer = build_days(

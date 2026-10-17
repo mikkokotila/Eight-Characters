@@ -585,6 +585,19 @@ class TestDays(unittest.TestCase):
                 reply = self.client.post('/api/today/days', json=refused)
                 self.assertEqual(reply.status_code, 400, reply.text)
 
+    def test_a_malformed_date_is_said_by_the_field_it_is_in(self) -> None:
+        for field in ('after', 'before'):
+            with self.subTest(field=field):
+                reply = self.client.post(
+                    '/api/today/days', json={**DAYS_BODY, field: '2026-1-1'}
+                )
+                self.assertEqual(reply.status_code, 400, reply.text)
+                self.assertEqual(
+                    reply.json()['detail'], f'{field} must be in YYYY-MM-DD format.'
+                )
+        reply = self.client.post('/api/today', json={**BODY, 'date': '2026-1-1'})
+        self.assertEqual(reply.json()['detail'], 'date must be in YYYY-MM-DD format.')
+
     def test_days_need_an_account_and_are_its_own(self) -> None:
         asked = {**DAYS_BODY, 'after': DAY}
         self.assertEqual(
