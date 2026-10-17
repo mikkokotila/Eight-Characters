@@ -300,6 +300,36 @@
 /* Browsers draw form controls in a system font unless told to take the page's. */
 button, input, select, textarea { font-family: inherit; }
 
+/* One label: what a field, a pillar, a place or a group of things is, in small serif
+   capitals in the secondary ink, wherever it stands. Each part sets only where it goes. */
+.field-group label,
+.gender-group legend,
+.account-field > label,
+.account-field > legend,
+.account-label,
+.settings-choose label,
+.settings-rename label,
+.today-partner-label,
+.pillar-plain,
+.life-head-name,
+.today-pillar-name,
+.today-member-place,
+.relationship-position,
+.pillar-change-side,
+.canon-line-key,
+.luck-sequence,
+.luck-ribbon-label,
+.today-run-label,
+.today-pillars-note {
+  font-family: var(--font-serif);
+  font-size: var(--text-1);
+  font-weight: 500;
+  line-height: var(--leading-2);
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
 body {
   background: var(--bg);
   color: var(--ink-1);
@@ -407,15 +437,6 @@ body {
   gap: var(--space-2);
   /* As wide as its field, so a status message wraps beneath it. */
   width: 180px;
-}
-
-.field-group label {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
 }
 
 .field-group input,
@@ -558,11 +579,6 @@ body {
 .gender-group legend {
   margin: 0 auto var(--space-2);
   padding: 0;
-  font-family: var(--font-serif);
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
 }
 .gender-options {
   display: inline-flex;
@@ -966,10 +982,6 @@ body {
     height: auto;
     overflow: visible;
     clip: auto;
-    font-size: var(--text-1);
-    letter-spacing: var(--tracking-2);
-    text-transform: uppercase;
-    color: var(--ink-2);
   }
   .luck-step[data-luck-step="-1"] { grid-area: previous; align-self: stretch; }
   .luck-track { grid-area: track; }
@@ -982,13 +994,7 @@ body {
 .luck-phase:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 
 /* A decade's page in the panel. */
-.luck-sequence {
-  margin: 0 0 var(--space-1);
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
+.luck-sequence { margin: 0 0 var(--space-1); }
 .luck-meta { margin: var(--space-2) 0 var(--space-4); font-size: var(--text-1); line-height: var(--leading-3); color: var(--ink-2); }
 /* A nominal timeline says so before its dates are read. */
 .luck-nominal { margin: 0 0 var(--space-4); font-size: var(--text-1); font-weight: 500; line-height: var(--leading-3); }
@@ -1096,12 +1102,6 @@ body {
   align-items: center;
   font-family: var(--font-serif);
   color: var(--ink-2);
-}
-.pillar-plain {
-  font-weight: 500;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
 }
 .pillar-poetic {
   font-weight: 400;
@@ -1291,17 +1291,20 @@ body {
   gap: var(--space-1);
   min-width: 0;
   padding: var(--space-2) 0;
+  container-type: inline-size;
+}
+/* A column too narrow for a label's capitals (a phone's five) gives it its name's case. */
+@container (max-width: 100px) {
+  .life-head-name { text-transform: none; letter-spacing: var(--tracking-1); }
 }
 .life-head-name,
 .life-head-state {
   max-width: 100%;
   overflow: hidden;
-  font-size: var(--text-1);
-  color: var(--ink-2);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.life-head-state { color: var(--ink-1); }
+.life-head-state { font-size: var(--text-1); color: var(--ink-1); }
 /* The Luck column's lane runs up into the head. */
 .life-head-cell.is-luck {
   border-radius: var(--radius-6) var(--radius-6) 0 0;
@@ -2126,17 +2129,6 @@ body {
 @media (prefers-reduced-motion: reduce) { .role-choice { transition: none; } }
 
 /* ── Relationships: quiet annotations, never a second colour system ── */
-/* A label in the panel: a pillar's plain name as its column header writes it, a
-   group of roles. */
-.relationship-position {
-  font-family: var(--font-serif);
-  font-weight: 500;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-
 .reading-toggle {
   font-family: var(--font-sans);
   font-size: var(--text-1);
@@ -2561,16 +2553,6 @@ kbd {
 }
 /* A switch is as wide as its choices, not the dialog. */
 .account-field > .segmented { justify-self: start; }
-.account-field label,
-.account-field legend,
-.account-label {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
 .account-field legend { margin-bottom: var(--space-2); }
 .account-field input[type='email'],
 .account-field input[type='text'] {
@@ -2604,7 +2586,6 @@ kbd {
   font-family: var(--font-sans);
   font-size: var(--text-2);
   letter-spacing: var(--tracking-1);
-  text-transform: none;
   color: var(--ink-1);
   cursor: pointer;
 }
@@ -2735,7 +2716,6 @@ kbd {
   margin-top: var(--space-6);
 }
 .relationship-member { min-width: 0; }
-.relationship-position { line-height: var(--leading-3); }
 .relationship-identity {
   margin-top: var(--space-2);
   font-family: var(--font-serif);
@@ -2772,13 +2752,6 @@ kbd {
   margin-top: var(--space-6);
 }
 .pillar-change { min-width: 0; }
-.pillar-change-side {
-  font-family: var(--font-serif);
-  font-size: var(--text-1);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
 .pillar-change-distance {
   margin-top: var(--space-2);
   font-family: var(--font-serif);
@@ -2891,17 +2864,6 @@ kbd {
 .canon-lines { margin-top: var(--space-5); }
 .role-occurrence-body > .canon-lines { margin-top: var(--space-2); }
 .relationship-member .canon-lines { margin-top: var(--space-3); }
-
-/* A reading's key: what it is, as the panel's labels name a place. */
-.canon-line-key {
-  font-family: var(--font-serif);
-  font-size: var(--text-1);
-  font-weight: 500;
-  line-height: var(--leading-3);
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
 
 /* One reading: its key, its first sentence and the chevron; the rest opens beneath. */
 .canon-line,
@@ -3298,23 +3260,22 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 .couple-and { font-family: var(--font-serif); color: var(--ink-3); }
 .couple-strips { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); }
+/* A row of lists and the actions on them, level at their foot. */
 .settings-choose {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2) var(--space-3);
 }
-/* A label with its list: they wrap together, the list under its label when the line is
-   too short for both. */
+/* A label over its list, as the start page's fields wear theirs. */
 .settings-pick {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
   min-width: 0;
   max-width: 100%;
 }
-.settings-choose label { font-size: var(--text-1); color: var(--ink-2); }
 .settings-choose select,
 .settings-rename input {
   min-width: 0;
@@ -3334,7 +3295,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   align-items: center;
   gap: var(--space-2) var(--space-3);
 }
-.settings-rename label { font-size: var(--text-1); color: var(--ink-2); }
+.settings-rename label { flex-basis: 100%; }
 
 /* The chart's heading names the chart if it is saved, and opens the library. */
 .library-btn {
@@ -3456,7 +3417,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   border-radius: var(--radius-6);
   background: var(--surface-1);
 }
-.today-partner-label { font-size: var(--text-1); color: var(--ink-2); }
 .today-partner select {
   min-height: var(--control-2);
   max-width: 14em;
@@ -3694,7 +3654,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-god-chip.wood { background: var(--wood-bg); }
 .today-god-chip.earth { background: var(--earth-bg); }
 .today-god-chip.water { background: var(--water-bg); }
-.today-pillars-note { font-size: var(--text-1); color: var(--ink-2); margin-bottom: calc(-1 * var(--space-3)); }
+.today-pillars-note { margin-bottom: calc(-1 * var(--space-3)); }
 
 /* A band's mark says it by its shape, not by colour alone: a filled circle, a ring, a
    dash, a box and a filled box, from strongly supportive to strongly draining. */
@@ -3735,13 +3695,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 .today-pillar-open .today-cards { width: 72px; }
 .today-pillar-scale { display: block; width: 100%; max-width: 160px; }
-.today-pillar-name {
-  font-size: var(--text-1);
-  font-weight: 500;
-  letter-spacing: var(--tracking-2);
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
 .today-pillar-open {
   display: flex;
   flex-direction: column;
@@ -3803,7 +3756,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   gap: var(--space-2);
 }
 .today-member-pillar { display: grid; justify-items: center; gap: var(--space-1); }
-.today-member-place { font-size: var(--text-1); color: var(--ink-2); }
 .today-relationship-link { align-self: center; width: 24px; height: 1px; background: var(--ink-2); }
 
 /* ── The couple: both pulls of the day, on one neutral scale ── */
