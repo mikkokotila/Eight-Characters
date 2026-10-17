@@ -540,114 +540,25 @@
 
     // ── Where you are: the place search, as the form's, here on its own ──
     let picked = null;
-    let found = [];
-    let active = -1;
-    let lookup = null;
-    let debounce = null;
-    const coordinates = (place) => `${format.coordinates(place.latitude, place.longitude)} · ${place.timezone}`;
+    const search = window.EC_PLACE_SEARCH.create({
+      input: placeInput, list: suggestionList, status: placeStatus, optionId: 'settings-location-option',
+      translate: t, escape: esc, format,
+      onType: () => {
+        picked = null;
+        placeSave.disabled = true;
+      },
+      onPick: (place) => {
+        picked = place;
+        placeSave.disabled = false;
+      },
+    });
     const drawPlace = () => {
       const place = settings.place;
       placeNow.textContent = place === null
         ? t('settings_place_none')
-        : t('settings_place_now', { place: place.name, where: coordinates(place) });
+        : t('settings_place_now', { place: place.name, where: search.coordinates(place) });
       placeRemove.classList.toggle('hidden', place === null);
     };
-    const closeList = () => {
-      found = [];
-      active = -1;
-      suggestionList.innerHTML = '';
-      suggestionList.classList.add('hidden');
-      placeInput.setAttribute('aria-expanded', 'false');
-      placeInput.removeAttribute('aria-activedescendant');
-    };
-    const setPlaceStatus = (text, kind = '') => {
-      placeStatus.textContent = text;
-      placeStatus.className = `field-status${kind ? ` ${kind}` : ''}`;
-    };
-    const pick = (place) => {
-      clearTimeout(debounce);
-      lookup?.abort();
-      picked = place;
-      placeInput.value = place.display;
-      closeList();
-      placeSave.disabled = false;
-      setPlaceStatus(t('selected_city', { city: place.city, coordinates: format.coordinates(place.latitude, place.longitude), timezone: place.timezone }), 'is-found');
-    };
-    const showList = (items) => {
-      found = items;
-      active = -1;
-      if (!items.length) {
-        closeList();
-        return;
-      }
-      suggestionList.innerHTML = items.map((item, index) => `
-        <div role="option" id="settings-location-option-${index}" class="location-suggestion" aria-selected="false" data-index="${index}">
-          <span class="location-suggestion-city">${esc(item.display)}</span>
-          <span class="location-suggestion-meta">${esc(coordinates(item))}</span>
-        </div>`).join('');
-      suggestionList.classList.remove('hidden');
-      placeInput.setAttribute('aria-expanded', 'true');
-    };
-    const activate = (index) => {
-      const options = [...suggestionList.querySelectorAll('.location-suggestion')];
-      if (!options.length) return;
-      active = (index + options.length) % options.length;
-      options.forEach((option, i) => {
-        option.classList.toggle('is-active', i === active);
-        option.setAttribute('aria-selected', String(i === active));
-      });
-      placeInput.setAttribute('aria-activedescendant', options[active].id);
-      options[active].scrollIntoView({ block: 'nearest' });
-    };
-    placeInput.addEventListener('input', () => {
-      picked = null;
-      placeSave.disabled = true;
-      clearTimeout(debounce);
-      lookup?.abort();
-      closeList();
-      const query = placeInput.value.trim();
-      setPlaceStatus('');
-      if (!query) return;
-      debounce = setTimeout(async () => {
-        const request = new AbortController();
-        lookup = request;
-        // Only the lookup for the text in the field may be shown.
-        const stale = () => request.signal.aborted || placeInput.value.trim() !== query;
-        try {
-          const response = await fetch('/api/location_suggest', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ query, limit: 8 }),
-            signal: request.signal,
-          });
-          const data = await response.json();
-          if (stale()) return;
-          if (!response.ok) throw new Error(data.detail || t('suggest_error'));
-          if (!Array.isArray(data.suggestions)) throw new Error(t('suggest_error'));
-          showList(data.suggestions);
-          setPlaceStatus(t(data.suggestions.length ? 'pick_city' : 'no_places'));
-        } catch (err) {
-          if (stale()) return;
-          closeList();
-          setPlaceStatus(err.message || t('suggest_error'), 'is-error');
-        }
-      }, 180);
-    });
-    placeInput.addEventListener('keydown', (event) => {
-      if (suggestionList.classList.contains('hidden')) return;
-      if (event.key === 'ArrowDown') activate(active + 1);
-      else if (event.key === 'ArrowUp') activate(active - 1);
-      else if (event.key === 'Enter') pick(found[active >= 0 ? active : 0]);
-      else if (event.key === 'Escape') closeList();
-      else return;
-      event.preventDefault();
-    });
-    suggestionList.addEventListener('mousedown', (event) => event.preventDefault());
-    suggestionList.addEventListener('click', (event) => {
-      const option = event.target.closest('.location-suggestion');
-      if (option) pick(found[Number(option.dataset.index)]);
-    });
-    placeInput.addEventListener('blur', () => closeList());
     placeForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (picked === null) return;
@@ -666,7 +577,7 @@
         picked = null;
         placeInput.value = '';
         placeSave.disabled = true;
-        setPlaceStatus('');
+        search.setStatus('');
         if (focused) placeInput.focus();
       }
     });
@@ -765,7 +676,7 @@
       showing += 1;
       view.classList.add('hidden');
       view.removeAttribute('aria-busy');
-      closeList();
+      search.close();
     };
     closeButton.addEventListener('click', () => onClose());
 
@@ -806,13 +717,9 @@
         placeNow.textContent = '';
         placeRemove.classList.add('hidden');
         schoolsBody.innerHTML = '';
-        clearTimeout(debounce);
-        lookup?.abort();
+        search.reset();
         picked = null;
-        placeInput.value = '';
         placeSave.disabled = true;
-        setPlaceStatus('');
-        closeList();
         say('');
       },
       // The page's language changed: the schools are written in it.
