@@ -2831,24 +2831,6 @@ kbd {
   .display-switch { display: flex; flex-basis: 100%; }
   .display-switch button { flex: 1 1 auto; }
 }
-/* A touch target at least the touch height tall. */
-@media (max-width: 640px) {
-  .relationship-chip,
-  .reading-toggle,
-  .segmented button,
-  .bar-action,
-  .account-switch,
-  .panel-close,
-  .topic-button,
-  .role-choice,
-  .chart-topics .context-toggle,
-  .gender-option span,
-  .today-partner select,
-  .settings-choose select,
-  .settings-rename input { min-height: var(--control-touch); }
-  /* The start page's language switch stands level with the account's button. */
-  .language-switch { min-height: var(--control-touch); }
-}
 @container panel (max-width: 640px) {
   .relationship-members { grid-template-columns: 1fr; }
   .pillar-change-sides { grid-template-columns: 1fr; }
@@ -3095,9 +3077,6 @@ kbd {
 .canon-line.is-arrived { background: var(--surface-3); }
 @media (prefers-reduced-motion: reduce) {
   .canon-day-master-line, .canon-line-chevron, .canon-link { transition: none; }
-}
-@media (max-width: 640px) {
-  .canon-link { min-height: var(--control-touch); }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -4086,6 +4065,26 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .chart-topics .context-toggle.icon-control,
   .panel-close.icon-control,
   .luck-today.icon-control { min-width: var(--control-touch); min-height: var(--control-touch); }
+}
+/* On a phone every control is a touch target at least the touch height tall. Last in the
+   sheet, so that no control's own height, set above, undoes it. */
+@media (max-width: 640px) {
+  .relationship-chip,
+  .reading-toggle,
+  .segmented button,
+  .bar-action,
+  .account-switch,
+  .panel-close,
+  .topic-button,
+  .role-choice,
+  .chart-topics .context-toggle,
+  .canon-link,
+  .gender-option span,
+  .today-partner select,
+  .settings-choose select,
+  .settings-rename input { min-height: var(--control-touch); }
+  /* The start page's language switch stands level with the account's button. */
+  .language-switch { min-height: var(--control-touch); }
 }
 @media print {
   .control-icon, .control-caption { display: none !important; }
