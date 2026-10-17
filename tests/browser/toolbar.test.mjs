@@ -47,6 +47,7 @@ const menu = (page) => page.evaluate(() => {
     expanded: document.getElementById('chart-actions-button').getAttribute('aria-expanded'),
     open: list.classList.contains('is-open'),
     role: list.getAttribute('role'),
+    named: list.getAttribute('aria-labelledby'),
     items: [...list.querySelectorAll(':scope > button')].map((item) => `${item.getAttribute('role')} ${item.id}`),
     rules: [...list.querySelectorAll(':scope > .bar-menu-rule')].map((rule) => rule.getAttribute('role')),
   };
@@ -83,7 +84,7 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#chart-actions-button'), [['Actions', false]]);
       assert.equal(await page.locator('#chart-actions-button').getAttribute('aria-haspopup'), 'menu');
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: 'menu', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator'],
+        expanded: 'false', open: false, role: 'menu', named: 'chart-actions-button', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator'],
       });
       assert.equal(await page.locator('#copy-link-btn').isVisible(), false);
       // Each item: its icon and its words, and no tooltip over it.
@@ -193,7 +194,7 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#display-switch button'), [['', true], ['', true], ['', true]]);
       assert.equal(await page.locator('#chart-actions-button').isHidden(), true);
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: null, items: ITEMS.map((id) => `null ${id}`), rules: [null],
+        expanded: 'false', open: false, role: null, named: null, items: ITEMS.map((id) => `null ${id}`), rules: [null],
       });
       assert.deepEqual(await shown(page, '#chart-actions > button'), ITEMS.map(() => ['', true]));
       assert.equal(await page.locator('#copy-link-btn').isVisible(), true);

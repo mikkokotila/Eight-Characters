@@ -17,8 +17,14 @@
   const roles = (menu, words) => {
     const { button, list } = menu;
     button.hidden = !words;
-    if (words) list.setAttribute('role', 'menu');
-    else list.removeAttribute('role');
+    // A menu, named by its button; in icons a plain box, which nothing names.
+    if (words) {
+      list.setAttribute('role', 'menu');
+      list.setAttribute('aria-labelledby', button.id);
+    } else {
+      list.removeAttribute('role');
+      list.removeAttribute('aria-labelledby');
+    }
     list.querySelectorAll(':scope > button').forEach((item) => {
       if (words) {
         item.setAttribute('role', 'menuitem');
