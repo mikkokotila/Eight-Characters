@@ -595,8 +595,10 @@ Everything Today shows for a date, for the chart the page is on. The body:
 - `schools`: any of the three presets; the others follow their defaults.
 
 The page sends the chart it is on and, when that chart is a saved chart in a couple,
-the other chart of the couple, with the place and the schools the account keeps
-(`GET /api/account/settings`). The answer is sent with
+the partner in view (the first couple's partner, unless the address names another of
+its partners), with the place and the schools the account keeps
+(`GET /api/account/settings`). The API reads the births it is sent: it does not check
+that they are a stored couple. The answer is sent with
 `Cache-Control: private, no-cache`.
 
 - `400` for a malformed date, or one whose run (7 days back, 14 ahead) leaves the

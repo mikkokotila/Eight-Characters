@@ -52,9 +52,9 @@ An account's settings are part of its record:
   second, fold, timezone, coordinates, gender and Zi convention are one chart.
 - `my_chart`: the person's own chart, a saved chart's id, or `null`.
 - `couples`: each an `id` and `charts`, two different saved charts' ids in the order
-  paired; the same two charts at most once, in either order. The record reads a chart
-  in any number of couples (#98); the store still pairs a chart in one couple at most,
-  until #96 lifts that.
+  paired; the same two charts at most once, in either order. A chart can be in any
+  number of couples: how many a chart may join is its account's plan's (Plans, below),
+  a rule for asking for a couple, never for reading a record.
 - `pending_partner`: the chart kept from a schema 2 partner, waiting to pair with the
   first chart marked as the person's own, or `null`.
 - `place` (where the person is: `name`, `city`, `timezone`, `latitude`, `longitude`,
@@ -126,30 +126,55 @@ so the database alone cannot be used to test guesses or take over a session.
 | `DELETE /api/account/sessions` | signs the account out everywhere; `{"key": …}` names it | `204`; `400`, `401`, `409` |
 | `POST /api/account/export` | everything kept for the account (`{"key": …}` names it), as `bazi-account.json`: its record, its sessions and a pending sign-in code (when made and when they end, without hashes), and the codes asked for in the last hour with the client addresses they came from | `200`; `400`, `401`, `409` |
 | `DELETE /api/account` | deletes the account, its sessions and its sign-in code; `{"email": …, "key": …}`: `key` names it, and `email` repeats its address. The codes asked for stay until an hour old, so the hourly limits hold | `204`; `400`, `401`, `409` |
-| `GET /api/account/settings` | your saved charts (each with its `id` and its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), `my_chart`, `couples`, `pending_partner`, `chart_limit` (how many charts the account keeps at most), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
-| `POST /api/account/charts` | saves a birth: `{key, updated_at, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?, mine?, couple_with?}`, checked by the first chart's rules and charted first. `mine` marks it as your own and `couple_with` (a saved chart's id) pairs it, in the same write | `201`, the settings and `saved` (the new id); `400` (a malformed birth, a time the clocks skipped or repeated without `fold`, a full library, a birth saved already, a partner already in a couple), `401`, `403`, `404` (no such partner), `409`, `412` |
-| `PUT /api/account/charts/{id}` | corrects a saved chart's birth, charted first; it keeps its id, its mark and its couple | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
+| `GET /api/account/settings` | your saved charts (each with its `id` and its four pillars, or `pillars: null` and the reason in `problem` if the engine no longer charts it), `my_chart`, `couples`, `pending_partner`, `chart_limit` (how many charts the account keeps at most), `couples_per_chart` (how many couples one chart may be in on your plan, `null` for no cap; every settings answer has it), where you are, the schools Today follows and the ones chosen (`null`: the default), `updated_at` (`null` before anything is set) and the account's `key` | `200`; `401` |
+| `POST /api/account/charts` | saves a birth: `{key, updated_at, name?, date, time, place: {name, city, timezone, latitude, longitude}, fold?, gender, zi?, mine?, couple_with?}`, checked by the first chart's rules and charted first. `mine` marks it as your own and `couple_with` (a saved chart's id) pairs it, in the same write | `201`, the settings and `saved` (the new id); `400` (a malformed birth, a time the clocks skipped or repeated without `fold`, a full library, a birth saved already, a partner at its plan's cap), `401`, `403`, `404` (no such partner), `409`, `412` |
+| `PUT /api/account/charts/{id}` | corrects a saved chart's birth, charted first; it keeps its id, its mark and its couples | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
 | `PUT /api/account/charts/{id}/name` | renames a saved chart (`{key, updated_at, name}`, `null` for none) without charting it again | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
-| `DELETE /api/account/charts/{id}` | removes a saved chart, ends its couple, and unmarks it | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
-| `PUT /api/account/my-chart` | marks a saved chart as your own: `{key, updated_at, chart}`; a waiting partner pairs with it unless either is in a couple | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
+| `DELETE /api/account/charts/{id}` | removes a saved chart, ends each of its couples, and unmarks it | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
+| `PUT /api/account/my-chart` | marks a saved chart as your own: `{key, updated_at, chart}`; a waiting partner pairs with it unless the chart is at its plan's cap, and waits no longer either way | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
 | `DELETE /api/account/my-chart` | no chart is your own any more | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
-| `POST /api/account/couples` | pairs two saved charts: `{key, updated_at, charts: [id, id]}` | `201` and the settings; `400` (one chart twice, a chart already in a couple), `401`, `403`, `404`, `409`, `412` |
+| `POST /api/account/couples` | pairs two saved charts: `{key, updated_at, charts: [id, id]}` | `201` and the settings; `400` (one chart twice, the two a couple already, a chart at its plan's cap, named), `401`, `403`, `404`, `409`, `412` |
 | `DELETE /api/account/couples/{id}` | ends a couple; both charts stay saved | `200` and the settings; `400`, `401`, `403`, `404`, `409`, `412` |
 | `PUT /api/account/place` | where you are: `{key, updated_at, place}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
 | `DELETE /api/account/place` | forgets where you are; `{"key": …, "updated_at": …}` | `200` and the settings; `400`, `401`, `403`, `409`, `412` |
 | `PATCH /api/account/schools` | chooses any of `favourable`, `season`, `transits` (`GET /api/schools`), or `null` to follow the default again; those left out stay. `{key, updated_at, …}` | `200` and the settings; `400` an unknown preset or setting, `401`, `403`, `409`, `412` |
 
+### Plans
+
+An account's plan is its user record's `plan`. `accounts/plans.py` maps each plan to
+what it lets the account keep; `AccountStore` takes the table (as it takes its clock),
+and refuses one that misses or adds a plan before it opens or builds a database.
+
+- `couples_per_chart`: how many couples one saved chart may be in; `null` for no cap.
+  No plan caps couples for now. Once plans are sold, `basic` keeps one and `pro` and
+  `max` as many as wanted (the owner, 2026-10-17; #96); the table is the one place
+  that changes.
+- A cap is checked when a couple is asked for, in the write that reads the user's plan
+  and settings, and never when settings are read, exported, backed up or restored. An
+  account moved to a smaller plan keeps and reads every couple, Today keeps reading
+  them, a new couple for a chart at or over the cap is refused naming the chart, and
+  ending a couple always works.
+- The refusals, in order: a malformed id; one chart twice; an unknown chart on either
+  side (`404`); the two a couple already ("These two charts are a couple already.");
+  a chart at the cap ("{name} is in as many couples as the plan allows ({cap})."). For
+  a new chart with `couple_with`: a full library, a birth saved already, an unknown
+  partner, the partner at the cap. A refusal changes nothing.
+- The waiting partner pairs with the chart marked as yours unless that chart is at the
+  cap; it is marked all the same, and the partner stays saved and waits no longer.
+- Every settings answer says the cap (`couples_per_chart`); an export carries the plan,
+  not the limit.
+
 ### Couples: the rollout
 
-A chart in any number of couples comes in two releases. #98 (this release) teaches
-every reader to read it: the record, the backup, the restore, the export and the
-pages. #96 then lets the store and the API pair a chart that is in a couple already.
-The order matters because a release before #98 refuses a row with a chart in two
-couples, and its backup snapshot reads every changed account at once: one such row
-would stop the backup for every account, and that release could not restore the
-newest backup. So once #96 is live and any account has a chart in two couples, roll
-back to #98 at most. Going further back needs a restore from a backup commit made
-before the first such couple, and loses every account's changes since.
+A chart in any number of couples came in releases. #98 (0.53.0) taught every reader to
+read it: the record, the backup, the restore, the export and the pages. #102 (0.54.0)
+lets the store and the API pair a chart that is in a couple already, within its plan's
+cap; Settings' Pair follows (#96). The order matters because a release before #98
+refuses a row with a chart in two couples, and its backup snapshot reads every changed
+account at once: one such row would stop the backup for every account, and that
+release could not restore the newest backup. So once any account has a chart in two
+couples, roll back to 0.53.0 at most. Going further back needs a restore from a backup
+commit made before the first such couple, and loses every account's changes since.
 
 Every request that changes something must carry the site's own `Origin`, or it is
 refused with `403`. An id that is not 32 lowercase hex digits answers `400`; the

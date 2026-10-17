@@ -67,11 +67,13 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
+from eight_characters.accounts.plans import PlanLimits
 from eight_characters.accounts.store import (
     AccountStore,
     ChartLimit,
     CoupleLimit,
     DuplicateChart,
+    DuplicateCouple,
     SettingsChanged,
     UnknownChart,
     UnknownCouple,
@@ -661,6 +663,9 @@ class SettingsView(TypedDict):
     pending_partner: str | None
     # How many charts the account keeps at most.
     chart_limit: int
+    # How many couples one saved chart may be in on the account's plan; None for no
+    # cap (plans.py).
+    couples_per_chart: int | None
     place: dict[str, Any] | None
     # The school Today follows for each setting, and the one chosen: None where the
     # account follows the default.
@@ -961,9 +966,12 @@ def _chosen_view(chosen: ChosenSchools) -> dict[str, str | None]:
     }
 
 
-def settings_view(user: User, settings: Settings | None) -> SettingsView:
+def settings_view(
+    user: User, settings: Settings | None, limits: PlanLimits
+) -> SettingsView:
     """What the page is told of the account's settings, each saved chart with its
-    pillars; the defaults when it has set nothing."""
+    pillars, and what the account's plan lets it keep; the defaults when it has set
+    nothing."""
     if settings is None:
         return {
             'charts': [],
@@ -971,6 +979,7 @@ def settings_view(user: User, settings: Settings | None) -> SettingsView:
             'couples': [],
             'pending_partner': None,
             'chart_limit': CHART_LIMIT,
+            'couples_per_chart': limits.couples_per_chart,
             'place': None,
             'schools': _schools_view(DEFAULT_SCHOOLS),
             'chosen': _chosen_view(NO_CHOICE),
@@ -988,6 +997,7 @@ def settings_view(user: User, settings: Settings | None) -> SettingsView:
         ],
         'pending_partner': settings.pending_partner,
         'chart_limit': CHART_LIMIT,
+        'couples_per_chart': limits.couples_per_chart,
         'place': None if settings.place is None else place_value(settings.place),
         'schools': _schools_view(settings.schools.effective()),
         'chosen': _chosen_view(settings.schools),
@@ -1011,13 +1021,17 @@ def _store_change(change: Callable[[], _Changed]) -> _Changed:
         raise HTTPException(status_code=412, detail=SETTINGS_CHANGED) from exc
     except (UnknownChart, UnknownCouple) as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (ChartLimit, CoupleLimit, DuplicateChart) as exc:
+    except (ChartLimit, CoupleLimit, DuplicateChart, DuplicateCouple) as exc:
         # Not 409: the page reads a 409 as another account signed in meanwhile.
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-def _changed(user: User, change: Callable[[], Settings | None]) -> SettingsView:
-    return settings_view(user, _store_change(change))
+def _changed(
+    accounts: Accounts, user: User, change: Callable[[], Settings | None]
+) -> SettingsView:
+    return settings_view(
+        user, _store_change(change), accounts.store.limits(user.plan)
+    )
 
 
 @router.get('/settings')
@@ -1027,7 +1041,9 @@ def read_settings(
     """Your saved charts, your own among them, your couples, where you are, and your
     schools."""
     user = _signed_in(current).user
-    return settings_view(user, accounts.store.settings(user.id))
+    return settings_view(
+        user, accounts.store.settings(user.id), accounts.store.limits(user.plan)
+    )
 
 
 @router.post('/charts', status_code=201)
@@ -1057,7 +1073,10 @@ def save_chart(
             couple_with=payload.couple_with,
         )
     )
-    return SavedReply(**settings_view(user, settings), saved=chart_id)
+    return SavedReply(
+        **settings_view(user, settings, accounts.store.limits(user.plan)),
+        saved=chart_id,
+    )
 
 
 @router.put('/charts/{chart_id}')
@@ -1078,6 +1097,7 @@ def change_chart(
     except (RecordError, FirstChartInputError, TodayInputError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.update_chart(
             user.id, chart_id, birth, payload.updated_at
@@ -1102,6 +1122,7 @@ def rename_chart(
     except RecordError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.rename_chart(
             user.id, chart_id, payload.name, payload.updated_at
@@ -1123,6 +1144,7 @@ def delete_chart(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
+        accounts,
         user, lambda: accounts.store.delete_chart(user.id, chart_id, payload.updated_at)
     )
 
@@ -1139,6 +1161,7 @@ def mark_my_chart(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.set_my_chart(user.id, payload.chart, payload.updated_at),
     )
@@ -1156,6 +1179,7 @@ def unmark_my_chart(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
+        accounts,
         user, lambda: accounts.store.clear_my_chart(user.id, payload.updated_at)
     )
 
@@ -1167,13 +1191,15 @@ def pair_charts(
     current: SessionDependency,
     accounts: AccountsDependency,
 ) -> SettingsView:
-    """Pairs two of your saved charts as a couple. A chart is in one couple at most."""
+    """Pairs two of your saved charts as a couple. A chart can be in any number of
+    couples, as many as your plan allows; the same two charts are one couple."""
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
     if payload.charts[0] == payload.charts[1]:
         raise HTTPException(status_code=400, detail='A couple is two different charts.')
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.add_couple(
             user.id, (payload.charts[0], payload.charts[1]), payload.updated_at
@@ -1194,6 +1220,7 @@ def part_couple(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.delete_couple(user.id, couple_id, payload.updated_at),
     )
@@ -1215,6 +1242,7 @@ def save_place(
     except RecordError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     return _changed(
+        accounts,
         user, lambda: accounts.store.put_place(user.id, place, payload.updated_at)
     )
 
@@ -1231,6 +1259,7 @@ def delete_place(
     user = _signed_in(current).user
     _named(user, payload.key)
     return _changed(
+        accounts,
         user, lambda: accounts.store.delete_place(user.id, payload.updated_at)
     )
 
@@ -1252,6 +1281,7 @@ def choose_schools(
         if name in payload.model_fields_set
     }
     return _changed(
+        accounts,
         user,
         lambda: accounts.store.set_schools(user.id, chosen, payload.updated_at),
     )

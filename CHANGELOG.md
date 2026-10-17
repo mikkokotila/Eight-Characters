@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.54.0
+
+Couples, step 2a (#102): the store and the API pair a chart that is in a couple
+already, within the account's plan. Settings' Pair follows (#96); until then the page
+pairs charts in no couple, as before.
+
+### Added
+- **Plans** (`accounts/plans.py`): what each plan lets an account keep. No plan caps
+  couples for now; `couples_per_chart` in every settings answer says the cap (`null`).
+
+### Changed
+- **A chart pairs with any number of charts.** The same two charts are refused as a
+  couple already; a chart at its plan's cap is refused by name. A cap is never checked
+  when settings are read, so an account moved to a smaller plan keeps every couple.
+- **The waiting partner** pairs with the chart marked as yours unless that chart is at
+  its cap; it waits no longer either way. `mine` with `couple_with` may pair twice.
+
+### Tests
+- `test_accounts_settings.py`: the plans table; four couples for a chart, one ended
+  alone, the chart removed; the same pair twice; caps of 1 and 2 by name, in both
+  orders, after unknown charts and duplicates, changing nothing; an account over its
+  new cap; the waiting partner on both plans and with `mine` and `couple_with`;
+  `couples_per_chart` in every settings answer; the export and deletion with every
+  couple.
+- `chart-helpers.mjs`: a page's routes stop before it closes, so a request still on its
+  way when a test ends no longer fails the file as an unhandled rejection.
+
 ## 0.53.1
 
 ### Fixed
@@ -12,8 +39,6 @@
 ### Tests
 - `today.test.mjs`: with `en-CA` writing dates as `M/D/YYYY`, Chart · Today opens on
   today's date, the day knows it is today, and Today goes back to it.
-- `chart-helpers.mjs`: a page's routes stop before it closes, so a request still on its
-  way when a test ends no longer fails the file as an unhandled rejection.
 
 ## 0.53.0
 

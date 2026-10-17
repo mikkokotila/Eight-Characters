@@ -17,6 +17,7 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, cast
 
+from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
     CHART_LIMIT,
     Birth,
@@ -176,7 +177,11 @@ class ChartLimit(StoreError):
 
 
 class CoupleLimit(StoreError):
-    """A chart is already in a couple, the most the plan allows."""
+    """A chart is in as many couples as the account's plan allows."""
+
+
+class DuplicateCouple(StoreError):
+    """The two charts are a couple already."""
 
 
 class DuplicateChart(StoreError):
@@ -201,16 +206,30 @@ def _not_saved_elsewhere(
         raise DuplicateChart(f'This birth is saved already, as {name}.')
 
 
-def _paired(settings: Settings, charts: tuple[str, str]) -> Settings:
+def _at_cap(settings: Settings, chart_id: str, limits: PlanLimits) -> bool:
+    """Whether a saved chart is in as many couples as the plan allows."""
+    cap = limits.couples_per_chart
+    return cap is not None and len(settings.couples_of(chart_id)) >= cap
+
+
+def _paired(
+    settings: Settings, charts: tuple[str, str], limits: PlanLimits
+) -> Settings:
     """The settings with two saved charts paired. UnknownChart if either is not kept,
-    and CoupleLimit if either is already in a couple: in this plan a chart is in one at
-    most. A partner kept from before accounts kept charts waits no longer once paired."""
-    for chart_id in charts:
-        _saved(settings, chart_id)
-        # A record reads a chart in any number of couples (#98); pairing it with a
-        # second waits for #96.
-        if settings.couples_of(chart_id):
-            raise CoupleLimit('A chart is in one couple at most.')
+    DuplicateCouple if the two are a couple already, and CoupleLimit if either is in as
+    many couples as the plan allows (plans.py). A partner kept from before accounts kept
+    charts waits no longer once paired."""
+    # Both charts first, so an unknown one on either side is said before anything else.
+    kept = [_saved(settings, chart_id) for chart_id in charts]
+    if settings.couple_between(*charts) is not None:
+        raise DuplicateCouple('These two charts are a couple already.')
+    for chart in kept:
+        if _at_cap(settings, chart.id, limits):
+            name = 'An unnamed chart' if chart.birth.name is None else chart.birth.name
+            raise CoupleLimit(
+                f'{name} is in as many couples as the plan allows '
+                f'({limits.couples_per_chart}).'
+            )
     waiting = settings.pending_partner
     return replace(
         settings,
@@ -219,18 +238,20 @@ def _paired(settings: Settings, charts: tuple[str, str]) -> Settings:
     )
 
 
-def _marked(settings: Settings, chart_id: str) -> Settings:
+def _marked(settings: Settings, chart_id: str, limits: PlanLimits) -> Settings:
     """The settings with a saved chart marked as the person's own. A partner kept from
-    before accounts kept charts pairs with it now, unless one of the two is already in a
-    couple, and waits no longer either way. UnknownChart if there is no such chart."""
+    before accounts kept charts pairs with it now, unless the two are a couple already
+    or either is in as many couples as the plan allows, and waits no longer either way.
+    UnknownChart if there is no such chart."""
     _saved(settings, chart_id)
     couples = settings.couples
     waiting = settings.pending_partner
     if (
         waiting is not None
         and waiting != chart_id
-        and not settings.couples_of(chart_id)
-        and not settings.couples_of(waiting)
+        and settings.couple_between(chart_id, waiting) is None
+        and not _at_cap(settings, chart_id, limits)
+        and not _at_cap(settings, waiting, limits)
     ):
         couples = (*couples, Couple(new_id(), (chart_id, waiting)))
     return replace(settings, my_chart=chart_id, couples=couples, pending_partner=None)
@@ -489,19 +510,32 @@ def _code_from_row(row: tuple[Any, ...]) -> SignInCode:
 class AccountStore:
     """The account database at one path. Each call opens its own connection."""
 
-    def __init__(self, path: Path, *, clock: Callable[[], datetime] = _utc_now) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        clock: Callable[[], datetime] = _utc_now,
+        limits: Mapping[Plan, PlanLimits] = LIMITS,
+    ) -> None:
         self.path = path
         self._clock = clock
+        # What each plan lets an account keep (plans.py).
+        self._limits = check_limits(limits)
 
     @classmethod
     def open(
-        cls, path: Path, *, clock: Callable[[], datetime] = _utc_now
+        cls,
+        path: Path,
+        *,
+        clock: Callable[[], datetime] = _utc_now,
+        limits: Mapping[Plan, PlanLimits] = LIMITS,
     ) -> 'AccountStore':
         """The database at `path`, brought to this app's schema.
 
-        Refuses a missing file, a file that is no account database, and a database
-        from a newer version of the app.
+        Refuses a missing file, a file that is no account database, a database from
+        a newer version of the app, and a table of limits that misses a plan.
         """
+        check_limits(limits)
         if not path.is_file():
             raise StoreError(f'No account database at {path}.')
         with _connection(path) as connection:
@@ -514,14 +548,18 @@ class AccountStore:
                     f'the app knows schemas up to {SCHEMA_VERSION}.'
                 )
             _migrate(connection)
-        return cls(path, clock=clock)
+        return cls(path, clock=clock, limits=limits)
 
     @classmethod
     def create(
-        cls, path: Path, *, clock: Callable[[], datetime] = _utc_now
+        cls,
+        path: Path,
+        *,
+        clock: Callable[[], datetime] = _utc_now,
+        limits: Mapping[Plan, PlanLimits] = LIMITS,
     ) -> 'AccountStore':
         """A new, empty database at `path`, which must not exist."""
-        return cls._build(path, (), None, clock)
+        return cls._build(path, (), None, clock, limits)
 
     @classmethod
     def restore(
@@ -531,13 +569,14 @@ class AccountStore:
         *,
         head: str,
         clock: Callable[[], datetime] = _utc_now,
+        limits: Mapping[Plan, PlanLimits] = LIMITS,
     ) -> 'AccountStore':
         """A new database at `path` holding exactly these accounts, each with its
         settings, as backed up in the Git commit `head`.
 
         Nothing is logged for the backup: the records came from it.
         """
-        return cls._build(path, accounts, head, clock)
+        return cls._build(path, accounts, head, clock, limits)
 
     @classmethod
     def _build(
@@ -546,7 +585,10 @@ class AccountStore:
         accounts: Sequence[tuple[User, Settings | None]],
         head: str | None,
         clock: Callable[[], datetime],
+        limits: Mapping[Plan, PlanLimits],
     ) -> 'AccountStore':
+        # Nothing is built with a table of limits that misses a plan.
+        check_limits(limits)
         if path.exists():
             raise StoreError(f'{path} exists already; refusing to build over it.')
         partial = path.with_name(f'{path.name}.partial')
@@ -592,7 +634,11 @@ class AccountStore:
             mode = connection.execute('PRAGMA journal_mode = WAL').fetchone()
             if mode is None or mode[0] != 'wal':
                 raise StoreError(f'{path} cannot use a write-ahead log.')
-        return cls(path, clock=clock)
+        return cls(path, clock=clock, limits=limits)
+
+    def limits(self, plan: Plan) -> PlanLimits:
+        """What the plan lets an account keep (plans.py)."""
+        return self._limits[plan]
 
     @contextmanager
     def _write(self) -> Generator[sqlite3.Connection, None, None]:
@@ -744,7 +790,7 @@ class AccountStore:
         CoupleLimit for a chart it cannot pair with: each changes nothing."""
         chart_id = new_id()
 
-        def save(settings: Settings) -> Settings:
+        def save(settings: Settings, limits: PlanLimits) -> Settings:
             if len(settings.charts) >= CHART_LIMIT:
                 raise ChartLimit(f'An account keeps at most {CHART_LIMIT} charts.')
             _not_saved_elsewhere(settings, birth, None)
@@ -752,10 +798,10 @@ class AccountStore:
                 settings, charts=(*settings.charts, SavedChart(chart_id, birth))
             )
             if couple_with is not None:
-                saved = _paired(saved, (couple_with, chart_id))
-            return _marked(saved, chart_id) if mine else saved
+                saved = _paired(saved, (couple_with, chart_id), limits)
+            return _marked(saved, chart_id, limits) if mine else saved
 
-        return self._update_settings(user_id, read, save), chart_id
+        return self._update_settings_in_plan(user_id, read, save), chart_id
 
     def update_chart(
         self, user_id: str, chart_id: str, birth: Birth, read: str | None
@@ -801,8 +847,8 @@ class AccountStore:
     def delete_chart(
         self, user_id: str, chart_id: str, read: str | None
     ) -> Settings | None:
-        """Removes a saved chart: it leaves its couple, and stops being the person's
-        own or a partner waiting for a couple. UnknownChart if there is none."""
+        """Removes a saved chart: it leaves each of its couples, and stops being the
+        person's own or a partner waiting for a couple. UnknownChart if there is none."""
 
         def delete(settings: Settings) -> Settings:
             _saved(settings, chart_id)
@@ -828,9 +874,11 @@ class AccountStore:
         self, user_id: str, chart_id: str, read: str | None
     ) -> Settings | None:
         """Marks a saved chart as the person's own. A partner kept from before accounts
-        kept charts pairs with it now, unless one of the two is already in a couple.
-        UnknownChart if there is no such chart."""
-        return self._update_settings(user_id, read, lambda s: _marked(s, chart_id))
+        kept charts pairs with it now, unless the two are a couple already or the plan
+        allows neither another couple. UnknownChart if there is no such chart."""
+        return self._update_settings_in_plan(
+            user_id, read, lambda s, limits: _marked(s, chart_id, limits)
+        )
 
     def clear_my_chart(self, user_id: str, read: str | None) -> Settings | None:
         """No saved chart is the person's own any more."""
@@ -839,9 +887,12 @@ class AccountStore:
     def add_couple(
         self, user_id: str, charts: tuple[str, str], read: str | None
     ) -> Settings | None:
-        """Pairs two saved charts. UnknownChart if either is not kept, and CoupleLimit
-        if either is already in a couple: in this plan a chart is in at most one."""
-        return self._update_settings(user_id, read, lambda s: _paired(s, charts))
+        """Pairs two saved charts. UnknownChart if either is not kept, DuplicateCouple if
+        they are a couple already, and CoupleLimit if either is in as many couples as
+        the account's plan allows."""
+        return self._update_settings_in_plan(
+            user_id, read, lambda s, limits: _paired(s, charts, limits)
+        )
 
     def delete_couple(
         self, user_id: str, couple_id: str, read: str | None
@@ -904,6 +955,18 @@ class AccountStore:
         settings after it. A change that changes nothing writes nothing, and an
         account left with the defaults it had keeps no settings (None). SettingsChanged
         if the settings are no longer the ones `read` names."""
+        return self._update_settings_in_plan(
+            user_id, read, lambda settings, _limits: change(settings)
+        )
+
+    def _update_settings_in_plan(
+        self,
+        user_id: str,
+        read: str | None,
+        change: Callable[[Settings, PlanLimits], Settings],
+    ) -> Settings | None:
+        """As _update_settings, for a change bound by the account's plan: it is given
+        what the plan lets the account keep, read in the same write as the settings."""
         with self._write() as connection:
             user = _select_user(connection, 'id', user_id)
             if user is None:
@@ -913,7 +976,7 @@ class AccountStore:
                 raise SettingsChanged('The settings changed since they were read.')
             now = self._now()
             base = current or no_settings(now)
-            changed = change(base)
+            changed = change(base, self._limits[user.plan])
             if changed == base:
                 return current
             if current is not None:

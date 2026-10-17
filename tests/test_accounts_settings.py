@@ -16,8 +16,10 @@ import pyrage
 
 from eight_characters.accounts import store as store_module
 from eight_characters.accounts.backup import run_backup
+from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
     CHART_LIMIT,
+    PLANS,
     DEFAULT_SCHOOLS,
     NO_CHOICE,
     Birth,
@@ -44,12 +46,14 @@ from eight_characters.accounts.store import (
     ChartLimit,
     CoupleLimit,
     DuplicateChart,
+    DuplicateCouple,
     SettingsChanged,
     UnknownChart,
     UnknownCouple,
     UnknownUser,
 )
-from eight_characters.accounts.web import Accounts, account_key
+from eight_characters.accounts.web import Accounts, account_key, get_accounts
+from eight_characters.main import app
 from tests.accounts_support import (
     Clock,
     code_in,
@@ -435,7 +439,8 @@ class TestSettingsRecords(unittest.TestCase):
 
 class TestSeveralCouples(unittest.TestCase):
     def test_a_chart_can_be_in_several_couples(self) -> None:
-        # A record reads a chart in any number of couples (#98).
+        # Any number of couples per chart: a plan's cap is checked when a couple is
+        # asked for, never when settings are read (plans.py).
         third = '4' * 32
         settings = replace(
             SETTINGS,
@@ -453,6 +458,37 @@ class TestSeveralCouples(unittest.TestCase):
         )
         self.assertIsNone(settings.couple_between(PARTNER_ID, third))
         self.assertEqual(decode_settings(encode_settings(settings)), settings)
+
+
+class TestPlans(unittest.TestCase):
+    def test_every_plan_has_its_limits_and_none_caps_couples_now(self) -> None:
+        self.assertEqual(set(LIMITS), set(PLANS))
+        for plan in PLANS:
+            with self.subTest(plan=plan):
+                self.assertIsNone(LIMITS[plan].couples_per_chart)
+
+    def test_a_table_that_misses_or_adds_a_plan_is_refused(self) -> None:
+        missing = {plan: LIMITS[plan] for plan in PLANS if plan != 'basic'}
+        added: dict[Any, PlanLimits] = {**LIMITS, 'gold': LIMITS['pro']}
+        directory = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, directory)
+        path = directory / 'accounts.sqlite3'
+        for table in (missing, added):
+            with self.subTest(plans=sorted(table)):
+                with self.assertRaises(ValueError):
+                    check_limits(table)
+                # Nor does a store start with it, and it builds nothing.
+                with self.assertRaises(ValueError):
+                    AccountStore.create(path, limits=table)
+                self.assertFalse(path.exists())
+        AccountStore.create(path)
+        with self.assertRaises(ValueError):
+            AccountStore.open(path, limits=missing)
+
+    def test_a_cap_is_one_couple_at_least(self) -> None:
+        for cap in (0, -1):
+            with self.subTest(cap=cap), self.assertRaises(ValueError):
+                PlanLimits(couples_per_chart=cap)
 
 
 class StoreCase(unittest.TestCase):
@@ -601,16 +637,10 @@ class TestSettingsStore(StoreCase):
         self.assertEqual(len(self.store.backup_snapshot().changes), 1)
         # A pairing that cannot be made saves nothing either.
         before = self.store.settings(self.user.id)
-        for name, change in {
-            'a partner in a couple already': lambda: self.store.save_chart(
-                self.user.id, born(3), self.read(), couple_with=partner
-            ),
-            'a partner the account does not keep': lambda: self.store.save_chart(
+        with self.assertRaises(UnknownChart):
+            self.store.save_chart(
                 self.user.id, born(3), self.read(), couple_with='4' * 32
-            ),
-        }.items():
-            with self.subTest(name), self.assertRaises((CoupleLimit, UnknownChart)):
-                change()
+            )
         self.assertEqual(self.store.settings(self.user.id), before)
 
     def test_a_new_chart_marked_mine_pairs_with_a_partner_kept_before_charts(
@@ -679,18 +709,210 @@ class TestSettingsStore(StoreCase):
         self.assertEqual(parted.couples, ())
         self.assertEqual(len(parted.charts), 2)
 
-    def test_a_chart_is_in_one_couple_at_most(self) -> None:
+    def test_a_chart_can_be_in_any_number_of_couples(self) -> None:
         _, first = self.save(BIRTH)
         _, second = self.save(PARTNER)
         _, third = self.save(born(5))
+        _, fourth = self.save(born(6))
+        for charts in (
+            (first, second),
+            (third, first),
+            (first, fourth),
+            (second, third),
+        ):
+            self.store.add_couple(self.user.id, charts, self.read())
+        kept = self.store.settings(self.user.id)
+        assert kept is not None
+        self.assertEqual(
+            [couple.charts for couple in kept.couples_of(first)],
+            [(first, second), (third, first), (first, fourth)],
+        )
+        # A chart saved as a partner of one in couples pairs with it too.
+        saved, fifth = self.store.save_chart(
+            self.user.id, born(7), self.read(), couple_with=first
+        )
+        assert saved is not None
+        self.assertEqual(
+            [couple.charts for couple in saved.couples_of(fifth)], [(first, fifth)]
+        )
+        self.assertEqual(len(saved.couples_of(first)), 4)
+        # Ending one couple ends it alone; removing a chart ends each of its own and
+        # keeps the others.
+        parted = self.store.delete_couple(
+            self.user.id, saved.couples[0].id, self.read()
+        )
+        assert parted is not None
+        self.assertEqual(len(parted.couples_of(first)), 3)
+        self.assertEqual(len(parted.couples), 4)
+        removed = self.store.delete_chart(self.user.id, first, self.read())
+        assert removed is not None
+        self.assertEqual(
+            [couple.charts for couple in removed.couples], [(second, third)]
+        )
+
+    def test_the_same_two_charts_are_one_couple(self) -> None:
+        _, first = self.save(BIRTH)
+        _, second = self.save(PARTNER)
         self.store.add_couple(self.user.id, (first, second), self.read())
         self.store.mark_backed_up(self.store.backup_snapshot().through_seq)
         before = self.store.settings(self.user.id)
-        for charts in ((first, third), (third, second), (second, first)):
-            with self.subTest(charts=charts), self.assertRaises(CoupleLimit):
-                self.store.add_couple(self.user.id, charts, self.read())
+        for charts in ((first, second), (second, first)):
+            with self.subTest(charts=charts):
+                with self.assertRaises(DuplicateCouple) as refused:
+                    self.store.add_couple(self.user.id, charts, self.read())
+                self.assertEqual(
+                    str(refused.exception), 'These two charts are a couple already.'
+                )
         self.assertEqual(self.store.settings(self.user.id), before)
         self.assertEqual(self.store.backup_snapshot().changes, ())
+
+    def capped(self, cap: int) -> AccountStore:
+        """The reader's database, as a store whose basic plan keeps `cap` couples per
+        chart, as a plan may once plans are sold."""
+        return AccountStore.open(
+            self.path,
+            clock=self.clock,
+            limits={**LIMITS, 'basic': PlanLimits(couples_per_chart=cap)},
+        )
+
+    def assertRefused(
+        self, store: AccountStore, change: Any, kind: type[Exception], detail: str
+    ) -> None:
+        """The change is refused as `kind`, saying `detail`, and changes nothing: not
+        the settings, nor what the backup has to write."""
+        before = store.settings(self.user.id)
+        changes = store.backup_snapshot().changes
+        with self.assertRaises(kind) as refused:
+            change()
+        self.assertEqual(str(refused.exception), detail)
+        self.assertEqual(store.settings(self.user.id), before)
+        self.assertEqual(store.backup_snapshot().changes, changes)
+
+    def test_a_plan_that_caps_couples_refuses_one_more_by_name(self) -> None:
+        capped = self.capped(1)
+        _, first = self.save(BIRTH)
+        _, second = self.save(PARTNER)
+        _, third = self.save(born(5))
+        _, fourth = self.save(born(6))
+        capped.set_plan(self.user.id, 'basic')
+        capped.add_couple(self.user.id, (first, second), self.read())
+        capped.mark_backed_up(capped.backup_snapshot().through_seq)
+        unnamed = 'An unnamed chart is in as many couples as the plan allows (1).'
+        named = 'Partner is in as many couples as the plan allows (1).'
+        for name, change, detail in (
+            (
+                'a chart at the cap, second',
+                lambda: capped.add_couple(self.user.id, (third, first), self.read()),
+                unnamed,
+            ),
+            (
+                'a chart at the cap, first',
+                lambda: capped.add_couple(self.user.id, (first, third), self.read()),
+                unnamed,
+            ),
+            (
+                'its partner, paired again',
+                lambda: capped.add_couple(self.user.id, (fourth, second), self.read()),
+                named,
+            ),
+            (
+                'a new chart saved as its partner',
+                lambda: capped.save_chart(
+                    self.user.id, born(7), self.read(), couple_with=first
+                ),
+                unnamed,
+            ),
+        ):
+            with self.subTest(name):
+                self.assertRefused(capped, change, CoupleLimit, detail)
+        # A chart the account does not keep is said first, on either side.
+        for charts in ((first, '4' * 32), ('4' * 32, first)):
+            with self.subTest(charts=charts):
+                self.assertRefused(
+                    capped,
+                    lambda charts=charts: capped.add_couple(
+                        self.user.id, charts, self.read()
+                    ),
+                    UnknownChart,
+                    'The account keeps no chart with that id.',
+                )
+        # The same two charts are a couple already, whatever the cap.
+        self.assertRefused(
+            capped,
+            lambda: capped.add_couple(self.user.id, (second, first), self.read()),
+            DuplicateCouple,
+            'These two charts are a couple already.',
+        )
+        # Two charts in no couple still pair, and on an unrestricted plan the same
+        # chart pairs again.
+        capped.add_couple(self.user.id, (third, fourth), self.read())
+        capped.set_plan(self.user.id, 'free')
+        kept = capped.add_couple(self.user.id, (first, third), self.read())
+        assert kept is not None
+        self.assertEqual(len(kept.couples_of(first)), 2)
+
+    def test_a_cap_of_two_is_two(self) -> None:
+        capped = self.capped(2)
+        _, first = self.save(BIRTH)
+        _, second = self.save(PARTNER)
+        _, third = self.save(born(5))
+        _, fourth = self.save(born(6))
+        capped.set_plan(self.user.id, 'basic')
+        capped.add_couple(self.user.id, (first, second), self.read())
+        capped.add_couple(self.user.id, (third, first), self.read())
+        self.assertRefused(
+            capped,
+            lambda: capped.add_couple(self.user.id, (fourth, first), self.read()),
+            CoupleLimit,
+            'An unnamed chart is in as many couples as the plan allows (2).',
+        )
+        kept = capped.add_couple(self.user.id, (second, fourth), self.read())
+        assert kept is not None
+        self.assertEqual(len(kept.couples_of(second)), 2)
+
+    def test_an_account_over_its_plan_keeps_everything_and_pairs_within_it(
+        self,
+    ) -> None:
+        _, first = self.save(BIRTH)
+        _, second = self.save(PARTNER)
+        _, third = self.save(born(5))
+        _, fourth = self.save(born(6))
+        _, fifth = self.save(born(7))
+        self.store.add_couple(self.user.id, (first, second), self.read())
+        held = self.store.add_couple(self.user.id, (first, third), self.read())
+        assert held is not None
+        # Moved to a plan that keeps one couple per chart: everything stays, read as
+        # it was, exported as it was.
+        capped = self.capped(1)
+        capped.set_plan(self.user.id, 'basic')
+        self.assertEqual(capped.settings(self.user.id), held)
+        self.assertEqual(
+            capped.account_data(self.user.id)['settings'], settings_value(held)
+        )
+        # A new couple for a chart at or over the cap is refused by name; two charts
+        # under it still pair.
+        self.assertRefused(
+            capped,
+            lambda: capped.add_couple(self.user.id, (first, fourth), self.read()),
+            CoupleLimit,
+            'An unnamed chart is in as many couples as the plan allows (1).',
+        )
+        self.assertRefused(
+            capped,
+            lambda: capped.add_couple(self.user.id, (fourth, second), self.read()),
+            CoupleLimit,
+            'Partner is in as many couples as the plan allows (1).',
+        )
+        capped.add_couple(self.user.id, (fourth, fifth), self.read())
+        # Ending a couple always works; under the cap again, the chart pairs.
+        for couple in held.couples_of(first):
+            parted = capped.delete_couple(self.user.id, couple.id, self.read())
+            assert parted is not None
+        kept = capped.add_couple(self.user.id, (first, third), self.read())
+        assert kept is not None
+        self.assertEqual(
+            [couple.charts for couple in kept.couples_of(first)], [(first, third)]
+        )
 
     def test_a_chart_in_several_couples_is_read_exported_and_kept(self) -> None:
         several = self.keep_several_couples()
@@ -702,11 +924,12 @@ class TestSettingsStore(StoreCase):
         changed = self.store.put_place(self.user.id, LISBON, self.read())
         assert changed is not None
         self.assertEqual(changed.couples, several.couples)
-        # Pairing a chart in a couple with another still waits for #96.
+        # And a chart in a couple pairs with another.
         partner, third = several.charts[1].id, several.charts[2].id
-        with self.assertRaises(CoupleLimit):
-            self.store.add_couple(self.user.id, (partner, third), self.read())
-        self.assertEqual(self.store.settings(self.user.id), changed)
+        paired = self.store.add_couple(self.user.id, (partner, third), self.read())
+        assert paired is not None
+        self.assertEqual(paired.couples[:2], several.couples)
+        self.assertEqual(paired.couples[2].charts, (partner, third))
 
     def test_an_id_the_account_does_not_keep_changes_nothing(self) -> None:
         _, mine = self.save(BIRTH)
@@ -780,6 +1003,86 @@ class TestSettingsStore(StoreCase):
         finally:
             connection.close()
         self.assertEqual(record, encode_settings(marked))
+
+    def test_a_partner_kept_before_charts_pairs_with_my_chart_in_other_couples(
+        self,
+    ) -> None:
+        self._keep_as_before_charts(PARTNER_SETTINGS['partner'])
+        waiting = partner_chart_id(PARTNER_SETTINGS['partner'])
+        _, mine = self.save(BIRTH)
+        _, other = self.save(born(5))
+        self.store.add_couple(self.user.id, (other, mine), self.read())
+        marked = self.store.set_my_chart(self.user.id, mine, self.read())
+        assert marked is not None
+        self.assertEqual(
+            [couple.charts for couple in marked.couples],
+            [(other, mine), (mine, waiting)],
+        )
+        self.assertIsNone(marked.pending_partner)
+
+    def test_a_partner_kept_before_charts_waits_no_longer_past_the_cap(self) -> None:
+        capped = self.capped(1)
+        self._keep_as_before_charts(PARTNER_SETTINGS['partner'])
+        waiting = partner_chart_id(PARTNER_SETTINGS['partner'])
+        _, mine = self.save(BIRTH)
+        _, other = self.save(born(5))
+        capped.set_plan(self.user.id, 'basic')
+        capped.add_couple(self.user.id, (mine, other), self.read())
+        # My chart is in as many couples as the plan allows: it is marked all the
+        # same, and the partner kept from before stays saved, unpaired, and waits no
+        # longer.
+        kept = capped.set_my_chart(self.user.id, mine, self.read())
+        assert kept is not None
+        self.assertEqual(kept.my_chart, mine)
+        self.assertIsNone(kept.pending_partner)
+        self.assertIsNotNone(kept.chart(waiting))
+        self.assertEqual([couple.charts for couple in kept.couples], [(mine, other)])
+
+    def test_mine_and_a_partner_in_one_write_pair_with_both(self) -> None:
+        self._keep_as_before_charts(PARTNER_SETTINGS['partner'])
+        waiting = partner_chart_id(PARTNER_SETTINGS['partner'])
+        _, other = self.save(born(5))
+        kept, mine = self.store.save_chart(
+            self.user.id, BIRTH, self.read(), mine=True, couple_with=other
+        )
+        assert kept is not None
+        self.assertEqual(
+            [couple.charts for couple in kept.couples],
+            [(other, mine), (mine, waiting)],
+        )
+        self.assertIsNone(kept.pending_partner)
+
+    def test_mine_and_a_partner_in_one_write_within_a_cap(self) -> None:
+        capped = self.capped(1)
+        self._keep_as_before_charts(PARTNER_SETTINGS['partner'])
+        waiting = partner_chart_id(PARTNER_SETTINGS['partner'])
+        _, other = self.save(born(5))
+        _, taken = self.save(born(6))
+        _, third = self.save(born(7))
+        capped.set_plan(self.user.id, 'basic')
+        capped.add_couple(self.user.id, (taken, third), self.read())
+        # A partner at the cap refuses the whole write: nothing is saved, and the
+        # partner kept from before still waits.
+        self.assertRefused(
+            capped,
+            lambda: capped.save_chart(
+                self.user.id, BIRTH, self.read(), mine=True, couple_with=taken
+            ),
+            CoupleLimit,
+            'An unnamed chart is in as many couples as the plan allows (1).',
+        )
+        # Paired with a partner under the cap, the new chart is then at it: it is
+        # marked, and the partner kept from before stays saved and waits no longer.
+        kept, mine = capped.save_chart(
+            self.user.id, BIRTH, self.read(), mine=True, couple_with=other
+        )
+        assert kept is not None
+        self.assertEqual(kept.my_chart, mine)
+        self.assertEqual(
+            [couple.charts for couple in kept.couples], [(taken, third), (other, mine)]
+        )
+        self.assertIsNone(kept.pending_partner)
+        self.assertIsNotNone(kept.chart(waiting))
 
     def test_a_waiting_partner_marked_as_my_chart_pairs_with_nothing(self) -> None:
         self._keep_as_before_charts(PARTNER_SETTINGS['partner'])
@@ -1139,6 +1442,7 @@ class TestSettingsApi(unittest.TestCase):
                 'couples': [],
                 'pending_partner': None,
                 'chart_limit': CHART_LIMIT,
+                'couples_per_chart': None,
                 'place': None,
                 'schools': {
                     'favourable': 'support',
@@ -1309,19 +1613,19 @@ class TestSettingsApi(unittest.TestCase):
                 {'key': self.key, 'charts': [third, unknown]},
             ),
             (404, 'DELETE', f'/api/account/couples/{unknown}', {'key': self.key}),
-            # A chart is in one couple at most: refused with 400, as a 409 says
-            # another account is signed in now.
+            # The same two charts are one couple, in either order: refused with 400,
+            # as a 409 says another account is signed in now.
             (
                 400,
                 'POST',
                 '/api/account/couples',
-                {'key': self.key, 'charts': [third, first]},
+                {'key': self.key, 'charts': [second, first]},
             ),
             (
                 400,
                 'POST',
-                '/api/account/charts',
-                {**_birth_json(born(8), self.key), 'couple_with': first},
+                '/api/account/couples',
+                {'key': self.key, 'charts': [first, second]},
             ),
             # A birth is saved once.
             (
@@ -1386,6 +1690,131 @@ class TestSettingsApi(unittest.TestCase):
             with self.subTest(method=method, path=path, body=body):
                 reply = self.write(method, path, body)
                 self.assertEqual(reply.status_code, status, reply.text)
+        self.assertEqual(self.client.get('/api/account/settings').json(), before)
+
+    def test_a_chart_pairs_with_any_number_of_charts(self) -> None:
+        first = self.save(BIRTH)
+        second = self.save(PARTNER)
+        third = self.save(born(5))
+        for charts in ([first, second], [third, first]):
+            paired = self.write(
+                'POST', '/api/account/couples', {'key': self.key, 'charts': charts}
+            )
+            self.assertEqual(paired.status_code, 201, paired.text)
+        saved = self.write(
+            'POST',
+            '/api/account/charts',
+            {**_birth_json(born(8), self.key), 'couple_with': first},
+        )
+        self.assertEqual(saved.status_code, 201, saved.text)
+        self.assertEqual(
+            [couple['charts'] for couple in saved.json()['couples']],
+            [[first, second], [third, first], [first, saved.json()['saved']]],
+        )
+        # Download my data carries every couple; deleting the account removes them.
+        exported = self.client.post('/api/account/export', json={'key': self.key})
+        self.assertEqual(exported.status_code, 200, exported.text)
+        self.assertEqual(
+            exported.json()['settings']['couples'],
+            [
+                {'id': couple['id'], 'charts': couple['charts']}
+                for couple in saved.json()['couples']
+            ],
+        )
+        gone = self.client.request(
+            'DELETE',
+            '/api/account',
+            json={'key': self.key, 'email': self.user.email},
+        )
+        self.assertEqual(gone.status_code, 204, gone.text)
+        self.assertIsNone(self.accounts.store.settings(self.user.id))
+
+    def capped(self) -> Accounts:
+        """The services with a store whose basic plan keeps one couple per chart, in
+        place of the app's own for this test; the reader's account is on that plan."""
+        capped = replace(
+            self.accounts,
+            store=AccountStore.open(
+                self.accounts.store.path,
+                clock=self.accounts.clock,
+                limits={**LIMITS, 'basic': PlanLimits(couples_per_chart=1)},
+            ),
+        )
+        capped.store.set_plan(self.user.id, 'basic')
+        app.dependency_overrides[get_accounts] = lambda: capped
+        self.addCleanup(
+            app.dependency_overrides.__setitem__, get_accounts, lambda: self.accounts
+        )
+        return capped
+
+    def test_every_settings_answer_says_how_many_couples_a_chart_may_be_in(
+        self,
+    ) -> None:
+        # No cap on any plan for now.
+        self.assertIsNone(
+            self.client.get('/api/account/settings').json()['couples_per_chart']
+        )
+        self.capped()
+        self.assertEqual(
+            self.client.get('/api/account/settings').json()['couples_per_chart'], 1
+        )
+        mine = self.save(BIRTH)
+        partner = self.save(PARTNER)
+        paired = self.write(
+            'POST', '/api/account/couples', {'key': self.key, 'charts': [mine, partner]}
+        )
+        (couple,) = paired.json()['couples']
+        for method, path, body in (
+            ('POST', '/api/account/charts', _birth_json(born(6), self.key)),
+            ('PUT', f'/api/account/charts/{partner}', _birth_json(born(7), self.key)),
+            (
+                'PUT',
+                f'/api/account/charts/{partner}/name',
+                {'key': self.key, 'name': 'B'},
+            ),
+            ('PUT', '/api/account/my-chart', {'key': self.key, 'chart': mine}),
+            ('DELETE', '/api/account/my-chart', {'key': self.key}),
+            ('DELETE', f'/api/account/couples/{couple["id"]}', {'key': self.key}),
+            ('DELETE', f'/api/account/charts/{partner}', {'key': self.key}),
+            (
+                'PUT',
+                '/api/account/place',
+                {'key': self.key, 'place': _place_json(HELSINKI)},
+            ),
+            ('DELETE', '/api/account/place', {'key': self.key}),
+            ('PATCH', '/api/account/schools', {'key': self.key, 'season': 'months'}),
+        ):
+            with self.subTest(method=method, path=path):
+                reply = self.write(method, path, body)
+                self.assertIn(reply.status_code, (200, 201), reply.text)
+                self.assertEqual(reply.json()['couples_per_chart'], 1)
+
+    def test_a_plan_that_caps_couples_refuses_one_more_by_name(self) -> None:
+        first = self.save(BIRTH)
+        second = self.save(PARTNER)
+        third = self.save(born(5))
+        self.capped()
+        paired = self.write(
+            'POST', '/api/account/couples', {'key': self.key, 'charts': [first, second]}
+        )
+        self.assertEqual(paired.status_code, 201, paired.text)
+        before = self.client.get('/api/account/settings').json()
+        for path, body, detail in (
+            (
+                '/api/account/couples',
+                {'key': self.key, 'charts': [third, first]},
+                'An unnamed chart is in as many couples as the plan allows (1).',
+            ),
+            (
+                '/api/account/charts',
+                {**_birth_json(born(8), self.key), 'couple_with': second},
+                'Partner is in as many couples as the plan allows (1).',
+            ),
+        ):
+            with self.subTest(path):
+                refused = self.write('POST', path, body)
+                self.assertEqual(refused.status_code, 400, refused.text)
+                self.assertEqual(refused.json()['detail'], detail)
         self.assertEqual(self.client.get('/api/account/settings').json(), before)
 
     def test_a_full_library_saves_no_more(self) -> None:
