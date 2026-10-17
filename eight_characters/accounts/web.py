@@ -39,6 +39,7 @@ from eight_characters.accounts.person_check import (
     PersonCheckUnavailable,
     Turnstile,
 )
+from eight_characters.accounts.plans import PlanLimits
 from eight_characters.accounts.records import (
     CHART_LIMIT,
     DEFAULT_SCHOOLS,
@@ -67,7 +68,6 @@ from eight_characters.accounts.signin import (
     SignInError,
     TooManyRequests,
 )
-from eight_characters.accounts.plans import PlanLimits
 from eight_characters.accounts.store import (
     AccountStore,
     ChartLimit,

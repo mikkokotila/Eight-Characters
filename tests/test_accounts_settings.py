@@ -19,9 +19,9 @@ from eight_characters.accounts.backup import run_backup
 from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
     CHART_LIMIT,
-    PLANS,
     DEFAULT_SCHOOLS,
     NO_CHOICE,
+    PLANS,
     Birth,
     ChosenSchools,
     Couple,
