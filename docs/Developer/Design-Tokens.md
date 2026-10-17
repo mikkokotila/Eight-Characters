@@ -154,6 +154,43 @@ height plus its `--space-1` padding and hairline: 46px, and 54px on a phone. The
 start page's language switch is itself a control's height, its two choices within
 it, so it stands level with the account's button beside it.
 
+## One card
+
+A stem or a branch is drawn as one card wherever it stands: the chart's cards, Today's,
+a saved chart's pillars, and the life grid's head and Luck column. It comes in four
+sizes:
+
+| Size | Where | Character | Corners | Draws |
+|---|---|---|---|---|
+| full | the chart; Today's day | `--text-6` | `--radius-5`, `--radius-2` | its lines and names |
+| small | Today's pillars at noon; the couple's day | `--text-4` | `--radius-4`, `--radius-2` | its pinyin |
+| tile | a saved chart's pillars; the life grid | `--text-3` | `--radius-4`, `--radius-2` | its pinyin |
+| tiny | Today's relationships | `--text-2` | `--radius-3`, `--radius-1` | its pinyin |
+
+- Its face is `--sheen` over its element's `--<element>-bg`, under its ink,
+  `--<element>-text`. Set aside (a luck pillar's stem in its branch phase), it takes
+  the element's `--<element>-tint`.
+- A stem rounds its top corners and meets its branch with the smaller radius; the
+  branch mirrors it. A tile in the life grid's head, beside its pillar's other part,
+  rounds every corner; on a phone, where the two stack, they meet as cards do.
+- Its words: the character (`.glyph`) in `--font-glyph` at 500; its pinyin
+  (`.card-pinyin`) in `--font-sans` 600 at `--text-1`, where nothing beside it names
+  the pillar (on the chart, its header does); and on a full card its lines (`.gua`)
+  and its names in `--font-serif` 600: a stem's element (`.element-name`, `--text-3`),
+  a branch's animal (`.animal-name`, `--text-2`, tracked capitals) over its element
+  (`.animal-element`, as a stem's). A card under 130px wide (Today's days) sets the
+  animal in the name's case: its capitals would not fit.
+
+## One label
+
+What a field, a pillar, a place or a group of things is, is set one way: `--font-serif`
+500 at `--text-1`, in `--tracking-2` capitals, in `--ink-2`, on `--leading-2`. It covers
+the start page's and the account's fields, the pillars' plain names (the chart, the life
+grid, Today's pillars at noon), the panel's places and groups of roles, a pillar's change
+sides, the readings' keys, a decade's place in its sequence, Today's run, its noon and
+its relationships' places, and Settings' lists, which wear their labels above them. A
+life-grid column too narrow for capitals (a phone's five) keeps the name's case.
+
 ## The pillars and the panel
 
 - One grid holds all four pillars: four columns, two up to 640px wide. Each
