@@ -1000,10 +1000,13 @@ class TestSettingsBackup(StoreCase):
         restore_backup(self.checkout, self.identity, target)
         restored = AccountStore.open(target)
         self.assertEqual(restored.settings(self.user.id), several)
-        # And the restored database backs up again, every couple kept.
-        again = self.directory / 'again'
-        _remote, checkout = make_remote_and_checkout(again)
-        self.assertEqual(run_backup(restored, checkout, self.recipient).written, 1)
+        # And the restored database goes on with the same backup: once the account
+        # changes, its next run writes it with every couple kept.
+        moved = restored.put_place(self.user.id, LISBON, several.updated_at)
+        assert moved is not None
+        self.assertEqual(moved.couples, several.couples)
+        self.assertEqual(run_backup(restored, self.checkout, self.recipient).written, 1)
+        self.assertEqual(decode_user(self._record(self.user.id)), (self.user, moved))
 
     def test_a_backup_from_before_charts_restores_its_partner_as_a_saved_chart(
         self,
