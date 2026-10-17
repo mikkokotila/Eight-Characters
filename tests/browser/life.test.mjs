@@ -6,7 +6,7 @@
 // relationship the luck pillar forms with it, for as long as it acts. Natal, there is no
 // grid, as there is none without a gender.
 import {
-  assert, describe, it, engineName, profiles, openChart, openLink, settled, screenshot, withPage, HELSINKI,
+  assert, describe, it, engineName, profiles, openChart, openLink, settled, screenshot, withPage, HELSINKI, CHENGDU,
 } from './chart-helpers.mjs';
 import { TODAY, sampleLink, openSample, linkPart, click, showLuck } from './luck-helpers.mjs';
 
@@ -382,6 +382,19 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true);
     });
 
+    check('years before a first decade within the year are that one year, with its age in months', async (page) => {
+      // Born in Chengdu, female, a day after Jingzhe 1988: the first decade starts at 2 mo 26 d.
+      await openSample(page, { date: '1988-03-06', time: '10:00', place: CHENGDU, gender: 'female' });
+      await showLuck(page);
+      assert.deepEqual(await row(page, 'before'), {
+        tile: '', name: 'Before', role: 'No luck pillar', years: '1988', label: 'Before the first luck pillar, age 0 to 2\u00a0mo',
+      });
+      await click(page, '#life-view [data-life-view="pillars"]');
+      const years = await page.locator('#life [data-life="before"] .life-phase-years').evaluate((node) => (
+        node.getClientRects().length > 0 ? node.innerText.replace(/\s+/g, ' ').trim() : null));
+      assert.equal(years, profile.name === 'desktop' ? '1988 · age 0–2 mo' : null);
+    });
+
     check('Pillars only folds the natal columns away and lists the life path, and a link keeps it', async (page) => {
       await openSample(page);
       await showLuck(page);
@@ -438,13 +451,13 @@ for (const profile of profiles) {
       for (const address of [sampleLink({ life: 'list' }), sampleLink({ life: 'grid' })]) {
         await page.goto('about:blank');
         await openLink(page, address, { place: HELSINKI, success: false });
-        assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “life” is missing or not valid.', address);
+        assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: the life view is not valid.', address);
       }
       const parts = Object.fromEntries(new URLSearchParams(sampleLink({ life: 'pillars' }).split('?')[1]));
       delete parts.gender;
       await page.goto('about:blank');
       await openLink(page, `/#chart?${new URLSearchParams(parts)}`, { place: HELSINKI, success: false });
-      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “life” is missing or not valid.');
+      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: the life view is not valid.');
       await screenshot(page, `${profile.name}-life-pillars`);
     });
 

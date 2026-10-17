@@ -61,9 +61,12 @@ birth in the body of its request, as it does when the form is used.
 ## Links that open no chart
 
 A link that names no chart, whose part is missing or not valid, or whose topic
-this chart does not have, does not open a chart. The form says why, naming the
-part, and the address becomes the form's. When the link's birth is valid, it
-waits in the form.
+this chart does not have, does not open a chart. The form says why, in the page's
+language: which part is missing, not valid or given more than once, each part
+named in words as the page would name it (the birth date, the time zone, the open
+topic), never as the address spells it; a part no link takes is quoted as the link
+has it. The address becomes the form's. When the link's birth is valid, it waits
+in the form.
 
 ## Comparisons
 

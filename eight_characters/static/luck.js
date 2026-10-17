@@ -84,6 +84,24 @@
     const names = (chars) => [...chars].map((char) => PINYIN[char]).join(' ');
     const date = (when) => new Intl.DateTimeFormat(locale(), { dateStyle: 'medium', timeZone: luck.timezone }).format(when);
     const year = (when) => Number(new Intl.DateTimeFormat('en', { year: 'numeric', timeZone: luck.timezone }).format(when));
+    // A span of years, or the one year it lies within; of dates, or the one day.
+    const years = (from, to) => (year(from) === year(to) ? String(year(from)) : `${year(from)}–${year(to)}`);
+    const dates = (from, to) => (date(from) === date(to) ? date(from) : `${date(from)} – ${date(to)}`);
+    // The age the first luck pillar starts at, exactly: each of its parts that is not zero,
+    // largest first, its years, months and days; within its first day, its hours and
+    // minutes; within its first minute, its seconds.
+    const onsetParts = () => {
+      const age = luck.startAge;
+      const written = (parts) => parts.filter(([amount]) => amount > 0).map(([amount, unit]) => `${amount}\u00a0${t(unit)}`);
+      const days = written([[age.years, 'age_unit_years'], [age.months, 'age_unit_months'], [age.days, 'age_unit_days']]);
+      if (days.length) return days;
+      const time = written([[age.hours, 'unit_hours'], [age.minutes, 'unit_minutes']]);
+      return time.length ? time : [`${Math.floor(age.seconds)}\u00a0${t('unit_seconds')}`];
+    };
+    // The same age where the period before the first luck pillar ends: in whole years from
+    // the first year on, as the decades' ages are written; within the first year, in its
+    // largest part, so the period never reads 0–0.
+    const onsetAge = () => (luck.startAge.years > 0 ? String(luck.startAge.years) : onsetParts()[0]);
 
     // A card's face as the chart draws it (luck_chart), checked against the pillar.
     const readCard = (card, char, component) => {
@@ -164,7 +182,8 @@
       decades.slice(1).forEach((decade, index) => require(decade.start.getTime() === decades[index].end.getTime()));
       const before = { start: instant(pillars.pre_luck_period.start_utc), end: instant(pillars.pre_luck_period.end_utc) };
       require(before.end.getTime() === decades[0].start.getTime());
-      require(['years', 'months', 'days'].every((part) => Number.isInteger(pillars.start_age?.[part]))
+      require(['years', 'months', 'days', 'hours', 'minutes'].every((part) => Number.isInteger(pillars.start_age?.[part])
+        && pillars.start_age[part] >= 0) && Number.isFinite(pillars.start_age.seconds) && pillars.start_age.seconds >= 0
         && pillars.start_age.years === decades[0].startAge);
       require(typeof pillars.uncertainty?.boundary_ambiguous === 'boolean');
       return {
@@ -215,7 +234,7 @@
     const chipLabel = (key, now) => {
       const decade = key === 'before' ? null : luck.decades[Number(key) - 1];
       const label = decade === null
-        ? t('luck_before_label', { age: luck.startAge.years })
+        ? t('luck_before_label', { age: onsetAge() })
         : t('luck_chip_label', { names: names(decade.chars), from: year(decade.start), to: year(decade.end), age: decade.startAge });
       return now !== null && keyOf(now) === key ? t('luck_chip_today', { label }) : label;
     };
@@ -282,7 +301,7 @@
         <div class="luck-track">
           <div class="luck-group">
             <span class="luck-direction">${esc(t('luck_before'))}</span>
-            <div class="luck-chips">${chip('before', `0–${luck.startAge.years}`)}</div>
+            <div class="luck-chips">${chip('before', esc(`0–${onsetAge()}`))}</div>
           </div>
           ${groups.map((group) => `
           <div class="luck-group" data-direction="${group.direction}">
@@ -378,9 +397,9 @@
       const decade = state === 'on' ? decadeOf(cursor) : luck.decades[0];
       const mark = state === 'on'
         ? t(`luck_mark_${cursor.phase}`, { year: year(cursor.phase === 'stem' ? decade.phases[0].end : decade.end) })
-        : t('luck_mark_before', { age: luck.startAge.years });
+        : t('luck_mark_before', { age: onsetAge() });
       const poetic = state === 'none'
-        ? `${year(luck.before.start)}–${year(luck.before.end)}`
+        ? years(luck.before.start, luck.before.end)
         : t('luck_column_poetic', { n: decade.sequence, count: luck.decades.length, from: year(decade.start), to: year(decade.end) });
       if (column === null || !column.isConnected) {
         column = document.createElement('div');
@@ -603,16 +622,13 @@
 
     const nominalMarkup = () => (luck.nominal ? `<p class="luck-nominal">${esc(t('luck_nominal'))}</p>` : '');
 
-    const beforeMarkup = () => {
-      const age = luck.startAge;
-      return `
+    const beforeMarkup = () => `
         <div class="relationship-detail-heading">
           <h3 id="luck-detail-title">${esc(t('luck_title_before'))}</h3>
         </div>
-        <p class="luck-meta">${esc(t('luck_before_meta', { from: date(luck.before.start), to: date(luck.before.end), age: age.years }))}</p>
+        <p class="luck-meta">${esc(t('luck_before_meta', { dates: dates(luck.before.start, luck.before.end), age: onsetAge() }))}</p>
         ${nominalMarkup()}
-        <p class="relationship-note">${esc(t('luck_before_note', { years: age.years, months: age.months, days: age.days }))}</p>`;
-    };
+        <p class="relationship-note">${esc(t('luck_before_note', { age: onsetParts().join(' ') }))}</p>`;
 
     const decadeMarkup = (choice) => {
       const decade = decadeOf(choice);
@@ -646,7 +662,7 @@
           <h3 id="luck-detail-title"><span lang="zh-Hant">${decade.chars}</span> ${esc(names(decade.chars))}</h3>
         </div>
         <p class="luck-meta">${esc(t('luck_meta', {
-          from: date(decade.start), to: date(decade.end), start: decade.startAge, end: decade.endAge,
+          dates: dates(decade.start, decade.end), start: decade.startAge, end: decade.endAge,
           direction: t('luck_direction_' + direction), season: t('context_' + season).toLowerCase(),
         }))}</p>
         ${nominalMarkup()}
@@ -867,7 +883,7 @@
       switcher.classList.remove('hidden');
       drawRibbon();
       life.render({
-        decades: luck.decades, before: luck.before, startAge: luck.startAge.years, natal: luck.chart.natal, year, names,
+        decades: luck.decades, before: luck.before, startAge: luck.startAge.years, onset: onsetAge(), natal: luck.chart.natal, year, names,
       });
       syncRibbon();
       drawColumn();

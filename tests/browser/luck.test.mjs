@@ -429,9 +429,40 @@ for (const profile of profiles) {
       assert.equal(await linkPart(page, 'topic'), 'luck/before');
       assert.equal(await page.locator('#luck-detail').innerText().then((text) => text.replace(/\s+/g, ' ').trim()),
         'Before the first luck pillar Aug 14, 1975 – Dec 18, 1983 · age 0–8 '
-        + 'No luck pillar falls here: the first starts at 8 y 4 m 4 d. The chart reads as natal.');
+        + 'No luck pillar falls here: the first starts at age 8 y 4 mo 4 d. The chart reads as natal.');
       assert.equal(await page.locator('#luck-status').textContent(), 'Shown: Before the first luck pillar.');
       assert.deepEqual((await ribbonState(page)).expanded, ['before']);
+    });
+
+    check('years before a first decade that starts within the year read in its largest unit, never 0–0, and one year once', async (page) => {
+      // Born in Chengdu, female, after Jingzhe 1988 (16:46:32): the decades run backward,
+      // and the first starts 2 mo 26 d, 6 d or 6 h 54 min after the birth.
+      for (const [date, time, lang, chip, label, mark, meta, note] of [
+        ['1988-03-06', '10:00', 'en', '0–2 mo', 'Before the first luck pillar, age 0 to 2 mo', 'No luck pillar until age 2 mo',
+          'Mar 6, 1988 – Jun 1, 1988 · age 0–2 mo', 'No luck pillar falls here: the first starts at age 2 mo 26 d. The chart reads as natal.'],
+        ['1988-03-05', '18:00', 'en', '0–6 d', 'Before the first luck pillar, age 0 to 6 d', 'No luck pillar until age 6 d',
+          'Mar 5, 1988 – Mar 11, 1988 · age 0–6 d', 'No luck pillar falls here: the first starts at age 6 d. The chart reads as natal.'],
+        ['1988-03-05', '16:50', 'en', '0–6 h', 'Before the first luck pillar, age 0 to 6 h', 'No luck pillar until age 6 h',
+          'Mar 5, 1988 · age 0–6 h', 'No luck pillar falls here: the first starts at age 6 h 54 min. The chart reads as natal.'],
+        ['1988-03-06', '10:00', 'fi', '0–2 kk', 'Ennen ensimmäistä onnenpilaria, ikä 0–2 kk', 'Ei onnenpilaria ennen ikää 2 kk',
+          '6.3.1988 – 1.6.1988 · ikä 0–2 kk', 'Tähän aikaan ei osu onnenpilaria: ensimmäinen alkaa iässä 2 kk 26 pv. Kartta luetaan syntymäkarttana.'],
+      ]) {
+        await openSample(page, { date, time, lang, place: CHENGDU, gender: 'female' }, new Date('2026-10-07T12:00:00Z'));
+        await showLuck(page);
+        await click(page, '[data-luck="before"]');
+        const before = page.locator('.luck-chip.is-before');
+        const words = (text) => text.replace(/\s+/g, ' ').trim();
+        assert.equal(words(await before.textContent()), chip, `${date} ${time} ${lang}`);
+        assert.equal(words(await before.getAttribute('aria-label')), label);
+        const shown = await column(page);
+        assert.equal(shown.poetic, '1988');
+        assert.equal(words(shown.mark), mark);
+        const read = await decadePage(page);
+        assert.equal(read.meta, meta);
+        assert.equal(words(await page.locator('#luck-detail .relationship-note').textContent()), note);
+        // The number keeps its unit on its line.
+        assert.match(await before.textContent(), /\d \S/);
+      }
     });
 
     check('a child\'s chart is before its first decade today, an old one past its last, and a birth to come before all', async (page) => {
@@ -577,27 +608,27 @@ for (const profile of profiles) {
     check('a link to a decade the chart has not opens no chart, and says why', async (page) => {
       await page.clock.setFixedTime(TODAY);
       for (const [address, part] of [
-        [sampleLink({ topic: 'luck/11/stem' }), 'topic'],
-        [sampleLink({ topic: 'luck/0/branch' }), 'topic'],
-        [sampleLink({ gender: 'other' }), 'gender'],
-        [sampleLink({ luck: '11/stem' }), 'luck'],
-        [sampleLink({ luck: '5/leaf' }), 'luck'],
-        [sampleLink({ luck: '4/stem', topic: 'luck/5/stem' }), 'topic'],
+        [sampleLink({ topic: 'luck/11/stem' }), 'the open topic'],
+        [sampleLink({ topic: 'luck/0/branch' }), 'the open topic'],
+        [sampleLink({ gender: 'other' }), 'the gender'],
+        [sampleLink({ luck: '11/stem' }), 'the luck pillar'],
+        [sampleLink({ luck: '5/leaf' }), 'the luck pillar'],
+        [sampleLink({ luck: '4/stem', topic: 'luck/5/stem' }), 'the open topic'],
       ]) {
         await page.goto('about:blank');
         await openLink(page, address, { place: HELSINKI, success: false });
-        assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: “${part}” is missing or not valid.`, address);
+        assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: ${part} is not valid.`, address);
       }
       // Without a gender there are no luck pillars to open.
       const parts = Object.fromEntries(new URLSearchParams(sampleLink({ topic: 'luck/4/stem' }).split('?')[1]));
       delete parts.gender;
       await page.goto('about:blank');
       await openLink(page, `/#chart?${new URLSearchParams(parts)}`, { place: HELSINKI, success: false });
-      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “topic” is missing or not valid.');
+      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: the open topic is not valid.');
       delete parts.topic;
       await page.goto('about:blank');
       await openLink(page, `/#chart?${new URLSearchParams({ ...parts, luck: '4/stem' })}`, { place: HELSINKI, success: false });
-      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “luck” is missing or not valid.');
+      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: the luck pillar is not valid.');
     });
 
     check('luck pillars that do not hold together are refused, and no chart is drawn', async (page) => {

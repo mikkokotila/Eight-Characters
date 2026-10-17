@@ -162,7 +162,8 @@
             <span class="life-tile"></span>
             <span class="life-phase-name">${esc(t('luck_before'))}<span class="life-now">${esc(t('luck_today'))}</span></span>
             <span class="life-phase-role">${esc(t('life_before_none'))}</span>
-            <span class="life-phase-years">${life.year(life.before.start)}<span class="life-phase-to">–${life.year(life.before.end)}</span><span class="life-phase-age"> · ${esc(t('life_age', { age: `0–${life.startAge}` }))}</span></span>
+            <span class="life-phase-years">${life.year(life.before.start)}${life.year(life.before.end) === life.year(life.before.start) ? ''
+              : `<span class="life-phase-to">–${life.year(life.before.end)}</span>`}<span class="life-phase-age"> · ${esc(t('life_age', { age: `0–${life.onset}` }))}</span></span>
             <span class="life-phase-more">${esc(t('life_before_natal'))}</span>
           </button>
         </div>
@@ -196,7 +197,7 @@
     // A row as a screen reader hears it: names, not characters, and whether it is now.
     const labelOf = (path, nowPath) => {
       let label;
-      if (path === 'before') label = t('luck_before_label', { age: life.startAge });
+      if (path === 'before') label = t('luck_before_label', { age: life.onset });
       else {
         const [sequence, phase] = path.split('/');
         const decade = decadeOf(Number(sequence));
@@ -294,7 +295,8 @@
     });
 
     // `data` is the luck pillars as luck.js reads them, with the natal pillars and luck.js's
-    // ways of naming: { decades, before, startAge, natal, year, names }. Null: no grid.
+    // ways of naming: { decades, before, startAge, onset, natal, year, names }, `onset`
+    // the age the period before them ends at, as luck.js writes it. Null: no grid.
     // Drawn, it shows when sync says the luck pillar does.
     const render = (data) => {
       life = data;

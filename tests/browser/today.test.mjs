@@ -845,20 +845,20 @@ for (const profile of profiles) {
 
     check('a link with an unknown, repeated or wrong part is refused, naming it', async (page) => {
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
-      for (const [link, named] of [
-        [todayLink({ day: '2026-02-30' }), 'day'],
-        [`${todayLink()}&day=2026-10-12`, 'day'],
-        [todayLink({ who: 'self' }), 'who'],
-        [todayLink({ partner: 'A'.repeat(32) }), 'partner'],
-        [todayLink({ partner: 'f'.repeat(31) }), 'partner'],
-        [`${todayLink({ partner: 'f'.repeat(32) })}&partner=${'e'.repeat(32)}`, 'partner'],
-        [todayLink({ topic: 'stars' }), 'topic'],
-        [todayLink({ luck: '5/stem' }), 'luck'],
-        [`${todayLink()}&mood=1`, 'mood'],
+      for (const [link, why] of [
+        [todayLink({ day: '2026-02-30' }), 'the day is not valid'],
+        [`${todayLink()}&day=2026-10-12`, 'it gives the day more than once'],
+        [todayLink({ who: 'self' }), 'whose day to show is not valid'],
+        [todayLink({ partner: 'A'.repeat(32) }), 'the partner is not valid'],
+        [todayLink({ partner: 'f'.repeat(31) }), 'the partner is not valid'],
+        [`${todayLink({ partner: 'f'.repeat(32) })}&partner=${'e'.repeat(32)}`, 'it gives the partner more than once'],
+        [todayLink({ topic: 'stars' }), 'the open topic is not valid'],
+        [todayLink({ luck: '5/stem' }), 'the luck pillar belongs to the chart page, not to the day'],
+        [`${todayLink()}&mood=1`, 'the app does not know its part “mood”'],
       ]) {
         await page.goto(new URL(link, process.env.EC_BASE_URL).href);
         await page.locator('#form-error').waitFor({ state: 'visible' });
-        assert.match(await page.locator('#form-error').textContent(), new RegExp(named), link);
+        assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: ${why}.`, link);
         assert.equal(await page.locator('#today-view').isHidden(), true);
       }
     });

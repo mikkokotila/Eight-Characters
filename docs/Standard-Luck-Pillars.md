@@ -23,7 +23,9 @@ keeps it with the birth; New chart starts without one.
 ## The ribbon
 
 While the luck pillar shows, the ribbon stands under the chart's topics. It shows:
-- **Before**: the years before the first luck pillar, as ages (`0–8`);
+- **Before**: the years before the first luck pillar, as ages (`0–8`). Its end is the
+  age the first starts at, in whole years as the decades' ages are, or, within the first
+  year, in its largest unit that is not zero (`0–2 mo`, `0–6 d`, `0–6 h`): never `0–0`;
 - **each decade**: its characters with their names, the age it starts at, and two bars,
   one for each phase.
 
@@ -193,7 +195,10 @@ The page shows:
   phase and nine in the branch phase. Counts are tallies, not strength.
 
 The years before the first decade have a page of their own: their dates and ages, and
-that no luck pillar falls there.
+that no luck pillar falls there, with the exact age the first starts at, each of its
+parts that is not zero (`8 y 4 mo 4 d`, `2 mo 26 d`, `6 h 54 min`). A span within one
+year is written as that year (`1988`), never `1988–1988`, and dates within one day as
+that day.
 
 Opening a decade replaces any other open topic, and another topic replaces it; the
 luck pillar stays in the chart. Nothing weighs strength, applies a transformation or

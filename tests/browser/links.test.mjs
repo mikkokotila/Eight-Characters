@@ -211,32 +211,57 @@ for (const profile of profiles) {
     });
 
     check('links that open no chart say why, keep a valid birth, and leave the form\'s address', async (page) => {
+      // Each part is named in words, never as the address spells it; a part the app does
+      // not know is quoted as the link has it.
+      const { date, ...undated } = CANONICAL;
       const bad = [
-        ['#elsewhere', 'chart'],
-        [link({ ...CANONICAL, date: '1988-02-30' }), 'date'],
-        [link({ ...CANONICAL, time: '25:10' }), 'time'],
-        [link({ ...CANONICAL, latitude: '91' }), 'latitude'],
-        [link({ ...CANONICAL, lang: 'de' }), 'lang'],
-        [link({ ...CANONICAL, zi: 'midnight' }), 'zi'],
-        [link({ ...CANONICAL, fold: '2' }), 'fold'],
-        [link({ ...CANONICAL, display: 'glyphs' }), 'display'],
-        [link({ ...CANONICAL, colour: 'red' }), 'colour'],
-        [`${link(CANONICAL)}&lang=fi`, 'lang'],
-        [link({ ...CANONICAL, city: '' }), 'city'],
-        [link({ ...CANONICAL, topic: 'roles/stem/noon' }), 'topic'],
+        ['#elsewhere', 'the app has no page at its address'],
+        [link(undated), 'the birth date is missing'],
+        [link({ ...CANONICAL, date: '1988-02-30' }), 'the birth date is not valid'],
+        [link({ ...CANONICAL, time: '25:10' }), 'the birth time is not valid'],
+        [link({ ...CANONICAL, latitude: '91' }), 'the latitude is not valid'],
+        [link({ ...CANONICAL, lang: 'de' }), 'the language is not valid'],
+        [link({ ...CANONICAL, zi: 'midnight' }), 'the Zi hour convention is not valid'],
+        [link({ ...CANONICAL, fold: '2' }), 'the choice of a repeated clock time is not valid'],
+        [link({ ...CANONICAL, display: 'glyphs' }), 'what the cards show is not valid'],
+        [link({ ...CANONICAL, colour: 'red' }), 'the app does not know its part “colour”'],
+        [`${link(CANONICAL)}&lang=fi`, 'it gives the language more than once'],
+        [link({ ...CANONICAL, city: '' }), 'the city is missing'],
+        [link({ ...CANONICAL, topic: 'roles/stem/noon' }), 'the open topic is not valid'],
+        // Settings' own links, to save a birth.
+        ['#save?as=nothing', 'what to save is not valid'],
+        ['#save?as=partner', 'the chart to pair it with is missing'],
+        [`#save?as=correct&chart=${'g'.repeat(32)}`, 'the chart to correct is not valid'],
       ];
-      for (const [address, part] of bad) {
+      for (const [address, why] of bad) {
         await page.goto('about:blank');
         await openLink(page, address, { success: false });
-        assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: “${part}” is missing or not valid.`, address);
+        assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: ${why}.`, address);
         assert.equal(await linkParts(page), '', address);
         assert.equal((await onScreen(page)).view, 'form', address);
       }
+      // In the page's language, the reader's, whatever language the link names.
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, lang: 'fi' }));
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, date: '1988-02-30' }), { success: false });
+      assert.equal(await page.locator('#form-error').textContent(), 'Linkki ei avaa karttaa: syntymäpäivä ei kelpaa.');
+      await page.goto('about:blank');
+      await openLink(page, `${link(CANONICAL)}&lang=en`, { success: false });
+      assert.equal(await page.locator('#form-error').textContent(), 'Linkki ei avaa karttaa: siinä on kieli useammin kuin kerran.');
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, colour: 'red' }), { success: false });
+      assert.equal(await page.locator('#form-error').textContent(), 'Linkki ei avaa karttaa: sovellus ei tunne sen osaa ”colour”.');
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, city: '' }), { success: false });
+      assert.equal(await page.locator('#form-error').textContent(), 'Linkki ei avaa karttaa: kaupunki puuttuu.');
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, lang: 'en' }));
       // A birth the chart has, with a relationship it has not: the chart is not shown, but
       // the birth waits in the form.
       await page.goto('about:blank');
       await openLink(page, link({ ...CANONICAL, topic: 'relationships/branch_clash:17:month-day' }), { success: false });
-      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: “topic” is missing or not valid.');
+      assert.equal(await page.locator('#form-error').textContent(), 'This link does not open a chart: the open topic is not valid.');
       assert.deepEqual(await fields(page), { date: '1988-02-04', time: '16:30', location: 'Chengdu, Sichuan, China' });
       assert.equal(await linkParts(page), '');
     });

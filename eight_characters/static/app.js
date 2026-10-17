@@ -1523,7 +1523,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const DISPLAYS = ['characters', 'ten-gods', 'hidden-stems'];
   // The pages a topic can show. Whether this chart has the one named is known once it is drawn.
   const TOPIC_PATH = /^(day-master|season|roots|roles(\/[a-z_]+)?(\/stem\/(hour|day|month|year))?|relationships(\/[a-z_]+:\d+:[a-z-]+)?|pillar\/(hour|day|month|year)|luck\/(before|\d{1,2}\/(stem|branch)))$/;
-  const linkError = (part) => new Error(t('link_error', { part }));
+  // A link that opens nothing says why: what is wrong with which of its parts, each part
+  // named as the page would name it. A part no page takes is quoted as the link spells it.
+  const linkError = (problem, part) => {
+    if (problem === 'no_page') return new Error(requiredTranslation('link_no_page'));
+    const named = problem === 'unknown' ? part : requiredTranslation(`link_part_${part}`);
+    return new Error(requiredTranslation(`link_${problem}`, { part: named }));
+  };
   const formAddress = () => `${location.pathname}${location.search}`;
 
   // The topic open in the panel, as the address names it, or null.
@@ -1597,34 +1603,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // no chart throws, naming the part that is missing or wrong.
   const readChartLink = (hash) => {
     if (hash === '' || hash === '#') return null;
-    if (!hash.startsWith(CHART_ROUTE)) throw linkError('chart');
+    if (!hash.startsWith(CHART_ROUTE)) throw linkError('no_page');
     const params = new URLSearchParams(hash.slice(CHART_ROUTE.length));
     for (const key of new Set(params.keys())) {
-      if (!LINK_PARTS.includes(key) || params.getAll(key).length > 1) throw linkError(key);
+      if (!LINK_PARTS.includes(key)) throw linkError('unknown', key);
+      if (params.getAll(key).length > 1) throw linkError('repeated', key);
     }
     const text = (key) => {
       const value = params.get(key);
-      if (value === null || value.trim() === '') throw linkError(key);
+      if (value === null || value.trim() === '') throw linkError('missing', key);
       return value;
     };
     const optional = (key, valid) => {
       const value = params.get(key);
-      if (value !== null && !valid(value)) throw linkError(key);
+      if (value !== null && !valid(value)) throw linkError('invalid', key);
       return value;
     };
     const coordinate = (key, limit) => {
       const value = Number(text(key));
-      if (!Number.isFinite(value) || Math.abs(value) > limit) throw linkError(key);
+      if (!Number.isFinite(value) || Math.abs(value) > limit) throw linkError('invalid', key);
       return value;
     };
     const date = text('date');
     const year = Number(date.slice(0, 4));
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !parseWallClock(`${date}T00:00`)
-      || year < supportedYears[0] || year > supportedYears[1]) throw linkError('date');
+      || year < supportedYears[0] || year > supportedYears[1]) throw linkError('invalid', 'date');
     const time = text('time');
-    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time) || !parseWallClock(`${date}T${time}`)) throw linkError('time');
+    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time) || !parseWallClock(`${date}T${time}`)) throw linkError('invalid', 'time');
     const lang = text('lang');
-    if (!['fi', 'en'].includes(lang)) throw linkError('lang');
+    if (!['fi', 'en'].includes(lang)) throw linkError('invalid', 'lang');
     // Which pass of a time the place's clocks repeat, 0 or 1: only a saved birth names one.
     const fold = optional('fold', (value) => value === '0' || value === '1');
     return {
@@ -1656,14 +1663,15 @@ document.addEventListener('DOMContentLoaded', () => {
   const readCompareLink = (hash) => {
     const params = new URLSearchParams(hash.slice(COMPARE_ROUTE.length));
     for (const key of new Set(params.keys())) {
-      if (!['a', 'b'].includes(key) || params.getAll(key).length > 1) throw linkError(key);
+      if (!['a', 'b'].includes(key)) throw linkError('unknown', key);
+      if (params.getAll(key).length > 1) throw linkError('repeated', key);
     }
     const side = (key) => {
       const value = params.get(key);
       return value === null ? null : { params: value, link: readChartLink(`${CHART_ROUTE}${value}`) };
     };
     const a = side('a');
-    if (a === null) throw linkError('a');
+    if (a === null) throw linkError('missing', 'a');
     return { a, b: side('b') };
   };
   // A chart's name from its link, as its own bar writes it.
@@ -1795,17 +1803,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(hash.slice(TODAY_ROUTE.length));
     const own = {};
     for (const key of ['day', 'who', 'partner', 'topic']) {
-      if (params.getAll(key).length > 1) throw linkError(key);
+      if (params.getAll(key).length > 1) throw linkError('repeated', key);
       own[key] = params.get(key);
       params.delete(key);
     }
     // A chart's display, luck pillar and life grid are the chart page's, not the day's.
-    for (const key of ['display', 'luck', 'life']) if (params.has(key)) throw linkError(key);
+    for (const key of ['display', 'luck', 'life']) if (params.has(key)) throw linkError('chart_only', key);
     const chart = readChartLink(`${CHART_ROUTE}${params}`);
-    if (own.day === null || !window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`)) throw linkError('day');
-    if (own.who !== null && own.who !== 'partner') throw linkError('who');
-    if (own.partner !== null && !/^[0-9a-f]{32}$/.test(own.partner)) throw linkError('partner');
-    if (own.topic !== null && !window.EC_TODAY.TOPIC_PATH.test(own.topic)) throw linkError('topic');
+    if (own.day === null) throw linkError('missing', 'day');
+    if (!window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`)) throw linkError('invalid', 'day');
+    if (own.who !== null && own.who !== 'partner') throw linkError('invalid', 'who');
+    if (own.partner !== null && !/^[0-9a-f]{32}$/.test(own.partner)) throw linkError('invalid', 'partner');
+    if (own.topic !== null && !window.EC_TODAY.TOPIC_PATH.test(own.topic)) throw linkError('invalid', 'topic');
     return { chart, chartParams: params.toString(), lang: chart.lang, day: own.day, who: own.who ?? 'self', partner: own.partner, topic: own.topic };
   };
   const today = window.EC_TODAY.create({
@@ -2011,13 +2020,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const params = new URLSearchParams(hash.slice(SAVE_ROUTE.length));
     const as = params.get('as');
     const wanted = { mine: ['as'], partner: ['as', 'with'], correct: ['as', 'chart'] }[as];
-    if (!wanted) throw linkError('as');
+    if (!wanted) throw linkError(as === null ? 'missing' : 'invalid', 'as');
     for (const key of new Set(params.keys())) {
-      if (!wanted.includes(key) || params.getAll(key).length > 1) throw linkError(key);
+      if (!wanted.includes(key)) throw linkError('unknown', key);
+      if (params.getAll(key).length > 1) throw linkError('repeated', key);
     }
     const id = (key) => {
       const value = params.get(key);
-      if (!/^[0-9a-f]{32}$/.test(value ?? '')) throw linkError(key);
+      if (value === null) throw linkError('missing', key);
+      if (!/^[0-9a-f]{32}$/.test(value)) throw linkError('invalid', key);
       return value;
     };
     return { as, with: as === 'partner' ? id('with') : null, chart: as === 'correct' ? id('chart') : null };
@@ -2171,7 +2182,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Opens the topic a link names, as a reader would, and checks that it is the one open.
   const openTopic = (topic) => {
     const need = (element) => {
-      if (!element) throw linkError('topic');
+      if (!element) throw linkError('invalid', 'topic');
       return element;
     };
     const [first, ...rest] = topic.split('/');
@@ -2184,7 +2195,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (first === 'pillar') {
       need(chartView.querySelector(`.pillar-identity[data-pillar="${rest[0]}"]`)).click();
     } else if (first === 'luck') {
-      if (!luck.select(rest.join('/'))) throw linkError('topic');
+      if (!luck.select(rest.join('/'))) throw linkError('invalid', 'topic');
     } else {
       need(chartView.querySelector(`#day-master-context button[data-context="${first}"]`)).click();
       // roles/<role>, roles/stem/<pillar>, or roles/<role>/stem/<pillar>
@@ -2194,7 +2205,7 @@ document.addEventListener('DOMContentLoaded', () => {
         need(contextDetail.querySelector(`button[data-root-pillar="${rest[1]}"][data-from-role="${role}"]`)).click();
       }
     }
-    if (currentTopic() !== topic) throw linkError('topic');
+    if (currentTopic() !== topic) throw linkError('invalid', 'topic');
   };
 
   // Shows what the address names, the form or a chart with its topic and display,
@@ -2422,11 +2433,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!drawn) return;
       }
       if (link.luck === null) luck.setShown(false);
-      else if (!luck.stand(link.luck)) throw linkError('luck');
+      else if (!luck.stand(link.luck)) throw linkError('invalid', 'luck');
       if (luck.has()) luck.setLifeView(link.life);
       if (link.topic !== null) openTopic(link.topic);
       // A decade's page shows the period standing in the chart.
-      if (link.luck !== null && link.topic?.startsWith('luck/') && link.topic !== `luck/${link.luck}`) throw linkError('topic');
+      if (link.luck !== null && link.topic?.startsWith('luck/') && link.topic !== `luck/${link.luck}`) throw linkError('invalid', 'topic');
       addressChart('replaceState');
     } catch (err) {
       console.error(err);
@@ -2566,7 +2577,7 @@ document.addEventListener('DOMContentLoaded', () => {
     goToTopic(path);
     if (!part) return;
     const section = [...chartPanel.querySelectorAll(':scope > .chart-panel-body > section:not(.hidden)')].at(-1);
-    if (!section || !canonReadings.arrive(section, part, true)) throw linkError('topic');
+    if (!section || !canonReadings.arrive(section, part, true)) throw linkError('invalid', 'topic');
   };
   const ROLES = ['friend', 'rob_wealth', 'eating_god', 'hurting_officer', 'indirect_wealth', 'direct_wealth',
     'seven_killings', 'direct_officer', 'indirect_resource', 'direct_resource'];
