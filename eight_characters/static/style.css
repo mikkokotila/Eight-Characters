@@ -1640,6 +1640,9 @@ body {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The years keep their whole line: a phase whose role takes two lines would otherwise
+   squeeze them below it, and clip them (their box hides its overflow, for the ellipsis). */
+.life-phase-years { min-height: 1lh; }
 /* A role and what is new in it wrap whole rather than lose their end. */
 .life-phase-role { overflow: visible; white-space: normal; text-wrap: balance; }
 .life-new { font-weight: 600; color: var(--ink-1); }
