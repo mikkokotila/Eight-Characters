@@ -11,8 +11,9 @@ you near either end (POST /api/today/days, #105).
   dates. Steps go through them, so a date the clocks skipped is passed over; past them
   a step is a calendar day onto a pending card (its date, "…" for the pillar and the
   pull, "loading" to a screen reader), up to the engine's end.
-- **Fetching ahead**: when fewer than four days known lie beyond the day shown, after
-  every move and every arrival, one request a way at a time. A failure is said and
+- **Fetching ahead**: when fewer than four days known lie beyond the day shown and it
+  is within three weeks of them, after every move and every arrival, one request a way
+  at a time; a day further off is not chased. A failure is said and
   asked again on the next move that way; a 401 goes through the sign-in with the day's
   own; a day fetched that disagrees with one shown is said, and no more are fetched
   that way. Nothing else of a request for days is drawn.

@@ -1439,6 +1439,8 @@ for (const profile of profiles) {
       await page.keyboard.press('n');
       await shown(page);
       assert.equal(await part(page, 'day'), DAY);
+      // Today is further than one request beyond the past day's days: nothing chased it.
+      assert.deepEqual(fetched.asked, []);
       let resume = pause();
       await stepDays(page, 4, 'ArrowLeft');
       await until(page, () => fetched.asked.some((entry) => entry.request.before === '2026-10-04' && entry.payload !== undefined));
@@ -1614,9 +1616,10 @@ for (const profile of profiles) {
       await shown(page);
       await until(page, () => fetched.asked.length === 1);
       const asked = answers.length;
-      const box = await centreOf(page).locator('.today-cards').boundingBox();
+      // A day is as wide as its slot, as the drag counts it (its cards may be wider).
+      const box = await centreOf(page).boundingBox();
       const x = box.x + box.width / 2;
-      const y = box.y + box.height / 2;
+      const y = box.y + box.height / 3;
       await page.mouse.move(x, y);
       await page.mouse.down();
       for (const step of [20, 60]) await page.mouse.move(x - step, y + 3);

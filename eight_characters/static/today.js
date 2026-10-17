@@ -663,17 +663,23 @@
         toast(t(way === 'ahead' ? 'today_days_failed_after' : 'today_days_failed_before', { day: longDate(frontier) }), true);
       }
     };
+    // How many calendar dates one request for days reads beyond the date it names (the
+    // API's DAYS_PER_REQUEST): a day shown further than this past the span is not chased,
+    // and starts days known of its own when its answer is drawn.
+    const REACH = 21;
     // Days are fetched one way while fewer than four days known lie beyond the day shown
     // that way (a skipped date is none, and a day shown past the span has none beyond it),
-    // the engine's end is not reached, fetching has not stopped, none is on its way and
-    // the last has not failed since a move that way (`moved`). Checked after every move
-    // and every merge, so fetches chain while they are needed.
+    // the day shown is within one request's reach of the span, the engine's end is not
+    // reached, fetching has not stopped, none is on its way and the last has not failed
+    // since a move that way (`moved`). Checked after every move and every merge, so
+    // fetches chain while they are needed, and never chase a jump.
     const fetchAhead = (moved) => {
       if (state === null || known === null) return;
       for (const way of ['back', 'ahead']) {
         if (moved === way) known.failed[way] = false;
         const beyond = known.dates.filter((date) => (way === 'ahead' ? date > state.day : date < state.day)).length;
-        if (beyond >= 4 || known.ends[way] || known.stopped[way] || known.failed[way] || known.fetching[way] !== null) continue;
+        const reach = way === 'ahead' ? state.day <= stepDay(known.last, REACH) : state.day >= stepDay(known.first, -REACH);
+        if (beyond >= 4 || !reach || known.ends[way] || known.stopped[way] || known.failed[way] || known.fetching[way] !== null) continue;
         fetchDays(known, way);
       }
     };

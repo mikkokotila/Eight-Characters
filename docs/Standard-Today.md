@@ -97,9 +97,10 @@ Home before its first. With no day drawn (a day the API refused), a step is a ca
 day. A day the API refuses, near the first and last of the engine's years, shows its
 reason.
 
-Days are fetched one way while fewer than four days known lie beyond the day shown,
-after every move and every arrival, so they chain while you keep moving; at most one
-request each way is on its way. A request that fails says so and is asked again on the
+Days are fetched one way while fewer than four days known lie beyond the day shown and
+it is within three weeks of them, after every move and every arrival, so they chain
+while you keep moving; at most one request each way is on its way. A day further off
+(Today, a link, a far pick) is not chased: its own answer starts the days known anew. A request that fails says so and is asked again on the
 next move that way; one refused for want of a session goes through the sign-in, with
 the day's own. A day fetched that disagrees with one already shown is said, and no more
 are fetched that way. Nothing else of a request for days is drawn: the strip, the
