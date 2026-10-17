@@ -1,5 +1,34 @@
 # Changelog
 
+## 0.59.0
+
+Stage 2 of the look-and-feel review, part one: the token set finished. Corner radii,
+control heights and line heights now come from tokens, as colour, space, type and
+tracking already did, and the stylesheet's guard fails on a raw radius or line height.
+
+### Changed
+- **Corners**: six radii (`--radius-1` to `--radius-6`: 2, 4, 8, 12, 16 and 24px), a
+  pill and a circle replace fifteen. Fields, buttons, chips and notices share 12px
+  (fields were 10px); cards and dialogs 16px (14px); groups of choices and the lanes
+  around the luck pillar 24px (20px), the cards' radius plus the lane's inset. Pill
+  controls stay pills at a phone's touch height. The luck ribbon's Today keeps its
+  steps' corners instead of a pill.
+- **Controls**: three heights (`--control-1` to `--control-3`: 28, 36 and 48px) and a
+  touch height (44px). Every pill button, choice, topic and list row is 36px (32 or
+  40px before); fields and the Create button 48px (the button was 53px); Settings'
+  and Today's selects 36px. A group of choices is 46px wherever it stands (54px on a
+  phone), and the start page's language switch stands level with the account's
+  button. On a phone the gender choices, the start page's language switch and the
+  selects grow to the touch height too.
+- **Leading**: four line heights (`--leading-1` to `--leading-4`: 1.15, 1.35, 1.5 and
+  1.7) replace sixteen; a character alone keeps a line of its own height.
+
+### Tests
+- `tokens.test.mjs`: every corner and line height the views draw is on its scale, and
+  every control and group of controls stands at its height, on the start page, a
+  chart with its luck pillar and a topic open, the life grid, Today, Settings and the
+  dialogs, on a desktop and a phone.
+
 ## 0.58.0
 
 The finish (#108): the defects the look-and-feel review of 2026-10-17 found on screen,
