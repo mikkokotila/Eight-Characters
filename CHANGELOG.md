@@ -23,7 +23,8 @@ couple, so a chart can be in any number of couples from the page too.
   chart in a couple; no pair left; a new birth as the partner of a chart paired with
   every other; a capped answer's lists and note; the waiting partner past the cap; ten
   partners named as three and seven more, inside the page; a pair formed already
-  refused without asking; a missing or malformed cap refused.
+  refused without asking; a missing or malformed cap refused. `tests/browser/README.md`
+  describes the Settings suite.
 
 ## 0.54.0
 
