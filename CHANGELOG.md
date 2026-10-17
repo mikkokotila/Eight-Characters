@@ -16,12 +16,15 @@ couple, so a chart can be in any number of couples from the page too.
   and the page says why. A settings answer without a valid `couples_per_chart` is
   refused, never drawn.
 - **Marking your chart** says when a partner kept from before charts did not pair with
-  it, because it is at its plan's cap, and that the partner waits no longer.
+  it, because it is at its plan's cap, and that the partner waits no longer. What a
+  change did is read from the settings it was made from, not those drawn when it was
+  asked for, so a mark made while another change is on its way says what it did.
 
 ### Tests
 - `settings.test.mjs`: the second list following the first, focus kept; pairing a
   chart in a couple; no pair left; a new birth as the partner of a chart paired with
-  every other; a capped answer's lists and note; the waiting partner past the cap; ten
+  every other; a capped answer's lists and note; the waiting partner past the cap, and
+  two marks in turn on an unrestricted plan; ten
   partners named as three and seven more, inside the page; a pair formed already
   refused without asking; a missing or malformed cap refused. `tests/browser/README.md`
   describes the Settings suite.

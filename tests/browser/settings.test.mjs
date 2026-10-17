@@ -553,12 +553,63 @@ for (const profile of profiles) {
       assert.deepEqual(await offered(page, '#settings-pair-second'), ['Third']);
       assert.deepEqual(await offered(page, '#settings-partner-of'), ['Second', 'Third']);
       assert.ok((await page.locator('#settings-couples-body').textContent()).includes('On your plan a chart is in one couple at most: a chart in a couple already is not offered.'));
-      // Mine, at the cap, marked as yours: the API's answer has no couple with Third, and
-      // the page says why.
+      // Mine, at the cap, marked as yours: the API's answer, on the same plan, has no
+      // couple with Third, and the page says why.
+      await page.route('**/api/account/my-chart', async (route) => {
+        if (route.request().method() !== 'PUT') return route.fallback();
+        const response = await route.fetch();
+        return route.fulfill({ response, json: { ...(await response.json()), couples_per_chart: 1 } });
+      });
       await page.locator('#settings-mine-choice').selectOption(mine);
       await page.locator('[data-settings-action="mark"]').click();
       await page.waitForFunction(() => document.querySelector('.toast').textContent !== '');
       assert.equal(await page.locator('.toast').textContent(), 'Your chart is marked. It is in as many couples as your plan allows, so Third did not pair with it and waits no longer.');
+    });
+
+    check('two marks in turn: the second is read from the settings the first left, and says no cap where there is none', async (page) => {
+      await reset(page);
+      const first = await saveElsewhere(page, { ...SCREEN, name: 'First' });
+      const second = await saveElsewhere(page, partnerNamed('Second', '1980-01-02'));
+      const waiting = await saveElsewhere(page, partnerNamed('Waiting', '1981-01-02'));
+      // Waiting as a partner kept from before charts, with no cap: given to the page's
+      // reads. The first mark's answer, held on its way, pairs it with First, as the API
+      // does (test_accounts_settings.py).
+      await page.route('**/api/account/settings', async (route) => {
+        if (route.request().method() !== 'GET') return route.fallback();
+        const response = await route.fetch();
+        return route.fulfill({ response, json: { ...(await response.json()), pending_partner: waiting } });
+      });
+      let release;
+      const held = new Promise((resolve) => { release = resolve; });
+      let marks = 0;
+      await page.route('**/api/account/my-chart', async (route) => {
+        if (route.request().method() !== 'PUT') return route.fallback();
+        marks += 1;
+        if (marks > 1) return route.fallback();
+        const response = await route.fetch();
+        const value = await response.json();
+        await held;
+        return route.fulfill({ response, json: { ...value, couples: [...value.couples, { id: 'e'.repeat(32), charts: [first, waiting] }] } });
+      });
+      await openSettings(page);
+      await page.evaluate(() => {
+        window.__toasts = [];
+        new MutationObserver(() => {
+          const said = document.querySelector('.toast')?.textContent ?? '';
+          if (said !== '' && window.__toasts.at(-1) !== said) window.__toasts.push(said);
+        }).observe(document.body, { subtree: true, childList: true, characterData: true });
+      });
+      await page.locator('#settings-mine-choice').selectOption(first);
+      await page.locator('[data-settings-action="mark"]').click();
+      // Marked again, another chart, while the first is on its way.
+      await page.locator('#settings-mine-choice').selectOption(second);
+      await page.locator('[data-settings-action="mark"]').click();
+      release();
+      await page.waitForFunction(() => window.__toasts.length >= 2);
+      assert.deepEqual(await page.evaluate(() => window.__toasts), [
+        'Your chart is marked, and paired with Waiting.',
+        'Your chart is marked.',
+      ]);
     });
 
     check('a chart with many partners names three and how many more, and stays inside the page', async (page) => {

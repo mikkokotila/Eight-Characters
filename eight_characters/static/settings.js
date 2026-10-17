@@ -171,7 +171,9 @@
     // why it was not made. Refused because the settings changed elsewhere, because the
     // session ended or because another account is signed in now, the settings are read
     // again and drawn, and the change is not repeated: the reader decides again.
-    const write = (method, path, body, from) => {
+    // `made`, given the settings the change was made from and the ones it left, once
+    // the API has made it: in turn, before any later change.
+    const write = (method, path, body, from, made = null) => {
       waiting += 1;
       return inTurn(async () => {
         // A sign-out while the change is on its way: its answer is the account's before,
@@ -182,10 +184,12 @@
           // over, nor from a page that could not read them.
           if (settings === null || from < 0) return t('settings_load_error');
           if (from !== basis) return replaced;
+          const was = settings;
           const value = checked(await call(method, path, { ...body, key: settings.key, updated_at: settings.updated_at }));
           if (at !== generation) return ended;
           settings = value;
           onChanged(settings);
+          made?.(was, value);
           return null;
         } catch (err) {
           if (at !== generation) return ended;
@@ -216,18 +220,22 @@
       });
     };
     // A change from this page: done, it is said briefly (`done`, or what it says of the
-    // settings the change left); refused, its reason stays here.
+    // settings it left and the ones it was made from, which changes made before it may
+    // have changed since it was asked for); refused, its reason stays here.
     const change = async (method, path, body, done) => {
       let problem;
+      let said = typeof done === 'function' ? null : done;
       try {
-        problem = await write(method, path, body, drawnBasis);
+        problem = await write(method, path, body, drawnBasis, (was, now) => {
+          if (typeof done === 'function') said = done(now, was);
+        });
       } catch (err) {
         console.error(err);
         problem = err.message || t('settings_load_error');
       }
       if (problem === null) {
         say('');
-        toast(typeof done === 'function' ? done(settings) : done, false);
+        toast(said, false);
         return true;
       }
       say(problem, true);
@@ -426,13 +434,18 @@
           const chosen = chosenIn('#settings-mine-choice');
           if (chosen === null) break;
           // A partner kept from before charts pairs with the chart marked: said, by name.
-          // Past the plan's cap it does not, waits no longer, and the page says why.
-          const before = drawn;
-          const marked = (now) => {
-            const partner = library.pairedSince(before, now, chosen);
+          // When the chart is at its plan's cap the partner does not, waits no longer, and
+          // the page says why. Both are read from the settings the mark was made from,
+          // not those drawn when it was asked for: changes before it may have paired the
+          // partner already.
+          const marked = (now, was) => {
+            const partner = library.pairedSince(was, now, chosen);
             if (partner !== null) return t('settings_mine_marked_paired', { name: chartName(partner) });
-            const waiting = before.pending_partner === null || before.pending_partner === chosen ? null : library.chartWith(now, before.pending_partner);
-            return waiting === null ? t('settings_mine_marked') : t('settings_mine_marked_unpaired', { name: chartName(waiting) });
+            const waiting = was.pending_partner === null || was.pending_partner === chosen ? null : library.chartWith(now, was.pending_partner);
+            const atCap = now.couples_per_chart !== null && library.couplesOf(now, chosen).length >= now.couples_per_chart;
+            return waiting !== null && atCap && now.pending_partner === null
+              ? t('settings_mine_marked_unpaired', { name: chartName(waiting) })
+              : t('settings_mine_marked');
           };
           await once(`mark ${chosen}`, () => change('PUT', '/api/account/my-chart', { chart: chosen }, marked));
           break;
