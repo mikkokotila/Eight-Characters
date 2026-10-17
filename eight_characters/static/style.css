@@ -4052,9 +4052,9 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .bar-menu-button,
 .bar-menu-rule { display: none; }
 /* In words the tools span the bar: the switches from the left, the language and the
-   menu at the right. */
-:root[data-toolbar='words'] .chart-tools { flex: 1 1 100%; justify-content: flex-start; }
-:root[data-toolbar='words'] .chart-tools > :is(#chart-language, #today-language) { margin-inline-start: auto; }
+   menu at the right. A comparison's frame keeps its bar as in icons. */
+:root[data-toolbar='words']:not(.is-embedded) .chart-tools { flex: 1 1 100%; justify-content: flex-start; }
+:root[data-toolbar='words']:not(.is-embedded) .chart-tools > :is(#chart-language, #today-language) { margin-inline-start: auto; }
 :root[data-toolbar='words']:not(.is-embedded) .bar-menu { position: relative; display: inline-flex; }
 :root[data-toolbar='words']:not(.is-embedded) .bar-menu-button {
   display: inline-flex;
@@ -4129,10 +4129,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 /* On a phone: the page and the menu on the first line, the display across the second,
    the luck pillar and the language on the third. */
 @media (max-width: 640px) {
-  :root[data-toolbar='words'] .chart-tools > .page-switch { order: 1; }
-  :root[data-toolbar='words'] .chart-tools > .bar-menu { order: 2; margin-inline-start: auto; }
-  :root[data-toolbar='words'] .chart-tools > :not(.page-switch, .bar-menu) { order: 3; }
-  :root[data-toolbar='words'] .chart-tools > :is(#chart-language, #today-language) { order: 4; }
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .page-switch { order: 1; }
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .bar-menu { order: 2; margin-inline-start: auto; }
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :not(.page-switch, .bar-menu) { order: 3; }
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :is(#chart-language, #today-language) { order: 4; }
 }
 @media (max-width: 640px), (pointer: coarse) {
   :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action { min-height: var(--control-touch); }

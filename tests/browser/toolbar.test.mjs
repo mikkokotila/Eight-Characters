@@ -242,6 +242,13 @@ for (const profile of profiles) {
         for (const hidden of ['#copy-link-btn', '#back-btn', '#new-chart-btn', '#compare-btn']) {
           assert.equal(await frame.locator(hidden).isVisible(), false, hidden);
         }
+        // In the frame's order: the display, the luck pillar, then Copy as text.
+        const places = await frame.locator('#display-switch, #luck-switch, #copy-text-btn').evaluateAll((nodes) => nodes.map((node) => {
+          const box = node.getBoundingClientRect();
+          return [Math.round(box.top), Math.round(box.left)];
+        }));
+        assert.ok(places[0][0] <= places[1][0] && places[1][0] <= places[2][0], JSON.stringify(places));
+        assert.ok(places[1][0] < places[2][0] || places[1][1] < places[2][1], JSON.stringify(places));
         // The comparison's own actions: in words, an icon and words each.
         assert.deepEqual(await shown(page, '#compare-swap, #compare-copy-link, #compare-close'),
           toolbar === 'words' ? [['Swap sides', true], ['Copy link', true], ['Close comparison', true]] : [['', true], ['', true], ['', true]]);
