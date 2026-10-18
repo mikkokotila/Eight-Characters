@@ -172,6 +172,15 @@
     let active = null; let pending = null; let hoverTimer = null; let exitTimer = null; let fadeTimer = null;
     let keyboard = false; let escapeKeyDown = false; let dismissed = null; let touch = null; let suppressedClick = null; let hoveringTip = false;
     let touchInput = false;
+    // From a key press until the mouse moves, layout passing controls below a still
+    // pointer is not hover: it must not take the tip from the control in focus. Its place,
+    // not its movement, says it moved: WebKit can report none for a real move.
+    let pointerAt = null; let stillAt = null;
+    const moved = (event) => {
+      pointerAt = { x: event.clientX, y: event.clientY };
+      if (stillAt && (stillAt.x !== pointerAt.x || stillAt.y !== pointerAt.y)) stillAt = null;
+      return stillAt === null;
+    };
     // In the toolbar's words a menu's items say what they do, and need no tooltip.
     const trigger = (target) => {
       const node = target instanceof Element ? target.closest(selectors) : null;
@@ -246,13 +255,13 @@
       return event.clientX >= box.left && event.clientX <= box.right && event.clientY >= box.top && event.clientY <= box.bottom;
     };
     document.addEventListener('pointerover', event => {
-      if (event.pointerType === 'touch' || touchInput) return;
+      if (event.pointerType === 'touch' || touchInput || !moved(event)) return;
       if (overTip(event)) { hoveringTip = true; cancelHover(); clearTimeout(exitTimer); return; }
       const node = trigger(event.target);
       if (node && !node.contains(event.relatedTarget)) schedule(node);
     });
     document.addEventListener('pointerout', event => {
-      if (event.pointerType === 'touch' || touchInput) return;
+      if (event.pointerType === 'touch' || touchInput || !moved(event)) return;
       const node = trigger(event.target);
       if (node?.contains(event.relatedTarget) || overTip(event)) return;
       if (node && pending === node) cancelHover();
@@ -271,12 +280,14 @@
       if (dismissed?.contains(event.target)) dismissed = null;
     });
     document.addEventListener('keydown', event => {
-      keyboard = true;
+      keyboard = true; stillAt = pointerAt;
+      if (pending) cancelHover();
       if (event.key === 'Escape') { escapeKeyDown = true; dismissed = active ?? pending; hide(); }
     }, true);
     document.addEventListener('keyup', event => { if (event.key === 'Escape') escapeKeyDown = false; }, true);
     document.addEventListener('pointerdown', event => {
-      keyboard = false; dismissed = null; touchInput = event.pointerType === 'touch';
+      keyboard = false; stillAt = null; if (event.pointerType !== 'touch') pointerAt = { x: event.clientX, y: event.clientY };
+      dismissed = null; touchInput = event.pointerType === 'touch';
       const node = trigger(event.target);
       if (active && active !== node && !tip.contains(event.target)) hide();
       if (event.pointerType !== 'touch' || !node || !info(node).only || node.matches(':disabled')) return;
@@ -288,6 +299,7 @@
     document.addEventListener('pointermove', event => {
       if (touch?.id === event.pointerId && Math.hypot(event.clientX - touch.x, event.clientY - touch.y) > 10) { cancelHover(); if (touch.shown) hide(); touch = null; }
       if (event.pointerType === 'touch') return;
+      if (!moved(event)) return;
       if (touchInput) {
         if (touch !== null || (event.movementX === 0 && event.movementY === 0)) return;
         // Layout can dispatch mouse enter/leave events below a stationary

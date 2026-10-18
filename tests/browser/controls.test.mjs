@@ -111,6 +111,23 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-panel').isVisible(), false, 'Escape keeps the chart’s existing behavior');
     });
 
+    check('a still mouse that layout passes over a control leaves the focused control its description', async (page) => {
+      await openChart(page);
+      const language = page.locator('[data-chart-lang="fi"]');
+      const box = await language.boundingBox();
+      const at = { x: Math.round(box.x + box.width / 2), y: Math.round(box.y + box.height / 2) };
+      await page.mouse.move(at.x, at.y);
+      await page.keyboard.press('Tab'); await page.locator('#copy-text-btn').focus(); await tipOpen(page);
+      // What Chromium and WebKit send when a redraw puts a control below the resting pointer.
+      await language.dispatchEvent('pointerover', { pointerType: 'mouse', bubbles: true, clientX: at.x, clientY: at.y });
+      await page.waitForTimeout(700);
+      assert.equal(await page.locator(tipSelector).evaluate(node => node.classList.contains('is-visible')), true);
+      assert.equal(await page.locator(tipSelector + ' strong').textContent(), 'Copy text');
+      const link = await page.locator('#copy-link-btn').boundingBox();
+      await page.mouse.move(link.x + link.width / 2, link.y + link.height / 2, { steps: 4 });
+      await page.waitForFunction(() => document.querySelector('#control-tooltip.is-visible strong')?.textContent === 'Copy link');
+    });
+
     check('gender help describes the focused radio and preserves its other descriptions', async (page) => {
       await openChart(page);
       await page.locator('#back-btn').click();
