@@ -70,6 +70,17 @@ class BackupTestCase(unittest.TestCase):
 
 
 class TestRunBackup(BackupTestCase):
+    def test_git_maintenance_stays_in_the_owned_foreground_operation(self) -> None:
+        for setting in ('gc.autoDetach', 'maintenance.autoDetach'):
+            git(self.checkout, 'config', setting, 'true')
+            self.assertEqual(
+                backup_module._git(self.checkout, 'config', '--get', setting).strip(),
+                'false',
+            )
+            self.assertEqual(
+                git(self.checkout, 'config', '--get', setting).strip(), 'true'
+            )
+
     def test_the_first_run_writes_every_record_encrypted_and_pushes(self) -> None:
         first = self.store.create_user('first@example.com', 'fi')
         second = self.store.create_user('second@example.com', 'en')

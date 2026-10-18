@@ -117,7 +117,16 @@ def _git_run(
 ) -> subprocess.CompletedProcess[bytes]:
     try:
         return subprocess.run(
-            ('git', '-C', str(root), *args),
+            (
+                'git',
+                '-C',
+                str(root),
+                '-c',
+                'gc.autoDetach=false',
+                '-c',
+                'maintenance.autoDetach=false',
+                *args,
+            ),
             input=stdin,
             capture_output=True,
             timeout=GIT_TIMEOUT_SECONDS,
