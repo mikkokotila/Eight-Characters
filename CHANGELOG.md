@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.61.0
+## 0.62.0
 
 The last details of the look-and-feel review: one name, numbers and quotes set as a
 typesetter sets them, labels that say what they mean, a day that asks where you are
@@ -32,10 +32,30 @@ instead of sending you away, and the toolbar in words or in icons.
   Settings for this browser, is the bar as it was, pixel for pixel. On a phone the
   chart's bar is three lines where it was four.
 
+### Fixed
+- A redraw below a resting mouse pointer no longer takes the description from the
+  control the keyboard has in focus: until the pointer moves, it is not hover.
+
 ### Tests
 - New checks for the minus sign, the years before a first decade within the year (in
   the luck ribbon, column, page and life grid, in both languages), every kind of bad
   link in both languages, and Today's question for a place, kept and refused.
+
+## 0.61.0
+
+### Added
+- Configure Open-Meteo's customer geocoding endpoint and server-only API key through
+  the environment. Reject mismatched credentials or unsupported destinations at
+  startup, and never retry customer failures through the public endpoint.
+- Preserve public evaluation lookups when customer configuration is absent.
+  A commercial licence and its native acceptance remain separate deployment steps.
+
+## 0.60.2
+
+### Fixed
+- Keep backup Git garbage collection and maintenance in the foreground of their
+  owned operation, including when repository settings request detachment. Preserve
+  the stored Git settings and the existing timeout and failure handling.
 
 ## 0.60.1
 

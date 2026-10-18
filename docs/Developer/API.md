@@ -223,3 +223,21 @@ Non-2xx responses must be:
 FastAPI request validation errors are normalized through a global
 `RequestValidationError` handler and returned as `400` with this same payload
 shape.
+
+## Geocoding connection
+
+Place search uses Open-Meteo. With no customer configuration, its public endpoint
+remains available for non-commercial evaluation. Before commercial use, acquire or
+supply an appropriate [licence](https://open-meteo.com/en/pricing), then configure:
+
+```
+EC_GEOCODING_URL=https://customer-geocoding-api.open-meteo.com/v1/search
+EC_GEOCODING_API_KEY=<server-only customer key>
+```
+
+The customer endpoint and key are required together. Unsupported URLs, whitespace
+in keys and keys attached to the public endpoint stop startup. Customer errors never
+trigger a public-endpoint retry. Keys stay outside Git and client responses; do not
+enable HTTP client's request-URL logging because Open-Meteo authenticates by query
+parameter. Installation, commercial licence and a native customer lookup must be
+verified separately; configuration tests alone do not establish licensed access.
