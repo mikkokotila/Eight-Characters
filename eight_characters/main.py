@@ -141,8 +141,7 @@ QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
-    # The account settings are read before the first request: a missing or malformed
-    # one stops the app at start, naming what is wrong.
+    # Validate service and account settings before accepting requests.
     load_geocoding_config()
     accounts_from_environment()
     yield

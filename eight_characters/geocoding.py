@@ -25,7 +25,11 @@ def load_geocoding_config(
     if any(character.isspace() for character in key):
         raise ValueError('EC_GEOCODING_API_KEY must contain no whitespace.')
     if url == CUSTOMER_URL and not key:
-        raise ValueError('The customer geocoding endpoint requires EC_GEOCODING_API_KEY.')
+        raise ValueError(
+            'The customer geocoding endpoint requires EC_GEOCODING_API_KEY.'
+        )
     if url == PUBLIC_URL and key:
-        raise ValueError('EC_GEOCODING_API_KEY requires the customer geocoding endpoint.')
+        raise ValueError(
+            'EC_GEOCODING_API_KEY requires the customer geocoding endpoint.'
+        )
     return GeocodingConfig(url=url, api_key=key)

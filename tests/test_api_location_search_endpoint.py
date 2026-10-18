@@ -1,5 +1,5 @@
-import unittest
 import os
+import unittest
 from unittest.mock import AsyncMock, patch
 
 import httpx
@@ -30,7 +30,10 @@ class TestGeocodingConfig(unittest.TestCase):
     def test_invalid_or_mismatched_configuration_fails(self) -> None:
         for values in [
             {'EC_GEOCODING_URL': ''},
-            {'EC_GEOCODING_URL': 'https://example.com/v1/search', 'EC_GEOCODING_API_KEY': 'fixture-key'},
+            {
+                'EC_GEOCODING_URL': 'https://example.com/v1/search',
+                'EC_GEOCODING_API_KEY': 'fixture-key',
+            },
             {'EC_GEOCODING_URL': PUBLIC_URL + '?apikey=fixture-key'},
             {'EC_GEOCODING_URL': CUSTOMER_URL},
             {'EC_GEOCODING_API_KEY': 'fixture-key'},
@@ -41,7 +44,9 @@ class TestGeocodingConfig(unittest.TestCase):
             self.assertNotIn('fixture-key', str(raised.exception))
 
     def test_invalid_connection_stops_startup(self) -> None:
-        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': ''}):
+        with patch.dict(
+            os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': ''}
+        ):
             with self.assertRaisesRegex(ValueError, 'requires EC_GEOCODING_API_KEY'):
                 with TestClient(app):
                     self.fail('Invalid geocoding configuration started serving.')
@@ -56,12 +61,25 @@ class TestGeocodingRouting(unittest.IsolatedAsyncioTestCase):
             return httpx.Response(200, json={'results': []})
 
         client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
-        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'}):
+        with patch.dict(
+            os.environ,
+            {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'},
+        ):
             with patch('eight_characters.main.httpx.AsyncClient', return_value=client):
-                self.assertEqual(await _search_city_candidates(' Helsinki ', count=50), [])
+                self.assertEqual(
+                    await _search_city_candidates(' Helsinki ', count=50), []
+                )
         self.assertEqual(len(requests), 1)
         self.assertEqual(str(requests[0].url).split('?')[0], CUSTOMER_URL)
-        self.assertEqual(dict(requests[0].url.params), {'name': 'Helsinki', 'count': '20', 'language': 'en', 'apikey': 'fixture-key'})
+        self.assertEqual(
+            dict(requests[0].url.params),
+            {
+                'name': 'Helsinki',
+                'count': '20',
+                'language': 'en',
+                'apikey': 'fixture-key',
+            },
+        )
 
     async def test_failed_customer_request_never_falls_back(self) -> None:
         requests: list[httpx.Request] = []
@@ -71,7 +89,10 @@ class TestGeocodingRouting(unittest.IsolatedAsyncioTestCase):
             return httpx.Response(403)
 
         client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
-        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'}):
+        with patch.dict(
+            os.environ,
+            {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'},
+        ):
             with patch('eight_characters.main.httpx.AsyncClient', return_value=client):
                 with self.assertRaises(CityLookupServiceError) as raised:
                     await _search_city_candidates('Helsinki')
