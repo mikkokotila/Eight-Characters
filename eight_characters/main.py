@@ -76,6 +76,7 @@ from eight_characters.first_chart import (
     build_first_chart,
     parse_first_birth,
 )
+from eight_characters.geocoding import load_geocoding_config
 from eight_characters.interactions import detect_interactions
 from eight_characters.luck_context import build_luck_context
 from eight_characters.luck_pillars import (
@@ -142,6 +143,7 @@ QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     # The account settings are read before the first request: a missing or malformed
     # one stops the app at start, naming what is wrong.
+    load_geocoding_config()
     accounts_from_environment()
     yield
 
@@ -472,12 +474,19 @@ async def _search_city_candidates(query: str, count: int = 6) -> list[GeocodeRes
         return []
 
     safe_count = max(1, min(count, 20))
-    geocode_url = 'https://geocoding-api.open-meteo.com/v1/search'
+    geocoding = load_geocoding_config()
+    params: dict[str, str | int] = {
+        'name': city_name,
+        'count': safe_count,
+        'language': 'en',
+    }
+    if geocoding.api_key:
+        params['apikey'] = geocoding.api_key
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             response = await client.get(
-                geocode_url,
-                params={'name': city_name, 'count': safe_count, 'language': 'en'},
+                geocoding.url,
+                params=params,
             )
         response.raise_for_status()
     except httpx.HTTPStatusError as exc:

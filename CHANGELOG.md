@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.61.0
+
+### Added
+- Configure Open-Meteo's customer geocoding endpoint and server-only API key through
+  the environment. Reject mismatched credentials or unsupported destinations at
+  startup, and never retry customer failures through the public endpoint.
+- Preserve public evaluation lookups when customer configuration is absent.
+  A commercial licence and its native acceptance remain separate deployment steps.
+
 ## 0.60.1
 
 Stage 2's follow-ups, found by the full browser suites and the WebKit pixel diff on main.

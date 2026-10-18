@@ -1,14 +1,83 @@
 import unittest
+import os
 from unittest.mock import AsyncMock, patch
 
+import httpx
 from fastapi.testclient import TestClient
 
+from eight_characters.geocoding import CUSTOMER_URL, PUBLIC_URL, load_geocoding_config
 from eight_characters.main import (
     CityLookupServiceError,
     LocationInput,
     ResolvedCity,
+    _search_city_candidates,
     app,
 )
+
+
+class TestGeocodingConfig(unittest.TestCase):
+    def test_unconfigured_connection_preserves_public_evaluation(self) -> None:
+        config = load_geocoding_config({})
+        self.assertEqual(config.url, PUBLIC_URL)
+        self.assertEqual(config.api_key, '')
+
+    def test_customer_key_is_excluded_from_representation(self) -> None:
+        config = load_geocoding_config(
+            {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'}
+        )
+        self.assertNotIn('fixture-key', repr(config))
+
+    def test_invalid_or_mismatched_configuration_fails(self) -> None:
+        for values in [
+            {'EC_GEOCODING_URL': ''},
+            {'EC_GEOCODING_URL': 'https://example.com/v1/search', 'EC_GEOCODING_API_KEY': 'fixture-key'},
+            {'EC_GEOCODING_URL': PUBLIC_URL + '?apikey=fixture-key'},
+            {'EC_GEOCODING_URL': CUSTOMER_URL},
+            {'EC_GEOCODING_API_KEY': 'fixture-key'},
+            {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key\n'},
+        ]:
+            with self.subTest(values=values), self.assertRaises(ValueError) as raised:
+                load_geocoding_config(values)
+            self.assertNotIn('fixture-key', str(raised.exception))
+
+    def test_invalid_connection_stops_startup(self) -> None:
+        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': ''}):
+            with self.assertRaisesRegex(ValueError, 'requires EC_GEOCODING_API_KEY'):
+                with TestClient(app):
+                    self.fail('Invalid geocoding configuration started serving.')
+
+
+class TestGeocodingRouting(unittest.IsolatedAsyncioTestCase):
+    async def test_customer_request_uses_only_customer_endpoint(self) -> None:
+        requests: list[httpx.Request] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(200, json={'results': []})
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'}):
+            with patch('eight_characters.main.httpx.AsyncClient', return_value=client):
+                self.assertEqual(await _search_city_candidates(' Helsinki ', count=50), [])
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(str(requests[0].url).split('?')[0], CUSTOMER_URL)
+        self.assertEqual(dict(requests[0].url.params), {'name': 'Helsinki', 'count': '20', 'language': 'en', 'apikey': 'fixture-key'})
+
+    async def test_failed_customer_request_never_falls_back(self) -> None:
+        requests: list[httpx.Request] = []
+
+        def respond(request: httpx.Request) -> httpx.Response:
+            requests.append(request)
+            return httpx.Response(403)
+
+        client = httpx.AsyncClient(transport=httpx.MockTransport(respond))
+        with patch.dict(os.environ, {'EC_GEOCODING_URL': CUSTOMER_URL, 'EC_GEOCODING_API_KEY': 'fixture-key'}):
+            with patch('eight_characters.main.httpx.AsyncClient', return_value=client):
+                with self.assertRaises(CityLookupServiceError) as raised:
+                    await _search_city_candidates('Helsinki')
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(str(requests[0].url).split('?')[0], CUSTOMER_URL)
+        self.assertNotIn('fixture-key', str(raised.exception))
 
 
 class TestApiLocationSearchEndpoint(unittest.TestCase):
