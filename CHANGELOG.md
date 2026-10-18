@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.60.2
+
+### Fixed
+- Keep backup Git garbage collection and maintenance in the foreground of their
+  owned operation, including when repository settings request detachment. Preserve
+  the stored Git settings and the existing timeout and failure handling.
+
 ## 0.60.1
 
 Stage 2's follow-ups, found by the full browser suites and the WebKit pixel diff on main.
