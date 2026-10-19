@@ -284,7 +284,6 @@ class ServiceApi(unittest.TestCase):
         acquired = subprocess.run(argv, capture_output=True, text=True, check=False)
         self.assertEqual(acquired.returncode, 0, acquired.stderr)
 
-
     def test_cancel_stops_proven_subscription_while_unsupported_money_stays_held(self):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
@@ -388,7 +387,9 @@ class ServiceApi(unittest.TestCase):
             self.service.authority, 'unsent_is_proven', return_value=False
         ):
             response = self.client.request(
-                'DELETE', '/api/account', json={'key': self.key, 'email': self.user.email}
+                'DELETE',
+                '/api/account',
+                json={'key': self.key, 'email': self.user.email},
             )
             self.assertEqual(response.status_code, 503)
             self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
