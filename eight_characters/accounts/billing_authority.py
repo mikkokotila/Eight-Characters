@@ -14,6 +14,7 @@ from datetime import UTC, datetime, timedelta
 
 from eight_characters.accounts.billing import OFFERS
 from eight_characters.accounts.billing_access import (
+    BillingBusy,
     BillingConfig,
     BillingHold,
     check_scope,
@@ -457,7 +458,7 @@ class Authority:
                 (owner_id,),
             ).fetchone()
             if existing is not None and existing[0] == runtime[0] and existing[2] > now:
-                raise BillingHold('uncertain_operation')
+                raise BillingBusy()
             generation = (existing[1] if existing is not None else 0) + 1
             token = secrets.token_hex(32)
             connection.execute(
@@ -506,6 +507,15 @@ class Authority:
         ):
             raise BillingHold('uncertain_operation')
         return owner
+
+    def renew(self, lease: Lease) -> None:
+        """Extend live work, never revive an expired, fenced or replaced claim."""
+        with self.write() as connection:
+            self._check_lease(connection, lease)
+            connection.execute(
+                'UPDATE billing_leases SET expires_at=? WHERE record_id=? AND token=?',
+                (int(self.clock().timestamp()) + self.config.lease_seconds, lease.owner_id, lease.token),
+            )
 
     def apply(
         self,
@@ -572,6 +582,11 @@ class Authority:
                 connection.execute(
                     'UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?',
                     (old.id, lease.token),
+                )
+            else:
+                connection.execute(
+                    'UPDATE billing_leases SET expires_at=? WHERE record_id=? AND token=?',
+                    (int(self.clock().timestamp()) + self.config.lease_seconds, old.id, lease.token),
                 )
         return replacement
 

@@ -6,7 +6,7 @@ provider errors stay in memory; exceptions expose only stable operational reason
 
 import hashlib
 import re
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from typing import Any, cast
 
 import httpx
@@ -70,9 +70,10 @@ def request_digest(method: str, path: str, parameters: Parameters) -> str:
 
 
 class Stripe:
-    def __init__(self, config: BillingConfig, client: httpx.Client) -> None:
+    def __init__(self, config: BillingConfig, client: httpx.Client, *, before_request: Callable[[], None] | None = None) -> None:
         self.config = config
         self.client = client
+        self.before_request = before_request
 
     def request(
         self,
@@ -94,6 +95,8 @@ class Stripe:
         )
         if not allowed or (method != 'GET' and not idempotency_key):
             raise BillingHold('processing_failed')
+        if self.before_request is not None:
+            self.before_request()
         headers = {
             'Authorization': f'Bearer {self.config.catalogue.api_key}',
             'Stripe-Version': self.config.catalogue.api_version,

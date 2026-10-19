@@ -43,6 +43,13 @@ class BillingHold(BillingError):
         super().__init__(reason)
 
 
+class BillingBusy(BillingHold):
+    """Another live worker owns this account; unrelated accounts can proceed."""
+
+    def __init__(self) -> None:
+        super().__init__('uncertain_operation')
+
+
 @dataclass(frozen=True)
 class BillingConfig:
     catalogue: SandboxCatalogueConfig

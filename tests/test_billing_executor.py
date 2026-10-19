@@ -11,6 +11,32 @@ from tests.test_billing_authority import AuthorityCase
 
 
 class NativeExecution(AuthorityCase):
+    def test_native_history_longer_than_one_lease_keeps_a_live_fenced_claim(self):
+        calls = []
+        def slow(request):
+            calls.append(request.url.path)
+            self.clock.advance(self.config.lease_seconds - 1)
+            if request.method == 'GET':
+                return httpx.Response(200, json={'object': 'account', 'id': self.config.catalogue.account_id}, headers={'Stripe-Version': self.config.catalogue.api_version})
+            return self.response(request)
+        work = self.work(slow)
+        for _ in range(5):
+            work.native.account()
+        work.execute('customer_create')
+        self.assertEqual(work.owner.customer_id, 'cus_created')
+        self.assertEqual(len(calls), 6)
+        self.authority.release(work.lease)
+
+    def test_renewal_cannot_revive_expired_or_replaced_work(self):
+        work = self.work(self.response)
+        self.clock.advance(self.config.lease_seconds + 1)
+        with self.assertRaises(BillingHold):
+            work.renew()
+        lease, _ = self.authority.claim(self.user.id)
+        with self.assertRaises(BillingHold):
+            work.renew()
+        self.authority.release(lease)
+
     def work(self, callback):
         client = httpx.Client(transport=httpx.MockTransport(callback))
         self.addCleanup(client.close)

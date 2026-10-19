@@ -38,6 +38,12 @@ class Work:
     owner: AccountBillingRecord
     discovered: bool = False
 
+    def __post_init__(self) -> None:
+        self.native = Stripe(self.native.config, self.native.client, before_request=self.renew)
+
+    def renew(self) -> None:
+        self.authority.renew(self.lease)
+
     def save(self, owner: AccountBillingRecord) -> None:
         self.owner = self.authority.apply(self.lease, owner, keep_lease=True)
         self.lease = replace(

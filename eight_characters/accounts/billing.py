@@ -5,7 +5,7 @@ operator configuration. This module creates no customer, checkout or entitlement
 """
 
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any, Final, cast
 
@@ -92,7 +92,10 @@ def _native_get(
     path: str,
     *,
     expanded_product: bool = False,
+    before_request: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
+    if before_request is not None:
+        before_request()
     try:
         response = client.get(
             f'https://api.stripe.com/v1/{path}',
@@ -173,16 +176,18 @@ def _verify_price(
 def verify_sandbox_catalogue(
     config: SandboxCatalogueConfig,
     client: httpx.Client,
+    *,
+    before_request: Callable[[], None] | None = None,
 ) -> dict[str, Any]:
     """Only GET: bind the key's own account, then independently inspect all prices."""
-    account = _native_get(client, config, 'account')
+    account = _native_get(client, config, 'account', before_request=before_request)
     if account.get('object') != 'account' or account.get('id') != config.account_id:
         raise BillingError('The Stripe credential belongs to a different account.')
     verified: list[dict[str, Any]] = []
     for index, offer in enumerate(OFFERS):
         price_id = config.price_ids[index]
         product_id = config.product_ids[index // 2]
-        price = _native_get(client, config, f'prices/{price_id}', expanded_product=True)
+        price = _native_get(client, config, f'prices/{price_id}', expanded_product=True, before_request=before_request)
         _verify_price(price, offer, price_id, product_id)
         verified.append(
             {

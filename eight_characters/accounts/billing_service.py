@@ -469,7 +469,7 @@ class BillingService:
 
     def _observe(self, work: Work) -> Observation:
         return observe_owner(
-            self.native,
+            work.native,
             work.scope,
             work.owner,
             wall_time=int(self.clock().timestamp()),
@@ -660,14 +660,14 @@ class BillingService:
                 raise BillingHold('uncertain_operation')
             for invoice in observation.invoices:
                 if invoice.get('status') in ('draft', 'open', 'void', 'uncollectible'):
-                    for payment in self.native.all(
+                    for payment in work.native.all(
                         'invoice_payments',
                         {'invoice': identity(invoice.get('id'), 'in')},
                     ):
                         funding = mapping(payment.get('payment'))
                         if funding.get('type') != 'payment_intent':
                             raise BillingHold('unsupported_funding')
-                        attempt = self.native.request(
+                        attempt = work.native.request(
                             'GET',
                             'payment_intents/'
                             + identity(funding.get('payment_intent'), 'pi'),
@@ -683,7 +683,7 @@ class BillingService:
                             )
             self._save_money(work, observation)
             work.execute('customer_redact', subject_id=customer_id)
-            customer = self.native.request(
+            customer = work.native.request(
                 'GET', 'customers/' + identity(customer_id, 'cus')
             )
             if read_deletion(self.config, customer) is None or any(
@@ -749,7 +749,7 @@ class BillingService:
         work = self._claim(owner_id)
         try:
             if proofs is None:
-                proofs = discover_customers(self.native, work.scope)
+                proofs = discover_customers(work.native, work.scope)
             observation = self._reconcile(work, proofs)
             if not self._delete(work, observation):
                 self.authority.apply(
@@ -768,7 +768,7 @@ class BillingService:
         work = self._claim(owner_id)
         try:
             observation = self._reconcile(
-                work, discover_customers(self.native, work.scope)
+                work, discover_customers(work.native, work.scope)
             )
             if work.owner.lifecycle != 'active':
                 raise BillingHold('deleted_owner')
@@ -812,7 +812,7 @@ class BillingService:
                         'Existing paid time or collection must finish before another purchase.'
                     )
             try:
-                verify_sandbox_catalogue(self.config.catalogue, self.native.client)
+                verify_sandbox_catalogue(self.config.catalogue, self.native.client, before_request=work.renew)
             except BillingError:
                 raise BillingHold('native_unavailable') from None
             offer = next(
@@ -873,7 +873,7 @@ class BillingService:
         intent = next(value for value in work.owner.intents if value.id == intent_id)
         if intent.checkout_id is None:
             raise BillingHold('uncertain_operation')
-        session = self.native.request('GET', 'checkout/sessions/' + intent.checkout_id)
+        session = work.native.request('GET', 'checkout/sessions/' + intent.checkout_id)
         sealed_checkout(self.config, work.owner, session)
         reply: dict[str, object] = {
             'intent_id': intent.id,
