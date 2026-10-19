@@ -88,6 +88,16 @@ class NativeOperations(unittest.TestCase):
         operation, request = self.operation('checkout_create', 'checkout_create')
         again = request_for(self.config, self.origin, self.scope, self.owner, operation)
         self.assertEqual(again.digest, request.digest)
+        self.assertNotIn('payment_method_types[0]', again.parameters)
+        self.assertEqual(
+            again.parameters['payment_method_configuration'],
+            self.config.payment_method_configuration,
+        )
+        with self.assertRaises(BillingHold):
+            request_for(
+                replace(self.config, payment_method_configuration='pmc_changed'),
+                self.origin, self.scope, self.owner, operation,
+            )
         self.assertEqual(
             again.parameters['line_items[0][price]'], self.scope.offers[0].price_id
         )

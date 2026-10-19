@@ -55,6 +55,7 @@ class Provider:
         self.calls = []
         self.slow_sessions = False
         self.session_pages = 0
+        self.payment_methods = ['card']
         self.closed = False
         self.client = httpx.Client(transport=httpx.MockTransport(self.respond))
 
@@ -149,7 +150,7 @@ class Provider:
                 customer=params['customer'],
                 metadata=metadata,
                 mode='subscription',
-                payment_method_types=['card'],
+                payment_method_types=self.payment_methods,
                 subscription=None,
                 status='open',
                 created=int(self.clock().timestamp()),
@@ -235,6 +236,14 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_unsupported_checkout_methods_never_return_a_bearer_url(self):
+        self.provider.payment_methods = ['card', 'link']
+        response = self.checkout()
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(response.json()['billing']['reason'], 'unsupported_funding')
+        self.assertNotIn('checkout_url', response.json())
+        self.assertEqual(len(self.provider.sessions), 1)
+
     def test_long_paginated_session_discovery_renews_the_current_owner_lease(self):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.slow_sessions = True

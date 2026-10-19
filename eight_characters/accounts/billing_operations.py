@@ -197,7 +197,7 @@ def prepare_request(
         parameters = {
             'mode': 'subscription',
             'customer': customer_id,
-            'payment_method_types[0]': 'card',
+            'payment_method_configuration': config.payment_method_configuration,
             'line_items[0][price]': offer.price_id,
             'line_items[0][quantity]': '1',
             'expires_at': str(intent.expires_at),

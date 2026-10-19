@@ -61,6 +61,7 @@ class BillingConfig:
     purchase_clock: str | None
     poll_seconds: int
     lease_seconds: int
+    payment_method_configuration: str
 
     @property
     def binding_key_id(self) -> str:
@@ -85,6 +86,7 @@ def load_runtime_config(
         'EC_BILLING_PURCHASE_CLOCK',
         'EC_BILLING_POLL_SECONDS',
         'EC_BILLING_LEASE_SECONDS',
+        'EC_STRIPE_PAYMENT_METHOD_CONFIGURATION',
     )
     if catalogue is None:
         if any(name in values for name in names):
@@ -119,8 +121,12 @@ def load_runtime_config(
         raise BillingError('The purchase clock must be among the retained clocks.')
     poll = int(_setting(values, 'EC_BILLING_POLL_SECONDS', r'[1-9][0-9]{0,3}'))
     lease = int(_setting(values, 'EC_BILLING_LEASE_SECONDS', r'[1-9][0-9]{0,3}'))
+    payment_configuration = _setting(
+        values, 'EC_STRIPE_PAYMENT_METHOD_CONFIGURATION', r'pmc_[A-Za-z0-9]+'
+    )
     return BillingConfig(
-        catalogue, namespace, key, version, secrets, clocks, purchase_clock, poll, lease
+        catalogue, namespace, key, version, secrets, clocks, purchase_clock, poll, lease,
+        payment_configuration,
     )
 
 

@@ -294,6 +294,7 @@ class Work:
                     'object': 'checkout.session',
                     'customer': owner.customer_id,
                     'mode': 'subscription',
+                    'payment_method_types': ['card'],
                 },
             )
             intent = next(value for value in owner.intents if value.id == intent_id)

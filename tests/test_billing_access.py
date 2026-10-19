@@ -29,6 +29,7 @@ def configuration(**updates):
         'EC_BILLING_NAMESPACE': 'a' * 32,
         'EC_BILLING_BINDING_KEY': 'B' * 43,
         'EC_STRIPE_WEBHOOK_SECRET': 'whsec_fixtureOnly',
+        'EC_STRIPE_PAYMENT_METHOD_CONFIGURATION': 'pmc_fixtureOnly',
         'EC_BILLING_TEST_CLOCK_IDS': 'clock_one,clock_two',
         'EC_BILLING_PURCHASE_CLOCK': 'clock_one',
         'EC_BILLING_POLL_SECONDS': '5',
