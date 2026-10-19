@@ -1430,7 +1430,9 @@ class TestSettingsApi(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.accounts = install_accounts(cls)
+        # Each test signs in a different account through this one test client.
+        # Sign-in rate limits have their own suite; do not share its hourly budget.
+        cls.accounts = install_accounts(cls, EC_CODE_REQUESTS_PER_HOUR_PER_CLIENT='100')
 
     def setUp(self) -> None:
         self.client = site_client()
