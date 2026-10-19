@@ -30,6 +30,7 @@ from eight_characters.accounts.billing_records import (
     resource_claims,
     validate_billing_graph,
 )
+from eight_characters.accounts.billing_webhook import Delivery
 from eight_characters.accounts.records import (
     canonical_json,
     new_id,
@@ -38,14 +39,13 @@ from eight_characters.accounts.records import (
 )
 from eight_characters.accounts.store import (
     AccountStore,
+    account_connection,
     billing_records_in,
     check_database_version,
-    account_connection,
     log_record_change,
     user_in,
     users_in,
 )
-from eight_characters.accounts.billing_webhook import Delivery
 
 
 @dataclass(frozen=True)
