@@ -114,7 +114,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                 print(json.dumps({'status': 'disabled', 'checkout_available': False}))
                 return 2
             with httpx.Client() as client:
-                print(json.dumps(verify_sandbox_catalogue(config, client), sort_keys=True))
+                print(
+                    json.dumps(verify_sandbox_catalogue(config, client), sort_keys=True)
+                )
         elif command == 'init':
             database = cast(Path, args.database)
             AccountStore.create(database)

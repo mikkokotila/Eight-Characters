@@ -60,10 +60,14 @@ def load_billing_config(values: Mapping[str, str]) -> SandboxCatalogueConfig | N
     mode = values.get('EC_BILLING_MODE', 'disabled')
     if mode == 'disabled':
         if any(name.startswith('EC_STRIPE_') for name in values):
-            raise BillingError('Stripe configuration is present while billing is disabled.')
+            raise BillingError(
+                'Stripe configuration is present while billing is disabled.'
+            )
         return None
     if mode != 'sandbox':
-        raise BillingError('EC_BILLING_MODE must be disabled or sandbox; live billing is unavailable.')
+        raise BillingError(
+            'EC_BILLING_MODE must be disabled or sandbox; live billing is unavailable.'
+        )
     key = _required(values, 'EC_STRIPE_API_KEY', r'(?:sk|rk)_test_[A-Za-z0-9]+')
     version = _required(values, 'EC_STRIPE_API_VERSION', r'\d{4}-\d{2}-\d{2}\.[a-z]+')
     account = _required(values, 'EC_STRIPE_ACCOUNT_ID', r'acct_[A-Za-z0-9]+')
@@ -76,28 +80,42 @@ def load_billing_config(values: Mapping[str, str]) -> SandboxCatalogueConfig | N
         for plan in ('basic', 'plus', 'pro')
     )
     if len(set(prices)) != len(prices) or len(set(products)) != len(products):
-        raise BillingError('Each offer needs its own price; each plan needs its own product.')
+        raise BillingError(
+            'Each offer needs its own price; each plan needs its own product.'
+        )
     return SandboxCatalogueConfig(key, version, account, prices, products)
 
 
 def _native_get(
-    client: httpx.Client, config: SandboxCatalogueConfig, path: str,
-    *, expanded_product: bool = False,
+    client: httpx.Client,
+    config: SandboxCatalogueConfig,
+    path: str,
+    *,
+    expanded_product: bool = False,
 ) -> dict[str, Any]:
     try:
         response = client.get(
             f'https://api.stripe.com/v1/{path}',
-            headers={'Authorization': f'Bearer {config.api_key}', 'Stripe-Version': config.api_version},
+            headers={
+                'Authorization': f'Bearer {config.api_key}',
+                'Stripe-Version': config.api_version,
+            },
             params={'expand[]': 'product'} if expanded_product else None,
             timeout=10.0,
             follow_redirects=False,
         )
     except httpx.HTTPError:
-        raise BillingError('Stripe could not be reached; catalogue remains unverified.') from None
+        raise BillingError(
+            'Stripe could not be reached; catalogue remains unverified.'
+        ) from None
     if response.status_code != 200:
-        raise BillingError(f'Stripe catalogue read failed (HTTP {response.status_code}).')
+        raise BillingError(
+            f'Stripe catalogue read failed (HTTP {response.status_code}).'
+        )
     if response.headers.get('Stripe-Version') != config.api_version:
-        raise BillingError('Stripe response API version differs from the configured version.')
+        raise BillingError(
+            'Stripe response API version differs from the configured version.'
+        )
     try:
         value = response.json()
     except ValueError:
@@ -107,7 +125,9 @@ def _native_get(
     return cast(dict[str, Any], value)
 
 
-def _verify_price(price: dict[str, Any], offer: Offer, price_id: str, product_id: str) -> None:
+def _verify_price(
+    price: dict[str, Any], offer: Offer, price_id: str, product_id: str
+) -> None:
     recurring = price.get('recurring')
     product = price.get('product')
     if not isinstance(recurring, dict) or not isinstance(product, dict):
@@ -115,14 +135,24 @@ def _verify_price(price: dict[str, Any], offer: Offer, price_id: str, product_id
     recurring = cast(dict[str, Any], recurring)
     product = cast(dict[str, Any], product)
     expected = {
-        'id': price_id, 'object': 'price', 'active': True, 'livemode': False,
-        'currency': 'usd', 'unit_amount': offer.amount, 'type': 'recurring',
+        'id': price_id,
+        'object': 'price',
+        'active': True,
+        'livemode': False,
+        'currency': 'usd',
+        'unit_amount': offer.amount,
+        'type': 'recurring',
         'unit_amount_decimal': str(offer.amount),
-        'billing_scheme': 'per_unit', 'tax_behavior': 'exclusive',
+        'billing_scheme': 'per_unit',
+        'tax_behavior': 'exclusive',
     }
     if (
-        any(type(price.get(key)) is not type(value) or price[key] != value for key, value in expected.items())
-        or not {'custom_unit_amount', 'transform_quantity', 'tiers_mode'} <= price.keys()
+        any(
+            type(price.get(key)) is not type(value) or price[key] != value
+            for key, value in expected.items()
+        )
+        or not {'custom_unit_amount', 'transform_quantity', 'tiers_mode'}
+        <= price.keys()
         or 'trial_period_days' not in recurring
         or recurring.get('interval') != offer.interval
         or type(recurring.get('interval_count')) is not int
@@ -141,7 +171,8 @@ def _verify_price(price: dict[str, Any], offer: Offer, price_id: str, product_id
 
 
 def verify_sandbox_catalogue(
-    config: SandboxCatalogueConfig, client: httpx.Client,
+    config: SandboxCatalogueConfig,
+    client: httpx.Client,
 ) -> dict[str, Any]:
     """Only GET: bind the key's own account, then independently inspect all prices."""
     account = _native_get(client, config, 'account')
@@ -153,16 +184,28 @@ def verify_sandbox_catalogue(
         product_id = config.product_ids[index // 2]
         price = _native_get(client, config, f'prices/{price_id}', expanded_product=True)
         _verify_price(price, offer, price_id, product_id)
-        verified.append({
-            'plan': offer.plan, 'period': offer.period, 'price_id': price_id,
-            'product_id': product_id, 'currency': 'usd', 'unit_amount': offer.amount,
-            'interval': offer.interval, 'interval_count': 1, 'required_quantity': 1,
-            'tax_behavior': 'exclusive',
-        })
+        verified.append(
+            {
+                'plan': offer.plan,
+                'period': offer.period,
+                'price_id': price_id,
+                'product_id': product_id,
+                'currency': 'usd',
+                'unit_amount': offer.amount,
+                'interval': offer.interval,
+                'interval_count': 1,
+                'required_quantity': 1,
+                'tax_behavior': 'exclusive',
+            }
+        )
     return {
-        'status': 'catalogue_verified', 'mode': 'sandbox',
-        'account_id': config.account_id, 'api_version': config.api_version,
-        'offers': verified, 'checkout_available': False,
-        'payment_verified': False, 'paid_access_verified': False,
+        'status': 'catalogue_verified',
+        'mode': 'sandbox',
+        'account_id': config.account_id,
+        'api_version': config.api_version,
+        'offers': verified,
+        'checkout_available': False,
+        'payment_verified': False,
+        'paid_access_verified': False,
         'tax_calculation_verified': False,
     }
