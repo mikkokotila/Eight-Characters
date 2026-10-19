@@ -576,3 +576,17 @@ verify encrypted recovery, deploy this reader and drain older unguarded app/back
 processes. Rollback never means discarding financial state to run an older image.
 The source contract is Eight-Characters #134/#135; native purchase/access acceptance
 belongs to #136. No production billing configuration or live checkout is enabled.
+
+### Pending deletion and missing personal identities
+
+Account billing record schema 2 preserves a deletion request whose Customer-create
+outcome is unknown: its native target and marker are null together until resolved.
+The request time, nonce and deleting state remain durable. Held/deleting schema-2
+financial owners can survive an empty personal restore; they cannot become active
+without their user, and a completed deleted owner cannot coexist with that user.
+The writer must establish native outcomes/cleanup before completing erasure; null
+fields and restored local operation flags never prove there were no side effects.
+
+Schema-1 bytes and presence/non-null deletion requirements are unchanged. Scope
+and Event records stay schema 1, the shared SQL stays version 5, and normal reader
+create/open stays schema 4. Deploy this reader before the writer emits schema 2.
