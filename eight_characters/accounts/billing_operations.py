@@ -364,9 +364,7 @@ def read_customer_binding(
     if not _matches_mac(tag, expected):
         raise BillingHold('ownership_conflict')
     seal = values.get('ec_customer_mac')
-    sealed = _matches_mac(
-        seal, customer_mac(config, owner, customer_id, original_id)
-    )
+    sealed = _matches_mac(seal, customer_mac(config, owner, customer_id, original_id))
     return owner, original_id, sealed
 
 

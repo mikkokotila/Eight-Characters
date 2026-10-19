@@ -139,13 +139,25 @@ class NativeOperations(unittest.TestCase):
                 self.assertFalse(
                     read_customer_binding(
                         self.config,
-                        {**customer, 'metadata': {**customer['metadata'], 'ec_customer_mac': invalid}},
+                        {
+                            **customer,
+                            'metadata': {
+                                **customer['metadata'],
+                                'ec_customer_mac': invalid,
+                            },
+                        },
                     )[2]
                 )
                 with self.assertRaises(BillingHold):
                     read_customer_binding(
                         self.config,
-                        {**customer, 'metadata': {**customer['metadata'], 'ec_creation_mac': invalid}},
+                        {
+                            **customer,
+                            'metadata': {
+                                **customer['metadata'],
+                                'ec_creation_mac': invalid,
+                            },
+                        },
                     )
         with self.assertRaises(BillingHold):
             read_customer_binding(
@@ -180,8 +192,10 @@ class NativeOperations(unittest.TestCase):
             (self.intent.id, self.intent.offer_id),
         )
         for changes in (
-            {'ec_offer': 'b' * 64}, {'ec_intent': new_id()},
-            {'ec_checkout_mac': 'å' * 64}, {'ec_creation_mac': 'å' * 64},
+            {'ec_offer': 'b' * 64},
+            {'ec_intent': new_id()},
+            {'ec_checkout_mac': 'å' * 64},
+            {'ec_creation_mac': 'å' * 64},
         ):
             with self.assertRaises(BillingHold):
                 sealed_checkout(
@@ -246,7 +260,10 @@ class NativeOperations(unittest.TestCase):
         with self.assertRaises(BillingHold):
             read_deletion(
                 self.config,
-                {**customer, 'metadata': {**customer['metadata'], 'ec_delete_mac': 'å' * 64}},
+                {
+                    **customer,
+                    'metadata': {**customer['metadata'], 'ec_delete_mac': 'å' * 64},
+                },
             )
         with self.assertRaises(BillingHold) as failure:
             read_deletion(
