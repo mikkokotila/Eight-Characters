@@ -80,7 +80,7 @@ class Work:
                 )
             }
         )
-        operations = []
+        operations: list[Operation] = []
         for operation in owner.operations:
             if operation in creators:
                 request = prepare_request(
