@@ -19,6 +19,7 @@ from starlette.concurrency import run_in_threadpool
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
+from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.records import (
     Birth,
     ChosenSchools,
@@ -27,7 +28,6 @@ from eight_characters.accounts.records import (
 )
 from eight_characters.accounts.records import Place as AccountPlace
 from eight_characters.accounts.store import BillingReadOnly
-from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.web import (
     AccountsDependency,
     BirthBody,
@@ -40,8 +40,8 @@ from eight_characters.accounts.web import (
     place_of,
     require_account,
 )
-from eight_characters.accounts.web import router as account_router
 from eight_characters.accounts.web import provider_router as billing_provider_router
+from eight_characters.accounts.web import router as account_router
 from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
 from eight_characters.data import (
@@ -170,7 +170,14 @@ app.include_router(billing_provider_router)
 
 @app.exception_handler(BillingHold)
 async def billing_temporarily_held(_request: Request, exc: BillingHold) -> JSONResponse:
-    return JSONResponse(status_code=503, content={'detail': 'Billing verification is temporarily unavailable.', 'billing': {'status': 'held', 'reason': exc.reason}}, headers={'Cache-Control': 'no-store'})
+    return JSONResponse(
+        status_code=503,
+        content={
+            'detail': 'Billing verification is temporarily unavailable.',
+            'billing': {'status': 'held', 'reason': exc.reason},
+        },
+        headers={'Cache-Control': 'no-store'},
+    )
 
 
 @app.exception_handler(BillingReadOnly)

@@ -19,23 +19,31 @@ from datetime import UTC, datetime, timedelta
 from email.utils import parseaddr
 from functools import lru_cache
 from pathlib import Path
-from typing import Annotated, Any, Final, Literal, TypeVar
+from typing import Annotated, Any, Final, Literal, NotRequired, TypeVar
 from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
-from fastapi.responses import RedirectResponse
 from fastapi import Path as PathPart
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
-from typing_extensions import NotRequired, TypedDict
+from typing_extensions import TypedDict
 
 from eight_characters.accounts.billing import BillingError
-from eight_characters.accounts.billing_access import BillingConfig, BillingHold, load_runtime_config
-from eight_characters.accounts.billing_records import AccountBillingRecord
+from eight_characters.accounts.billing_access import (
+    BillingConfig,
+    BillingHold,
+    load_runtime_config,
+)
 from eight_characters.accounts.billing_native import Stripe
+from eight_characters.accounts.billing_records import AccountBillingRecord
 from eight_characters.accounts.billing_service import BillingService, PurchaseConflict
-from eight_characters.accounts.billing_webhook import MAX_BODY, InvalidDelivery, verify_delivery
+from eight_characters.accounts.billing_webhook import (
+    MAX_BODY,
+    InvalidDelivery,
+    verify_delivery,
+)
 from eight_characters.accounts.mail import (
     DirectoryTransport,
     Mailer,
@@ -306,9 +314,23 @@ class Accounts:
         billing_client: httpx.Client | None = None,
     ) -> 'Accounts':
         now = clock or (lambda: datetime.now(UTC))
-        native = None if config.billing is None else Stripe(config.billing, billing_client if billing_client is not None else httpx.Client())
-        store = AccountStore.open(config.database, clock=now, billing_config=config.billing, billing_clock=None if native is None else native.clock)
-        if store.schema_version() > SCHEMA_VERSION or (store.financially_managed() and config.billing is None):
+        native = (
+            None
+            if config.billing is None
+            else Stripe(
+                config.billing,
+                billing_client if billing_client is not None else httpx.Client(),
+            )
+        )
+        store = AccountStore.open(
+            config.database,
+            clock=now,
+            billing_config=config.billing,
+            billing_clock=None if native is None else native.clock,
+        )
+        if store.schema_version() > SCHEMA_VERSION or (
+            store.financially_managed() and config.billing is None
+        ):
             raise ConfigError(
                 'This release can recover schema-5 billing records but cannot serve '
                 'financially managed accounts. Use the billing writer for account service.'
@@ -328,7 +350,11 @@ class Accounts:
             person_check=person_check
             or Turnstile(config.turnstile_secret, httpx.Client()),
             clock=now,
-            billing=None if native is None or config.billing is None else BillingService(store, config.billing, config.origin, native, clock=now),
+            billing=None
+            if native is None or config.billing is None
+            else BillingService(
+                store, config.billing, config.origin, native, clock=now
+            ),
         )
 
 
@@ -342,9 +368,8 @@ def get_accounts() -> Accounts:
     accounts = accounts_from_environment()
     # Another process may migrate the shared database after this service starts.
     # Even a session that needs no renewal must not serve legacy plan limits.
-    if (
-        accounts.store.schema_version() > SCHEMA_VERSION
-        or (accounts.store.financially_managed() and accounts.billing is None)
+    if accounts.store.schema_version() > SCHEMA_VERSION or (
+        accounts.store.financially_managed() and accounts.billing is None
     ):
         raise BillingReadOnly('This reader cannot serve financially managed accounts.')
     return accounts
@@ -742,7 +767,9 @@ def _billing(accounts: Accounts) -> BillingService:
     return accounts.billing
 
 
-def _capacity_view(accounts: Accounts, user: User) -> tuple[BillingView | None, PlanLimits]:
+def _capacity_view(
+    accounts: Accounts, user: User
+) -> tuple[BillingView | None, PlanLimits]:
     try:
         access, limits = accounts.store.capacity(user.id)
     except BillingHold as exc:
@@ -750,13 +777,22 @@ def _capacity_view(accounts: Accounts, user: User) -> tuple[BillingView | None, 
             raise
         # Preserve retained-library reads/edits while billing cannot make an
         # addition decision. The store still refuses additions until verified.
-        return BillingView(tier='free', status='held', paid_through=None, reason=exc.reason), PlanLimits(accounts.store.limits(user.plan).couples_per_chart, 1)
+        return BillingView(
+            tier='free', status='held', paid_through=None, reason=exc.reason
+        ), PlanLimits(accounts.store.limits(user.plan).couples_per_chart, 1)
     if access is None:
         return None, limits
-    return BillingView(tier=access.tier, status=access.status, paid_through=access.paid_through, reason=access.reason), limits
+    return BillingView(
+        tier=access.tier,
+        status=access.status,
+        paid_through=access.paid_through,
+        reason=access.reason,
+    ), limits
 
 
-def _settings_reply(accounts: Accounts, user: User, settings: Settings | None) -> SettingsView:
+def _settings_reply(
+    accounts: Accounts, user: User, settings: Settings | None
+) -> SettingsView:
     billing, limits = _capacity_view(accounts, user)
     reply = settings_view(user, settings, limits)
     if billing is not None:
@@ -765,7 +801,9 @@ def _settings_reply(accounts: Accounts, user: User, settings: Settings | None) -
 
 
 @router.get('/billing')
-def read_billing_status(current: SessionDependency, accounts: AccountsDependency) -> BillingView:
+def read_billing_status(
+    current: SessionDependency, accounts: AccountsDependency
+) -> BillingView:
     user = _signed_in(current).user
     _billing(accounts)
     billing, _ = _capacity_view(accounts, user)
@@ -775,7 +813,12 @@ def read_billing_status(current: SessionDependency, accounts: AccountsDependency
 
 
 @router.post('/billing/checkout')
-def create_billing_checkout(payload: CheckoutRequest, request: Request, current: SessionDependency, accounts: AccountsDependency) -> dict[str, object]:
+def create_billing_checkout(
+    payload: CheckoutRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> dict[str, object]:
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
@@ -786,7 +829,12 @@ def create_billing_checkout(payload: CheckoutRequest, request: Request, current:
 
 
 @router.post('/billing/cancel')
-def cancel_billing_renewal(payload: AccountRequest, request: Request, current: SessionDependency, accounts: AccountsDependency) -> BillingView:
+def cancel_billing_renewal(
+    payload: AccountRequest,
+    request: Request,
+    current: SessionDependency,
+    accounts: AccountsDependency,
+) -> BillingView:
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
@@ -798,14 +846,22 @@ def cancel_billing_renewal(payload: AccountRequest, request: Request, current: S
 
 
 @provider_router.get('/account/billing/return')
-def billing_return(current: SessionDependency, accounts: AccountsDependency) -> RedirectResponse:
+def billing_return(
+    current: SessionDependency, accounts: AccountsDependency
+) -> RedirectResponse:
     user = _signed_in(current).user
     _billing(accounts).reconcile(user.id)
-    return RedirectResponse(accounts.config.origin + '/', status_code=303, headers={'Cache-Control': 'no-store'})
+    return RedirectResponse(
+        accounts.config.origin + '/',
+        status_code=303,
+        headers={'Cache-Control': 'no-store'},
+    )
 
 
 @provider_router.post('/api/billing/stripe/webhook', status_code=202)
-async def stripe_webhook(request: Request, accounts: AccountsDependency) -> dict[str, str]:
+async def stripe_webhook(
+    request: Request, accounts: AccountsDependency
+) -> dict[str, str]:
     service = _billing(accounts)
     raw = bytearray()
     async for chunk in request.stream():
@@ -813,13 +869,20 @@ async def stripe_webhook(request: Request, accounts: AccountsDependency) -> dict
             raise HTTPException(status_code=413, detail='Invalid Stripe delivery.')
         raw.extend(chunk)
     try:
-        delivery = verify_delivery(bytes(raw), request.headers.get('Stripe-Signature'), service.config, wall_time=int(accounts.clock().timestamp()))
+        delivery = verify_delivery(
+            bytes(raw),
+            request.headers.get('Stripe-Signature'),
+            service.config,
+            wall_time=int(accounts.clock().timestamp()),
+        )
     except InvalidDelivery as exc:
         raise HTTPException(status_code=exc.status, detail=str(exc)) from None
     try:
         event = await run_in_threadpool(service.authority.enqueue, delivery)
     except (sqlite3.Error, BillingHold):
-        raise HTTPException(status_code=503, detail='Billing delivery could not be committed.') from None
+        raise HTTPException(
+            status_code=503, detail='Billing delivery could not be committed.'
+        ) from None
     return {'status': event.state}
 
 
@@ -984,11 +1047,29 @@ def export_account(
     exported = {**data, 'exported_at': timestamp(accounts.clock())}
     if accounts.billing is not None:
         billing, _ = _capacity_view(accounts, user)
-        owner = next((record for record in accounts.store.billing_records() if isinstance(record, AccountBillingRecord) and record.id == user.id and record.lifecycle != 'deleted'), None)
+        owner = next(
+            (
+                record
+                for record in accounts.store.billing_records()
+                if isinstance(record, AccountBillingRecord)
+                and record.id == user.id
+                and record.lifecycle != 'deleted'
+            ),
+            None,
+        )
         exported['billing'] = {
             'status': billing,
             'customer_id': None if owner is None else owner.customer_id,
-            'invoices': [] if owner is None else [{'invoice_id': fact.invoice_id, 'charge_id': fact.charge_id, 'subscription_id': fact.subscription_id} for fact in owner.coverage],
+            'invoices': []
+            if owner is None
+            else [
+                {
+                    'invoice_id': fact.invoice_id,
+                    'charge_id': fact.charge_id,
+                    'subscription_id': fact.subscription_id,
+                }
+                for fact in owner.coverage
+            ],
         }
     return exported
 

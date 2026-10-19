@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import httpx
 
+import tests.test_billing_native as native_fixtures
 from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_native import Stripe
 from eight_characters.accounts.billing_operations import (
@@ -20,7 +21,6 @@ from eight_characters.accounts.billing_records import Binding
 from eight_characters.accounts.records import new_id
 from tests.test_accounts_billing_recovery import NOW
 from tests.test_billing_access import authority, configuration
-import tests.test_billing_native as native_fixtures
 
 
 class Discovery(unittest.TestCase):
@@ -135,7 +135,9 @@ class Discovery(unittest.TestCase):
 
 class CurrentObservations(unittest.TestCase):
     def setUp(self):
-        graph = native_fixtures.FundingGraph('test_archived_historical_offer_and_full_native_chain')
+        graph = native_fixtures.FundingGraph(
+            'test_archived_historical_offer_and_full_native_chain'
+        )
         graph.setUp()
         self.addCleanup(graph.doCleanups)
         self.graph = graph

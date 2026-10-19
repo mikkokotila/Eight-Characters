@@ -12,27 +12,43 @@ import unittest
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import parse_qs
 from unittest.mock import patch
+from urllib.parse import parse_qs
 
 import httpx
 from fastapi.testclient import TestClient
 
+import tests.test_billing_native as native_fixtures
 from eight_characters.accounts.billing import OFFERS
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
 from eight_characters.accounts.store import AccountStore, ChartLimit
-from eight_characters.accounts.web import Accounts, account_key, get_accounts, load_config
+from eight_characters.accounts.web import (
+    Accounts,
+    account_key,
+    get_accounts,
+    load_config,
+)
 from eight_characters.main import app
-from tests.accounts_support import Clock, FakePersonCheck, account_environment, sign_in, site_client
+from tests.accounts_support import (
+    Clock,
+    FakePersonCheck,
+    account_environment,
+    sign_in,
+    site_client,
+)
 from tests.test_billing_access import configuration
 from tests.test_billing_capacity import birth
-import tests.test_billing_native as native_fixtures
 
 
 class Provider:
     def __init__(self, config, clock):
         self.config, self.clock = config, clock
-        self.customers, self.sessions, self.subscriptions, self.invoices = {}, {}, {}, {}
+        self.customers, self.sessions, self.subscriptions, self.invoices = (
+            {},
+            {},
+            {},
+            {},
+        )
         self.objects, self.collections = {}, {}
         self.calls = []
         self.closed = False
@@ -41,13 +57,50 @@ class Provider:
     def price(self, index, *, expand=False):
         offer = OFFERS[index]
         product = self.config.catalogue.product_ids[index // 2]
-        return dict(id=self.config.catalogue.price_ids[index], object='price', livemode=False, active=True, currency='usd', unit_amount=offer.amount, unit_amount_decimal=str(offer.amount), type='recurring', billing_scheme='per_unit', tax_behavior='exclusive', custom_unit_amount=None, transform_quantity=None, tiers_mode=None, recurring={'interval': offer.interval, 'interval_count': 1, 'usage_type': 'licensed', 'trial_period_days': None}, product={'id': product, 'object': 'product', 'active': True, 'livemode': False} if expand else product)
+        return dict(
+            id=self.config.catalogue.price_ids[index],
+            object='price',
+            livemode=False,
+            active=True,
+            currency='usd',
+            unit_amount=offer.amount,
+            unit_amount_decimal=str(offer.amount),
+            type='recurring',
+            billing_scheme='per_unit',
+            tax_behavior='exclusive',
+            custom_unit_amount=None,
+            transform_quantity=None,
+            tiers_mode=None,
+            recurring={
+                'interval': offer.interval,
+                'interval_count': 1,
+                'usage_type': 'licensed',
+                'trial_period_days': None,
+            },
+            product={
+                'id': product,
+                'object': 'product',
+                'active': True,
+                'livemode': False,
+            }
+            if expand
+            else product,
+        )
 
     def respond(self, request):
         self.calls.append((request.method, request.url.path))
         path = request.url.path.removeprefix('/v1/')
-        params = {key: values[0] for key, values in parse_qs(request.content.decode(), keep_blank_values=True).items()}
-        metadata = {key[9:-1]: value for key, value in params.items() if key.startswith('metadata[')}
+        params = {
+            key: values[0]
+            for key, values in parse_qs(
+                request.content.decode(), keep_blank_values=True
+            ).items()
+        }
+        metadata = {
+            key[9:-1]: value
+            for key, value in params.items()
+            if key.startswith('metadata[')
+        }
         if path == 'account':
             value = {'object': 'account', 'id': self.config.catalogue.account_id}
         elif path.startswith('prices/'):
@@ -55,18 +108,50 @@ class Provider:
             value = self.price(index, expand='expand[]' in request.url.params)
         elif path == 'customers' and request.method == 'POST':
             key = 'cus_' + str(len(self.customers) + 1)
-            value = dict(id=key, object='customer', livemode=False, test_clock=params.get('test_clock'), metadata=metadata, email=None, name=None, phone=None, address=None, shipping=None, description=None)
+            value = dict(
+                id=key,
+                object='customer',
+                livemode=False,
+                test_clock=params.get('test_clock'),
+                metadata=metadata,
+                email=None,
+                name=None,
+                phone=None,
+                address=None,
+                shipping=None,
+                description=None,
+            )
             self.customers[key] = value
         elif path.startswith('customers/'):
             value = self.customers[path.split('/')[1]]
             if request.method == 'POST':
                 value['metadata'].update(metadata)
-                for name in ('email', 'name', 'phone', 'address', 'shipping', 'description'):
+                for name in (
+                    'email',
+                    'name',
+                    'phone',
+                    'address',
+                    'shipping',
+                    'description',
+                ):
                     if name in params:
                         value[name] = params[name] or None
         elif path == 'checkout/sessions' and request.method == 'POST':
             key = 'cs_test_' + str(len(self.sessions) + 1)
-            value = dict(id=key, object='checkout.session', livemode=False, customer=params['customer'], metadata=metadata, mode='subscription', payment_method_types=['card'], subscription=None, status='open', created=int(self.clock().timestamp()), expires_at=int(params['expires_at']), url='https://checkout.stripe.com/c/pay/' + key)
+            value = dict(
+                id=key,
+                object='checkout.session',
+                livemode=False,
+                customer=params['customer'],
+                metadata=metadata,
+                mode='subscription',
+                payment_method_types=['card'],
+                subscription=None,
+                status='open',
+                created=int(self.clock().timestamp()),
+                expires_at=int(params['expires_at']),
+                url='https://checkout.stripe.com/c/pay/' + key,
+            )
             self.sessions[key] = value
         elif path.startswith('checkout/sessions/'):
             value = self.sessions[path.split('/')[2]]
@@ -79,19 +164,35 @@ class Provider:
             if request.method == 'DELETE':
                 value['status'] = 'canceled'
             elif request.method == 'POST':
-                value['cancel_at_period_end'] = params.get('cancel_at_period_end') == 'true'
+                value['cancel_at_period_end'] = (
+                    params.get('cancel_at_period_end') == 'true'
+                )
         elif path in self.objects:
             value = self.objects[path]
         else:
-            rows = {'test_helpers/test_clocks': (), 'events': (), 'customers': tuple(self.customers.values()), 'checkout/sessions': tuple(self.sessions.values()), 'subscriptions': tuple(self.subscriptions.values()), 'invoices': tuple(self.invoices.values()), **self.collections}[path]
+            rows = {
+                'test_helpers/test_clocks': (),
+                'events': (),
+                'customers': tuple(self.customers.values()),
+                'checkout/sessions': tuple(self.sessions.values()),
+                'subscriptions': tuple(self.subscriptions.values()),
+                'invoices': tuple(self.invoices.values()),
+                **self.collections,
+            }[path]
             customer = request.url.params.get('customer')
             if customer is not None:
                 rows = tuple(row for row in rows if row.get('customer') == customer)
             value = {'object': 'list', 'has_more': False, 'data': rows}
-        return httpx.Response(200, json=value, headers={'Stripe-Version': self.config.catalogue.api_version})
+        return httpx.Response(
+            200,
+            json=value,
+            headers={'Stripe-Version': self.config.catalogue.api_version},
+        )
 
     def complete(self):
-        graph = native_fixtures.FundingGraph('test_archived_historical_offer_and_full_native_chain')
+        graph = native_fixtures.FundingGraph(
+            'test_archived_historical_offer_and_full_native_chain'
+        )
         graph.setUp()
         try:
             self.objects = copy.deepcopy(graph.objects)
@@ -109,7 +210,10 @@ class Provider:
         invoice['status_transitions']['paid_at'] = now
         line = self.collections['invoices/in_one/lines'][0]
         line['period'] = {'start': now, 'end': now + 3600}
-        line['pricing']['price_details'].update(price=self.config.catalogue.price_ids[2], product=self.config.catalogue.product_ids[1])
+        line['pricing']['price_details'].update(
+            price=self.config.catalogue.price_ids[2],
+            product=self.config.catalogue.product_ids[1],
+        )
         self.collections['subscription_items'][0]['price'] = self.price(2)
         for key in ('payment_intents/pi_one', 'charges/ch_one'):
             self.objects[key]['customer'] = customer
@@ -124,11 +228,18 @@ class ServiceApi(unittest.TestCase):
         self.addCleanup(shutil.rmtree, self.directory)
         self.clock = Clock(datetime(2026, 10, 19, 10, tzinfo=UTC))
         billing = replace(configuration(), clock_ids=(), purchase_clock=None)
-        config = replace(load_config(account_environment(self.directory)), billing=billing)
+        config = replace(
+            load_config(account_environment(self.directory)), billing=billing
+        )
         AccountStore.create(config.database)
         self.provider = Provider(billing, self.clock)
         self.addCleanup(self.provider.client.close)
-        self.accounts = Accounts.open(config, person_check=FakePersonCheck(), clock=self.clock, billing_client=self.provider.client)
+        self.accounts = Accounts.open(
+            config,
+            person_check=FakePersonCheck(),
+            clock=self.clock,
+            billing_client=self.provider.client,
+        )
         self.service = self.accounts.billing
         self.service.recover()
         app.dependency_overrides[get_accounts] = lambda: self.accounts
@@ -140,12 +251,22 @@ class ServiceApi(unittest.TestCase):
         self.key = account_key(self.user)
 
     def checkout(self, **changes):
-        return self.client.post('/api/account/billing/checkout', json={'key': self.key, 'plan': 'plus', 'period': 'monthly', **changes})
+        return self.client.post(
+            '/api/account/billing/checkout',
+            json={'key': self.key, 'plan': 'plus', 'period': 'monthly', **changes},
+        )
 
-    def test_actual_managed_api_checkout_resume_and_recovery_never_fall_back_to_fifty(self):
-        with patch('eight_characters.accounts.web.accounts_from_environment', return_value=self.accounts):
+    def test_actual_managed_api_checkout_resume_and_recovery_never_fall_back_to_fifty(
+        self,
+    ):
+        with patch(
+            'eight_characters.accounts.web.accounts_from_environment',
+            return_value=self.accounts,
+        ):
             self.assertIs(get_accounts(), self.accounts)
-        self.assertEqual(self.client.get('/api/account/settings').json()['chart_limit'], 1)
+        self.assertEqual(
+            self.client.get('/api/account/settings').json()['chart_limit'], 1
+        )
         first = self.checkout()
         self.assertEqual(first.status_code, 200, first.text)
         self.assertEqual(first.json()['status'], 'open')
@@ -154,91 +275,230 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(len(self.provider.customers), 1)
         self.assertEqual(len(self.provider.sessions), 1)
         self.assertEqual(self.checkout(plan='basic').status_code, 409)
-        authority = b''.join(bytes(row[0]) for row in sqlite3.connect(self.accounts.store.path).execute('SELECT record FROM billing_records'))
+        authority = b''.join(
+            bytes(row[0])
+            for row in sqlite3.connect(self.accounts.store.path).execute(
+                'SELECT record FROM billing_records'
+            )
+        )
         self.assertNotIn(b'https://', authority)
         self.assertNotIn(b'checkout_url', authority)
 
-    def test_paid_native_fixture_changes_actual_store_and_api_then_refund_retains_library(self):
+    def test_paid_native_fixture_changes_actual_store_and_api_then_refund_retains_library(
+        self,
+    ):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
-        returned = self.client.get('/account/billing/return?payment_status=unpaid&customer=cus_forged', follow_redirects=False)
+        returned = self.client.get(
+            '/account/billing/return?payment_status=unpaid&customer=cus_forged',
+            follow_redirects=False,
+        )
         self.assertEqual(returned.status_code, 303, returned.text)
         view = self.client.get('/api/account/settings').json()
         self.assertEqual((view['billing']['tier'], view['chart_limit']), ('plus', 25))
         self.assertEqual(self.accounts.store.user_by_id(self.user.id).plan, 'free')
         settings = None
         for index in range(25):
-            settings, _ = self.accounts.store.save_chart(self.user.id, birth(index), None if settings is None else settings.updated_at)
+            settings, _ = self.accounts.store.save_chart(
+                self.user.id,
+                birth(index),
+                None if settings is None else settings.updated_at,
+            )
         with self.assertRaises(ChartLimit):
             self.accounts.store.save_chart(self.user.id, birth(25), settings.updated_at)
-        self.provider.collections['refunds'] = [{'id': 're_full', 'object': 'refund', 'livemode': False, 'charge': 'ch_one', 'payment_intent': 'pi_one', 'currency': 'usd', 'amount': 1499, 'status': 'succeeded'}]
+        self.provider.collections['refunds'] = [
+            {
+                'id': 're_full',
+                'object': 'refund',
+                'livemode': False,
+                'charge': 'ch_one',
+                'payment_intent': 'pi_one',
+                'currency': 'usd',
+                'amount': 1499,
+                'status': 'succeeded',
+            }
+        ]
         self.service.reconcile(self.user.id)
         view = self.client.get('/api/account/settings').json()
-        self.assertEqual((view['billing']['tier'], view['chart_limit'], len(view['charts'])), ('free', 1, 25))
+        self.assertEqual(
+            (view['billing']['tier'], view['chart_limit'], len(view['charts'])),
+            ('free', 1, 25),
+        )
         self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
         export = self.client.post('/api/account/export', json={'key': self.key}).json()
         self.assertEqual(export['billing']['invoices'][0]['charge_id'], 'ch_one')
         self.assertNotIn('ec_customer_mac', json.dumps(export))
         self.assertEqual(self.checkout().status_code, 409)
 
-    def test_anonymous_cross_origin_stale_owner_and_untrusted_fields_cannot_create(self):
-        anonymous = TestClient(app, base_url=self.accounts.config.origin, headers={'Origin': self.accounts.config.origin})
+    def test_anonymous_cross_origin_stale_owner_and_untrusted_fields_cannot_create(
+        self,
+    ):
+        anonymous = TestClient(
+            app,
+            base_url=self.accounts.config.origin,
+            headers={'Origin': self.accounts.config.origin},
+        )
         self.addCleanup(anonymous.close)
-        self.assertEqual(anonymous.post('/api/account/billing/checkout', json={'key': self.key, 'plan': 'plus', 'period': 'monthly'}).status_code, 401)
-        self.assertEqual(self.client.post('/api/account/billing/checkout', headers={'Origin': 'https://elsewhere.invalid'}, json={'key': self.key, 'plan': 'plus', 'period': 'monthly'}).status_code, 403)
+        self.assertEqual(
+            anonymous.post(
+                '/api/account/billing/checkout',
+                json={'key': self.key, 'plan': 'plus', 'period': 'monthly'},
+            ).status_code,
+            401,
+        )
+        self.assertEqual(
+            self.client.post(
+                '/api/account/billing/checkout',
+                headers={'Origin': 'https://elsewhere.invalid'},
+                json={'key': self.key, 'plan': 'plus', 'period': 'monthly'},
+            ).status_code,
+            403,
+        )
         other = site_client()
         self.addCleanup(other.close)
         sign_in(other, self.accounts, 'two@example.invalid')
-        self.assertEqual(other.post('/api/account/billing/checkout', json={'key': self.key, 'plan': 'plus', 'period': 'monthly'}).status_code, 409)
+        self.assertEqual(
+            other.post(
+                '/api/account/billing/checkout',
+                json={'key': self.key, 'plan': 'plus', 'period': 'monthly'},
+            ).status_code,
+            409,
+        )
         self.assertEqual(self.checkout(customer='cus_forged').status_code, 400)
         self.assertFalse(self.provider.customers)
-        self.assertEqual(other.get('/account/billing/return?session_id=cs_forged', follow_redirects=False).status_code, 503)
+        self.assertEqual(
+            other.get(
+                '/account/billing/return?session_id=cs_forged', follow_redirects=False
+            ).status_code,
+            503,
+        )
 
-    def test_webhook_requires_signature_and_committed_queue_without_origin_or_session(self):
+    def test_webhook_requires_signature_and_committed_queue_without_origin_or_session(
+        self,
+    ):
         self.assertEqual(self.checkout().status_code, 200)
-        raw = json.dumps({'id': 'evt_delivery', 'object': 'event', 'created': int(self.clock().timestamp()), 'api_version': self.service.config.payload_version, 'livemode': False, 'type': 'invoice.paid', 'data': {'object': {'id': 'in_one', 'customer': 'cus_1'}}}).encode()
+        raw = json.dumps(
+            {
+                'id': 'evt_delivery',
+                'object': 'event',
+                'created': int(self.clock().timestamp()),
+                'api_version': self.service.config.payload_version,
+                'livemode': False,
+                'type': 'invoice.paid',
+                'data': {'object': {'id': 'in_one', 'customer': 'cus_1'}},
+            }
+        ).encode()
         when = str(int(self.clock().timestamp()))
-        signature = hmac.new(self.service.config.webhook_secrets[0], when.encode() + b'.' + raw, hashlib.sha256).hexdigest()
+        signature = hmac.new(
+            self.service.config.webhook_secrets[0],
+            when.encode() + b'.' + raw,
+            hashlib.sha256,
+        ).hexdigest()
         headers = {'Stripe-Signature': 't=' + when + ',v1=' + signature}
         anonymous = TestClient(app, base_url=self.accounts.config.origin)
         self.addCleanup(anonymous.close)
-        self.assertEqual(anonymous.post('/api/billing/stripe/webhook', content=raw).status_code, 400)
-        first = anonymous.post('/api/billing/stripe/webhook', content=raw, headers=headers)
-        self.assertEqual((first.status_code, first.json()), (202, {'status': 'pending'}))
-        self.assertEqual(anonymous.post('/api/billing/stripe/webhook', content=raw, headers=headers).json(), first.json())
-        self.assertEqual(len([record for record in self.accounts.store.billing_records() if isinstance(record, EventRecord)]), 1)
-        with patch('eight_characters.accounts.billing_authority.log_record_change', side_effect=sqlite3.OperationalError('injected')):
+        self.assertEqual(
+            anonymous.post('/api/billing/stripe/webhook', content=raw).status_code, 400
+        )
+        first = anonymous.post(
+            '/api/billing/stripe/webhook', content=raw, headers=headers
+        )
+        self.assertEqual(
+            (first.status_code, first.json()), (202, {'status': 'pending'})
+        )
+        self.assertEqual(
+            anonymous.post(
+                '/api/billing/stripe/webhook', content=raw, headers=headers
+            ).json(),
+            first.json(),
+        )
+        self.assertEqual(
+            len(
+                [
+                    record
+                    for record in self.accounts.store.billing_records()
+                    if isinstance(record, EventRecord)
+                ]
+            ),
+            1,
+        )
+        with patch(
+            'eight_characters.accounts.billing_authority.log_record_change',
+            side_effect=sqlite3.OperationalError('injected'),
+        ):
             other = raw.replace(b'evt_delivery', b'evt_other')
-            mac = hmac.new(self.service.config.webhook_secrets[0], when.encode() + b'.' + other, hashlib.sha256).hexdigest()
-            self.assertEqual(anonymous.post('/api/billing/stripe/webhook', content=other, headers={'Stripe-Signature': 't=' + when + ',v1=' + mac}).status_code, 503)
-        self.assertEqual(anonymous.post('/api/billing/stripe/webhook', content=b'x' * (1024 * 1024 + 1), headers=headers).status_code, 413)
+            mac = hmac.new(
+                self.service.config.webhook_secrets[0],
+                when.encode() + b'.' + other,
+                hashlib.sha256,
+            ).hexdigest()
+            self.assertEqual(
+                anonymous.post(
+                    '/api/billing/stripe/webhook',
+                    content=other,
+                    headers={'Stripe-Signature': 't=' + when + ',v1=' + mac},
+                ).status_code,
+                503,
+            )
+        self.assertEqual(
+            anonymous.post(
+                '/api/billing/stripe/webhook',
+                content=b'x' * (1024 * 1024 + 1),
+                headers=headers,
+            ).status_code,
+            413,
+        )
 
     def test_deleting_open_checkout_completes_only_after_native_cleanup(self):
         self.assertEqual(self.checkout().status_code, 200)
-        response = self.client.request('DELETE', '/api/account', json={'key': self.key, 'email': self.user.email})
+        response = self.client.request(
+            'DELETE', '/api/account', json={'key': self.key, 'email': self.user.email}
+        )
         self.assertEqual(response.status_code, 204, response.text)
         self.assertIsNone(self.accounts.store.user_by_id(self.user.id))
         self.assertEqual(self.provider.sessions['cs_test_1']['status'], 'expired')
         customer = self.provider.customers['cus_1']
         self.assertIn('ec_delete_mac', customer['metadata'])
-        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        owner = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord)
+        )
         self.assertEqual(owner.lifecycle, 'deleted')
         self.assertIsNotNone(owner.deletion.completed_at)
 
-    def test_capture_discovered_during_erasure_stops_billing_but_stays_pending_across_retry(self):
+    def test_capture_discovered_during_erasure_stops_billing_but_stays_pending_across_retry(
+        self,
+    ):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
         for _ in range(2):
-            response = self.client.request('DELETE', '/api/account', json={'key': self.key, 'email': self.user.email})
+            response = self.client.request(
+                'DELETE',
+                '/api/account',
+                json={'key': self.key, 'email': self.user.email},
+            )
             self.assertEqual(response.status_code, 503, response.text)
             self.assertEqual(response.json()['billing']['reason'], 'late_settlement')
             self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
-            owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+            owner = next(
+                record
+                for record in self.accounts.store.billing_records()
+                if isinstance(record, AccountBillingRecord)
+            )
             self.assertEqual(owner.lifecycle, 'deleting')
             self.assertIsNone(owner.deletion.completed_at)
-            self.assertTrue(any(operation.reason == 'late_settlement' for operation in owner.operations))
+            self.assertTrue(
+                any(
+                    operation.reason == 'late_settlement'
+                    for operation in owner.operations
+                )
+            )
         self.assertEqual(self.provider.subscriptions['sub_one']['status'], 'canceled')
-        self.assertEqual(self.client.get('/api/account/settings').json()['billing']['status'], 'deleting')
+        self.assertEqual(
+            self.client.get('/api/account/settings').json()['billing']['status'],
+            'deleting',
+        )
 
     def test_worker_recovers_then_shutdown_fences_its_epoch(self):
         async def exercise():
@@ -247,13 +507,16 @@ class ServiceApi(unittest.TestCase):
             for _ in range(100):
                 if self.service.authority.snapshot()[2]:
                     break
-                await asyncio.sleep(.01)
+                await asyncio.sleep(0.01)
             self.assertTrue(self.service.authority.snapshot()[2])
             task.cancel()
             with self.assertRaises(asyncio.CancelledError):
                 await task
             self.assertFalse(self.service.authority.snapshot()[2])
-            self.assertNotEqual(self.service.authority.snapshot()[1], self.service.epoch)
+            self.assertNotEqual(
+                self.service.authority.snapshot()[1], self.service.epoch
+            )
+
         asyncio.run(exercise())
 
     def test_unsupported_payment_holds_erasure_after_closing_proven_renewal(self):
@@ -261,11 +524,17 @@ class ServiceApi(unittest.TestCase):
         self.provider.complete()
         self.service.reconcile(self.user.id)
         self.provider.invoices['in_one']['billing_reason'] = 'manual'
-        response = self.client.request('DELETE', '/api/account', json={'key': self.key, 'email': self.user.email})
+        response = self.client.request(
+            'DELETE', '/api/account', json={'key': self.key, 'email': self.user.email}
+        )
         self.assertEqual(response.status_code, 503, response.text)
         self.assertEqual(response.json()['billing']['reason'], 'unsupported_funding')
         self.assertEqual(self.provider.subscriptions['sub_one']['status'], 'canceled')
         self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
-        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        owner = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord)
+        )
         self.assertEqual(len(owner.coverage), 1)
         self.assertIsNone(owner.deletion.completed_at)
