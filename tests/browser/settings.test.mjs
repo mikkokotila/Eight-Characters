@@ -77,6 +77,29 @@ for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / settings`, { concurrency: false }, () => {
     const check = (name, run) => it(name, { timeout: 120000 }, () => withPage(profile, run));
 
+    check('sandbox billing status stays separate from legacy plan and translates held access', async (page) => {
+      await reset(page);
+      let state = 'paid';
+      await page.route('**/api/account/settings', async (route) => {
+        const response = await route.fetch();
+        const value = await response.json();
+        await route.fulfill({ response, json: { ...value, chart_limit: state === 'paid' ? 25 : 1,
+          billing: { tier: state === 'paid' ? 'plus' : 'free', status: state,
+            paid_through: state === 'paid' ? 1795082400 : null, reason: state === 'held' ? 'unverified' : null } } });
+      });
+      for (const [next, words] of [['paid', /Sandbox access: Plus · paid.*Paid access ends/],
+        ['pending', /payment pending/], ['held', /verification held/], ['expired', /paid time expired/]]) {
+        state = next;
+        await openSettings(page);
+        assert.match(await page.locator('[data-billing-status]').textContent(), words);
+      }
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await page.locator('[data-lang="fi"]').click();
+      await goTo(page, '#settings');
+      await page.locator('[data-billing-status]').waitFor();
+      assert.match(await page.locator('[data-billing-status]').textContent(), /Testikäyttö: Maksuton · käyttöaika päättynyt/);
+    });
+
     check('Settings opens from the account menu with the schools the API lists, the default marked in words', async (page) => {
       await reset(page);
       await page.locator('#account-btn').click();
