@@ -7,7 +7,7 @@ the reader validates bytes, historical terms and ownership before recovery.
 import hashlib
 import re
 from collections.abc import Sequence
-from typing import Annotated, Final, Literal, Self, TypeAlias
+from typing import Annotated, Final, Literal, Self, TypeAlias, cast
 
 from pydantic import (
     BaseModel,
@@ -38,11 +38,22 @@ Natural = Annotated[int, Field(ge=0, lt=2**63 - 1)]
 Positive = Annotated[int, Field(gt=0, lt=2**63 - 1)]
 _SECRET: Final = re.compile(r'(?:sk|rk|pk)_(?:test|live)_|whsec_')
 REASONS: Final = (
-    'unverified', 'native_unavailable', 'permission_missing', 'unknown_owner',
-    'unsupported_event', 'unsupported_version', 'ownership_conflict',
-    'uncertain_operation', 'scope_mismatch', 'clock_unavailable',
-    'unsupported_funding', 'unsupported_overlap', 'deleted_owner',
-    'legacy_identity_ambiguous', 'processing_failed', 'late_settlement',
+    'unverified',
+    'native_unavailable',
+    'permission_missing',
+    'unknown_owner',
+    'unsupported_event',
+    'unsupported_version',
+    'ownership_conflict',
+    'uncertain_operation',
+    'scope_mismatch',
+    'clock_unavailable',
+    'unsupported_funding',
+    'unsupported_overlap',
+    'deleted_owner',
+    'legacy_identity_ambiguous',
+    'processing_failed',
+    'late_settlement',
 )
 
 
@@ -50,10 +61,10 @@ def _secrets(value: object) -> None:
     if isinstance(value, str) and (_SECRET.search(value) or '://' in value):
         raise ValueError('Billing records cannot contain credentials or URLs.')
     if isinstance(value, dict):
-        for nested in value.values():
+        for nested in cast(dict[object, object], value).values():
             _secrets(nested)
     elif isinstance(value, (list, tuple)):
-        for nested in value:
+        for nested in cast(Sequence[object], value):
             _secrets(nested)
 
 
@@ -65,11 +76,11 @@ def _unique(values: Sequence[object]) -> None:
 class StrictRecord(BaseModel):
     model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
 
-    @model_validator(mode='before')
-    @classmethod
-    def no_secrets(cls, value: object) -> object:
-        _secrets(value)
-        return value
+    @model_validator(mode='after')
+    def no_secrets(self) -> Self:
+        # Keep JSON validation in JSON mode until arrays have become typed tuples.
+        _secrets(self.model_dump(mode='python', by_alias=True))
+        return self
 
 
 class OfferSnapshot(StrictRecord):
@@ -114,8 +125,13 @@ class Intent(StrictRecord):
     created_at: str
     expires_at: Positive
     state: Literal[
-        'reserved', 'customer_pending', 'checkout_pending', 'open',
-        'complete', 'expired', 'held',
+        'reserved',
+        'customer_pending',
+        'checkout_pending',
+        'open',
+        'complete',
+        'expired',
+        'held',
     ]
     checkout_id: CheckoutId | None
     subscription_id: SubscriptionId | None
@@ -139,12 +155,20 @@ class Operation(StrictRecord):
     id: Identifier
     intent_id: Identifier | None
     kind: Literal[
-        'customer_create', 'customer_seal', 'checkout_create', 'cancel',
-        'expire', 'void_invoice', 'delete_mark', 'customer_redact',
+        'customer_create',
+        'customer_seal',
+        'checkout_create',
+        'cancel',
+        'expire',
+        'void_invoice',
+        'delete_mark',
+        'customer_redact',
     ]
     subject_id: NativeId | None
     request_sha256: Digest | None
-    idempotency_key: Annotated[str, StringConstraints(pattern=r'^[A-Za-z0-9_-]{1,255}$')]
+    idempotency_key: Annotated[
+        str, StringConstraints(pattern=r'^[A-Za-z0-9_-]{1,255}$')
+    ]
     created_at: str
     sent_at: str | None
     state: Literal['prepared', 'sent', 'done', 'held', 'recovered']
@@ -187,17 +211,26 @@ class RefundFact(StrictRecord):
 class DisputeFact(StrictRecord):
     id: Annotated[str, StringConstraints(pattern=r'^du_[A-Za-z0-9]+$')]
     status: Literal[
-        'warning_needs_response', 'warning_under_review', 'warning_closed',
-        'needs_response', 'under_review', 'won', 'lost',
+        'warning_needs_response',
+        'warning_under_review',
+        'warning_closed',
+        'needs_response',
+        'under_review',
+        'won',
+        'lost',
     ]
 
 
 class Coverage(StrictRecord):
     invoice_id: Annotated[str, StringConstraints(pattern=r'^in_[A-Za-z0-9]+$')]
     line_id: Annotated[str, StringConstraints(pattern=r'^il_[A-Za-z0-9_]+$')]
-    invoice_payment_id: Annotated[str, StringConstraints(pattern=r'^inpay_[A-Za-z0-9]+$')]
+    invoice_payment_id: Annotated[
+        str, StringConstraints(pattern=r'^inpay_[A-Za-z0-9]+$')
+    ]
     subscription_id: SubscriptionId
-    subscription_item_id: Annotated[str, StringConstraints(pattern=r'^si_[A-Za-z0-9]+$')]
+    subscription_item_id: Annotated[
+        str, StringConstraints(pattern=r'^si_[A-Za-z0-9]+$')
+    ]
     price_id: Annotated[str, StringConstraints(pattern=r'^price_[A-Za-z0-9]+$')]
     offer_id: Digest
     payment_intent_id: Annotated[str, StringConstraints(pattern=r'^pi_[A-Za-z0-9]+$')]
@@ -230,7 +263,10 @@ class Coverage(StrictRecord):
             raise ValueError('Allocated, captured and invoice amounts disagree.')
         _unique([item.id for item in self.refunds])
         _unique([item.id for item in self.disputes])
-        if sum(r.amount for r in self.refunds if r.status == 'succeeded') > self.captured_amount:
+        if (
+            sum(r.amount for r in self.refunds if r.status == 'succeeded')
+            > self.captured_amount
+        ):
             raise ValueError('Returned money exceeds the capture.')
         return self
 
@@ -285,7 +321,9 @@ class ScopeRecord(BillingRecord):
     record_type: Literal['scope'] = 'scope'
     account_id: Annotated[str, StringConstraints(pattern=r'^acct_[A-Za-z0-9]+$')]
     livemode: Literal[False]
-    api_version: Annotated[str, StringConstraints(pattern=r'^\d{4}-\d{2}-\d{2}\.[a-z]+$')]
+    api_version: Annotated[
+        str, StringConstraints(pattern=r'^\d{4}-\d{2}-\d{2}\.[a-z]+$')
+    ]
     binding_key_id: Digest
     clock_ids: tuple[ClockId, ...]
     offers: tuple[OfferSnapshot, ...]
@@ -333,18 +371,28 @@ class AccountBillingRecord(BillingRecord):
         _unique([i.id for i in self.intents])
         _unique([o.id for o in self.operations])
         intent_ids = {i.id for i in self.intents}
-        if any(o.intent_id is not None and o.intent_id not in intent_ids for o in self.operations):
+        if any(
+            o.intent_id is not None and o.intent_id not in intent_ids
+            for o in self.operations
+        ):
             raise ValueError('An operation refers to an unknown purchase intent.')
         if sum(i.state not in ('complete', 'expired') for i in self.intents) > 1:
             raise ValueError('An owner has more than one unresolved purchase.')
-        for key in ('invoice_id', 'invoice_payment_id', 'payment_intent_id', 'charge_id'):
+        for key in (
+            'invoice_id',
+            'invoice_payment_id',
+            'payment_intent_id',
+            'charge_id',
+        ):
             _unique([getattr(c, key) for c in self.coverage])
         if self.lifecycle in ('deleting', 'deleted') and self.deletion is None:
             raise ValueError('Deleting an owner needs its durable deletion decision.')
         if self.deletion is not None:
             if self.deletion.native_object_id != self.customer_id:
                 raise ValueError('Deletion marker names another customer.')
-            if (self.lifecycle == 'deleted') != (self.deletion.completed_at is not None):
+            if (self.lifecycle == 'deleted') != (
+                self.deletion.completed_at is not None
+            ):
                 raise ValueError('Deletion lifecycle and completion disagree.')
         return self
 
@@ -394,8 +442,13 @@ def encode_billing(record: BillingDocument) -> bytes:
 def decode_billing(data: bytes) -> BillingDocument:
     try:
         record = _ADAPTER.validate_json(data, strict=True)
-    except (ValidationError, ValueError, TypeError):
-        raise RecordError('A billing record does not match the strict schema 1.') from None
+    except ValidationError as exc:
+        codes = sorted({str(item['type']) for item in exc.errors(include_input=False, include_context=False)})
+        raise RecordError('Billing record validation failed: ' + ', '.join(codes) + '.') from None
+    except (ValueError, TypeError):
+        raise RecordError(
+            'A billing record does not match the strict schema 1.'
+        ) from None
     if encode_billing(record) != data:
         raise RecordError('A billing record is not in canonical form.')
     return record
@@ -417,8 +470,10 @@ def resource_claims(record: AccountBillingRecord) -> dict[str, str]:
         keep(intent.subscription_id, 'subscription')
     for fact in record.coverage:
         for name, kind in (
-            ('invoice_id', 'invoice'), ('invoice_payment_id', 'invoice_payment'),
-            ('subscription_id', 'subscription'), ('payment_intent_id', 'payment_intent'),
+            ('invoice_id', 'invoice'),
+            ('invoice_payment_id', 'invoice_payment'),
+            ('subscription_id', 'subscription'),
+            ('payment_intent_id', 'payment_intent'),
             ('charge_id', 'charge'),
         ):
             keep(getattr(fact, name), kind)
@@ -429,13 +484,17 @@ def resource_claims(record: AccountBillingRecord) -> dict[str, str]:
     return found
 
 
-def validate_billing_graph(records: Sequence[BillingDocument], users: Sequence[User]) -> None:
+def validate_billing_graph(
+    records: Sequence[BillingDocument], users: Sequence[User]
+) -> None:
     if not records:
         return
     by_id = {r.id: r for r in records}
     scopes = [r for r in records if isinstance(r, ScopeRecord)]
     if len(by_id) != len(records) or len(scopes) != 1:
-        raise RecordError('Billing records need unique identities and exactly one scope.')
+        raise RecordError(
+            'Billing records need unique identities and exactly one scope.'
+        )
     scope = scopes[0]
     if any(r.scope_id != scope.id for r in records):
         raise RecordError('Billing records mix different native scopes.')
@@ -451,23 +510,37 @@ def validate_billing_graph(records: Sequence[BillingDocument], users: Sequence[U
             owners.add(record.owner_id)
             if (record.owner_id in user_ids) == (record.lifecycle == 'deleted'):
                 raise RecordError('A financial owner and its personal record disagree.')
-            if record.test_clock_id is not None and record.test_clock_id not in scope.clock_ids:
+            if (
+                record.test_clock_id is not None
+                and record.test_clock_id not in scope.clock_ids
+            ):
                 raise RecordError('A financial owner names an unretained clock.')
             for intent in record.intents:
                 if intent.offer_id not in offers:
                     raise RecordError('A purchase refers to unknown historical terms.')
             for fact in record.coverage:
                 offer = offers.get(fact.offer_id)
-                if offer is None or (offer.price_id, offer.amount) != (fact.price_id, fact.base_amount):
-                    raise RecordError('A receipt differs from its approved historical terms.')
+                if offer is None or (offer.price_id, offer.amount) != (
+                    fact.price_id,
+                    fact.base_amount,
+                ):
+                    raise RecordError(
+                        'A receipt differs from its approved historical terms.'
+                    )
             for native_id in resource_claims(record):
                 if native_id in claims and claims[native_id] != record.owner_id:
-                    raise RecordError('A native financial resource belongs to two owners.')
+                    raise RecordError(
+                        'A native financial resource belongs to two owners.'
+                    )
                 claims[native_id] = record.owner_id
         elif isinstance(record, EventRecord):
             if record.event_id in events:
                 raise RecordError('A native event is repeated.')
             events.add(record.event_id)
     for record in records:
-        if isinstance(record, EventRecord) and record.owner_id is not None and record.owner_id not in owners:
+        if (
+            isinstance(record, EventRecord)
+            and record.owner_id is not None
+            and record.owner_id not in owners
+        ):
             raise RecordError('A delivery names an unknown financial owner.')

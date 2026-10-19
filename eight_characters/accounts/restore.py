@@ -27,7 +27,9 @@ from eight_characters.accounts.records import (
     decode_user,
 )
 from eight_characters.accounts.billing_records import (
-    BillingDocument, decode_billing, validate_billing_graph,
+    BillingDocument,
+    decode_billing,
+    validate_billing_graph,
 )
 from eight_characters.accounts.store import AccountStore, StoreError
 
@@ -105,7 +107,9 @@ def restore_backup(
             try:
                 plaintext = pyrage.decrypt((root / name).read_bytes(), [identity])
             except pyrage.DecryptError as exc:
-                raise RestoreError('A billing record does not decrypt with this key.') from exc
+                raise RestoreError(
+                    'A billing record does not decrypt with this key.'
+                ) from exc
             try:
                 record = decode_billing(plaintext)
             except RecordError as exc:
@@ -120,9 +124,14 @@ def restore_backup(
         except RecordError as exc:
             raise RestoreError(str(exc)) from exc
         try:
-            AccountStore.restore(database, accounts, head=head,
+            AccountStore.restore(
+                database,
+                accounts,
+                head=head,
                 billing=financial if manifest.billing_count is not None else None,
-                backup_seq=manifest.backup_seq or 0, sequence=manifest.sequence or 0)
+                backup_seq=manifest.backup_seq or 0,
+                sequence=manifest.sequence or 0,
+            )
         except StoreError as exc:
             raise RestoreError(str(exc)) from exc
     return RestoreResult(users=len(accounts))

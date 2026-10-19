@@ -266,14 +266,18 @@ def _remove_empty_parents(directory: Path, root: Path) -> None:
 
 def manifest_bytes(manifest: Manifest) -> bytes:
     value: dict[str, Any] = {
-            'counts': {'user': manifest.user_count},
-            'encryption': 'age',
-            'recipient': manifest.recipient,
-            'schema': MANIFEST_SCHEMA,
-        }
+        'counts': {'user': manifest.user_count},
+        'encryption': 'age',
+        'recipient': manifest.recipient,
+        'schema': MANIFEST_SCHEMA,
+    }
     if manifest.billing_count is not None:
-        value.update(schema=2, counts={'user': manifest.user_count, 'billing': manifest.billing_count},
-                     backup_seq=manifest.backup_seq, sequence=manifest.sequence)
+        value.update(
+            schema=2,
+            counts={'user': manifest.user_count, 'billing': manifest.billing_count},
+            backup_seq=manifest.backup_seq,
+            sequence=manifest.sequence,
+        )
     return canonical_json(value)
 
 
@@ -295,7 +299,9 @@ def read_manifest(root: Path) -> Manifest | None:
     schema: object = fields.get('schema')
     if type(schema) is not int or schema not in (1, 2):
         raise BackupError('The backup manifest has an unknown schema.')
-    expected_fields = _MANIFEST_FIELDS | ({'backup_seq', 'sequence'} if schema == 2 else set())
+    expected_fields = _MANIFEST_FIELDS
+    if schema == 2:
+        expected_fields = _MANIFEST_FIELDS | {'backup_seq', 'sequence'}
     if frozenset(fields) != expected_fields:
         raise BackupError(
             f'The backup manifest has the wrong fields: {sorted(fields)}.'
@@ -309,7 +315,8 @@ def read_manifest(root: Path) -> Manifest | None:
     tally = cast(dict[str, Any], counts)
     user_count: object = tally.get('user')
     if (
-        frozenset(tally) != (frozenset({'user'}) if schema == 1 else frozenset({'user', 'billing'}))
+        frozenset(tally)
+        != (frozenset({'user'}) if schema == 1 else frozenset({'user', 'billing'}))
         or type(user_count) is not int
         or user_count < 0
     ):
@@ -317,10 +324,21 @@ def read_manifest(root: Path) -> Manifest | None:
     if schema == 1:
         manifest = Manifest(recipient=recipient, user_count=user_count)
     else:
-        billing_count, backup_seq, sequence = tally['billing'], fields['backup_seq'], fields['sequence']
-        if (type(billing_count) is not int or billing_count < 0 or type(backup_seq) is not int
-                or type(sequence) is not int or not 0 <= backup_seq <= sequence < 2**63 - 1):
-            raise BackupError('The billing manifest counts or sequence bounds are malformed.')
+        billing_count, backup_seq, sequence = (
+            tally['billing'],
+            fields['backup_seq'],
+            fields['sequence'],
+        )
+        if (
+            type(billing_count) is not int
+            or billing_count < 0
+            or type(backup_seq) is not int
+            or type(sequence) is not int
+            or not 0 <= backup_seq <= sequence < 2**63 - 1
+        ):
+            raise BackupError(
+                'The billing manifest counts or sequence bounds are malformed.'
+            )
         manifest = Manifest(recipient, user_count, billing_count, backup_seq, sequence)
     if manifest_bytes(manifest) != data:
         raise BackupError('The backup manifest is not in canonical form.')
@@ -568,10 +586,13 @@ def _write_and_commit(
             removed += 1
             touched.append(name)
         # A record made and deleted between two runs never reached the backup.
-    manifest = Manifest(recipient=str(recipient), user_count=snapshot.user_count,
+    manifest = Manifest(
+        recipient=str(recipient),
+        user_count=snapshot.user_count,
         billing_count=snapshot.billing_count,
         backup_seq=snapshot.through_seq if snapshot.billing_count is not None else None,
-        sequence=snapshot.sequence)
+        sequence=snapshot.sequence,
+    )
     if _write_if_different(root / MANIFEST, manifest_bytes(manifest), scratch):
         touched.append(MANIFEST)
     on_disk = len(record_files(root))
@@ -625,7 +646,7 @@ def run_backup(
         records = record_files(root)
         financial = billing_files(root)
         existing = read_manifest(root)
-        if existing is None and records:
+        if existing is None and (records or financial):
             raise BackupError(
                 'The backup holds records but no manifest naming the key they are '
                 'encrypted to.'
@@ -692,6 +713,7 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
         _take_up_stopped_run(root, directory)
         require_clean(root)
         records = record_files(root)
+        financial = billing_files(root)
         manifest = read_manifest(root)
         if manifest is None:
             raise BackupError('The checkout has no manifest.json; it is no backup.')

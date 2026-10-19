@@ -18,11 +18,19 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from eight_characters.accounts.billing_records import (
-    AccountBillingRecord, BillingDocument, billing_path, validate_billing_graph,
+    AccountBillingRecord,
+    BillingDocument,
+    billing_path,
+    validate_billing_graph,
 )
-from eight_characters.accounts.billing_schema import BILLING_SCHEMA_5, BILLING_SCHEMA_VERSION
+from eight_characters.accounts.billing_schema import (
+    BILLING_SCHEMA_5,
+    BILLING_SCHEMA_VERSION,
+)
 from eight_characters.accounts.billing_storage import (
-    read_billing, require_billing_layout, restore_billing,
+    read_billing,
+    require_billing_layout,
+    restore_billing,
 )
 from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
@@ -511,7 +519,10 @@ def _texts(row: tuple[Any, ...]) -> tuple[str, ...]:
 
 
 def _billing_records(connection: sqlite3.Connection) -> tuple[BillingDocument, ...]:
-    users = [_user_from_row(row) for row in connection.execute(f'SELECT {_USER_COLUMNS} FROM users')]
+    users = [
+        _user_from_row(row)
+        for row in connection.execute(f'SELECT {_USER_COLUMNS} FROM users')
+    ]
     try:
         return read_billing(connection, users)
     except RecordError as exc:
@@ -605,8 +616,11 @@ class AccountStore:
 
         Nothing is logged for the backup: the records came from it.
         """
-        if (type(backup_seq) is not int or type(sequence) is not int
-                or not 0 <= backup_seq <= sequence < 2**63 - 1):
+        if (
+            type(backup_seq) is not int
+            or type(sequence) is not int
+            or not 0 <= backup_seq <= sequence < 2**63 - 1
+        ):
             raise StoreError('Restored backup sequence bounds are invalid.')
         if billing is None and (backup_seq or sequence):
             raise StoreError('Legacy backups contain no historical sequence bounds.')
@@ -615,7 +629,9 @@ class AccountStore:
                 validate_billing_graph(billing, [user for user, _ in accounts])
             except RecordError as exc:
                 raise StoreError(str(exc)) from exc
-        return cls._build(path, accounts, head, clock, limits, billing, backup_seq, sequence)
+        return cls._build(
+            path, accounts, head, clock, limits, billing, backup_seq, sequence
+        )
 
     @classmethod
     def _build(
@@ -653,7 +669,9 @@ class AccountStore:
                     if billing is not None:
                         for statement in BILLING_SCHEMA_5:
                             connection.execute(statement)
-                        connection.execute(f'PRAGMA user_version = {BILLING_SCHEMA_VERSION}')
+                        connection.execute(
+                            f'PRAGMA user_version = {BILLING_SCHEMA_VERSION}'
+                        )
                     for user, settings in accounts:
                         _insert_user(connection, user)
                         if settings is not None:
@@ -664,9 +682,12 @@ class AccountStore:
                     )
                     if billing is not None:
                         restore_billing(connection, billing)
-                        connection.execute("DELETE FROM sqlite_sequence WHERE name = 'changes'")
                         connection.execute(
-                            "INSERT INTO sqlite_sequence (name,seq) VALUES ('changes',?)", (sequence,),
+                            "DELETE FROM sqlite_sequence WHERE name = 'changes'"
+                        )
+                        connection.execute(
+                            "INSERT INTO sqlite_sequence (name,seq) VALUES ('changes',?)",
+                            (sequence,),
                         )
                         require_billing_layout(connection, MIGRATIONS)
                         read_billing(connection, [user for user, _ in accounts])
@@ -676,7 +697,9 @@ class AccountStore:
                 connection.execute('COMMIT')
                 mode = connection.execute('PRAGMA journal_mode = WAL').fetchone()
                 if mode is None or mode[0] != 'wal':
-                    raise StoreError('The partial database cannot use a write-ahead log.')
+                    raise StoreError(
+                        'The partial database cannot use a write-ahead log.'
+                    )
                 connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             # A hard link moves it into place only if nothing is there yet.
             os.link(partial, path)
@@ -705,7 +728,9 @@ class AccountStore:
         return self._limits[plan]
 
     @contextmanager
-    def _write(self, *, backup_progress: bool = False) -> Generator[sqlite3.Connection, None, None]:
+    def _write(
+        self, *, backup_progress: bool = False
+    ) -> Generator[sqlite3.Connection, None, None]:
         with _connection(self.path) as connection:
             connection.execute('BEGIN IMMEDIATE')
             try:
@@ -1360,12 +1385,18 @@ class AccountStore:
                 after,
                 _scalar(connection, 'SELECT COALESCE(MAX(seq), 0) FROM changes'),
             )
-            sequence = _scalar(connection,
-                "SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name='changes'),0)")
+            sequence = _scalar(
+                connection,
+                "SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name='changes'),0)",
+            )
             if sequence < through:
-                raise StoreError('The change-log sequence is below its backup high-water.')
+                raise StoreError(
+                    'The change-log sequence is below its backup high-water.'
+                )
             future = _user_version(connection) == BILLING_SCHEMA_VERSION
-            financial = {r.id: r for r in _billing_records(connection)} if future else {}
+            financial = (
+                {r.id: r for r in _billing_records(connection)} if future else {}
+            )
             rows = connection.execute(
                 'SELECT kind, record_id, path FROM changes '
                 'WHERE seq > ? AND seq <= ? ORDER BY seq',
@@ -1373,11 +1404,15 @@ class AccountStore:
             ).fetchall()
             latest: dict[str, tuple[str, str]] = {}
             for kind, record_id, path in rows:
-                if kind not in (('user', 'billing') if future else ('user',)) or not isinstance(record_id, str):
+                if kind not in (
+                    ('user', 'billing') if future else ('user',)
+                ) or not isinstance(record_id, str):
                     raise StoreError(
                         f'The change log holds an unknown record: {kind!r}.'
                     )
-                expected = user_path(record_id) if kind == 'user' else billing_path(record_id)
+                expected = (
+                    user_path(record_id) if kind == 'user' else billing_path(record_id)
+                )
                 if not isinstance(path, str) or path != expected:
                     raise StoreError(
                         "The change log holds a path that is not the record's."
@@ -1386,8 +1421,12 @@ class AccountStore:
             changes = tuple(
                 RecordChange(
                     path=path,
-                    user=_select_user(connection, 'id', record_id) if kind == 'user' else None,
-                    settings=_select_settings(connection, record_id) if kind == 'user' else None,
+                    user=_select_user(connection, 'id', record_id)
+                    if kind == 'user'
+                    else None,
+                    settings=_select_settings(connection, record_id)
+                    if kind == 'user'
+                    else None,
                     billing=financial.get(record_id) if kind == 'billing' else None,
                 )
                 for path, (kind, record_id) in sorted(latest.items())

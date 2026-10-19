@@ -21,13 +21,18 @@ from eight_characters.accounts.records import RecordError, User
 
 def _layout(connection: sqlite3.Connection) -> tuple[tuple[str, ...], ...]:
     rows = connection.execute(
-        "SELECT type,name,tbl_name,sql FROM sqlite_master "
+        'SELECT type,name,tbl_name,sql FROM sqlite_master '
         "WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL ORDER BY type,name"
     ).fetchall()
     if any(not all(isinstance(v, str) for v in row) for row in rows):
         raise RecordError('The database has an unreadable schema definition.')
     return tuple(
-        (str(row[0]), str(row[1]), str(row[2]), re.sub(r'\s+', ' ', str(row[3])).strip())
+        (
+            str(row[0]),
+            str(row[1]),
+            str(row[2]),
+            re.sub(r'\s+', ' ', str(row[3])).strip(),
+        )
         for row in rows
     )
 
@@ -48,11 +53,17 @@ def require_billing_layout(
     connection: sqlite3.Connection, migrations: tuple[tuple[str, ...], ...]
 ) -> None:
     if _layout(connection) != _expected(migrations):
-        raise RecordError('The schema-5 database differs from the reviewed billing layout.')
+        raise RecordError(
+            'The schema-5 database differs from the reviewed billing layout.'
+        )
 
 
 def _header(record: BillingDocument) -> tuple[str, str, str | None, int]:
-    owner = record.owner_id if isinstance(record, (AccountBillingRecord, EventRecord)) else None
+    owner = (
+        record.owner_id
+        if isinstance(record, (AccountBillingRecord, EventRecord))
+        else None
+    )
     return record.scope_id, record.record_type, owner, record.revision
 
 
@@ -72,16 +83,23 @@ def read_billing(
     validate_billing_graph(records, users)
     expected_claims = {
         (r.scope_id, native_id, kind, r.owner_id)
-        for r in records if isinstance(r, AccountBillingRecord)
+        for r in records
+        if isinstance(r, AccountBillingRecord)
         for native_id, kind in resource_claims(r).items()
     }
-    actual_claims = set(connection.execute(
-        'SELECT scope_id,native_id,native_kind,owner_id FROM billing_resources'
-    ).fetchall())
+    actual_claims = set(
+        connection.execute(
+            'SELECT scope_id,native_id,native_kind,owner_id FROM billing_resources'
+        ).fetchall()
+    )
     expected_jobs = {(r.event_id, r.id) for r in records if isinstance(r, EventRecord)}
-    actual_jobs = set(connection.execute('SELECT event_id,record_id FROM billing_jobs').fetchall())
+    actual_jobs = set(
+        connection.execute('SELECT event_id,record_id FROM billing_jobs').fetchall()
+    )
     if actual_claims != expected_claims or actual_jobs != expected_jobs:
-        raise RecordError('Financial ownership or delivery projection differs from authority.')
+        raise RecordError(
+            'Financial ownership or delivery projection differs from authority.'
+        )
     return tuple(records)
 
 
@@ -109,7 +127,7 @@ def restore_billing(
                 (record.event_id, record.id),
             )
     connection.execute(
-        "INSERT INTO billing_runtime (id,epoch,ready,reason,checked_at) "
+        'INSERT INTO billing_runtime (id,epoch,ready,reason,checked_at) '
         "VALUES (1,?,0,'unverified',NULL)",
         (secrets.token_hex(16),),
     )

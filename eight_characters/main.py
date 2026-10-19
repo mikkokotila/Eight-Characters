@@ -153,10 +153,17 @@ app.include_router(account_router)
 
 
 @app.exception_handler(BillingReadOnly)
-async def billing_reader_write_refused(_request: Request, _exc: BillingReadOnly) -> JSONResponse:
-    return JSONResponse(status_code=503, content={
-        'detail': 'Account changes are temporarily unavailable during billing recovery.'
-    })
+async def billing_reader_write_refused(
+    _request: Request, _exc: BillingReadOnly
+) -> JSONResponse:
+    return JSONResponse(
+        status_code=503,
+        content={
+            'detail': 'Account changes are temporarily unavailable during billing recovery.'
+        },
+    )
+
+
 # Charts need an account, but for the first chart (/api/first_chart). The start page,
 # place search and the explorer's sample and settings stay open.
 ACCOUNT_REQUIRED = [Depends(require_account)]

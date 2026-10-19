@@ -180,7 +180,9 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
     if env.get('EC_BILLING_MODE', 'disabled') != 'disabled' or any(
         name.startswith('EC_STRIPE_') for name in env
     ):
-        raise ConfigError('Billing service configuration requires the billing writer; this release is a recovery reader.')
+        raise ConfigError(
+            'Billing service configuration requires the billing writer; this release is a recovery reader.'
+        )
     required = (
         'EC_APP_ORIGIN',
         'EC_DATABASE_PATH',
