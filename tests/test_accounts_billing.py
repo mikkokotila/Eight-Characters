@@ -270,13 +270,14 @@ class TestNativeCatalogue(unittest.TestCase):
             )
 
         client = httpx.Client(transport=httpx.MockTransport(read))
-        out = io.StringIO()
+        out, err = io.StringIO(), io.StringIO()
         with (
             patch.dict('os.environ', ENV, clear=True),
             patch(
                 'eight_characters.accounts.__main__.httpx.Client', return_value=client
             ),
             redirect_stdout(out),
+            redirect_stderr(err),
         ):
             self.assertEqual(main(['billing-preflight']), 0)
         self.assertEqual(json.loads(out.getvalue())['status'], 'catalogue_verified')
