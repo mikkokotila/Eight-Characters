@@ -147,8 +147,22 @@ class Work:
                 and operation.sent_at is None
                 and self.authority.unsent_is_proven(self.lease)
             )
+            # These commands only set state on a known object. Reapplying the
+            # original request cannot create a second Customer or subscription.
+            known_subject = subject_id is not None and purpose in (
+                'customer_seal',
+                'checkout_seal',
+                'cancel_period',
+                'cancel_delete',
+                'expire',
+                'invoice_stop',
+                'invoice_void',
+                'delete_mark',
+                'customer_redact',
+            )
             if not self.discovered or (
                 not never_sent
+                and not known_subject
                 and int(now.timestamp())
                 - int(
                     parse_timestamp(

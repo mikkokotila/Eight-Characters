@@ -15,6 +15,45 @@ from tests.test_billing_authority import AuthorityCase
 
 
 class NativeExecution(AuthorityCase):
+    def test_known_subject_cleanup_resumes_after_provider_key_retention(self):
+        lease, _ = self.bound()
+        self.authority.release(lease)
+        for purpose, subject in (
+            ('cancel_period', 'sub_existing'),
+            ('cancel_delete', 'sub_existing'),
+            ('expire', 'cs_test_existing'),
+            ('invoice_stop', 'in_existing'),
+            ('invoice_void', 'in_existing'),
+            ('customer_redact', 'cus_one'),
+        ):
+            with self.subTest(purpose=purpose):
+                calls = []
+
+                def unavailable_then_recovered(request):
+                    calls.append((request.headers['Idempotency-Key'], request.content))
+                    if len(calls) == 1:
+                        raise httpx.ReadTimeout('injected provider outage')
+                    return httpx.Response(
+                        200,
+                        json={'id': subject, 'livemode': False},
+                        headers={'Stripe-Version': self.config.catalogue.api_version},
+                    )
+
+                work = self.work(unavailable_then_recovered)
+                with self.assertRaises(BillingHold):
+                    work.execute(purpose, subject_id=subject)
+                self.authority.release(work.lease)
+                self.clock.advance(86401)
+                work.lease, work.owner = self.authority.claim(self.user.id)
+                work.discovered = False
+                with self.assertRaises(BillingHold):
+                    work.execute(purpose, subject_id=subject)
+                self.assertEqual(len(calls), 1)
+                work.discovered = True
+                work.execute(purpose, subject_id=subject)
+                self.assertEqual(calls[0], calls[1])
+                self.authority.release(work.lease)
+
     def prepared_before_send(self):
         work = self.work(self.response)
         original = work.save
