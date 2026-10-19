@@ -96,7 +96,10 @@ class NativeOperations(unittest.TestCase):
         with self.assertRaises(BillingHold):
             request_for(
                 replace(self.config, payment_method_configuration='pmc_changed'),
-                self.origin, self.scope, self.owner, operation,
+                self.origin,
+                self.scope,
+                self.owner,
+                operation,
             )
         self.assertEqual(
             again.parameters['line_items[0][price]'], self.scope.offers[0].price_id

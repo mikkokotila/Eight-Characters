@@ -125,7 +125,15 @@ def load_runtime_config(
         values, 'EC_STRIPE_PAYMENT_METHOD_CONFIGURATION', r'pmc_[A-Za-z0-9]+'
     )
     return BillingConfig(
-        catalogue, namespace, key, version, secrets, clocks, purchase_clock, poll, lease,
+        catalogue,
+        namespace,
+        key,
+        version,
+        secrets,
+        clocks,
+        purchase_clock,
+        poll,
+        lease,
         payment_configuration,
     )
 
