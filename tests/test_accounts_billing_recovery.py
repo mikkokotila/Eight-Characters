@@ -157,6 +157,100 @@ def records(owner):
 
 
 class BillingRecovery(BackupTestCase):
+    def schema2_deletion(self, *, completed=False):
+        user = self.store.create_user('pending@example.invalid', 'fi')
+        self.backup()
+        scope, owner, _ = records(user)
+        value = json.loads(encode_billing(owner))
+        value.update(
+            schema=2,
+            customer_id=None,
+            test_clock_id=None,
+            binding=None,
+            intents=[],
+            operations=[],
+            coverage=[],
+            lifecycle='deleted' if completed else 'deleting',
+            deletion=dict(
+                requested_at=NOW,
+                completed_at=NOW if completed else None,
+                nonce=new_id(),
+                native_object_id=None,
+                native_marker=None,
+                retain_until=None,
+            ),
+        )
+        owner = decode_billing(canonical_json(value))
+        with sqlite3.connect(self.store.path) as connection:
+            connection.execute('PRAGMA foreign_keys=ON')
+            connection.execute('BEGIN IMMEDIATE')
+            for statement in BILLING_SCHEMA_5:
+                connection.execute(statement)
+            connection.execute('PRAGMA user_version=5')
+            if completed:
+                connection.execute('DELETE FROM users WHERE id=?', (user.id,))
+                connection.execute(
+                    'INSERT INTO changes(kind,record_id,path) VALUES(?,?,?)',
+                    ('user', user.id, f'users/{user.id[:2]}/{user.id}/user.json'),
+                )
+            restore_billing(connection, (scope, owner))
+            for record in (scope, owner):
+                connection.execute(
+                    'INSERT INTO changes(kind,record_id,path) VALUES(?,?,?)',
+                    ('billing', record.id, billing_path(record.id)),
+                )
+        return user, scope, owner
+
+    def test_schema2_pending_deletion_is_encrypted_and_restored_before_identity(self):
+        user, _, owner = self.schema2_deletion()
+        self.backup()
+        ciphertext = (self.checkout / (billing_path(owner.id) + '.age')).read_bytes()
+        self.assertEqual(pyrage.decrypt(ciphertext, [self.identity]), encode_billing(owner))
+        target = self.directory / 'pending-delete.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        recovered = AccountStore.open(target)
+        restored = next(record for record in recovered.billing_records() if record.id == user.id)
+        self.assertEqual(restored, owner)
+        self.assertEqual(restored.schema_version, 2)
+        self.assertIsNone(restored.deletion.native_object_id)
+        self.assertIsNotNone(recovered.user_by_id(user.id))
+        with self.assertRaises(BillingReadOnly):
+            recovered.delete_user(user.id)
+
+    def test_schema2_no_customer_tombstone_survives_squash_and_restore(self):
+        user, _, owner = self.schema2_deletion(completed=True)
+        self.backup()
+        squash_history(self.store, self.checkout)
+        target = self.directory / 'no-customer-tombstone.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        recovered = AccountStore.open(target)
+        self.assertEqual(recovered.users(), [])
+        self.assertIn(owner, recovered.billing_records())
+        self.assertFalse((self.checkout / f'users/{user.id[:2]}/{user.id}').exists())
+        self.assertEqual(read_manifest(self.checkout).billing_count, 2)
+
+    def test_schema1_null_targets_mismatched_pairs_and_future_versions_are_refused(self):
+        _, scope, owner = self.schema2_deletion()
+        original = json.loads(encode_billing(owner))
+        malformed = [
+            {**original, 'schema': 1},
+            {**original, 'schema': 3},
+            {**original, 'schema': True},
+            {**original, 'customer_id': 'cus_unknown'},
+        ]
+        for key, value in [('native_object_id', 'cus_unknown'), ('native_marker', 'a' * 64)]:
+            malformed.append({**original, 'deletion': {**original['deletion'], key: value}})
+        for key in ('native_object_id', 'native_marker'):
+            nested = dict(original['deletion'])
+            del nested[key]
+            malformed.append({**original, 'deletion': nested})
+        for value in malformed:
+            with self.assertRaises(RecordError):
+                decode_billing(canonical_json(value))
+        scope_value = json.loads(encode_billing(scope))
+        with self.assertRaises(RecordError):
+            decode_billing(canonical_json({**scope_value, 'schema': 2}))
+
     def test_encoder_revalidates_copied_instances(self):
         user = self.store.create_user('one@example.invalid', 'fi')
         record = records(user)[1]
