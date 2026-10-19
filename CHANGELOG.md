@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.66.0
+
+### Changed
+- The account store enforces `PlanLimits.charts_per_account` in the same transaction
+  that adds a chart. Positive finite allowances and explicit unlimited are supported;
+  every settings response reports the same policy as `chart_limit` (#132).
+- Retained libraries stay readable, editable, exportable and recoverable after a
+  lower allowance. A refused addition changes no data or backup log. Current defaults
+  remain 50 on all legacy plans; no sold tier or paid access is enabled.
+
+### Tests
+- Actual store/API additions with 1/5/25/unlimited allowances; concurrent attempts at
+  the final place; refused browser allowance overrides; above-50 writes followed by
+  downgrade, edits, export and real encrypted backup/restore.
+
 ## 0.65.0
 
 ### Changed

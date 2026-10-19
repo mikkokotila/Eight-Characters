@@ -19,7 +19,6 @@ from typing import Any, Final, cast
 
 from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
-    CHART_LIMIT,
     Birth,
     ChosenSchools,
     Couple,
@@ -791,8 +790,9 @@ class AccountStore:
         chart_id = new_id()
 
         def save(settings: Settings, limits: PlanLimits) -> Settings:
-            if len(settings.charts) >= CHART_LIMIT:
-                raise ChartLimit(f'An account keeps at most {CHART_LIMIT} charts.')
+            cap = limits.charts_per_account
+            if cap is not None and len(settings.charts) >= cap:
+                raise ChartLimit(f'An account keeps at most {cap} charts.')
             _not_saved_elsewhere(settings, birth, None)
             saved = replace(
                 settings, charts=(*settings.charts, SavedChart(chart_id, birth))

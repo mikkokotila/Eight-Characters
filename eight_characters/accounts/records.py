@@ -49,7 +49,7 @@ ZI_CONVENTIONS: Final[tuple[ZiConvention, ...]] = ('split_midnight', 'whole_zi_2
 # refused.
 RECORD_SCHEMA: Final = 3
 READABLE_SCHEMAS: Final = (1, 2, 3)
-# The current write limit. Records remain readable above it: a smaller allowance
+# The default write allowance. Records remain readable above it: a smaller allowance
 # must never make a retained library unreadable, unexportable or unrestorable.
 CHART_LIMIT: Final = 50
 EMAIL_MAX_LENGTH: Final = 254

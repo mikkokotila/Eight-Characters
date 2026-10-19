@@ -41,7 +41,6 @@ from eight_characters.accounts.person_check import (
 )
 from eight_characters.accounts.plans import PlanLimits
 from eight_characters.accounts.records import (
-    CHART_LIMIT,
     DEFAULT_SCHOOLS,
     NO_CHOICE,
     Birth,
@@ -980,7 +979,7 @@ def settings_view(
             'my_chart': None,
             'couples': [],
             'pending_partner': None,
-            'chart_limit': CHART_LIMIT,
+            'chart_limit': limits.charts_per_account,
             'couples_per_chart': limits.couples_per_chart,
             'place': None,
             'schools': _schools_view(DEFAULT_SCHOOLS),
@@ -998,7 +997,7 @@ def settings_view(
             for couple in settings.couples
         ],
         'pending_partner': settings.pending_partner,
-        'chart_limit': CHART_LIMIT,
+        'chart_limit': limits.charts_per_account,
         'couples_per_chart': limits.couples_per_chart,
         'place': None if settings.place is None else place_value(settings.place),
         'schools': _schools_view(settings.schools.effective()),

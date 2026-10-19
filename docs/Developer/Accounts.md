@@ -92,8 +92,8 @@ does not. A downgrade must never make retained data unreadable.
 
 The browser also understands a future `chart_limit: null` as unlimited in Settings,
 the library and birth-saving controls. A positive integer remains a finite write
-allowance; an omitted or malformed limit is an error. The API still returns 50 and
-the store still refuses the 51st addition. This release enables no paid allowance.
+allowance; an omitted or malformed limit is an error. By default the API returns 50
+and the store refuses the 51st addition. No paid tier is selected by this policy.
 
 Deploy these readers everywhere before any writer can store more than 50 charts.
 Once such a writer runs, the rollback floor is 0.65.0: older releases reject those
@@ -169,6 +169,17 @@ and refuses one that misses or adds a plan before it opens or builds a database.
   No plan caps couples for now. Once plans are sold, `basic` keeps one and `pro` and
   `max` as many as wanted (the owner, 2026-10-17; #96); the table is the one place
   that changes.
+- `charts_per_account`: how many saved charts the account may add up to, a positive
+  integer or `None` for unlimited. Every legacy plan defaults to 50. The store checks
+  the policy in the same transaction that reads the account and settings; a refusal
+  writes no settings or backup change. Every API settings response reports that same
+  policy as `chart_limit`, even before the account has settings. A browser cannot
+  supply its own allowance. Records, export and encrypted recovery read all retained
+  charts above the current allowance; corrections, renames and removals still work.
+  The published offer's 1/5/25/unlimited values can be enforced by this path, but are
+  not applied to existing legacy plan names or enabled for sale here. Verified
+  payment coverage and explicit legacy semantics must select the future sold tier;
+  a configured test allowance is not proof of payment or fulfilled paid access.
 - A cap is checked when a couple is asked for, in the write that reads the user's plan
   and settings, and never when settings are read, exported, backed up or restored. An
   account moved to a smaller plan keeps and reads every couple, Today keeps reading
