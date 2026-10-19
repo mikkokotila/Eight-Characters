@@ -27,6 +27,7 @@ from eight_characters.accounts.billing_native import (
     mapping,
 )
 from eight_characters.accounts.billing_operations import (
+    checkout_disabled_by_deletion,
     customer_mac,
     deletion_mac,
     operation_key,
@@ -620,6 +621,44 @@ class BillingService:
         if work.owner.lifecycle not in ('deleting', 'deleted'):
             return False
         if observation is not None:
+            disabled: set[str] = set()
+            for operation in work.owner.operations:
+                if (
+                    operation.kind != 'checkout_create'
+                    or operation.subject_id is not None
+                    or operation.state in ('done', 'recovered')
+                    or checkout_disabled_by_deletion(work.owner, operation)
+                ):
+                    continue
+                if (
+                    operation.state != 'prepared'
+                    or operation.sent_at is not None
+                    or not work.discovered
+                    or not self.authority.unsent_is_proven(work.lease)
+                    or not any(
+                        intent.id == operation.intent_id and intent.checkout_id is None
+                        for intent in work.owner.intents
+                    )
+                ):
+                    raise BillingHold('uncertain_operation')
+                disabled.add(operation.id)
+            if disabled:
+                intent_ids = {
+                    operation.intent_id for operation in work.owner.operations
+                    if operation.id in disabled
+                }
+                work.save(work.owner.model_copy(update={
+                    'operations': tuple(
+                        operation.model_copy(update={'state': 'held', 'reason': 'deleted_owner'})
+                        if operation.id in disabled else operation
+                        for operation in work.owner.operations
+                    ),
+                    'intents': tuple(
+                        intent.model_copy(update={'state': 'held'})
+                        if intent.id in intent_ids else intent
+                        for intent in work.owner.intents
+                    ),
+                }))
             customer_id = work.owner.customer_id
             if read_deletion(self.config, observation.customer) is None:
                 work.execute('delete_mark', subject_id=customer_id)
@@ -713,6 +752,12 @@ class BillingService:
             operation.reason == 'late_settlement' for operation in work.owner.operations
         ):
             raise BillingHold('late_settlement')
+        if any(
+            operation.state not in ('done', 'recovered')
+            and not checkout_disabled_by_deletion(work.owner, operation)
+            for operation in work.owner.operations
+        ):
+            raise BillingHold('uncertain_operation')
         deletion = work.owner.deletion
         if deletion is None:
             raise BillingHold('deleted_owner')

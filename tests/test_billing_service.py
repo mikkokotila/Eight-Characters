@@ -236,6 +236,50 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def prepared_checkout_before_send(self):
+        original = Work.save
+        def crash(work, owner):
+            if any(op.kind == 'checkout_create' and op.state == 'sent' for op in owner.operations):
+                raise RuntimeError('injected before Checkout sent commit')
+            original(work, owner)
+        with patch.object(Work, 'save', crash):
+            with self.assertRaises(RuntimeError):
+                self.checkout()
+        return next(record for record in self.accounts.store.billing_records()
+                    if isinstance(record, AccountBillingRecord) and record.id == self.user.id)
+
+    def test_delete_disables_proven_unsent_checkout_without_creating_a_session(self):
+        before = self.prepared_checkout_before_send()
+        response = self.client.request('DELETE', '/api/account', json={'key': self.key})
+        self.assertEqual(response.status_code, 204, response.text)
+        self.assertIsNone(self.accounts.store.user_by_id(self.user.id))
+        self.assertFalse(self.provider.sessions)
+        after = next(record for record in self.accounts.store.billing_records()
+                     if isinstance(record, AccountBillingRecord) and record.id == self.user.id)
+        original = next(op for op in before.operations if op.kind == 'checkout_create')
+        disabled = next(op for op in after.operations if op.id == original.id)
+        self.assertEqual((disabled.state, disabled.reason), ('held', 'deleted_owner'))
+        self.assertEqual(disabled.idempotency_key, original.idempotency_key)
+        self.assertEqual(disabled.request_sha256, original.request_sha256)
+        self.assertIsNone(disabled.sent_at)
+        self.assertIsNone(disabled.result_id)
+        self.service.authority.hold_runtime(self.service.epoch, 'unverified')
+        self.service.recover()
+        self.assertTrue(self.service.authority.snapshot()[2])
+        self.assertFalse(self.provider.sessions)
+
+    def test_unproven_prepared_checkout_keeps_erasure_and_recovery_pending(self):
+        self.prepared_checkout_before_send()
+        with patch.object(self.service.authority, 'unsent_is_proven', return_value=False):
+            response = self.client.request('DELETE', '/api/account', json={'key': self.key})
+            self.assertEqual(response.status_code, 503)
+            self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
+            self.assertFalse(self.provider.sessions)
+            self.service.authority.hold_runtime(self.service.epoch, 'unverified')
+            with self.assertRaises(BillingHold):
+                self.service.recover()
+            self.assertFalse(self.service.authority.snapshot()[2])
+
     def test_busy_return_redirects_without_granting_an_unreconciled_payment(self):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()

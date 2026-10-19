@@ -19,7 +19,10 @@ from eight_characters.accounts.billing_access import (
     BillingHold,
     check_scope,
 )
-from eight_characters.accounts.billing_operations import deletion_mac
+from eight_characters.accounts.billing_operations import (
+    checkout_disabled_by_deletion,
+    deletion_mac,
+)
 from eight_characters.accounts.billing_records import (
     REASONS,
     AccountBillingRecord,
@@ -690,6 +693,7 @@ class Authority:
                     record.lifecycle in ('deleting', 'held')
                     or any(
                         operation.state in ('prepared', 'sent', 'held')
+                        and not checkout_disabled_by_deletion(record, operation)
                         for operation in record.operations
                     )
                 )

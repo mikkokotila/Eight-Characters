@@ -44,6 +44,28 @@ def operation_kind(purpose: str) -> str:
     raise BillingHold('processing_failed')
 
 
+def checkout_disabled_by_deletion(
+    owner: AccountBillingRecord, operation: Operation
+) -> bool:
+    """Recognize the durable never-executed disposition of an erased purchase."""
+    return (
+        owner.lifecycle in ('deleting', 'deleted')
+        and owner.deletion is not None
+        and operation.kind == 'checkout_create'
+        and operation.subject_id is None
+        and operation.state == 'held'
+        and operation.reason == 'deleted_owner'
+        and operation.sent_at is None
+        and operation.result_id is None
+        and any(
+            intent.id == operation.intent_id
+            and intent.state == 'held'
+            and intent.checkout_id is None
+            for intent in owner.intents
+        )
+    )
+
+
 @dataclass(frozen=True)
 class NativeRequest:
     method: str
