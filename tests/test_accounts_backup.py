@@ -704,7 +704,10 @@ class TestRestore(BackupTestCase):
         restored.create_user('after@example.com', 'en')
         result = run_backup(restored, self.clone, self.recipient)
         self.assertEqual((result.written, result.removed), (1, 0))
-        self.assertEqual(read_manifest(self.clone), Manifest(str(self.recipient), 3))
+        self.assertEqual(
+            read_manifest(self.clone),
+            Manifest(str(self.recipient), 3, billing_count=0, backup_seq=1, sequence=1),
+        )
 
     def test_refuses_an_existing_database(self) -> None:
         self.target.write_bytes(b'')

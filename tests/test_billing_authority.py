@@ -17,7 +17,7 @@ from tests.test_accounts_billing_recovery import records
 from tests.test_billing_access import configuration
 
 
-class FencedAuthority(BackupTestCase):
+class AuthorityCase(BackupTestCase):
     def setUp(self):
         super().setUp()
         self.user = self.store.create_user('fixture@example.invalid', 'fi')
@@ -59,6 +59,8 @@ class FencedAuthority(BackupTestCase):
             .model_copy(update={'price_id': offer.price_id, 'offer_id': offer.id})
         )
 
+
+class FencedAuthority(AuthorityCase):
     def test_closed_startup_gate_and_restored_epoch_refuse_old_work(self):
         lease, owner = self.bound()
         epoch = self.authority.begin_recovery()
