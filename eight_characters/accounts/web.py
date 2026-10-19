@@ -329,7 +329,10 @@ def get_accounts() -> Accounts:
     accounts = accounts_from_environment()
     # Another process may migrate the shared database after this service starts.
     # Even a session that needs no renewal must not serve legacy plan limits.
-    if accounts.store.schema_version() > SCHEMA_VERSION or accounts.store.financially_managed():
+    if (
+        accounts.store.schema_version() > SCHEMA_VERSION
+        or accounts.store.financially_managed()
+    ):
         raise BillingReadOnly('This reader cannot serve financially managed accounts.')
     return accounts
 

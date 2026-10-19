@@ -637,7 +637,13 @@ class AccountStore:
                 raise StoreError(f'{path} is not an account database.')
             check_database_version(connection)
             _migrate(connection)
-        opened = cls(path, clock=clock, limits=limits, billing_config=billing_config, billing_clock=billing_clock)
+        opened = cls(
+            path,
+            clock=clock,
+            limits=limits,
+            billing_config=billing_config,
+            billing_clock=billing_clock,
+        )
         if billing_config is not None:
             with opened.read_transaction() as connection:
                 opened._check_billing_context(connection)
@@ -722,7 +728,10 @@ class AccountStore:
                 _migrate(connection)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
-                    if billing is not None and _user_version(connection) < BILLING_SCHEMA_VERSION:
+                    if (
+                        billing is not None
+                        and _user_version(connection) < BILLING_SCHEMA_VERSION
+                    ):
                         for statement in BILLING_SCHEMA_5:
                             connection.execute(statement)
                         connection.execute(
@@ -785,7 +794,12 @@ class AccountStore:
             return False
         return any(
             connection.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone() is not None
-            for table in ('billing_records', 'billing_resources', 'billing_jobs', 'billing_leases')
+            for table in (
+                'billing_records',
+                'billing_resources',
+                'billing_jobs',
+                'billing_leases',
+            )
         )
 
     def limits(self, plan: Plan) -> PlanLimits:
@@ -795,25 +809,45 @@ class AccountStore:
     def _check_billing_context(self, connection: sqlite3.Connection) -> None:
         if self._billing_config is None:
             return
-        if connection.execute("SELECT 1 FROM users WHERE plan != 'free' LIMIT 1").fetchone() is not None:
+        if (
+            connection.execute(
+                "SELECT 1 FROM users WHERE plan != 'free' LIMIT 1"
+            ).fetchone()
+            is not None
+        ):
             raise BillingHold('legacy_identity_ambiguous')
         records = billing_records_in(connection)
-        scope = next((record for record in records if isinstance(record, ScopeRecord)), None)
+        scope = next(
+            (record for record in records if isinstance(record, ScopeRecord)), None
+        )
         if scope is not None:
             check_scope(self._billing_config, scope)
 
-    def _billing_state(self, connection: sqlite3.Connection, user_id: str) -> tuple[ScopeRecord, AccountBillingRecord | None, str, bool]:
+    def _billing_state(
+        self, connection: sqlite3.Connection, user_id: str
+    ) -> tuple[ScopeRecord, AccountBillingRecord | None, str, bool]:
         config = self._billing_config
         if config is None:
             raise BillingReadOnly('The financial context is not configured.')
         self._check_billing_context(connection)
         records = billing_records_in(connection)
-        scope = next((record for record in records if isinstance(record, ScopeRecord)), None)
+        scope = next(
+            (record for record in records if isinstance(record, ScopeRecord)), None
+        )
         if scope is None:
             raise BillingHold('unverified')
         check_scope(config, scope)
-        owner = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == user_id), None)
-        runtime = connection.execute('SELECT epoch,ready FROM billing_runtime WHERE id=1').fetchone()
+        owner = next(
+            (
+                record
+                for record in records
+                if isinstance(record, AccountBillingRecord) and record.id == user_id
+            ),
+            None,
+        )
+        runtime = connection.execute(
+            'SELECT epoch,ready FROM billing_runtime WHERE id=1'
+        ).fetchone()
         if runtime is None:
             raise BillingHold('unverified')
         return scope, owner, runtime[0], runtime[1] == 1
@@ -837,7 +871,9 @@ class AccountStore:
                 raise BillingHold('clock_unavailable')
         return _BillingBasis(epoch, revision, clock_id, frozen)
 
-    def _capacity_in(self, connection: sqlite3.Connection, user: User, basis: _BillingBasis | None) -> tuple[Access | None, PlanLimits]:
+    def _capacity_in(
+        self, connection: sqlite3.Connection, user: User, basis: _BillingBasis | None
+    ) -> tuple[Access | None, PlanLimits]:
         if self._billing_config is None:
             if self._financially_managed_in(connection):
                 raise BillingReadOnly('The financial context is not configured.')
@@ -845,13 +881,19 @@ class AccountStore:
         scope, owner, epoch, ready = self._billing_state(connection, user.id)
         revision = None if owner is None else owner.revision
         clock_id = None if owner is None else owner.test_clock_id
-        if basis is None or (basis.epoch, basis.owner_revision, basis.clock_id) != (epoch, revision, clock_id):
+        if basis is None or (basis.epoch, basis.owner_revision, basis.clock_id) != (
+            epoch,
+            revision,
+            clock_id,
+        ):
             raise BillingHold('uncertain_operation')
         now = int(self._clock().timestamp()) if clock_id is None else basis.frozen_time
         if now is None:
             raise BillingHold('clock_unavailable')
         access = effective_access(scope, owner, now=now, ready=ready)
-        return access, PlanLimits(self._limits[user.plan].couples_per_chart, access.chart_limit)
+        return access, PlanLimits(
+            self._limits[user.plan].couples_per_chart, access.chart_limit
+        )
 
     def capacity(self, user_id: str) -> tuple[Access | None, PlanLimits]:
         """Display uses the same predicate and a newly observed native clock."""
@@ -870,7 +912,13 @@ class AccountStore:
             connection.execute('BEGIN IMMEDIATE')
             try:
                 version = check_database_version(connection)
-                if (version > SCHEMA_VERSION or (self._financially_managed_in(connection) and self._billing_config is None)) and not backup_progress:
+                if (
+                    version > SCHEMA_VERSION
+                    or (
+                        self._financially_managed_in(connection)
+                        and self._billing_config is None
+                    )
+                ) and not backup_progress:
                     raise BillingReadOnly(
                         'This release can read, export and back up billing records; '
                         'business changes require the billing writer.'
@@ -1043,7 +1091,9 @@ class AccountStore:
                 saved = _paired(saved, (couple_with, chart_id), limits)
             return _marked(saved, chart_id, limits) if mine else saved
 
-        return self._update_settings_in_plan(user_id, read, save, adds_chart=True), chart_id
+        return self._update_settings_in_plan(
+            user_id, read, save, adds_chart=True
+        ), chart_id
 
     def update_chart(
         self, user_id: str, chart_id: str, birth: Birth, read: str | None

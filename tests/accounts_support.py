@@ -14,7 +14,11 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from eight_characters.accounts.store import APPLICATION_ID, LEGACY_MIGRATIONS, AccountStore
+from eight_characters.accounts.store import (
+    APPLICATION_ID,
+    LEGACY_MIGRATIONS,
+    AccountStore,
+)
 from eight_characters.accounts.web import Accounts, get_accounts, load_config
 from eight_characters.main import app
 
