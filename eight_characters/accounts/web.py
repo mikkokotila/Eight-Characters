@@ -70,6 +70,7 @@ from eight_characters.accounts.signin import (
 from eight_characters.accounts.store import (
     SCHEMA_VERSION,
     AccountStore,
+    BillingReadOnly,
     ChartLimit,
     CoupleLimit,
     DuplicateChart,
@@ -325,7 +326,12 @@ def accounts_from_environment() -> Accounts:
 
 def get_accounts() -> Accounts:
     """The account services, from the environment. Tests replace this dependency."""
-    return accounts_from_environment()
+    accounts = accounts_from_environment()
+    # Another process may migrate the shared database after this service starts.
+    # Even a session that needs no renewal must not serve legacy plan limits.
+    if accounts.store.schema_version() > SCHEMA_VERSION:
+        raise BillingReadOnly('This reader cannot serve financially managed accounts.')
+    return accounts
 
 
 AccountsDependency = Annotated[Accounts, Depends(get_accounts)]

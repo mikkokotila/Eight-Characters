@@ -22,7 +22,7 @@ from eight_characters.accounts.records import RecordError, User
 def _layout(connection: sqlite3.Connection) -> tuple[tuple[str, ...], ...]:
     rows = connection.execute(
         'SELECT type,name,tbl_name,sql FROM sqlite_master '
-        "WHERE name NOT LIKE 'sqlite_%' AND sql IS NOT NULL ORDER BY type,name"
+        "WHERE name NOT GLOB 'sqlite_*' AND sql IS NOT NULL ORDER BY type,name"
     ).fetchall()
     if any(not all(isinstance(v, str) for v in row) for row in rows):
         raise RecordError('The database has an unreadable schema definition.')

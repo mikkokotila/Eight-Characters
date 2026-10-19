@@ -7,6 +7,7 @@ import unittest
 from unittest.mock import patch
 
 import pyrage
+from fastapi.testclient import TestClient
 
 from eight_characters.accounts.backup import (
     billing_files,
@@ -37,6 +38,7 @@ from eight_characters.accounts.records import RecordError, canonical_json, new_i
 from eight_characters.accounts.restore import RestoreError, restore_backup
 from eight_characters.accounts.store import AccountStore, BillingReadOnly, StoreError
 from eight_characters.accounts.web import Accounts, ConfigError, load_config
+from eight_characters.main import app
 from tests.accounts_support import account_environment, all_object_contents, git
 from tests.test_accounts_backup import BackupTestCase
 
@@ -283,6 +285,22 @@ class BillingRecovery(BackupTestCase):
         with self.assertRaises(StoreError):
             self.store.backup_snapshot()
 
+    def test_sqlite_like_name_cannot_hide_a_business_mutating_trigger(self):
+        user, _ = self.future()
+        with sqlite3.connect(self.store.path) as connection:
+            connection.execute(
+                'CREATE TRIGGER sqlitex_mutate AFTER UPDATE ON backup_progress '
+                'BEGIN DELETE FROM users; END'
+            )
+        with self.assertRaises(StoreError):
+            AccountStore.open(self.store.path)
+        with self.assertRaises(StoreError):
+            self.store.record_backup_head('a' * 40)
+        with sqlite3.connect(self.store.path) as connection:
+            self.assertEqual(
+                connection.execute('SELECT id FROM users').fetchall(), [(user.id,)]
+            )
+
     def test_future_roundtrip_keeps_all_families_highwater_and_next_update(self):
         user, data = self.future()
         result = run_backup(self.store, self.checkout, self.recipient)
@@ -446,6 +464,28 @@ class BillingRecovery(BackupTestCase):
         environment = account_environment(self.directory)
         with self.assertRaisesRegex(ConfigError, 'cannot serve'):
             Accounts.open(load_config(environment))
+
+    def test_cached_service_refuses_settings_after_another_process_migrates(self):
+        accounts = Accounts.open(
+            load_config(account_environment(self.directory)), clock=self.clock
+        )
+        address = 'cached@example.invalid'
+        message = accounts.sign_in.request_code(address, 'create', 'fi', 'en', 'peer')
+        self.assertIsNotNone(message.code)
+        signed = accounts.sign_in.redeem_code(address, message.code)
+        client = TestClient(app, base_url=accounts.config.origin)
+        client.cookies.set(accounts.config.cookie_name, signed.token)
+        with patch(
+            'eight_characters.accounts.web.accounts_from_environment',
+            return_value=accounts,
+        ):
+            self.assertEqual(client.get('/api/account/settings').status_code, 200)
+            self.future()
+            # The clock did not move; this valid session needs no renewal write.
+            self.assertIsNotNone(accounts.sign_in.current(signed.token))
+            response = client.get('/api/account/settings')
+            self.assertEqual(response.status_code, 503)
+            self.assertNotIn('chart_per_account', response.text)
 
     def test_late_bad_encrypted_record_publishes_no_restored_database(self):
         _, data = self.future()
