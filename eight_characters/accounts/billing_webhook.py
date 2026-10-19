@@ -88,15 +88,38 @@ def verify_delivery(
             raise InvalidDelivery()
         integer(event.get('created'))
         event_type = event.get('type')
-        if not isinstance(event_type, str) or re.fullmatch(r'[a-z][a-z0-9_.]{1,100}', event_type) is None:
+        if (
+            not isinstance(event_type, str)
+            or re.fullmatch(r'[a-z][a-z0-9_.]{1,100}', event_type) is None
+        ):
             raise InvalidDelivery()
         native = mapping(mapping(event.get('data')).get('object'))
         object_id = native.get('id')
-        if not isinstance(object_id, str) or re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{1,200}', object_id) is None:
+        if (
+            not isinstance(object_id, str)
+            or re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{1,200}', object_id) is None
+        ):
             raise InvalidDelivery()
-        related = next((native.get(name) for name in ('customer', 'charge', 'payment_intent') if isinstance(native.get(name), str)), None)
-        if related is not None and (not isinstance(related, str) or re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{1,200}', related) is None):
+        related = next(
+            (
+                native.get(name)
+                for name in ('customer', 'charge', 'payment_intent')
+                if isinstance(native.get(name), str)
+            ),
+            None,
+        )
+        if related is not None and (
+            not isinstance(related, str)
+            or re.fullmatch(r'[A-Za-z][A-Za-z0-9_]{1,200}', related) is None
+        ):
             raise InvalidDelivery()
-        return Delivery(identity(event.get('id'), 'evt'), event_type, object_id, related, hashlib.sha256(raw).hexdigest(), event_type in EVENT_TYPES)
+        return Delivery(
+            identity(event.get('id'), 'evt'),
+            event_type,
+            object_id,
+            related,
+            hashlib.sha256(raw).hexdigest(),
+            event_type in EVENT_TYPES,
+        )
     except (ValueError, TypeError, BillingHold):
         raise InvalidDelivery() from None

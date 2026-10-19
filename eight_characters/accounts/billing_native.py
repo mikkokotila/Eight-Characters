@@ -434,7 +434,10 @@ def captured_coverage(
         try:
             disputes.append(
                 DisputeFact.model_validate(
-                    {'id': identity(dispute.get('id'), 'du'), 'status': dispute.get('status')},
+                    {
+                        'id': identity(dispute.get('id'), 'du'),
+                        'status': dispute.get('status'),
+                    },
                     strict=True,
                 )
             )
