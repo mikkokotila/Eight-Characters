@@ -17,9 +17,14 @@ from eight_characters.accounts.backup import (
 from eight_characters.accounts.billing_records import (
     AccountBillingRecord,
     Binding,
+    Coverage,
     Deletion,
+    DisputeFact,
     EventRecord,
+    Intent,
     OfferSnapshot,
+    Operation,
+    RefundFact,
     ScopeRecord,
     billing_path,
     decode_billing,
@@ -68,6 +73,28 @@ def records(owner):
         offers=(offer(),),
         reconciled_started_at=None,
     )
+    intent_id, operation_id = new_id(), new_id()
+    purchase = Intent(
+        id=intent_id, offer_id=scope.offers[0].id, created_at=NOW,
+        expires_at=1792411200, state='complete', checkout_id='cs_test_one',
+        subscription_id='sub_one',
+    )
+    operation = Operation(
+        id=operation_id, intent_id=intent_id, kind='customer_seal', subject_id='cus_one',
+        request_sha256='e' * 64, idempotency_key='test_seal_one', created_at=NOW,
+        sent_at=NOW, state='done', result_id='cus_one', reason=None,
+    )
+    coverage = Coverage(
+        invoice_id='in_one', line_id='il_one', invoice_payment_id='inpay_one',
+        subscription_id='sub_one', subscription_item_id='si_one',
+        price_id=scope.offers[0].price_id, offer_id=scope.offers[0].id,
+        payment_intent_id='pi_one', charge_id='ch_one', currency='usd',
+        period_start=1792404000, period_end=1795082400, paid_at=1792404000,
+        allocated_amount=1499, captured_amount=1499, base_amount=1499, tax_amount=0,
+        refunds=(RefundFact(id='re_partial', amount=100, status='succeeded'),
+                 RefundFact(id='re_pending', amount=200, status='pending')),
+        disputes=(DisputeFact(id='du_one', status='warning_closed'),), verified_at=NOW,
+    )
     account = AccountBillingRecord(
         id=owner.id,
         owner_id=owner.id,
@@ -77,11 +104,11 @@ def records(owner):
         test_clock_id='clock_one',
         lifecycle='active',
         binding=Binding(
-            operation_id=new_id(), object_id='cus_one', state='sealed', mac='b' * 64
+            operation_id=operation_id, object_id='cus_one', state='sealed', mac='b' * 64
         ),
-        intents=(),
-        operations=(),
-        coverage=(),
+        intents=(purchase,),
+        operations=(operation,),
+        coverage=(coverage,),
         deletion=None,
     )
     event = EventRecord(
@@ -102,6 +129,36 @@ def records(owner):
 
 
 class BillingRecovery(BackupTestCase):
+    def test_encoder_revalidates_copied_instances(self):
+        user = self.store.create_user('one@example.invalid', 'fi')
+        record = records(user)[1]
+        for update in ({'customer_id': 'sk_test_DO_NOT_LOG'}, {'revision': True}):
+            with self.assertRaises(RecordError) as failure:
+                encode_billing(record.model_copy(update=update))
+            self.assertNotIn('DO_NOT_LOG', str(failure.exception))
+
+    def test_reader_refuses_premature_billing_service_configuration(self):
+        environment = account_environment(self.directory, EC_BILLING_MODE='sandbox')
+        with self.assertRaisesRegex(ConfigError, 'requires the billing writer'):
+            load_config(environment)
+
+    def test_empty_future_database_keeps_its_generation_after_encrypted_restore(self):
+        self.backup()
+        with sqlite3.connect(self.store.path) as connection:
+            for statement in BILLING_SCHEMA_5:
+                connection.execute(statement)
+            restore_billing(connection, ())
+            connection.execute('PRAGMA user_version=5')
+        self.backup()
+        manifest = read_manifest(self.checkout)
+        self.assertEqual((manifest.user_count, manifest.billing_count), (0, 0))
+        target = self.directory / 'empty-future.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        recovered = AccountStore.open(target)
+        self.assertEqual(recovered.schema_version(), 5)
+        with sqlite3.connect(target) as connection:
+            self.assertEqual(connection.execute('SELECT ready FROM billing_runtime').fetchone()[0], 0)
+
     def future(self, *, tombstone=False, sequence=100):
         user = self.store.create_user('private.person@example.invalid', 'fi')
         self.backup()
@@ -409,9 +466,14 @@ class BillingRecovery(BackupTestCase):
     def test_journal_failure_publishes_no_database(self):
         user = self.store.create_user('one@example.invalid', 'fi')
         target = self.directory / 'never-journal.sqlite3'
-        with patch('eight_characters.accounts.store._prepare_journal', side_effect=StoreError('injected journal failure')):
+        with patch(
+            'eight_characters.accounts.store._prepare_journal',
+            side_effect=StoreError('injected journal failure'),
+        ):
             with self.assertRaises(StoreError):
-                AccountStore.restore(target, [(user, None)], head='a' * 40, billing=records(user))
+                AccountStore.restore(
+                    target, [(user, None)], head='a' * 40, billing=records(user)
+                )
         self.assertFalse(target.exists())
         self.assertFalse(target.with_name(target.name + '.partial').exists())
 

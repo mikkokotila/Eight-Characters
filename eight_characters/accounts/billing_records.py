@@ -74,7 +74,9 @@ def _unique(values: Sequence[object]) -> None:
 
 
 class StrictRecord(BaseModel):
-    model_config = ConfigDict(extra='forbid', strict=True, frozen=True)
+    model_config = ConfigDict(
+        extra='forbid', strict=True, frozen=True, revalidate_instances='always'
+    )
 
     @model_validator(mode='after')
     def no_secrets(self) -> Self:
@@ -436,15 +438,26 @@ def billing_path(identifier: str) -> str:
 
 
 def encode_billing(record: BillingDocument) -> bytes:
-    return canonical_json(record.model_dump(mode='json', by_alias=True))
+    try:
+        validated = _ADAPTER.validate_python(record, strict=True)
+    except (ValidationError, ValueError, TypeError):
+        raise RecordError('A billing instance does not match the strict schema 1.') from None
+    return canonical_json(validated.model_dump(mode='json', by_alias=True))
 
 
 def decode_billing(data: bytes) -> BillingDocument:
     try:
         record = _ADAPTER.validate_json(data, strict=True)
     except ValidationError as exc:
-        codes = sorted({str(item['type']) for item in exc.errors(include_input=False, include_context=False)})
-        raise RecordError('Billing record validation failed: ' + ', '.join(codes) + '.') from None
+        codes = sorted(
+            {
+                str(item['type'])
+                for item in exc.errors(include_input=False, include_context=False)
+            }
+        )
+        raise RecordError(
+            'Billing record validation failed: ' + ', '.join(codes) + '.'
+        ) from None
     except (ValueError, TypeError):
         raise RecordError(
             'A billing record does not match the strict schema 1.'
