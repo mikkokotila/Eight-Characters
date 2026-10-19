@@ -572,7 +572,8 @@ class TestSettingsStore(StoreCase):
         for cap in (1, 5, 25, None):
             with self.subTest(cap=cap):
                 store = AccountStore.open(
-                    self.path, clock=self.clock,
+                    self.path,
+                    clock=self.clock,
                     limits={**LIMITS, 'free': PlanLimits(None, cap)},
                 )
                 target = 52 if cap is None else cap
@@ -590,12 +591,16 @@ class TestSettingsStore(StoreCase):
         store.add_couple(self.user.id, (first, last), self.read())
         store.set_my_chart(self.user.id, first, self.read())
         low = AccountStore.open(
-            self.path, clock=self.clock, limits={**LIMITS, 'free': PlanLimits(None, 1)},
+            self.path,
+            clock=self.clock,
+            limits={**LIMITS, 'free': PlanLimits(None, 1)},
         )
         retained = low.settings(self.user.id)
         assert retained is not None
         self.assertEqual(len(retained.charts), 52)
-        self.assertEqual(low.account_data(self.user.id)['settings'], settings_value(retained))
+        self.assertEqual(
+            low.account_data(self.user.id)['settings'], settings_value(retained)
+        )
         renamed = low.rename_chart(self.user.id, last, 'Still here', self.read())
         assert renamed is not None
         corrected = low.update_chart(self.user.id, last, born(80), self.read())
@@ -611,7 +616,8 @@ class TestSettingsStore(StoreCase):
     def test_two_writers_cannot_race_past_the_allowance(self) -> None:
         def save(number: int) -> str:
             store = AccountStore.open(
-                self.path, clock=self.clock,
+                self.path,
+                clock=self.clock,
                 limits={**LIMITS, 'free': PlanLimits(None, 1)},
             )
             try:
@@ -1378,9 +1384,13 @@ class TestSettingsBackup(StoreCase):
     def _record(self, user_id: str) -> bytes:
         return pyrage.decrypt(self._path(user_id).read_bytes(), [self.identity])
 
-    def test_unlimited_writes_survive_a_lower_allowance_and_encrypted_restore(self) -> None:
+    def test_unlimited_writes_survive_a_lower_allowance_and_encrypted_restore(
+        self,
+    ) -> None:
         unlimited = AccountStore.open(
-            self.path, clock=self.clock, limits={**LIMITS, 'free': PlanLimits(None, None)},
+            self.path,
+            clock=self.clock,
+            limits={**LIMITS, 'free': PlanLimits(None, None)},
         )
         for number in range(52):
             unlimited.save_chart(self.user.id, born(number), self.read())
@@ -1393,17 +1403,23 @@ class TestSettingsBackup(StoreCase):
         target = self.directory / 'restored.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         low = AccountStore.open(
-            target, clock=self.clock, limits={**LIMITS, 'free': PlanLimits(None, 1)},
+            target,
+            clock=self.clock,
+            limits={**LIMITS, 'free': PlanLimits(None, 1)},
         )
         self.assertEqual(low.settings(self.user.id), settings)
-        self.assertEqual(low.account_data(self.user.id)['settings'], settings_value(settings))
+        self.assertEqual(
+            low.account_data(self.user.id)['settings'], settings_value(settings)
+        )
         before = low.backup_snapshot()
         with self.assertRaises(ChartLimit):
             low.save_chart(self.user.id, born(60), settings.updated_at)
         self.assertEqual(low.backup_snapshot(), before)
         moved = low.put_place(self.user.id, HELSINKI, settings.updated_at)
         assert moved is not None
-        self.assertEqual((moved.charts, moved.couples), (settings.charts, settings.couples))
+        self.assertEqual(
+            (moved.charts, moved.couples), (settings.charts, settings.couples)
+        )
         self.assertEqual(run_backup(low, self.checkout, self.recipient).written, 1)
         self.assertEqual(decode_user(self._record(self.user.id)), (self.user, moved))
 
@@ -2018,32 +2034,51 @@ class TestSettingsApi(unittest.TestCase):
                 current = replace(
                     self.accounts,
                     store=AccountStore.open(
-                        self.accounts.store.path, clock=self.accounts.clock,
+                        self.accounts.store.path,
+                        clock=self.accounts.clock,
                         limits={**LIMITS, 'free': PlanLimits(None, cap)},
                     ),
                 )
                 app.dependency_overrides[get_accounts] = lambda: current
-                self.assertEqual(self.client.get('/api/account/settings').json()['chart_limit'], cap)
+                self.assertEqual(
+                    self.client.get('/api/account/settings').json()['chart_limit'], cap
+                )
                 target = 52 if cap is None else cap
                 for number in range(kept, target):
                     self.save(born(number))
                 kept = target
                 before = self.client.get('/api/account/settings').json()
-                self.assertEqual((before['chart_limit'], len(before['charts'])), (cap, target))
+                self.assertEqual(
+                    (before['chart_limit'], len(before['charts'])), (cap, target)
+                )
                 if cap is not None:
                     changes = current.store.backup_snapshot().changes
-                    refused = self.write('POST', '/api/account/charts', _birth_json(born(target), self.key))
+                    refused = self.write(
+                        'POST',
+                        '/api/account/charts',
+                        _birth_json(born(target), self.key),
+                    )
                     self.assertEqual(refused.status_code, 400)
-                    self.assertEqual(refused.json()['detail'], f'An account keeps at most {cap} charts.')
-                    self.assertEqual(self.client.get('/api/account/settings').json(), before)
+                    self.assertEqual(
+                        refused.json()['detail'],
+                        f'An account keeps at most {cap} charts.',
+                    )
+                    self.assertEqual(
+                        self.client.get('/api/account/settings').json(), before
+                    )
                     self.assertEqual(current.store.backup_snapshot().changes, changes)
-                    injected = self.write('POST', '/api/account/charts', {**_birth_json(born(target), self.key), 'chart_limit': None})
+                    injected = self.write(
+                        'POST',
+                        '/api/account/charts',
+                        {**_birth_json(born(target), self.key), 'chart_limit': None},
+                    )
                     self.assertEqual(injected.status_code, 400)
                     self.assertEqual(current.store.backup_snapshot().changes, changes)
         low = replace(
             current,
             store=AccountStore.open(
-                current.store.path, clock=self.accounts.clock,
+                current.store.path,
+                clock=self.accounts.clock,
                 limits={**LIMITS, 'free': PlanLimits(None, 1)},
             ),
         )
@@ -2054,11 +2089,14 @@ class TestSettingsApi(unittest.TestCase):
         self.assertEqual(exported.status_code, 200)
         self.assertEqual(len(exported.json()['settings']['charts']), 52)
         renamed = self.write(
-            'PUT', f'/api/account/charts/{retained["charts"][-1]["id"]}/name',
+            'PUT',
+            f'/api/account/charts/{retained["charts"][-1]["id"]}/name',
             {'key': self.key, 'name': 'Retained'},
         )
         self.assertEqual(renamed.status_code, 200)
-        self.assertEqual((renamed.json()['chart_limit'], len(renamed.json()['charts'])), (1, 52))
+        self.assertEqual(
+            (renamed.json()['chart_limit'], len(renamed.json()['charts'])), (1, 52)
+        )
 
     def test_a_full_library_saves_no_more(self) -> None:
         for number in range(CHART_LIMIT):
