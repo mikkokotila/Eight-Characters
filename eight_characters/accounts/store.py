@@ -18,8 +18,17 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, cast
 
+from eight_characters.accounts.billing_access import (
+    Access,
+    BillingConfig,
+    BillingHold,
+    check_scope,
+    effective_access,
+)
 from eight_characters.accounts.billing_records import (
+    AccountBillingRecord,
     BillingDocument,
+    ScopeRecord,
     billing_path,
     validate_billing_graph,
 )
@@ -334,6 +343,14 @@ class BackupSnapshot:
     sequence: int | None = None
 
 
+@dataclass(frozen=True)
+class _BillingBasis:
+    epoch: str
+    owner_revision: int | None
+    clock_id: str | None
+    frozen_time: int | None
+
+
 def _utc_now() -> datetime:
     return datetime.now(UTC)
 
@@ -586,11 +603,15 @@ class AccountStore:
         *,
         clock: Callable[[], datetime] = _utc_now,
         limits: Mapping[Plan, PlanLimits] = LIMITS,
+        billing_config: BillingConfig | None = None,
+        billing_clock: Callable[[str], int] | None = None,
     ) -> None:
         self.path = path
         self._clock = clock
         # What each plan lets an account keep (plans.py).
         self._limits = check_limits(limits)
+        self._billing_config = billing_config
+        self._billing_clock = billing_clock
 
     @classmethod
     def open(
@@ -599,6 +620,8 @@ class AccountStore:
         *,
         clock: Callable[[], datetime] = _utc_now,
         limits: Mapping[Plan, PlanLimits] = LIMITS,
+        billing_config: BillingConfig | None = None,
+        billing_clock: Callable[[str], int] | None = None,
     ) -> 'AccountStore':
         """The database at `path`, brought to this app's schema.
 
@@ -614,7 +637,11 @@ class AccountStore:
                 raise StoreError(f'{path} is not an account database.')
             check_database_version(connection)
             _migrate(connection)
-        return cls(path, clock=clock, limits=limits)
+        opened = cls(path, clock=clock, limits=limits, billing_config=billing_config, billing_clock=billing_clock)
+        if billing_config is not None:
+            with opened.read_transaction() as connection:
+                opened._check_billing_context(connection)
+        return opened
 
     @classmethod
     def create(
@@ -765,6 +792,76 @@ class AccountStore:
         """What the plan lets an account keep (plans.py)."""
         return self._limits[plan]
 
+    def _check_billing_context(self, connection: sqlite3.Connection) -> None:
+        if self._billing_config is None:
+            return
+        if connection.execute("SELECT 1 FROM users WHERE plan != 'free' LIMIT 1").fetchone() is not None:
+            raise BillingHold('legacy_identity_ambiguous')
+        records = billing_records_in(connection)
+        scope = next((record for record in records if isinstance(record, ScopeRecord)), None)
+        if scope is not None:
+            check_scope(self._billing_config, scope)
+
+    def _billing_state(self, connection: sqlite3.Connection, user_id: str) -> tuple[ScopeRecord, AccountBillingRecord | None, str, bool]:
+        config = self._billing_config
+        if config is None:
+            raise BillingReadOnly('The financial context is not configured.')
+        self._check_billing_context(connection)
+        records = billing_records_in(connection)
+        scope = next((record for record in records if isinstance(record, ScopeRecord)), None)
+        if scope is None:
+            raise BillingHold('unverified')
+        check_scope(config, scope)
+        owner = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == user_id), None)
+        runtime = connection.execute('SELECT epoch,ready FROM billing_runtime WHERE id=1').fetchone()
+        if runtime is None:
+            raise BillingHold('unverified')
+        return scope, owner, runtime[0], runtime[1] == 1
+
+    def _billing_basis(self, user_id: str) -> _BillingBasis | None:
+        if self._billing_config is None:
+            return None
+        with self.read_transaction() as connection:
+            _, owner, epoch, ready = self._billing_state(connection, user_id)
+            if not ready:
+                raise BillingHold('unverified')
+            clock_id = None if owner is None else owner.test_clock_id
+            revision = None if owner is None else owner.revision
+        frozen = None
+        if clock_id is not None:
+            if self._billing_clock is None:
+                raise BillingHold('clock_unavailable')
+            # The only provider call in this path occurs outside every SQL lock.
+            frozen = self._billing_clock(clock_id)
+            if type(frozen) is not int or frozen < 0:
+                raise BillingHold('clock_unavailable')
+        return _BillingBasis(epoch, revision, clock_id, frozen)
+
+    def _capacity_in(self, connection: sqlite3.Connection, user: User, basis: _BillingBasis | None) -> tuple[Access | None, PlanLimits]:
+        if self._billing_config is None:
+            if self._financially_managed_in(connection):
+                raise BillingReadOnly('The financial context is not configured.')
+            return None, self._limits[user.plan]
+        scope, owner, epoch, ready = self._billing_state(connection, user.id)
+        revision = None if owner is None else owner.revision
+        clock_id = None if owner is None else owner.test_clock_id
+        if basis is None or (basis.epoch, basis.owner_revision, basis.clock_id) != (epoch, revision, clock_id):
+            raise BillingHold('uncertain_operation')
+        now = int(self._clock().timestamp()) if clock_id is None else basis.frozen_time
+        if now is None:
+            raise BillingHold('clock_unavailable')
+        access = effective_access(scope, owner, now=now, ready=ready)
+        return access, PlanLimits(self._limits[user.plan].couples_per_chart, access.chart_limit)
+
+    def capacity(self, user_id: str) -> tuple[Access | None, PlanLimits]:
+        """Display uses the same predicate and a newly observed native clock."""
+        basis = self._billing_basis(user_id)
+        with self.read_transaction() as connection:
+            user = user_in(connection, 'id', user_id)
+            if user is None:
+                raise UnknownUser('No account has that id.')
+            return self._capacity_in(connection, user, basis)
+
     @contextmanager
     def _write(
         self, *, backup_progress: bool = False
@@ -773,11 +870,13 @@ class AccountStore:
             connection.execute('BEGIN IMMEDIATE')
             try:
                 version = check_database_version(connection)
-                if (version > SCHEMA_VERSION or self._financially_managed_in(connection)) and not backup_progress:
+                if (version > SCHEMA_VERSION or (self._financially_managed_in(connection) and self._billing_config is None)) and not backup_progress:
                     raise BillingReadOnly(
                         'This release can read, export and back up billing records; '
                         'business changes require the billing writer.'
                     )
+                if self._billing_config is not None and not backup_progress:
+                    self._check_billing_context(connection)
                 yield connection
             except BaseException:
                 connection.execute('ROLLBACK')
@@ -855,6 +954,8 @@ class AccountStore:
         language: Language | None = None,
         plan: Plan | None = None,
     ) -> User:
+        if self._billing_config is not None and plan is not None and plan != 'free':
+            raise BillingHold('legacy_identity_ambiguous')
         with self._write() as connection:
             current = user_in(connection, 'id', user_id)
             if current is None:
@@ -887,6 +988,12 @@ class AccountStore:
         address: deleting the account must not reset the hourly limits, or deleting
         and creating it again would send emails without end."""
         with self._write() as connection:
+            if self._billing_config is not None:
+                _, owner, _, ready = self._billing_state(connection, user_id)
+                if not ready:
+                    raise BillingHold('unverified')
+                if owner is not None:
+                    raise BillingHold('deleted_owner')
             user = user_in(connection, 'id', user_id)
             if user is None:
                 raise UnknownUser('No account has that id.')
@@ -936,7 +1043,7 @@ class AccountStore:
                 saved = _paired(saved, (couple_with, chart_id), limits)
             return _marked(saved, chart_id, limits) if mine else saved
 
-        return self._update_settings_in_plan(user_id, read, save), chart_id
+        return self._update_settings_in_plan(user_id, read, save, adds_chart=True), chart_id
 
     def update_chart(
         self, user_id: str, chart_id: str, birth: Birth, read: str | None
@@ -1099,9 +1206,12 @@ class AccountStore:
         user_id: str,
         read: str | None,
         change: Callable[[Settings, PlanLimits], Settings],
+        *,
+        adds_chart: bool = False,
     ) -> Settings | None:
         """As _update_settings, for a change bound by the account's plan: it is given
         what the plan lets the account keep, read in the same write as the settings."""
+        basis = self._billing_basis(user_id) if adds_chart else None
         with self._write() as connection:
             user = user_in(connection, 'id', user_id)
             if user is None:
@@ -1111,7 +1221,12 @@ class AccountStore:
                 raise SettingsChanged('The settings changed since they were read.')
             now = self._now()
             base = current or no_settings(now)
-            changed = change(base, self._limits[user.plan])
+            limits = self._limits[user.plan]
+            if adds_chart:
+                access, limits = self._capacity_in(connection, user, basis)
+                if access is not None and access.status in ('deleting', 'deleted'):
+                    raise BillingHold('deleted_owner')
+            changed = change(base, limits)
             if changed == base:
                 return current
             if current is not None:
