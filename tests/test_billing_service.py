@@ -225,6 +225,21 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(owner.lifecycle, 'deleted')
         self.assertIsNotNone(owner.deletion.completed_at)
 
+    def test_capture_discovered_during_erasure_stops_billing_but_stays_pending_across_retry(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        for _ in range(2):
+            response = self.client.request('DELETE', '/api/account', json={'key': self.key, 'email': self.user.email})
+            self.assertEqual(response.status_code, 503, response.text)
+            self.assertEqual(response.json()['billing']['reason'], 'late_settlement')
+            self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
+            owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+            self.assertEqual(owner.lifecycle, 'deleting')
+            self.assertIsNone(owner.deletion.completed_at)
+            self.assertTrue(any(operation.reason == 'late_settlement' for operation in owner.operations))
+        self.assertEqual(self.provider.subscriptions['sub_one']['status'], 'canceled')
+        self.assertEqual(self.client.get('/api/account/settings').json()['billing']['status'], 'deleting')
+
     def test_worker_recovers_then_shutdown_fences_its_epoch(self):
         async def exercise():
             self.service.authority.hold_runtime(self.service.epoch, 'unverified')

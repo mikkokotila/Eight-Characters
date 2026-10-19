@@ -476,66 +476,48 @@ class BillingService:
             verified_at=timestamp(self.clock()),
         )
 
-    def _reconcile(
-        self, work: Work, proofs: Sequence[CustomerProof]
-    ) -> Observation | None:
+    def _reserve_command(self, work: Work, owner: AccountBillingRecord, purpose: str, subject_id: str, *, reason: str | None = None) -> Operation:
+        identifier = new_id()
+        request = prepare_request(self.config, self.origin, work.scope, owner, purpose=purpose, operation_id=identifier, intent_id=None, subject_id=subject_id)
+        return Operation.model_validate(dict(id=identifier, intent_id=None, kind='cancel' if purpose == 'cancel_period' else 'customer_redact', subject_id=subject_id, request_sha256=request.digest, idempotency_key=operation_key(self.config, owner.id, purpose, identifier), created_at=timestamp(self.clock()), sent_at=None, state='prepared', result_id=None, reason=reason), strict=True)
+
+    def _save_money(self, work: Work, observation: Observation) -> None:
+        owner = work.owner
+        operations = list(owner.operations)
+        for fact in observation.coverage:
+            if returned_amount(fact) == fact.captured_amount and not any(operation.kind == 'cancel' and operation.subject_id == fact.subscription_id and operation_purpose(self.config, owner.id, operation) == 'cancel_period' for operation in operations):
+                operations.append(self._reserve_command(work, owner, 'cancel_period', fact.subscription_id))
+        previous = {fact.invoice_id for fact in owner.coverage}
+        late = owner.lifecycle in ('deleting', 'deleted') and any(fact.invoice_id not in previous for fact in observation.coverage)
+        if late:
+            redactions = [operation for operation in operations if operation.kind == 'customer_redact']
+            if redactions:
+                operations = [operation.model_copy(update={'reason': 'late_settlement'}) if operation.kind == 'customer_redact' else operation for operation in operations]
+            else:
+                operations.append(self._reserve_command(work, owner, 'customer_redact', identity(owner.customer_id, 'cus'), reason='late_settlement'))
+        lifecycle = owner.lifecycle
+        deletion = owner.deletion
+        if late and lifecycle == 'deleted' and deletion is not None:
+            lifecycle = 'deleting'
+            deletion = deletion.model_copy(update={'completed_at': None})
+        if lifecycle == 'held' and self.store.user_by_id(owner.id) is not None and deletion is None:
+            lifecycle = 'active'
+        work.save(owner.model_copy(update={'coverage': observation.coverage, 'operations': tuple(operations), 'lifecycle': lifecycle, 'deletion': deletion}))
+
+    def _reconcile(self, work: Work, proofs: Sequence[CustomerProof]) -> Observation | None:
         self._customer(work, proofs)
+        if work.owner.customer_id is None and work.owner.lifecycle == 'held' and work.owner.deletion is None and self.store.user_by_id(work.owner.id) is not None:
+            # No Customer/coverage exists after complete discovery. A temporary
+            # pre-reservation read failure must not become a permanent hold.
+            work.save(work.owner.model_copy(update={'lifecycle': 'active'}))
+            self._customer(work, proofs)
         if work.owner.customer_id is None:
             return None
         self._sessions(work)
         observation = self._observe(work)
-        # Revoke coverage and reserve every required full-refund command in the
-        # same SQL commit, before attempting any cancellation HTTP.
-        owner = work.owner.model_copy(update={'coverage': observation.coverage})
-        operations = list(owner.operations)
-        for fact in observation.coverage:
-            if returned_amount(fact) == fact.captured_amount and not any(
-                operation.kind == 'cancel'
-                and operation.subject_id == fact.subscription_id
-                and operation_purpose(self.config, owner.id, operation)
-                == 'cancel_period'
-                for operation in operations
-            ):
-                identifier = new_id()
-                request = prepare_request(
-                    self.config,
-                    self.origin,
-                    work.scope,
-                    owner,
-                    purpose='cancel_period',
-                    operation_id=identifier,
-                    intent_id=None,
-                    subject_id=fact.subscription_id,
-                )
-                operations.append(
-                    Operation(
-                        id=identifier,
-                        intent_id=None,
-                        kind='cancel',
-                        subject_id=fact.subscription_id,
-                        request_sha256=request.digest,
-                        idempotency_key=operation_key(
-                            self.config, owner.id, 'cancel_period', identifier
-                        ),
-                        created_at=timestamp(self.clock()),
-                        sent_at=None,
-                        state='prepared',
-                        result_id=None,
-                        reason=None,
-                    )
-                )
-        lifecycle = owner.lifecycle
-        if (
-            lifecycle == 'held'
-            and self.store.user_by_id(owner.id) is not None
-            and owner.deletion is None
-        ):
-            lifecycle = 'active'
-        work.save(
-            owner.model_copy(
-                update={'operations': tuple(operations), 'lifecycle': lifecycle}
-            )
-        )
+        # Money changes, revocation commands and late-settlement disposition
+        # commit together. A crash cannot forget why erasure remained pending.
+        self._save_money(work, observation)
         self._commands(work, observation)
         return observation
 
@@ -608,10 +590,7 @@ class BillingService:
                                 if attempt.get('status') == 'succeeded'
                                 else 'uncertain_operation'
                             )
-            previous = {fact.invoice_id for fact in work.owner.coverage}
-            if any(fact.invoice_id not in previous for fact in observation.coverage):
-                raise BillingHold('late_settlement')
-            work.save(work.owner.model_copy(update={'coverage': observation.coverage}))
+            self._save_money(work, observation)
             work.execute('customer_redact', subject_id=customer_id)
             customer = self.native.request(
                 'GET', 'customers/' + identity(customer_id, 'cus')
@@ -633,6 +612,8 @@ class BillingService:
             for operation in work.owner.operations
         ):
             raise BillingHold('uncertain_operation')
+        if any(operation.reason == 'late_settlement' for operation in work.owner.operations):
+            raise BillingHold('late_settlement')
         deletion = work.owner.deletion
         if deletion is None:
             raise BillingHold('deleted_owner')
