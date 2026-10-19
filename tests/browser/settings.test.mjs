@@ -863,6 +863,16 @@ for (const profile of profiles) {
       await page.locator('#settings-mine-body [data-settings-action="add-mine"]').click();
       await page.locator('#save-note').waitFor({ state: 'visible' });
       assert.match(await page.locator('#save-note-text').textContent(), /saved as your chart/);
+      await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
+      await page.locator('#save-name').fill('Unlimited form');
+      await page.locator('#date').fill('1975-08-14');
+      await page.locator('#time').fill('07:45');
+      await page.locator('#location').fill('Helsinki');
+      await page.locator('#location-suggestions .location-suggestion').click();
+      await page.locator('.gender-option input[value="female"]').check();
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#settings-view').waitFor({ state: 'visible' });
+      assert.deepEqual((await read(page)).charts.map((chart) => chart.name), ['Unlimited reader', 'Unlimited form']);
     });
 
     check('malformed library allowances are refused visibly', async (page) => {
