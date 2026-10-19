@@ -7,7 +7,7 @@ operator configuration. This module creates no customer, checkout or entitlement
 import re
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import Any, Final
+from typing import Any, Final, cast
 
 import httpx
 
@@ -104,7 +104,7 @@ def _native_get(
         raise BillingError('Stripe returned invalid catalogue JSON.') from None
     if not isinstance(value, dict):
         raise BillingError('Stripe returned a malformed catalogue object.')
-    return value
+    return cast(dict[str, Any], value)
 
 
 def _verify_price(price: dict[str, Any], offer: Offer, price_id: str, product_id: str) -> None:
@@ -112,6 +112,8 @@ def _verify_price(price: dict[str, Any], offer: Offer, price_id: str, product_id
     product = price.get('product')
     if not isinstance(recurring, dict) or not isinstance(product, dict):
         raise BillingError(f'Native catalogue mismatch for {offer.key}.')
+    recurring = cast(dict[str, Any], recurring)
+    product = cast(dict[str, Any], product)
     expected = {
         'id': price_id, 'object': 'price', 'active': True, 'livemode': False,
         'currency': 'usd', 'unit_amount': offer.amount, 'type': 'recurring',
