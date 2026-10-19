@@ -53,6 +53,8 @@ class Provider:
         )
         self.objects, self.collections = {}, {}
         self.calls = []
+        self.slow_sessions = False
+        self.session_pages = 0
         self.closed = False
         self.client = httpx.Client(transport=httpx.MockTransport(self.respond))
 
@@ -185,6 +187,14 @@ class Provider:
             if customer is not None:
                 rows = tuple(row for row in rows if row.get('customer') == customer)
             value = {'object': 'list', 'has_more': False, 'data': rows}
+            if path == 'checkout/sessions' and self.slow_sessions:
+                self.clock.advance(self.config.lease_seconds - 1)
+                self.session_pages += 1
+                value = {
+                    'object': 'list',
+                    'has_more': 'starting_after' not in request.url.params,
+                    'data': rows if 'starting_after' not in request.url.params else (),
+                }
         return httpx.Response(
             200,
             json=value,
@@ -225,6 +235,16 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_long_paginated_session_discovery_renews_the_current_owner_lease(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.slow_sessions = True
+        self.service.reconcile(self.user.id)
+        self.assertGreaterEqual(self.provider.session_pages, 4)
+        self.assertTrue(self.service.authority.snapshot()[2])
+        owner = self.service.authority.owner(self.user.id)
+        self.assertEqual(owner.lifecycle, 'active')
+        self.assertEqual(len(self.provider.sessions), 1)
+
     def other_deleting_owner(self, *, native=False):
         other_client = site_client()
         self.addCleanup(other_client.close)
