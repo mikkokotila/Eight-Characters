@@ -1,6 +1,7 @@
 """Account database and backup commands: python -m eight_characters.accounts --help."""
 
 import argparse
+import json
 import os
 import sys
 from collections.abc import Sequence
@@ -8,9 +9,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
+import httpx
 import pyrage
 
 from eight_characters.accounts.backup import BackupError, run_backup, squash_history
+from eight_characters.accounts.billing import (
+    BillingError,
+    load_billing_config,
+    verify_sandbox_catalogue,
+)
 from eight_characters.accounts.records import RecordError, timestamp
 from eight_characters.accounts.restore import read_identity, restore_backup
 from eight_characters.accounts.store import AccountStore, StoreError
@@ -45,6 +52,11 @@ def _parser() -> argparse.ArgumentParser:
         description='The account database and its encrypted Git backup.',
     )
     commands = parser.add_subparsers(dest='command', required=True)
+
+    commands.add_parser(
+        'billing-preflight',
+        help='Read and verify the configured sandbox account and six prices; creates nothing.',
+    )
 
     init = commands.add_parser('init', help='Create a new, empty account database.')
     init.add_argument('--database', type=Path, required=True)
@@ -96,7 +108,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     command = cast(str, args.command)
     try:
-        if command == 'init':
+        if command == 'billing-preflight':
+            config = load_billing_config(os.environ)
+            if config is None:
+                print(json.dumps({'status': 'disabled', 'checkout_available': False}))
+                return 2
+            with httpx.Client() as client:
+                print(
+                    json.dumps(verify_sandbox_catalogue(config, client), sort_keys=True)
+                )
+        elif command == 'init':
             database = cast(Path, args.database)
             AccountStore.create(database)
             print(f'Created an empty account database at {database}.')
@@ -135,7 +156,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             print(squash_history(store, cast(Path, args.checkout)))
         else:
             raise AssertionError(f'Unhandled command {command!r}')
-    except (BackupError, RecordError, StoreError) as exc:
+    except (BackupError, BillingError, RecordError, StoreError) as exc:
         print(f'error: {exc}', file=sys.stderr)
         return 1
     except FileExistsError as exc:

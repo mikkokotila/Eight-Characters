@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.63.0
+## 0.65.0
 
 ### Changed
 - Account readers preserve saved chart libraries above the current write allowance
@@ -14,6 +14,21 @@
 ### Tests
 - Retained 51-chart records, references, edits, exports and encrypted recovery;
   unlimited and malformed browser allowances, alongside existing finite-limit tests.
+
+## 0.64.0
+
+### Added
+- `python -m eight_characters.accounts billing-preflight` independently verifies the
+  configured sandbox Stripe account and all six approved USD recurring prices before
+  purchases are implemented (#130). It uses GET only, pins the API version and emits
+  nonsecret catalogue facts. Wrong account, live mode, missing configuration, price
+  mismatches and provider failures stop verification explicitly.
+- Billing remains disabled without configuration. A verified catalogue grants no
+  checkout, payment, paid access or calculated-tax readiness.
+
+### Tests
+- All six native price/product checks, bad/missing catalogue fields, sanitized
+  provider failures, refused redirects, configuration isolation and CLI outcomes.
 
 ## 0.62.0
 
