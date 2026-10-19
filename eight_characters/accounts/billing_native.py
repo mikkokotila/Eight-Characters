@@ -249,9 +249,9 @@ def captured_coverage(
             'post_payment_credit_notes_amount': 0,
             'application': None,
             'on_behalf_of': None,
-            'transfer_data': None,
         },
     )
+    require(mapping(invoice.get('issuer')), {'type': 'self'})
     empty(
         invoice,
         'discounts',
@@ -382,6 +382,10 @@ def captured_coverage(
             'amount_received': amount,
             'amount_capturable': 0,
             'payment_method_types': ['card'],
+            'application': None,
+            'application_fee_amount': None,
+            'on_behalf_of': None,
+            'transfer_data': None,
         },
     )
     if pi.get('capture_method') not in ('automatic', 'automatic_async'):
@@ -402,6 +406,12 @@ def captured_coverage(
             'captured': True,
             'amount': amount,
             'amount_captured': amount,
+            'application': None,
+            'application_fee': None,
+            'application_fee_amount': None,
+            'on_behalf_of': None,
+            'transfer_data': None,
+            'destination': None,
         },
     )
     require(mapping(charge.get('payment_method_details')), {'type': 'card'})

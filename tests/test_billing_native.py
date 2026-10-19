@@ -37,7 +37,7 @@ class FundingGraph(unittest.TestCase):
             discounts=[],
             application=None,
             on_behalf_of=None,
-            transfer_data=None,
+            issuer={'type': 'self'},
             automatic_tax={'enabled': False},
             billing_reason='subscription_create',
             parent={
@@ -103,6 +103,10 @@ class FundingGraph(unittest.TestCase):
                 capture_method='automatic_async',
                 payment_method_types=['card'],
                 latest_charge='ch_one',
+                application=None,
+                application_fee_amount=None,
+                on_behalf_of=None,
+                transfer_data=None,
             ),
             'charges/ch_one': dict(
                 id='ch_one',
@@ -116,6 +120,12 @@ class FundingGraph(unittest.TestCase):
                 captured=True,
                 amount=1499,
                 amount_captured=1499,
+                application=None,
+                application_fee=None,
+                application_fee_amount=None,
+                on_behalf_of=None,
+                transfer_data=None,
+                destination=None,
                 payment_method_details={'type': 'card'},
             ),
         }
@@ -273,7 +283,7 @@ class FundingGraph(unittest.TestCase):
 
     def test_missing_required_nullable_fields_are_named_holds(self):
         original = copy.deepcopy(self.invoice)
-        for name in ('application', 'on_behalf_of', 'transfer_data'):
+        for name in ('application', 'on_behalf_of', 'issuer'):
             with self.subTest(name=name):
                 self.invoice = {
                     key: value for key, value in original.items() if key != name
@@ -281,6 +291,28 @@ class FundingGraph(unittest.TestCase):
                 with self.assertRaises(BillingHold) as failure:
                     self.coverage()
                 self.assertEqual(failure.exception.reason, 'unsupported_funding')
+
+    def test_native_invoice_issuer_and_funding_objects_exclude_connect_transfers(self):
+        self.assertNotIn('transfer_data', self.invoice)
+        self.coverage()
+        self.invoice['issuer'] = {'type': 'account', 'account': 'acct_other'}
+        with self.assertRaises(BillingHold):
+            self.coverage()
+        self.invoice['issuer'] = {'type': 'self'}
+        for path, fields in (
+            ('payment_intents/pi_one', ('application', 'application_fee_amount', 'on_behalf_of', 'transfer_data')),
+            ('charges/ch_one', ('application', 'application_fee', 'application_fee_amount', 'on_behalf_of', 'transfer_data', 'destination')),
+        ):
+            for field in fields:
+                with self.subTest(path=path, field=field):
+                    self.objects[path][field] = {'destination': 'acct_other'}
+                    with self.assertRaises(BillingHold):
+                        self.coverage()
+                    self.objects[path][field] = None
+                    self.objects[path].pop(field)
+                    with self.assertRaises(BillingHold):
+                        self.coverage()
+                    self.objects[path][field] = None
 
     def test_proration_cannot_grant_a_full_offer_period(self):
         self.lists['invoices/in_one/lines'][0]['parent']['subscription_item_details'][
