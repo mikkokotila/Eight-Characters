@@ -322,7 +322,7 @@ class Authority:
         """Fence bounded native threads still completing after task cancellation."""
         with self.write() as connection:
             changed = connection.execute(
-                "UPDATE billing_runtime SET epoch=?,ready=0,reason='unverified' WHERE id=1 AND epoch=?",
+                "UPDATE billing_runtime SET epoch=?,ready=0,reason=CASE WHEN ready=1 THEN 'unverified' ELSE reason END WHERE id=1 AND epoch=?",
                 (secrets.token_hex(32), epoch),
             ).rowcount
             if changed == 1:

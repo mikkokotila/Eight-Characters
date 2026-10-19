@@ -833,38 +833,40 @@ class BillingService:
 
     async def run(self) -> None:
         delay = self.config.poll_seconds
-        while True:
-            try:
-                _, owners, ready = self._snapshot()
-                if not ready:
-                    await asyncio.to_thread(self.recover)
-                else:
-                    records = self.authority.snapshot()[0]
-                    now = int(self.clock().timestamp())
-                    for owner in owners:
-                        pending = [
-                            record
-                            for record in records
-                            if isinstance(record, EventRecord)
-                            and record.owner_id == owner.id
-                            and record.state == 'pending'
-                        ]
-                        if pending and all(
-                            record.next_attempt_at is not None
-                            and record.next_attempt_at > now
-                            for record in pending
-                        ):
-                            continue
-                        await asyncio.to_thread(self.reconcile, owner.id)
-                delay = self.config.poll_seconds
-            except asyncio.CancelledError:
-                self.authority.stop(self.epoch)
-                raise
-            except BillingHold as exc:
-                self.authority.hold_runtime(self.epoch, exc.reason)
-                logger.warning('Billing reconciliation held: %s', exc.reason)
-                delay = min(300, max(5, delay * 2))
-            except BaseException:
-                self.authority.hold_runtime(self.epoch, 'processing_failed')
-                raise
-            await asyncio.sleep(delay)
+        try:
+            while True:
+                try:
+                    _, owners, ready = self._snapshot()
+                    if not ready:
+                        await asyncio.to_thread(self.recover)
+                    else:
+                        records = self.authority.snapshot()[0]
+                        now = int(self.clock().timestamp())
+                        for owner in owners:
+                            pending = [
+                                record
+                                for record in records
+                                if isinstance(record, EventRecord)
+                                and record.owner_id == owner.id
+                                and record.state == 'pending'
+                            ]
+                            if pending and all(
+                                record.next_attempt_at is not None
+                                and record.next_attempt_at > now
+                                for record in pending
+                            ):
+                                continue
+                            await asyncio.to_thread(self.reconcile, owner.id)
+                    delay = self.config.poll_seconds
+                except asyncio.CancelledError:
+                    raise
+                except BillingHold as exc:
+                    self.authority.hold_runtime(self.epoch, exc.reason)
+                    logger.warning('Billing reconciliation held: %s', exc.reason)
+                    delay = min(300, max(5, delay * 2))
+                except BaseException:
+                    self.authority.hold_runtime(self.epoch, 'processing_failed')
+                    raise
+                await asyncio.sleep(delay)
+        finally:
+            self.authority.stop(self.epoch)
