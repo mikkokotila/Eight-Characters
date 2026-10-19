@@ -17,6 +17,13 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any, Final, cast
 
+from eight_characters.accounts.billing_records import (
+    AccountBillingRecord, BillingDocument, billing_path, validate_billing_graph,
+)
+from eight_characters.accounts.billing_schema import BILLING_SCHEMA_5, BILLING_SCHEMA_VERSION
+from eight_characters.accounts.billing_storage import (
+    read_billing, require_billing_layout, restore_billing,
+)
 from eight_characters.accounts.plans import LIMITS, PlanLimits, check_limits
 from eight_characters.accounts.records import (
     Birth,
@@ -151,6 +158,10 @@ class StoreError(Exception):
     """The account database cannot do what was asked."""
 
 
+class BillingReadOnly(StoreError):
+    """This reader preserves financial state but cannot run its business writers."""
+
+
 class EmailTaken(StoreError):
     """An account with that email address exists already."""
 
@@ -264,6 +275,7 @@ class RecordChange:
     path: str
     user: User | None
     settings: Settings | None
+    billing: BillingDocument | None = None
 
 
 @dataclass(frozen=True)
@@ -309,6 +321,8 @@ class BackupSnapshot:
     # While a squash of the history is under way, the commit it replaces; the squash
     # is then `pending_head`.
     squash_of: str | None
+    billing_count: int | None = None
+    sequence: int | None = None
 
 
 def _utc_now() -> datetime:
@@ -363,11 +377,8 @@ def _migrate(connection: sqlite3.Connection) -> None:
         try:
             version = _user_version(connection)
             if version > SCHEMA_VERSION:
-                raise StoreError(
-                    f'The database has schema {version}; this version of the app '
-                    f'knows schemas up to {SCHEMA_VERSION}.'
-                )
-            current = version == SCHEMA_VERSION
+                _check_version(connection)
+            current = version >= SCHEMA_VERSION
             if not current:
                 for statement in MIGRATIONS[version]:
                     connection.execute(statement)
@@ -378,6 +389,18 @@ def _migrate(connection: sqlite3.Connection) -> None:
         connection.execute('COMMIT')
         if current:
             return
+
+
+def _check_version(connection: sqlite3.Connection) -> int:
+    version = _user_version(connection)
+    if version > SCHEMA_VERSION:
+        if version != BILLING_SCHEMA_VERSION:
+            raise StoreError(f'The database has unknown schema {version}.')
+        try:
+            require_billing_layout(connection, MIGRATIONS)
+        except RecordError as exc:
+            raise StoreError(str(exc)) from exc
+    return version
 
 
 def _fsync_directory(directory: Path) -> None:
@@ -487,6 +510,14 @@ def _texts(row: tuple[Any, ...]) -> tuple[str, ...]:
     return tuple(str(value) for value in row)
 
 
+def _billing_records(connection: sqlite3.Connection) -> tuple[BillingDocument, ...]:
+    users = [_user_from_row(row) for row in connection.execute(f'SELECT {_USER_COLUMNS} FROM users')]
+    try:
+        return read_billing(connection, users)
+    except RecordError as exc:
+        raise StoreError(str(exc)) from exc
+
+
 def _code_from_row(row: tuple[Any, ...]) -> SignInCode:
     address, code_hash, new_language, created_at, expires_at, attempts = row
     if new_language is not None and not (
@@ -541,11 +572,7 @@ class AccountStore:
             version = _user_version(connection)
             if version == 0 or _application_id(connection) != APPLICATION_ID:
                 raise StoreError(f'{path} is not an account database.')
-            if version > SCHEMA_VERSION:
-                raise StoreError(
-                    f'The database at {path} has schema {version}; this version of '
-                    f'the app knows schemas up to {SCHEMA_VERSION}.'
-                )
+            _check_version(connection)
             _migrate(connection)
         return cls(path, clock=clock, limits=limits)
 
@@ -569,13 +596,26 @@ class AccountStore:
         head: str,
         clock: Callable[[], datetime] = _utc_now,
         limits: Mapping[Plan, PlanLimits] = LIMITS,
+        billing: Sequence[BillingDocument] | None = None,
+        backup_seq: int = 0,
+        sequence: int = 0,
     ) -> 'AccountStore':
         """A new database at `path` holding exactly these accounts, each with its
         settings, as backed up in the Git commit `head`.
 
         Nothing is logged for the backup: the records came from it.
         """
-        return cls._build(path, accounts, head, clock, limits)
+        if (type(backup_seq) is not int or type(sequence) is not int
+                or not 0 <= backup_seq <= sequence < 2**63 - 1):
+            raise StoreError('Restored backup sequence bounds are invalid.')
+        if billing is None and (backup_seq or sequence):
+            raise StoreError('Legacy backups contain no historical sequence bounds.')
+        if billing is not None:
+            try:
+                validate_billing_graph(billing, [user for user, _ in accounts])
+            except RecordError as exc:
+                raise StoreError(str(exc)) from exc
+        return cls._build(path, accounts, head, clock, limits, billing, backup_seq, sequence)
 
     @classmethod
     def _build(
@@ -585,6 +625,9 @@ class AccountStore:
         head: str | None,
         clock: Callable[[], datetime],
         limits: Mapping[Plan, PlanLimits],
+        billing: Sequence[BillingDocument] | None = None,
+        backup_seq: int = 0,
+        sequence: int = 0,
     ) -> 'AccountStore':
         # Nothing is built with a table of limits that misses a plan.
         check_limits(limits)
@@ -607,17 +650,34 @@ class AccountStore:
                 _migrate(connection)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
+                    if billing is not None:
+                        for statement in BILLING_SCHEMA_5:
+                            connection.execute(statement)
+                        connection.execute(f'PRAGMA user_version = {BILLING_SCHEMA_VERSION}')
                     for user, settings in accounts:
                         _insert_user(connection, user)
                         if settings is not None:
                             _put_settings(connection, user.id, settings)
                     connection.execute(
-                        'UPDATE backup_progress SET head = ? WHERE id = 1', (head,)
+                        'UPDATE backup_progress SET head = ?, backed_up_seq = ? WHERE id = 1',
+                        (head, backup_seq),
                     )
+                    if billing is not None:
+                        restore_billing(connection, billing)
+                        connection.execute("DELETE FROM sqlite_sequence WHERE name = 'changes'")
+                        connection.execute(
+                            "INSERT INTO sqlite_sequence (name,seq) VALUES ('changes',?)", (sequence,),
+                        )
+                        require_billing_layout(connection, MIGRATIONS)
+                        read_billing(connection, [user for user, _ in accounts])
                 except BaseException:
                     connection.execute('ROLLBACK')
                     raise
                 connection.execute('COMMIT')
+                mode = connection.execute('PRAGMA journal_mode = WAL').fetchone()
+                if mode is None or mode[0] != 'wal':
+                    raise StoreError('The partial database cannot use a write-ahead log.')
+                connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
             # A hard link moves it into place only if nothing is there yet.
             os.link(partial, path)
         except sqlite3.IntegrityError as exc:
@@ -628,22 +688,33 @@ class AccountStore:
             raise
         partial.unlink()
         _fsync_directory(path.parent)
-        with _connection(path) as connection:
-            # Kept in the file, so every later connection writes ahead to a log.
-            mode = connection.execute('PRAGMA journal_mode = WAL').fetchone()
-            if mode is None or mode[0] != 'wal':
-                raise StoreError(f'{path} cannot use a write-ahead log.')
         return cls(path, clock=clock, limits=limits)
+
+    def schema_version(self) -> int:
+        with self._read() as connection:
+            return _user_version(connection)
+
+    def billing_records(self) -> tuple[BillingDocument, ...]:
+        with self._read() as connection:
+            if _user_version(connection) < BILLING_SCHEMA_VERSION:
+                return ()
+            return _billing_records(connection)
 
     def limits(self, plan: Plan) -> PlanLimits:
         """What the plan lets an account keep (plans.py)."""
         return self._limits[plan]
 
     @contextmanager
-    def _write(self) -> Generator[sqlite3.Connection, None, None]:
+    def _write(self, *, backup_progress: bool = False) -> Generator[sqlite3.Connection, None, None]:
         with _connection(self.path) as connection:
             connection.execute('BEGIN IMMEDIATE')
             try:
+                version = _check_version(connection)
+                if version > SCHEMA_VERSION and not backup_progress:
+                    raise BillingReadOnly(
+                        'This release can read, export and back up billing records; '
+                        'business changes require the billing writer.'
+                    )
                 yield connection
             except BaseException:
                 connection.execute('ROLLBACK')
@@ -656,6 +727,7 @@ class AccountStore:
         with _connection(self.path) as connection:
             connection.execute('BEGIN')
             try:
+                _check_version(connection)
                 yield connection
             finally:
                 connection.execute('ROLLBACK')
@@ -686,18 +758,18 @@ class AccountStore:
         return user
 
     def user_by_email(self, email: str) -> User | None:
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             return _select_user(connection, 'email', normalize_email(email))
 
     def user_by_id(self, user_id: str) -> User | None:
         if not is_id(user_id):
             return None
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             return _select_user(connection, 'id', user_id)
 
     def users(self) -> list[User]:
         """Every account, in id order."""
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             rows = connection.execute(
                 f'SELECT {_USER_COLUMNS} FROM users ORDER BY id'
             ).fetchall()
@@ -766,7 +838,7 @@ class AccountStore:
 
     def settings(self, user_id: str) -> Settings | None:
         """The account's settings for Today; None if it has set nothing."""
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             return _select_settings(connection, user_id)
 
     # Each change names the settings it was made from by their `updated_at`, None for
@@ -1009,7 +1081,7 @@ class AccountStore:
         return created == 1
 
     def session(self, token_hash: str) -> Session | None:
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             row = connection.execute(
                 'SELECT token_hash, user_id, created_at, expires_at FROM sessions '
                 'WHERE token_hash = ?',
@@ -1028,7 +1100,7 @@ class AccountStore:
     def session_and_user(self, token_hash: str) -> tuple[Session, User] | None:
         """A session and its account, read in one query, or None if either is gone:
         an account deleted meanwhile takes its sessions with it."""
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             row = connection.execute(
                 'SELECT s.token_hash, s.user_id, s.created_at, s.expires_at, '
                 'u.id, u.email, u.language, u.plan, u.created_at, u.updated_at '
@@ -1170,7 +1242,7 @@ class AccountStore:
             )
 
     def code(self, email: str) -> SignInCode | None:
-        with _connection(self.path) as connection:
+        with self._read() as connection:
             row = connection.execute(
                 'SELECT email, code_hash, new_language, created_at, expires_at, '
                 'attempts FROM sign_in_codes WHERE email = ?',
@@ -1288,29 +1360,37 @@ class AccountStore:
                 after,
                 _scalar(connection, 'SELECT COALESCE(MAX(seq), 0) FROM changes'),
             )
+            sequence = _scalar(connection,
+                "SELECT COALESCE((SELECT seq FROM sqlite_sequence WHERE name='changes'),0)")
+            if sequence < through:
+                raise StoreError('The change-log sequence is below its backup high-water.')
+            future = _user_version(connection) == BILLING_SCHEMA_VERSION
+            financial = {r.id: r for r in _billing_records(connection)} if future else {}
             rows = connection.execute(
                 'SELECT kind, record_id, path FROM changes '
                 'WHERE seq > ? AND seq <= ? ORDER BY seq',
                 (after, through),
             ).fetchall()
-            latest: dict[str, str] = {}
+            latest: dict[str, tuple[str, str]] = {}
             for kind, record_id, path in rows:
-                if kind != 'user' or not isinstance(record_id, str):
+                if kind not in (('user', 'billing') if future else ('user',)) or not isinstance(record_id, str):
                     raise StoreError(
                         f'The change log holds an unknown record: {kind!r}.'
                     )
-                if not isinstance(path, str) or path != user_path(record_id):
+                expected = user_path(record_id) if kind == 'user' else billing_path(record_id)
+                if not isinstance(path, str) or path != expected:
                     raise StoreError(
                         "The change log holds a path that is not the record's."
                     )
-                latest[path] = record_id
+                latest[path] = (kind, record_id)
             changes = tuple(
                 RecordChange(
                     path=path,
-                    user=_select_user(connection, 'id', record_id),
-                    settings=_select_settings(connection, record_id),
+                    user=_select_user(connection, 'id', record_id) if kind == 'user' else None,
+                    settings=_select_settings(connection, record_id) if kind == 'user' else None,
+                    billing=financial.get(record_id) if kind == 'billing' else None,
                 )
-                for path, record_id in sorted(latest.items())
+                for path, (kind, record_id) in sorted(latest.items())
             )
             user_count = _scalar(connection, 'SELECT COUNT(*) FROM users')
             row = connection.execute(
@@ -1326,11 +1406,13 @@ class AccountStore:
             head=_commit_or_none(row[0]),
             pending_head=_commit_or_none(row[1]),
             squash_of=_commit_or_none(row[2]),
+            billing_count=len(financial) if future else None,
+            sequence=sequence if future else None,
         )
 
     def record_pending_head(self, commit: str) -> None:
         """Remembers a commit the backup made and is about to move the checkout to."""
-        with self._write() as connection:
+        with self._write(backup_progress=True) as connection:
             connection.execute(
                 'UPDATE backup_progress SET pending_head = ?, squash_of = NULL '
                 'WHERE id = 1',
@@ -1339,7 +1421,7 @@ class AccountStore:
 
     def record_pending_squash(self, commit: str, replaces: str) -> None:
         """Remembers a squash under way: its commit, and the one it replaces."""
-        with self._write() as connection:
+        with self._write(backup_progress=True) as connection:
             connection.execute(
                 'UPDATE backup_progress SET pending_head = ?, squash_of = ? '
                 'WHERE id = 1',
@@ -1348,7 +1430,7 @@ class AccountStore:
 
     def record_backup_head(self, commit: str | None) -> None:
         """Remembers the commit the backup made last, and that nothing is pending."""
-        with self._write() as connection:
+        with self._write(backup_progress=True) as connection:
             connection.execute(
                 'UPDATE backup_progress '
                 'SET head = ?, pending_head = NULL, squash_of = NULL WHERE id = 1',
@@ -1357,7 +1439,7 @@ class AccountStore:
 
     def mark_backed_up(self, through_seq: int) -> None:
         """Records changes up to `through_seq` as safely in the backup."""
-        with self._write() as connection:
+        with self._write(backup_progress=True) as connection:
             current = _scalar(
                 connection, 'SELECT backed_up_seq FROM backup_progress WHERE id = 1'
             )

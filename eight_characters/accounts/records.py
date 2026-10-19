@@ -34,7 +34,7 @@ from eight_characters.time_convert import Gender, load_timezone
 
 Language = Literal['fi', 'en']
 Plan = Literal['free', 'basic', 'pro', 'max']
-RecordKind = Literal['user']
+RecordKind = Literal['user', 'billing']
 ZiConvention = Literal['split_midnight', 'whole_zi_23']
 
 LANGUAGES: Final[tuple[Language, ...]] = ('fi', 'en')

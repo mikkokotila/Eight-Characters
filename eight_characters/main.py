@@ -11,6 +11,7 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from eight_characters.accounts.store import BillingReadOnly
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -149,6 +150,13 @@ async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
 
 app = FastAPI(title='Eight Characters', lifespan=lifespan)
 app.include_router(account_router)
+
+
+@app.exception_handler(BillingReadOnly)
+async def billing_reader_write_refused(_request: Request, _exc: BillingReadOnly) -> JSONResponse:
+    return JSONResponse(status_code=503, content={
+        'detail': 'Account changes are temporarily unavailable during billing recovery.'
+    })
 # Charts need an account, but for the first chart (/api/first_chart). The start page,
 # place search and the explorer's sample and settings stay open.
 ACCOUNT_REQUIRED = [Depends(require_account)]

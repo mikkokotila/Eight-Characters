@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.67.0
+
+### Changed
+- Recovery readers validate the reviewed future billing schema and separately encrypted
+  authority without migrating normal databases beyond schema 4 (#135).
+- Manifest 2 preserves financial ownership, delivery jobs, deletion tombstones and
+  backup sequence bounds. Restore publishes a held recovery epoch atomically.
+- Older running readers fence business mutations after a schema change; schema-5
+  account service refuses startup rather than selecting legacy allowances.
+- Legacy record/plan and manifest-1 behavior is preserved. No checkout, native write
+  or paid grant is introduced.
+
+### Tests
+- Exact future layout, old-handle fences, strict canonical types/ownership, private
+  encrypted round trips, pruned high-water, tombstone-only squash/recovery, failed
+  reconstruction and mixed-record interruption.
+
 ## 0.66.0
 
 ### Changed

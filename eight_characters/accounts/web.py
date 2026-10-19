@@ -68,6 +68,7 @@ from eight_characters.accounts.signin import (
     TooManyRequests,
 )
 from eight_characters.accounts.store import (
+    SCHEMA_VERSION,
     AccountStore,
     ChartLimit,
     CoupleLimit,
@@ -176,6 +177,10 @@ def _positive(env: Mapping[str, str], name: str, errors: list[str]) -> int:
 
 def load_config(env: Mapping[str, str]) -> AccountsConfig:
     """The account settings in `env`, or ConfigError naming everything wrong."""
+    if env.get('EC_BILLING_MODE', 'disabled') != 'disabled' or any(
+        name.startswith('EC_STRIPE_') for name in env
+    ):
+        raise ConfigError('Billing service configuration requires the billing writer; this release is a recovery reader.')
     required = (
         'EC_APP_ORIGIN',
         'EC_DATABASE_PATH',
@@ -288,6 +293,11 @@ class Accounts:
     ) -> 'Accounts':
         now = clock or (lambda: datetime.now(UTC))
         store = AccountStore.open(config.database, clock=now)
+        if store.schema_version() > SCHEMA_VERSION:
+            raise ConfigError(
+                'This release can recover schema-5 billing records but cannot serve '
+                'financially managed accounts. Use the billing writer for account service.'
+            )
         if mailer is None:
             if config.smtp is not None:
                 mailer = SmtpTransport(*config.smtp)

@@ -27,6 +27,7 @@ from typing import Any, Final, cast
 
 import pyrage
 
+from eight_characters.accounts.billing_records import encode_billing
 from eight_characters.accounts.records import canonical_json, encode_user, is_id
 from eight_characters.accounts.store import AccountStore, BackupSnapshot
 
@@ -34,12 +35,13 @@ ENCRYPTED_SUFFIX: Final = '.age'
 MANIFEST: Final = 'manifest.json'
 MANIFEST_SCHEMA: Final = 1
 USER_FILE: Final = 'user.json.age'
+BILLING_FILE: Final = 'billing.json.age'
 # The repository owner's folder, for its freshness check: the backup never writes it,
 # and commits to it alone are the owner's.
 OWNER_FOLDER: Final = '.github'
 # Everything a backup checkout may hold at its root, and which of it are files.
 TOP_LEVEL: Final = frozenset(
-    {'.git', OWNER_FOLDER, '.gitattributes', 'README.md', MANIFEST, 'users'}
+    {'.git', OWNER_FOLDER, '.gitattributes', 'README.md', MANIFEST, 'users', 'billing'}
 )
 _TOP_LEVEL_FILES: Final = frozenset({'.gitattributes', 'README.md', MANIFEST})
 # In the Git directory while a run writes into the checkout: the next run knows from
@@ -110,6 +112,9 @@ class Manifest:
 
     recipient: str
     user_count: int
+    billing_count: int | None = None
+    backup_seq: int | None = None
+    sequence: int | None = None
 
 
 def _git_run(
@@ -260,14 +265,16 @@ def _remove_empty_parents(directory: Path, root: Path) -> None:
 
 
 def manifest_bytes(manifest: Manifest) -> bytes:
-    return canonical_json(
-        {
+    value: dict[str, Any] = {
             'counts': {'user': manifest.user_count},
             'encryption': 'age',
             'recipient': manifest.recipient,
             'schema': MANIFEST_SCHEMA,
         }
-    )
+    if manifest.billing_count is not None:
+        value.update(schema=2, counts={'user': manifest.user_count, 'billing': manifest.billing_count},
+                     backup_seq=manifest.backup_seq, sequence=manifest.sequence)
+    return canonical_json(value)
 
 
 def read_manifest(root: Path) -> Manifest | None:
@@ -285,14 +292,13 @@ def read_manifest(root: Path) -> Manifest | None:
     if not isinstance(value, dict):
         raise BackupError('The backup manifest must be a JSON object.')
     fields = cast(dict[str, Any], value)
-    if frozenset(fields) != _MANIFEST_FIELDS:
+    schema: object = fields.get('schema')
+    if type(schema) is not int or schema not in (1, 2):
+        raise BackupError('The backup manifest has an unknown schema.')
+    expected_fields = _MANIFEST_FIELDS | ({'backup_seq', 'sequence'} if schema == 2 else set())
+    if frozenset(fields) != expected_fields:
         raise BackupError(
             f'The backup manifest has the wrong fields: {sorted(fields)}.'
-        )
-    schema: object = fields['schema']
-    if type(schema) is not int or schema != MANIFEST_SCHEMA:
-        raise BackupError(
-            f'A backup manifest of schema {schema!r} is not one this app reads.'
         )
     if fields['encryption'] != 'age':
         raise BackupError('The backup manifest names an encryption other than age.')
@@ -303,12 +309,19 @@ def read_manifest(root: Path) -> Manifest | None:
     tally = cast(dict[str, Any], counts)
     user_count: object = tally.get('user')
     if (
-        frozenset(tally) != frozenset({'user'})
+        frozenset(tally) != (frozenset({'user'}) if schema == 1 else frozenset({'user', 'billing'}))
         or type(user_count) is not int
         or user_count < 0
     ):
         raise BackupError("The backup manifest's counts are malformed.")
-    manifest = Manifest(recipient=recipient, user_count=user_count)
+    if schema == 1:
+        manifest = Manifest(recipient=recipient, user_count=user_count)
+    else:
+        billing_count, backup_seq, sequence = tally['billing'], fields['backup_seq'], fields['sequence']
+        if (type(billing_count) is not int or billing_count < 0 or type(backup_seq) is not int
+                or type(sequence) is not int or not 0 <= backup_seq <= sequence < 2**63 - 1):
+            raise BackupError('The billing manifest counts or sequence bounds are malformed.')
+        manifest = Manifest(recipient, user_count, billing_count, backup_seq, sequence)
     if manifest_bytes(manifest) != data:
         raise BackupError('The backup manifest is not in canonical form.')
     return manifest
@@ -326,7 +339,7 @@ def _listing(directory: Path, where: str) -> list[Path]:
     return entries
 
 
-def record_files(root: Path) -> list[tuple[str, str]]:
+def _record_files(root: Path, tree: str, filename: str) -> list[tuple[str, str]]:
     """Every user record file in the checkout, as (path from the root, user id).
 
     Anything the backup never writes stops it here, links included, so that a restore
@@ -343,19 +356,19 @@ def record_files(root: Path) -> list[tuple[str, str]]:
                 f'The backup holds {entry.name} as something other than the file '
                 'it writes.'
             )
-    users = root / 'users'
+    users = root / tree
     if not users.exists():
         return []
     if not users.is_dir():
-        raise BackupError('users in the backup is not a folder.')
+        raise BackupError(f'{tree} in the backup is not a folder.')
     found: list[tuple[str, str]] = []
-    for shard in _listing(users, 'users/'):
+    for shard in _listing(users, f'{tree}/'):
         if not shard.is_dir() or _SHARD.fullmatch(shard.name) is None:
             raise BackupError(
-                f'The backup holds something it never writes: users/{shard.name}'
+                f'The backup holds something it never writes: {tree}/{shard.name}'
             )
-        for folder in _listing(shard, f'users/{shard.name}/'):
-            where = f'users/{shard.name}/{folder.name}'
+        for folder in _listing(shard, f'{tree}/{shard.name}/'):
+            where = f'{tree}/{shard.name}/{folder.name}'
             if (
                 not folder.is_dir()
                 or not is_id(folder.name)
@@ -367,12 +380,20 @@ def record_files(root: Path) -> list[tuple[str, str]]:
             names = [entry.name for entry in _listing(folder, f'{where}/')]
             if not names:
                 continue
-            if names != [USER_FILE] or not (folder / USER_FILE).is_file():
+            if names != [filename] or not (folder / filename).is_file():
                 raise BackupError(
-                    f'{where} should hold the file {USER_FILE} alone, not {names}.'
+                    f'{where} should hold the file {filename} alone, not {names}.'
                 )
-            found.append((f'{where}/{USER_FILE}', folder.name))
+            found.append((f'{where}/{filename}', folder.name))
     return found
+
+
+def record_files(root: Path) -> list[tuple[str, str]]:
+    return _record_files(root, 'users', USER_FILE)
+
+
+def billing_files(root: Path) -> list[tuple[str, str]]:
+    return _record_files(root, 'billing', BILLING_FILE)
 
 
 def head_commit(root: Path) -> str | None:
@@ -531,10 +552,13 @@ def _write_and_commit(
     for change in snapshot.changes:
         name = f'{change.path}{ENCRYPTED_SUFFIX}'
         target = root / name
+        plaintext = None
         if change.user is not None:
-            ciphertext = pyrage.encrypt(
-                encode_user(change.user, change.settings), [recipient]
-            )
+            plaintext = encode_user(change.user, change.settings)
+        elif change.billing is not None:
+            plaintext = encode_billing(change.billing)
+        if plaintext is not None:
+            ciphertext = pyrage.encrypt(plaintext, [recipient])
             _write_atomically(target, ciphertext, scratch)
             written += 1
             touched.append(name)
@@ -544,7 +568,10 @@ def _write_and_commit(
             removed += 1
             touched.append(name)
         # A record made and deleted between two runs never reached the backup.
-    manifest = Manifest(recipient=str(recipient), user_count=snapshot.user_count)
+    manifest = Manifest(recipient=str(recipient), user_count=snapshot.user_count,
+        billing_count=snapshot.billing_count,
+        backup_seq=snapshot.through_seq if snapshot.billing_count is not None else None,
+        sequence=snapshot.sequence)
     if _write_if_different(root / MANIFEST, manifest_bytes(manifest), scratch):
         touched.append(MANIFEST)
     on_disk = len(record_files(root))
@@ -553,6 +580,8 @@ def _write_and_commit(
             f'The checkout holds {on_disk} user files but the database '
             f'{snapshot.user_count} users.'
         )
+    if len(billing_files(root)) != (snapshot.billing_count or 0):
+        raise BackupError('The backup billing file count differs from the database.')
     if not touched:
         return written, removed, None
     _git(
@@ -594,6 +623,7 @@ def run_backup(
         recovered = _take_up_stopped_run(root, scratch)
         require_clean(root)
         records = record_files(root)
+        financial = billing_files(root)
         existing = read_manifest(root)
         if existing is None and records:
             raise BackupError(
@@ -670,6 +700,8 @@ def squash_history(store: AccountStore, checkout: Path) -> str:
                 f'The backup holds {len(records)} records but its manifest counts '
                 f'{manifest.user_count}; its history may hold the others.'
             )
+        if len(financial) != (manifest.billing_count or 0):
+            raise BackupError('The billing manifest count differs; its history stays.')
         snapshot = store.backup_snapshot()
         branch = _git(root, 'symbolic-ref', '--short', 'HEAD').strip()
         local = head_commit(root)

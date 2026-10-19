@@ -544,3 +544,35 @@ Provider contracts: [Price object](https://docs.stripe.com/api/prices/object),
 [API keys](https://docs.stripe.com/keys),
 [API versioning](https://docs.stripe.com/api/versioning). No native account/product/
 price identifier, operator identity or credential is hard-coded.
+
+
+### Billing recovery reader (0.67.0)
+
+Normal open/create remains schema 4 and writes the original manifest-1 backup.
+The reviewed schema-5 statements are inert until explicit future reconstruction;
+the next writer consumes the same definition. Exact table/constraint/index/STRICT
+layout and the complete canonical financial ownership graph must validate.
+
+Schema-5 files may be read, exported through the store and backed up by this image.
+All business mutations are fenced inside the transaction, including old handles;
+only backup progress can advance. The HTTP account service refuses this recovery
+generation. This is a maintenance recovery image, not a paid-access fallback.
+
+Billing records are separately age encrypted under billing/<shard>/<id>/billing.json.age.
+Manifest 2 counts them and captures backup_seq plus AUTOINCREMENT sequence in the
+same snapshot. A restore preserves both, reconstructs projections, discards leases
+and inserts a fresh held runtime epoch before atomic publication. Manifest 1 had
+no historic sequence fields and retains its existing reset-to-zero behavior.
+No reader grants access or clears native reconciliation holds. Every future writer
+startup must close its gate even after a legacy/empty restore.
+
+Deletion tombstones survive user removal and history squash. Unknown/corrupt
+records, projections, scope, counts or ownership stop the entire backup/restore;
+there is no partial recovery or skipped record. Restore does not overwrite paths.
+WAL/checkpoint preparation completes before the database becomes visible.
+
+Before any deployment containing schema 5, including billing-disabled deployments,
+verify encrypted recovery, deploy this reader and drain older unguarded app/backup
+processes. Rollback never means discarding financial state to run an older image.
+The source contract is Eight-Characters #134/#135; native purchase/access acceptance
+belongs to #136. No production billing configuration or live checkout is enabled.

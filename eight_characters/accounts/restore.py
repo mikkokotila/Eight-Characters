@@ -16,6 +16,7 @@ from eight_characters.accounts.backup import (
     head_commit,
     read_manifest,
     record_files,
+    billing_files,
     require_clean,
     work_tree,
 )
@@ -24,6 +25,9 @@ from eight_characters.accounts.records import (
     Settings,
     User,
     decode_user,
+)
+from eight_characters.accounts.billing_records import (
+    BillingDocument, decode_billing, validate_billing_graph,
 )
 from eight_characters.accounts.store import AccountStore, StoreError
 
@@ -94,8 +98,31 @@ def restore_backup(
                 f'The backup holds {len(accounts)} users but its manifest counts '
                 f'{manifest.user_count}.'
             )
+        financial: list[BillingDocument] = []
+        for name, record_id in billing_files(root):
+            if manifest.billing_count is None:
+                raise RestoreError('A legacy manifest cannot contain billing records.')
+            try:
+                plaintext = pyrage.decrypt((root / name).read_bytes(), [identity])
+            except pyrage.DecryptError as exc:
+                raise RestoreError('A billing record does not decrypt with this key.') from exc
+            try:
+                record = decode_billing(plaintext)
+            except RecordError as exc:
+                raise RestoreError(f'{name}: {exc}') from exc
+            if record.id != record_id:
+                raise RestoreError('A billing file holds another record identity.')
+            financial.append(record)
+        if len(financial) != (manifest.billing_count or 0):
+            raise RestoreError('Billing files differ from their manifest count.')
         try:
-            AccountStore.restore(database, accounts, head=head)
+            validate_billing_graph(financial, [user for user, _ in accounts])
+        except RecordError as exc:
+            raise RestoreError(str(exc)) from exc
+        try:
+            AccountStore.restore(database, accounts, head=head,
+                billing=financial if manifest.billing_count is not None else None,
+                backup_seq=manifest.backup_seq or 0, sequence=manifest.sequence or 0)
         except StoreError as exc:
             raise RestoreError(str(exc)) from exc
     return RestoreResult(users=len(accounts))

@@ -26,6 +26,7 @@ jobs:
       - name: Run account tests
         run: |
           python -m unittest \
+            tests.test_accounts_billing_recovery \
             tests.test_accounts_billing \
             tests.test_accounts_records \
             tests.test_accounts_store \
