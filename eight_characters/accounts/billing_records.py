@@ -532,7 +532,12 @@ def validate_billing_graph(
     for record in records:
         if isinstance(record, AccountBillingRecord):
             owners.add(record.owner_id)
-            if (record.owner_id in user_ids) == (record.lifecycle == 'deleted'):
+            present = record.owner_id in user_ids
+            if (record.lifecycle == 'deleted' and present) or (
+                not present
+                and record.lifecycle != 'deleted'
+                and (record.schema_version == 1 or record.lifecycle == 'active')
+            ):
                 raise RecordError('A financial owner and its personal record disagree.')
             if (
                 record.test_clock_id is not None
