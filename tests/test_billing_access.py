@@ -213,7 +213,9 @@ class SoldAccess(unittest.TestCase):
         intent = self.owner.intents[0].model_copy(update={'state': 'held'})
         owner = self.owner.model_copy(update={'coverage': (), 'intents': (intent,)})
         access = self.access(owner=owner)
-        self.assertEqual((access.status, access.reason), ('held', 'uncertain_operation'))
+        self.assertEqual(
+            (access.status, access.reason), ('held', 'uncertain_operation')
+        )
         self.assertEqual(access.chart_limit, 1)
 
     def test_configuration_and_binding_domains_do_not_broaden_authority(self):

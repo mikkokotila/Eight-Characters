@@ -31,18 +31,33 @@ class FencedAuthority(BackupTestCase):
         self.authority = Authority(self.store, self.config, clock=self.clock)
         self.epoch = self.authority.begin_recovery()
         self.owner = self.authority.ensure_owner(self.user.id)
-        self.authority.finish_recovery(self.epoch, started_at=int(self.clock().timestamp()))
+        self.authority.finish_recovery(
+            self.epoch, started_at=int(self.clock().timestamp())
+        )
 
     def bound(self):
         lease, owner = self.authority.claim(self.user.id)
-        binding = Binding(operation_id=new_id(), object_id='cus_one', state='sealed', mac='a' * 64)
-        self.authority.apply(lease, owner.model_copy(update={'customer_id': 'cus_one', 'binding': binding}))
+        binding = Binding(
+            operation_id=new_id(), object_id='cus_one', state='sealed', mac='a' * 64
+        )
+        self.authority.apply(
+            lease,
+            owner.model_copy(update={'customer_id': 'cus_one', 'binding': binding}),
+        )
         return self.authority.claim(self.user.id)
 
     def receipt(self):
         scope = self.authority.scope(self.authority.snapshot()[0])
-        offer = next(offer for offer in scope.offers if offer.plan == 'plus' and offer.period == 'monthly')
-        return records(self.user)[1].coverage[0].model_copy(update={'price_id': offer.price_id, 'offer_id': offer.id})
+        offer = next(
+            offer
+            for offer in scope.offers
+            if offer.plan == 'plus' and offer.period == 'monthly'
+        )
+        return (
+            records(self.user)[1]
+            .coverage[0]
+            .model_copy(update={'price_id': offer.price_id, 'offer_id': offer.id})
+        )
 
     def test_closed_startup_gate_and_restored_epoch_refuse_old_work(self):
         lease, owner = self.bound()
@@ -63,21 +78,35 @@ class FencedAuthority(BackupTestCase):
     def test_takeover_prevents_late_paid_apply_after_refund(self):
         stale, owner = self.bound()
         paid = self.receipt()
-        other_process = Authority(AccountStore.open(self.store.path), self.config, clock=self.clock)
+        other_process = Authority(
+            AccountStore.open(self.store.path), self.config, clock=self.clock
+        )
         with self.assertRaises(BillingHold):
             other_process.claim(self.user.id)
         self.clock.advance(self.config.lease_seconds + 1)
         current, same_owner = other_process.claim(self.user.id)
-        refunded = paid.model_copy(update={'refunds': (RefundFact(id='re_full', amount=1499, status='succeeded'),)})
-        other_process.apply(current, same_owner.model_copy(update={'coverage': (refunded,)}))
+        refunded = paid.model_copy(
+            update={
+                'refunds': (RefundFact(id='re_full', amount=1499, status='succeeded'),)
+            }
+        )
+        other_process.apply(
+            current, same_owner.model_copy(update={'coverage': (refunded,)})
+        )
         with self.assertRaises(BillingHold):
             self.authority.apply(stale, owner.model_copy(update={'coverage': (paid,)}))
-        owner = next(record for record in self.authority.snapshot()[0] if record.id == self.user.id)
+        owner = next(
+            record
+            for record in self.authority.snapshot()[0]
+            if record.id == self.user.id
+        )
         self.assertEqual(owner.coverage[0].refunds[0].status, 'succeeded')
 
     def test_duplicate_pending_delivery_stays_pending_and_apply_commits_its_log(self):
         lease, owner = self.bound()
-        delivery = Delivery('evt_one', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True)
+        delivery = Delivery(
+            'evt_one', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True
+        )
         first = self.authority.enqueue(delivery)
         pending = self.authority.enqueue(delivery)
         self.assertEqual(first, pending)
@@ -85,38 +114,79 @@ class FencedAuthority(BackupTestCase):
         with self.assertRaises(BillingHold):
             self.authority.apply(lease, owner)
         lease, owner = self.authority.claim(self.user.id)
-        self.authority.apply(lease, owner.model_copy(update={'coverage': (self.receipt(),)}), applied_events=('evt_one',))
+        self.authority.apply(
+            lease,
+            owner.model_copy(update={'coverage': (self.receipt(),)}),
+            applied_events=('evt_one',),
+        )
         snapshot = self.store.backup_snapshot()
-        event = next(record for record in self.store.billing_records() if record.id == first.id)
+        event = next(
+            record for record in self.store.billing_records() if record.id == first.id
+        )
         self.assertEqual(event.state, 'applied')
         self.assertEqual(self.authority.enqueue(delivery).state, 'applied')
         self.assertTrue(any(change.billing is not None for change in snapshot.changes))
 
     def test_queue_commit_failure_keeps_no_false_acknowledgment_record(self):
         self.bound()
-        delivery = Delivery('evt_abort', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True)
-        with patch('eight_characters.accounts.billing_authority.log_record_change', side_effect=sqlite3.OperationalError('injected commit boundary')):
+        delivery = Delivery(
+            'evt_abort', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True
+        )
+        with patch(
+            'eight_characters.accounts.billing_authority.log_record_change',
+            side_effect=sqlite3.OperationalError('injected commit boundary'),
+        ):
             with self.assertRaises(sqlite3.OperationalError):
                 self.authority.enqueue(delivery)
-        self.assertFalse(any(getattr(record, 'event_id', None) == 'evt_abort' for record in self.store.billing_records()))
+        self.assertFalse(
+            any(
+                getattr(record, 'event_id', None) == 'evt_abort'
+                for record in self.store.billing_records()
+            )
+        )
 
     def test_deletion_tombstone_and_personal_removal_share_one_transaction(self):
         lease, owner = self.bound()
         now = timestamp(self.clock())
-        deletion = Deletion(requested_at=now, completed_at=None, nonce=new_id(), native_object_id='cus_one', native_marker='d' * 64, retain_until=None)
-        self.authority.apply(lease, owner.model_copy(update={'lifecycle': 'deleting', 'deletion': deletion}))
+        deletion = Deletion(
+            requested_at=now,
+            completed_at=None,
+            nonce=new_id(),
+            native_object_id='cus_one',
+            native_marker='d' * 64,
+            retain_until=None,
+        )
+        self.authority.apply(
+            lease,
+            owner.model_copy(update={'lifecycle': 'deleting', 'deletion': deletion}),
+        )
         lease, deleting = self.authority.claim(self.user.id)
-        self.authority.apply(lease, deleting.model_copy(update={'lifecycle': 'deleted', 'deletion': deletion.model_copy(update={'completed_at': now})}), remove_user=True)
+        self.authority.apply(
+            lease,
+            deleting.model_copy(
+                update={
+                    'lifecycle': 'deleted',
+                    'deletion': deletion.model_copy(update={'completed_at': now}),
+                }
+            ),
+            remove_user=True,
+        )
         self.assertIsNone(self.store.user_by_id(self.user.id))
         self.assertIsNotNone(self.store.user_by_id(self.other.id))
         self.backup()
         target = self.directory / 'deleted.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         recovered = AccountStore.open(target)
-        tombstone = next(record for record in recovered.billing_records() if record.id == self.user.id)
+        tombstone = next(
+            record
+            for record in recovered.billing_records()
+            if record.id == self.user.id
+        )
         self.assertEqual(tombstone.lifecycle, 'deleted')
         self.assertIsNone(recovered.user_by_id(self.user.id))
 
     def test_unknown_signed_events_are_durable_explicit_quarantines(self):
-        event = self.authority.enqueue(Delivery('evt_unknown', 'invoice.paid', 'in_other', None, 'e' * 64, True))
+        event = self.authority.enqueue(
+            Delivery('evt_unknown', 'invoice.paid', 'in_other', None, 'e' * 64, True)
+        )
         self.assertEqual((event.state, event.reason), ('quarantined', 'unknown_owner'))

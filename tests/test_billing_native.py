@@ -280,6 +280,7 @@ class FundingGraph(unittest.TestCase):
                 with self.assertRaises(BillingHold) as failure:
                     self.coverage()
                 self.assertEqual(failure.exception.reason, 'unsupported_funding')
+
     def test_proration_cannot_grant_a_full_offer_period(self):
         self.lists['invoices/in_one/lines'][0]['parent']['subscription_item_details'][
             'proration'
