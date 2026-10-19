@@ -1,12 +1,18 @@
 """Immutable request and recovery-proof boundaries without provider side effects."""
 
-from dataclasses import replace
 import unittest
+from dataclasses import replace
 
 from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_operations import (
-    customer_mac, deletion_mac, operation_key, prepare_request,
-    read_customer_binding, read_deletion, request_for, sealed_checkout,
+    customer_mac,
+    deletion_mac,
+    operation_key,
+    prepare_request,
+    read_customer_binding,
+    read_deletion,
+    request_for,
+    sealed_checkout,
 )
 from eight_characters.accounts.billing_records import Binding, Deletion, Operation
 from eight_characters.accounts.records import new_id
@@ -58,7 +64,7 @@ class NativeOperations(unittest.TestCase):
             read_customer_binding(replace(self.config, binding_key=b'other' * 10), customer)
 
     def test_checkout_seal_also_authenticates_the_frozen_intent_and_offer(self):
-        create, request = self.operation('checkout_create', 'checkout_create')
+        create, _request = self.operation('checkout_create', 'checkout_create')
         create = create.model_copy(update={'state': 'done', 'result_id': 'cs_test_one'})
         self.owner = self.owner.model_copy(update={'operations': (create,), 'intents': (self.intent.model_copy(update={'checkout_id': 'cs_test_one', 'state': 'open'}),)})
         _, seal = self.operation('checkout_seal', 'checkout_create', subject='cs_test_one')

@@ -10,9 +10,19 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
-from eight_characters.accounts.billing_access import BillingConfig, BillingHold, binding_mac, check_scope
+from eight_characters.accounts.billing_access import (
+    BillingConfig,
+    BillingHold,
+    binding_mac,
+    check_scope,
+)
 from eight_characters.accounts.billing_native import Native, mapping, request_digest
-from eight_characters.accounts.billing_records import AccountBillingRecord, Deletion, Operation, ScopeRecord
+from eight_characters.accounts.billing_records import (
+    AccountBillingRecord,
+    Deletion,
+    Operation,
+    ScopeRecord,
+)
 from eight_characters.accounts.records import RecordError, parse_timestamp
 
 _PURPOSES = {
