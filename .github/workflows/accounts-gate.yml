@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m unittest \
             tests.test_billing_access \
+            tests.test_billing_executor \
             tests.test_billing_authority \
             tests.test_billing_capacity \
             tests.test_billing_migration \

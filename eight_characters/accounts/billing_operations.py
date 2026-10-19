@@ -37,6 +37,13 @@ _PURPOSES = {
 }
 
 
+def operation_kind(purpose: str) -> str:
+    for kind, purposes in _PURPOSES.items():
+        if purpose in purposes:
+            return kind
+    raise BillingHold('processing_failed')
+
+
 @dataclass(frozen=True)
 class NativeRequest:
     method: str
