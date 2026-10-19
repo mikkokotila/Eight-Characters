@@ -7,6 +7,8 @@ import hmac
 import json
 import shutil
 import sqlite3
+import subprocess
+import sys
 import tempfile
 import unittest
 from dataclasses import replace
@@ -20,7 +22,7 @@ from fastapi.testclient import TestClient
 
 import tests.test_billing_native as native_fixtures
 from eight_characters.accounts.billing import OFFERS, BillingError
-from eight_characters.accounts.billing_access import BillingHold
+from eight_characters.accounts.billing_access import BillingBusy, BillingHold
 from eight_characters.accounts.billing_executor import Work
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
 from eight_characters.accounts.billing_webhook import Delivery
@@ -237,6 +239,52 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_second_service_is_refused_without_invalidating_the_serving_epoch(self):
+        before = self.service.authority.snapshot()[1:]
+        with self.assertRaises(BillingBusy):
+            Accounts.open(
+                self.accounts.config,
+                person_check=FakePersonCheck(),
+                clock=self.clock,
+                billing_client=self.provider.client,
+            )
+        self.assertEqual(self.service.authority.snapshot()[1:], before)
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        self.assertEqual(self.accounts.store.capacity(self.user.id)[0].tier, 'plus')
+        self.service.close()
+        with self.assertRaises(BillingHold):
+            self.service.tick()
+        replacement = Accounts.open(
+            self.accounts.config,
+            person_check=FakePersonCheck(),
+            clock=self.clock,
+            billing_client=self.provider.client,
+        ).billing
+        self.addCleanup(replacement.close)
+        self.assertNotEqual(replacement.epoch, self.service.epoch)
+        replacement.recover()
+        self.assertEqual(self.accounts.store.capacity(self.user.id)[0].tier, 'plus')
+        self.assertEqual(len(self.provider.sessions), 1)
+
+    def test_runtime_lock_is_held_across_processes_and_released_on_stop(self):
+        script = (
+            'import fcntl,sys; '
+            'from pathlib import Path; '
+            "p=Path(sys.argv[1]); f=p.with_name(p.name+'.billing.lock').open('ab'); "
+            'fcntl.flock(f,fcntl.LOCK_EX|fcntl.LOCK_NB)'
+        )
+        argv = [sys.executable, '-c', script, str(self.accounts.store.path.resolve())]
+        refused = subprocess.run(argv, capture_output=True, text=True, check=False)
+        self.assertNotEqual(refused.returncode, 0)
+        self.assertIn('BlockingIOError', refused.stderr)
+        self.assertTrue(self.service.authority.snapshot()[2])
+        self.service.close()
+        acquired = subprocess.run(argv, capture_output=True, text=True, check=False)
+        self.assertEqual(acquired.returncode, 0, acquired.stderr)
+
+
     def test_cancel_stops_proven_subscription_while_unsupported_money_stays_held(self):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
@@ -543,6 +591,7 @@ class ServiceApi(unittest.TestCase):
             billing_client=self.provider.client,
         )
         self.service = self.accounts.billing
+        self.addCleanup(self.service.close)
         self.service.recover()
         app.dependency_overrides[get_accounts] = lambda: self.accounts
         self.addCleanup(app.dependency_overrides.pop, get_accounts)

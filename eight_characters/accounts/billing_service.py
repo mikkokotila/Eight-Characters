@@ -5,6 +5,7 @@ access. Browser redirects and webhook bodies never supply financial authority.
 """
 
 import asyncio
+import fcntl
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
@@ -79,12 +80,33 @@ class BillingService:
         )
         self.authority = Authority(store, config, clock=clock)
         self._owner_retries: dict[str, tuple[int, int]] = {}
-        # No native HTTP has occurred when this gate commits.
-        self.epoch = self.authority.begin_recovery()
+        # One account-service process owns this SQLite billing runtime. Refuse a
+        # second startup before it can fence the serving process's epoch.
+        database = store.path.resolve(strict=True)
+        self._runtime_lock = database.with_name(database.name + '.billing.lock').open(
+            'ab'
+        )
+        try:
+            try:
+                fcntl.flock(self._runtime_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except BlockingIOError as exc:
+                raise BillingBusy() from exc
+            # No native HTTP has occurred when this gate commits.
+            self.epoch = self.authority.begin_recovery()
+        except BaseException:
+            self._runtime_lock.close()
+            raise
+
+    def close(self) -> None:
+        if not self._runtime_lock.closed:
+            try:
+                self.authority.stop(self.epoch)
+            finally:
+                self._runtime_lock.close()
 
     def _snapshot(self) -> tuple[ScopeRecord, tuple[AccountBillingRecord, ...], bool]:
         records, epoch, ready = self.authority.snapshot()
-        if epoch != self.epoch:
+        if self._runtime_lock.closed or epoch != self.epoch:
             raise BillingHold('uncertain_operation')
         return (
             self.authority.scope(records),
@@ -1059,4 +1081,4 @@ class BillingService:
                     raise
                 await asyncio.sleep(delay)
         finally:
-            self.authority.stop(self.epoch)
+            self.close()
