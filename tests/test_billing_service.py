@@ -365,9 +365,8 @@ class ServiceApi(unittest.TestCase):
 
     def test_customerless_discovery_failure_recovers_without_a_permanent_hold(self):
         self.assert_customerless_recovery(
-            patch.object(
-                self.service.native,
-                'all',
+            patch(
+                'eight_characters.accounts.billing_service.discover_customers',
                 side_effect=BillingHold('native_unavailable'),
             )
         )
