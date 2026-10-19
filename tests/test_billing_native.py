@@ -265,6 +265,15 @@ class FundingGraph(unittest.TestCase):
         self.lists['invoice_payments'] = [payment, {**payment, 'id': 'inpay_two'}]
         with self.assertRaises(BillingHold):
             self.coverage()
+
+    def test_missing_required_nullable_fields_are_named_holds(self):
+        original = copy.deepcopy(self.invoice)
+        for name in ('application', 'on_behalf_of', 'transfer_data'):
+            with self.subTest(name=name):
+                self.invoice = {key: value for key, value in original.items() if key != name}
+                with self.assertRaises(BillingHold) as failure:
+                    self.coverage()
+                self.assertEqual(failure.exception.reason, 'unsupported_funding')
         self.lists['invoice_payments'] = [{**payment, 'amount_paid': 1498}]
         with self.assertRaises(BillingHold):
             self.coverage()

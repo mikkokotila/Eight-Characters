@@ -50,7 +50,8 @@ def integer(value: object, *, positive: bool = False) -> int:
 
 def require(value: Native, expected: Mapping[str, object]) -> None:
     if any(
-        type(value.get(k)) is not type(v) or value[k] != v for k, v in expected.items()
+        k not in value or type(value[k]) is not type(v) or value[k] != v
+        for k, v in expected.items()
     ):
         raise BillingHold('unsupported_funding')
 
