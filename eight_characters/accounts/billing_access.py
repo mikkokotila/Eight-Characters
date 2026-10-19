@@ -81,7 +81,9 @@ def load_runtime_config(
     )
     if catalogue is None:
         if any(name in values for name in names):
-            raise BillingError('Billing authority configuration is present while disabled.')
+            raise BillingError(
+                'Billing authority configuration is present while disabled.'
+            )
         return None
     if not catalogue.api_key.startswith('rk_test_'):
         raise BillingError('The runtime requires a restricted sandbox credential.')
@@ -89,8 +91,12 @@ def load_runtime_config(
     key = _setting(values, 'EC_BILLING_BINDING_KEY', r'[A-Za-z0-9_-]{43,256}').encode()
     if hmac.compare_digest(key, session_secret):
         raise BillingError('Billing and session keys must be independently generated.')
-    version = _setting(values, 'EC_STRIPE_PAYLOAD_VERSION', r'\d{4}-\d{2}-\d{2}\.[a-z]+')
-    current = _setting(values, 'EC_STRIPE_WEBHOOK_SECRET', r'whsec_[A-Za-z0-9]+').encode()
+    version = _setting(
+        values, 'EC_STRIPE_PAYLOAD_VERSION', r'\d{4}-\d{2}-\d{2}\.[a-z]+'
+    )
+    current = _setting(
+        values, 'EC_STRIPE_WEBHOOK_SECRET', r'whsec_[A-Za-z0-9]+'
+    ).encode()
     previous = values.get('EC_STRIPE_WEBHOOK_PREVIOUS_SECRET')
     secrets = (current,)
     if previous is not None:
@@ -106,7 +112,9 @@ def load_runtime_config(
         raise BillingError('The purchase clock must be among the retained clocks.')
     poll = int(_setting(values, 'EC_BILLING_POLL_SECONDS', r'[1-9][0-9]{0,3}'))
     lease = int(_setting(values, 'EC_BILLING_LEASE_SECONDS', r'[1-9][0-9]{0,3}'))
-    return BillingConfig(catalogue, namespace, key, version, secrets, clocks, purchase_clock, poll, lease)
+    return BillingConfig(
+        catalogue, namespace, key, version, secrets, clocks, purchase_clock, poll, lease
+    )
 
 
 def binding_mac(
