@@ -291,21 +291,8 @@ def request_for(
     owner: AccountBillingRecord,
     operation: Operation,
 ) -> NativeRequest:
-    purposes = _PURPOSES[operation.kind]
-    purpose = next(
-        (
-            value
-            for value in purposes
-            if operation.idempotency_key
-            == operation_key(config, owner.id, value, operation.id)
-        ),
-        None,
-    )
-    if (
-        purpose is None
-        or operation.state in ('done', 'recovered')
-        or operation.request_sha256 is None
-    ):
+    purpose = operation_purpose(config, owner.id, operation)
+    if operation.state in ('done', 'recovered') or operation.request_sha256 is None:
         raise BillingHold('uncertain_operation')
     request = prepare_request(
         config,
@@ -320,6 +307,21 @@ def request_for(
     if request.digest != operation.request_sha256:
         raise BillingHold('uncertain_operation')
     return request
+
+
+def operation_purpose(config: BillingConfig, owner_id: str, operation: Operation) -> str:
+    purpose = next(
+        (
+            value
+            for value in _PURPOSES[operation.kind]
+            if operation.idempotency_key
+            == operation_key(config, owner_id, value, operation.id)
+        ),
+        None,
+    )
+    if purpose is None:
+        raise BillingHold('uncertain_operation')
+    return purpose
 
 
 def read_customer_binding(

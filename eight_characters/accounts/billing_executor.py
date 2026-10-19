@@ -140,7 +140,7 @@ class Work:
             update={
                 'state': 'sent',
                 'sent_at': operation.sent_at or timestamp(now),
-                'reason': None,
+                'reason': operation.reason,
             }
         )
         self.save(
@@ -244,7 +244,7 @@ class Work:
             if sealed_checkout(config, owner, result)[0] != intent_id:
                 raise BillingHold('ownership_conflict')
         operation = operation.model_copy(
-            update={'state': 'done', 'result_id': result_id, 'reason': None}
+            update={'state': 'done', 'result_id': result_id, 'reason': operation.reason}
         )
         self.save(
             owner.model_copy(
