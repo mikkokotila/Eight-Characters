@@ -474,6 +474,7 @@ class BillingService:
             work.owner,
             wall_time=int(self.clock().timestamp()),
             verified_at=timestamp(self.clock()),
+            allow_funding_hold=work.owner.lifecycle in ('deleting', 'deleted'),
         )
 
     def _reserve_command(self, work: Work, owner: AccountBillingRecord, purpose: str, subject_id: str, *, reason: str | None = None) -> Operation:
@@ -502,7 +503,11 @@ class BillingService:
             deletion = deletion.model_copy(update={'completed_at': None})
         if lifecycle == 'held' and self.store.user_by_id(owner.id) is not None and deletion is None:
             lifecycle = 'active'
-        work.save(owner.model_copy(update={'coverage': observation.coverage, 'operations': tuple(operations), 'lifecycle': lifecycle, 'deletion': deletion}))
+        coverage = observation.coverage
+        if observation.funding_hold is not None:
+            verified = {fact.invoice_id for fact in coverage}
+            coverage = (*coverage, *(fact for fact in owner.coverage if fact.invoice_id not in verified))
+        work.save(owner.model_copy(update={'coverage': coverage, 'operations': tuple(operations), 'lifecycle': lifecycle, 'deletion': deletion}))
 
     def _reconcile(self, work: Work, proofs: Sequence[CustomerProof]) -> Observation | None:
         self._customer(work, proofs)
@@ -612,6 +617,8 @@ class BillingService:
             for operation in work.owner.operations
         ):
             raise BillingHold('uncertain_operation')
+        if observation is not None and observation.funding_hold is not None:
+            raise BillingHold(observation.funding_hold)
         if any(operation.reason == 'late_settlement' for operation in work.owner.operations):
             raise BillingHold('late_settlement')
         deletion = work.owner.deletion

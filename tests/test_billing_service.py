@@ -255,3 +255,17 @@ class ServiceApi(unittest.TestCase):
             self.assertFalse(self.service.authority.snapshot()[2])
             self.assertNotEqual(self.service.authority.snapshot()[1], self.service.epoch)
         asyncio.run(exercise())
+
+    def test_unsupported_payment_holds_erasure_after_closing_proven_renewal(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        self.provider.invoices['in_one']['billing_reason'] = 'manual'
+        response = self.client.request('DELETE', '/api/account', json={'key': self.key, 'email': self.user.email})
+        self.assertEqual(response.status_code, 503, response.text)
+        self.assertEqual(response.json()['billing']['reason'], 'unsupported_funding')
+        self.assertEqual(self.provider.subscriptions['sub_one']['status'], 'canceled')
+        self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
+        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        self.assertEqual(len(owner.coverage), 1)
+        self.assertIsNone(owner.deletion.completed_at)

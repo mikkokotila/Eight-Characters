@@ -50,6 +50,7 @@ class Observation:
     invoices: tuple[Native, ...]
     coverage: tuple[Coverage, ...]
     now: int
+    funding_hold: str | None = None
 
 
 def _creation_proven(
@@ -151,6 +152,7 @@ def observe_owner(
     *,
     wall_time: int,
     verified_at: str,
+    allow_funding_hold: bool = False,
 ) -> Observation:
     customer_id = identity(owner.customer_id, 'cus')
     customer = native.request('GET', 'customers/' + customer_id)
@@ -236,6 +238,7 @@ def observe_owner(
         raise BillingHold('uncertain_operation')
     invoices = native.all('invoices', {'customer': customer_id})
     coverage: list[Coverage] = []
+    funding_hold = None
     for invoice in invoices:
         require(
             invoice, {'object': 'invoice', 'livemode': False, 'customer': customer_id}
@@ -249,8 +252,8 @@ def observe_owner(
         ):
             raise BillingHold('unsupported_funding')
         if invoice['status'] == 'paid':
-            coverage.append(
-                captured_coverage(
+            try:
+                fact = captured_coverage(
                     native,
                     invoice,
                     customer_id=customer_id,
@@ -258,12 +261,21 @@ def observe_owner(
                     offers=scope.offers,
                     verified_at=verified_at,
                 )
-            )
+            except BillingHold as exc:
+                if not allow_funding_hold:
+                    raise
+                # A deleting owner cannot receive access. Preserve the explicit
+                # hold while closing its proven subscriptions and collection.
+                funding_hold = exc.reason
+            else:
+                coverage.append(fact)
     if any(
         old.invoice_id not in {fact.invoice_id for fact in coverage}
         for old in owner.coverage
     ):
-        raise BillingHold('uncertain_operation')
+        if not allow_funding_hold:
+            raise BillingHold('uncertain_operation')
+        funding_hold = funding_hold or 'uncertain_operation'
     return Observation(
-        customer, sessions, subscriptions, invoices, tuple(coverage), now
+        customer, sessions, subscriptions, invoices, tuple(coverage), now, funding_hold
     )
