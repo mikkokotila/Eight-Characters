@@ -192,8 +192,14 @@ class NativeBillingAcceptance(unittest.TestCase):
             manifest_path.is_file(), 'The full native trace run is incomplete.'
         )
         manifest = json.loads(manifest_path.read_text())
+        self.assertEqual(manifest['schema'], 1)
         self.assertEqual(manifest['namespace'], self.config.namespace)
         self.assertEqual(set(manifest['cases']), REQUIRED_TRACES)
+        captures = {
+            capture['request_id']: capture
+            for line in (self.folder / 'native-http.jsonl').read_text().splitlines()
+            if (capture := json.loads(line)).get('request_id') is not None
+        }
         for name, evidence in manifest['cases'].items():
             path = (self.folder / evidence['file']).resolve()
             self.assertTrue(path.is_relative_to(self.folder))
@@ -202,7 +208,12 @@ class NativeBillingAcceptance(unittest.TestCase):
             trace = json.loads(body)
             self.assertEqual(trace['case'], name)
             self.assertEqual(trace['namespace'], self.config.namespace)
+            self.assertEqual(trace['native_api_version'], self.config.catalogue.api_version)
             self.assertTrue(trace['native_request_ids'], name)
+            for request_id in trace['native_request_ids']:
+                capture = captures[request_id]
+                self.assertEqual(capture['version'], self.config.catalogue.api_version)
+                self.assertRegex(capture['body_sha256'], r'^[0-9a-f]{64}$')
             self.assertTrue(trace['assertions'], name)
             for assertion in trace['assertions']:
                 self.assertEqual(assertion['observed'], assertion['expected'], name)
