@@ -208,7 +208,9 @@ class NativeBillingAcceptance(unittest.TestCase):
             trace = json.loads(body)
             self.assertEqual(trace['case'], name)
             self.assertEqual(trace['namespace'], self.config.namespace)
-            self.assertEqual(trace['native_api_version'], self.config.catalogue.api_version)
+            self.assertEqual(
+                trace['native_api_version'], self.config.catalogue.api_version
+            )
             self.assertTrue(trace['native_request_ids'], name)
             for request_id in trace['native_request_ids']:
                 capture = captures[request_id]
