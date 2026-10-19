@@ -198,11 +198,15 @@ class Authority:
             now = self.clock()
             replacement = replacement.model_copy(update={'revision': old.revision + 1, 'updated_at': _next_time(old.updated_at, now)})
             changed: list[BillingDocument] = [replacement]
+            handled: set[str] = set()
             for record in _billing_records(connection):
                 if isinstance(record, EventRecord) and record.event_id in applied_events:
                     if record.owner_id != old.id or record.state != 'pending':
                         raise BillingHold('ownership_conflict')
                     changed.append(record.model_copy(update={'state': 'applied', 'revision': record.revision + 1, 'updated_at': _next_time(record.updated_at, now), 'attempts': record.attempts + 1, 'next_attempt_at': None, 'reason': None}))
+                    handled.add(record.event_id)
+            if handled != set(applied_events) or len(handled) != len(applied_events):
+                raise BillingHold('ownership_conflict')
             self._put(connection, changed, removed_user=old.id if remove_user else None)
             if remove_user:
                 if replacement.lifecycle != 'deleted':
@@ -227,6 +231,10 @@ class Authority:
             now = timestamp(self.clock())
             event = EventRecord(id=new_id(), scope_id=scope.id, revision=0, created_at=now, updated_at=now, event_id=delivery.event_id, event_type=delivery.event_type, object_id=delivery.object_id, owner_id=owner_id, state='pending' if reason is None else 'quarantined', attempts=0, next_attempt_at=None, body_sha256=delivery.body_sha256, reason=reason)
             self._put(connection, (event,))
+            if event.state == 'pending':
+                # A newly delivered wake-up fences any fetch begun before it.
+                # Its payload still cannot grant or revoke payment evidence.
+                connection.execute('UPDATE billing_leases SET expires_at=0,generation=generation+1 WHERE record_id=?', (owner_id,))
             return event
 
     def finish_recovery(self, epoch: str, *, started_at: int) -> None:
