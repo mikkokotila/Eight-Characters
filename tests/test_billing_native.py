@@ -260,7 +260,7 @@ class FundingGraph(unittest.TestCase):
                 self.coverage()
             self.objects['payment_intents/pi_one'] = before
 
-    def test_partial_or_multiple_allocations_and_prorations_are_refused(self):
+    def test_partial_or_multiple_allocations_are_refused(self):
         payment = self.lists['invoice_payments'][0]
         self.lists['invoice_payments'] = [payment, {**payment, 'id': 'inpay_two'}]
         with self.assertRaises(BillingHold):
@@ -280,7 +280,7 @@ class FundingGraph(unittest.TestCase):
                 with self.assertRaises(BillingHold) as failure:
                     self.coverage()
                 self.assertEqual(failure.exception.reason, 'unsupported_funding')
-        self.lists['invoice_payments'] = [payment]
+    def test_proration_cannot_grant_a_full_offer_period(self):
         self.lists['invoices/in_one/lines'][0]['parent']['subscription_item_details'][
             'proration'
         ] = True
