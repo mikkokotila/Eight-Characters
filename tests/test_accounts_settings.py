@@ -10,6 +10,7 @@ import unittest
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
 from pathlib import Path
+from threading import Barrier
 from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
@@ -614,23 +615,38 @@ class TestSettingsStore(StoreCase):
             low.save_chart(self.user.id, born(90), self.read())
 
     def test_two_writers_cannot_race_past_the_allowance(self) -> None:
-        def save(number: int) -> str:
-            store = AccountStore.open(
-                self.path,
-                clock=self.clock,
-                limits={**LIMITS, 'free': PlanLimits(None, 1)},
-            )
-            try:
-                store.save_chart(self.user.id, born(number), None)
-            except (ChartLimit, SettingsChanged):
-                return 'refused'
-            return 'saved'
+        for cap in (1, None):
+            with self.subTest(cap=cap):
+                path = self.directory / f'race-{cap}.sqlite3'
+                policy = {**LIMITS, 'free': PlanLimits(None, cap)}
+                owner = AccountStore.create(path, clock=self.clock, limits=policy)
+                user = owner.create_user('race@example.com', 'en')
+                ready = Barrier(2)
 
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            self.assertCountEqual(pool.map(save, (0, 1)), ['saved', 'refused'])
-        settings = self.store.settings(self.user.id)
-        assert settings is not None
-        self.assertEqual(len(settings.charts), 1)
+                def save(number: int) -> str:
+                    store = AccountStore.open(path, clock=self.clock, limits=policy)
+                    self.assertIsNone(store.settings(user.id))
+                    ready.wait(timeout=10)
+                    try:
+                        store.save_chart(user.id, born(number), None)
+                    except SettingsChanged:
+                        # A real client reads the winning write before trying again.
+                        # This second write must reach the allowance check, rather
+                        # than counting stale-read protection as proof of a cap.
+                        current = store.settings(user.id)
+                        assert current is not None
+                        try:
+                            store.save_chart(user.id, born(number), current.updated_at)
+                        except ChartLimit:
+                            return 'capped after refresh'
+                    return 'saved'
+
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    expected = ['saved', 'capped after refresh'] if cap == 1 else ['saved', 'saved']
+                    self.assertCountEqual(pool.map(save, (0, 1)), expected)
+                settings = owner.settings(user.id)
+                assert settings is not None
+                self.assertEqual(len(settings.charts), 1 if cap == 1 else 2)
 
     def test_a_retained_library_can_be_read_exported_and_edited(self) -> None:
         settings = keep_large_library(self.store, self.user)
