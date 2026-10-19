@@ -528,7 +528,8 @@ class BillingService:
         owner = work.owner
         operations = list(owner.operations)
         stops = {
-            fact.subscription_id for fact in observation.coverage
+            fact.subscription_id
+            for fact in observation.coverage
             if returned_amount(fact) == fact.captured_amount
         }
         if stop_renewal:
@@ -547,9 +548,7 @@ class BillingService:
                 for operation in operations
             ):
                 operations.append(
-                    self._reserve_command(
-                        work, owner, 'cancel_period', subscription_id
-                    )
+                    self._reserve_command(work, owner, 'cancel_period', subscription_id)
                 )
         previous = {fact.invoice_id for fact in owner.coverage}
         late = owner.lifecycle in ('deleting', 'deleted') and any(
@@ -583,7 +582,11 @@ class BillingService:
         if late and lifecycle == 'deleted' and deletion is not None:
             lifecycle = 'deleting'
             deletion = deletion.model_copy(update={'completed_at': None})
-        if observation.funding_hold is not None and lifecycle in ('active', 'held') and deletion is None:
+        if (
+            observation.funding_hold is not None
+            and lifecycle in ('active', 'held')
+            and deletion is None
+        ):
             lifecycle = 'held'
         elif (
             lifecycle == 'held'
@@ -660,21 +663,30 @@ class BillingService:
                 disabled.add(operation.id)
             if disabled:
                 intent_ids = {
-                    operation.intent_id for operation in work.owner.operations
+                    operation.intent_id
+                    for operation in work.owner.operations
                     if operation.id in disabled
                 }
-                work.save(work.owner.model_copy(update={
-                    'operations': tuple(
-                        operation.model_copy(update={'state': 'held', 'reason': 'deleted_owner'})
-                        if operation.id in disabled else operation
-                        for operation in work.owner.operations
-                    ),
-                    'intents': tuple(
-                        intent.model_copy(update={'state': 'held'})
-                        if intent.id in intent_ids else intent
-                        for intent in work.owner.intents
-                    ),
-                }))
+                work.save(
+                    work.owner.model_copy(
+                        update={
+                            'operations': tuple(
+                                operation.model_copy(
+                                    update={'state': 'held', 'reason': 'deleted_owner'}
+                                )
+                                if operation.id in disabled
+                                else operation
+                                for operation in work.owner.operations
+                            ),
+                            'intents': tuple(
+                                intent.model_copy(update={'state': 'held'})
+                                if intent.id in intent_ids
+                                else intent
+                                for intent in work.owner.intents
+                            ),
+                        }
+                    )
+                )
             customer_id = work.owner.customer_id
             if read_deletion(self.config, observation.customer) is None:
                 work.execute('delete_mark', subject_id=customer_id)
@@ -816,7 +828,10 @@ class BillingService:
         self.authority.finish_recovery(self.epoch, started_at=started_at)
 
     def reconcile(
-        self, owner_id: str, *, proofs: Sequence[CustomerProof] | None = None,
+        self,
+        owner_id: str,
+        *,
+        proofs: Sequence[CustomerProof] | None = None,
         stop_renewal: bool = False,
     ) -> Observation | None:
         work = self._claim(owner_id)
@@ -826,9 +841,11 @@ class BillingService:
             observation = self._reconcile(work, proofs, stop_renewal=stop_renewal)
             if not self._delete(work, observation):
                 self.authority.apply(
-                    work.lease, work.owner,
+                    work.lease,
+                    work.owner,
                     applied_events=self._events(owner_id)
-                    if observation is None or observation.funding_hold is None else (),
+                    if observation is None or observation.funding_hold is None
+                    else (),
                 )
             return observation
         except BillingHold as exc:

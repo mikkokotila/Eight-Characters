@@ -243,20 +243,33 @@ class ServiceApi(unittest.TestCase):
         self.service.reconcile(self.user.id)
         self.provider.invoices['in_one']['billing_reason'] = 'manual'
         self.service.authority.enqueue(
-            Delivery('evt_unsupported', 'invoice.paid', 'in_one', 'cus_1', 'f' * 64, True)
+            Delivery(
+                'evt_unsupported', 'invoice.paid', 'in_one', 'cus_1', 'f' * 64, True
+            )
         )
         for _ in range(2):
-            response = self.client.post('/api/account/billing/cancel', json={'key': self.key})
+            response = self.client.post(
+                '/api/account/billing/cancel', json={'key': self.key}
+            )
             self.assertEqual(response.status_code, 200, response.text)
             self.assertEqual(response.json()['status'], 'held')
-            self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
-        self.assertEqual(self.provider.calls.count(('POST', '/v1/subscriptions/sub_one')), 1)
+            self.assertTrue(
+                self.provider.subscriptions['sub_one']['cancel_at_period_end']
+            )
+        self.assertEqual(
+            self.provider.calls.count(('POST', '/v1/subscriptions/sub_one')), 1
+        )
         current = self.client.get('/api/account/settings').json()
-        self.assertEqual((current['billing']['tier'], current['chart_limit']), ('free', 1))
+        self.assertEqual(
+            (current['billing']['tier'], current['chart_limit']), ('free', 1)
+        )
         with self.assertRaises(BillingHold):
             self.accounts.store.save_chart(self.user.id, birth(0), None)
-        event = next(record for record in self.accounts.store.billing_records()
-                     if isinstance(record, EventRecord) and record.event_id == 'evt_unsupported')
+        event = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, EventRecord) and record.event_id == 'evt_unsupported'
+        )
         self.assertEqual(event.state, 'pending')
 
     def test_cancel_cannot_control_an_unproven_subscription(self):
@@ -265,22 +278,34 @@ class ServiceApi(unittest.TestCase):
         extra = copy.deepcopy(self.provider.subscriptions['sub_one'])
         extra['id'] = 'sub_unproven'
         self.provider.subscriptions[extra['id']] = extra
-        response = self.client.post('/api/account/billing/cancel', json={'key': self.key})
+        response = self.client.post(
+            '/api/account/billing/cancel', json={'key': self.key}
+        )
         self.assertEqual(response.status_code, 503)
         self.assertFalse(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
-        self.assertFalse(self.provider.subscriptions['sub_unproven']['cancel_at_period_end'])
+        self.assertFalse(
+            self.provider.subscriptions['sub_unproven']['cancel_at_period_end']
+        )
 
     def prepared_checkout_before_send(self):
         original = Work.save
+
         def crash(work, owner):
-            if any(op.kind == 'checkout_create' and op.state == 'sent' for op in owner.operations):
+            if any(
+                op.kind == 'checkout_create' and op.state == 'sent'
+                for op in owner.operations
+            ):
                 raise RuntimeError('injected before Checkout sent commit')
             original(work, owner)
+
         with patch.object(Work, 'save', crash):
             with self.assertRaises(RuntimeError):
                 self.checkout()
-        return next(record for record in self.accounts.store.billing_records()
-                    if isinstance(record, AccountBillingRecord) and record.id == self.user.id)
+        return next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord) and record.id == self.user.id
+        )
 
     def test_delete_disables_proven_unsent_checkout_without_creating_a_session(self):
         before = self.prepared_checkout_before_send()
@@ -288,8 +313,11 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(response.status_code, 204, response.text)
         self.assertIsNone(self.accounts.store.user_by_id(self.user.id))
         self.assertFalse(self.provider.sessions)
-        after = next(record for record in self.accounts.store.billing_records()
-                     if isinstance(record, AccountBillingRecord) and record.id == self.user.id)
+        after = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord) and record.id == self.user.id
+        )
         original = next(op for op in before.operations if op.kind == 'checkout_create')
         disabled = next(op for op in after.operations if op.id == original.id)
         self.assertEqual((disabled.state, disabled.reason), ('held', 'deleted_owner'))
@@ -304,8 +332,12 @@ class ServiceApi(unittest.TestCase):
 
     def test_unproven_prepared_checkout_keeps_erasure_and_recovery_pending(self):
         self.prepared_checkout_before_send()
-        with patch.object(self.service.authority, 'unsent_is_proven', return_value=False):
-            response = self.client.request('DELETE', '/api/account', json={'key': self.key})
+        with patch.object(
+            self.service.authority, 'unsent_is_proven', return_value=False
+        ):
+            response = self.client.request(
+                'DELETE', '/api/account', json={'key': self.key}
+            )
             self.assertEqual(response.status_code, 503)
             self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
             self.assertFalse(self.provider.sessions)
