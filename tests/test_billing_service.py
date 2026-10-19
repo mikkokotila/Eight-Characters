@@ -245,13 +245,19 @@ class ServiceApi(unittest.TestCase):
             follow_redirects=False,
         )
         self.assertEqual(returned.status_code, 303)
-        self.assertEqual(returned.headers['location'], self.accounts.config.origin + '/')
-        self.assertEqual(returned.headers['retry-after'], str(self.service.config.poll_seconds))
+        self.assertEqual(
+            returned.headers['location'], self.accounts.config.origin + '/'
+        )
+        self.assertEqual(
+            returned.headers['retry-after'], str(self.service.config.poll_seconds)
+        )
         view = self.client.get('/api/account/settings').json()
         self.assertEqual((view['billing']['tier'], view['chart_limit']), ('free', 1))
         self.service.authority.release(lease)
         self.assertEqual(
-            self.client.get('/account/billing/return', follow_redirects=False).status_code,
+            self.client.get(
+                '/account/billing/return', follow_redirects=False
+            ).status_code,
             303,
         )
         view = self.client.get('/api/account/settings').json()
@@ -260,7 +266,9 @@ class ServiceApi(unittest.TestCase):
             self.service, 'reconcile', side_effect=BillingHold('native_unavailable')
         ):
             self.assertEqual(
-                self.client.get('/account/billing/return', follow_redirects=False).status_code,
+                self.client.get(
+                    '/account/billing/return', follow_redirects=False
+                ).status_code,
                 503,
             )
 
