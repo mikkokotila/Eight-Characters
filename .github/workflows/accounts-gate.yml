@@ -31,6 +31,7 @@ jobs:
             tests.test_billing_capacity \
             tests.test_billing_migration \
             tests.test_billing_native \
+            tests.test_billing_operations \
             tests.test_billing_webhook \
             tests.test_accounts_billing_recovery \
             tests.test_accounts_billing \
