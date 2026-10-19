@@ -13,6 +13,18 @@
   raw delivery signatures, durable jobs and fenced financial transactions.
 
 
+## 0.67.1
+
+### Changed
+- Read strict account billing schema 2 so deletion decisions survive an unknown
+  Customer-create outcome. The pending native target and marker are null together
+  until resolved; completed no-Customer tombstones can be preserved.
+- Retain schema-2 held/deleting financial owners when a personal restore lacks the
+  user. Active owners require their user; deleted owners forbid one.
+- Keep schema-1 deletion semantics and bytes unchanged, Scope/Event versions at 1,
+  the shared future SQL layout at 5 and normal databases at schema 4.
+
+
 ## 0.67.0
 
 ### Changed
