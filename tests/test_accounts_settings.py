@@ -8,6 +8,7 @@ import sqlite3
 import tempfile
 import unittest
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from dataclasses import replace
 from pathlib import Path
 from threading import Barrier
@@ -165,7 +166,7 @@ def large_library() -> Settings:
 def keep_large_library(store: AccountStore, user: User) -> Settings:
     """Seed a future writer's row; production save_chart still stops at 50."""
     settings = large_library()
-    with sqlite3.connect(store.path) as connection:
+    with closing(sqlite3.connect(store.path)) as connection, connection:
         connection.execute(
             'INSERT INTO settings (user_id, record) VALUES (?, ?)',
             (user.id, encode_settings(settings)),

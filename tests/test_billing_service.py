@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import closing
 from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
@@ -664,12 +665,11 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(len(self.provider.customers), 1)
         self.assertEqual(len(self.provider.sessions), 1)
         self.assertEqual(self.checkout(plan='basic').status_code, 409)
-        authority = b''.join(
-            bytes(row[0])
-            for row in sqlite3.connect(self.accounts.store.path).execute(
-                'SELECT record FROM billing_records'
+        with closing(sqlite3.connect(self.accounts.store.path)) as connection:
+            authority = b''.join(
+                bytes(row[0])
+                for row in connection.execute('SELECT record FROM billing_records')
             )
-        )
         self.assertNotIn(b'https://', authority)
         self.assertNotIn(b'checkout_url', authority)
 

@@ -2,6 +2,7 @@
 
 import sqlite3
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import closing
 from datetime import timedelta
 from threading import Barrier
 from unittest.mock import patch
@@ -18,7 +19,7 @@ from tests.test_accounts_settings import BIRTH
 
 class WriterMigration(BackupTestCase):
     def rows(self):
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             return {
                 name: connection.execute(
                     f'SELECT * FROM {name} ORDER BY rowid'
@@ -49,7 +50,7 @@ class WriterMigration(BackupTestCase):
             )
         )
         self.backup()
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute("UPDATE sqlite_sequence SET seq=80 WHERE name='changes'")
         self.store.set_language(user.id, 'en')
         before = self.rows()
@@ -57,12 +58,12 @@ class WriterMigration(BackupTestCase):
         self.assertEqual(before, self.rows())
         self.assertEqual(migrated.schema_version(), 5)
         self.assertEqual(migrated.settings(user.id), settings)
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             self.assertEqual(
                 connection.execute('SELECT ready FROM billing_runtime').fetchone()[0], 0
             )
         migrated.set_language(user.id, 'fi')
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             self.assertEqual(
                 connection.execute('SELECT max(seq) FROM changes').fetchone()[0], 82
             )
@@ -86,7 +87,7 @@ class WriterMigration(BackupTestCase):
             with self.assertRaises(sqlite3.OperationalError):
                 AccountStore.open(self.store.path)
         self.assertEqual(before, self.rows())
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             self.assertEqual(connection.execute('PRAGMA user_version').fetchone()[0], 4)
             self.assertEqual(
                 connection.execute(

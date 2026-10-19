@@ -4,6 +4,7 @@ import hashlib
 import json
 import sqlite3
 import unittest
+from contextlib import closing
 from unittest.mock import patch
 
 import pyrage
@@ -183,7 +184,7 @@ class BillingRecovery(BackupTestCase):
         if held:
             value.update(lifecycle='held', deletion=None)
         owner = decode_billing(canonical_json(value))
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute('PRAGMA foreign_keys=ON')
             connection.execute('BEGIN IMMEDIATE')
             for statement in BILLING_SCHEMA_5:
@@ -313,7 +314,7 @@ class BillingRecovery(BackupTestCase):
 
     def test_empty_future_database_keeps_its_generation_after_encrypted_restore(self):
         self.backup()
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             for statement in BILLING_SCHEMA_5:
                 connection.execute(statement)
             restore_billing(connection, ())
@@ -325,7 +326,7 @@ class BillingRecovery(BackupTestCase):
         restore_backup(self.checkout, self.identity, target)
         recovered = AccountStore.open(target)
         self.assertEqual(recovered.schema_version(), 5)
-        with sqlite3.connect(target) as connection:
+        with closing(sqlite3.connect(target)) as connection, connection:
             self.assertEqual(
                 connection.execute('SELECT ready FROM billing_runtime').fetchone()[0], 0
             )
@@ -412,7 +413,7 @@ class BillingRecovery(BackupTestCase):
                 action()
         self.assertEqual(self.store.user_by_id(user.id), user)
         self.backup()  # Progress commits remain permitted.
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute('PRAGMA user_version=6')
         with self.assertRaises(StoreError):
             self.store.users()
@@ -420,7 +421,7 @@ class BillingRecovery(BackupTestCase):
     def test_exact_future_layout_required_not_just_version(self):
         self.future()
         AccountStore.open(self.store.path)
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute('CREATE INDEX unreviewed ON users(language)')
         with self.assertRaises(StoreError):
             AccountStore.open(self.store.path)
@@ -429,7 +430,7 @@ class BillingRecovery(BackupTestCase):
 
     def test_sqlite_like_name_cannot_hide_a_business_mutating_trigger(self):
         user, _ = self.future()
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute(
                 'CREATE TRIGGER sqlitex_mutate AFTER UPDATE ON backup_progress '
                 'BEGIN DELETE FROM users; END'
@@ -438,7 +439,7 @@ class BillingRecovery(BackupTestCase):
             AccountStore.open(self.store.path)
         with self.assertRaises(StoreError):
             self.store.record_backup_head('a' * 40)
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             self.assertEqual(
                 connection.execute('SELECT id FROM users').fetchall(), [(user.id,)]
             )
@@ -465,7 +466,7 @@ class BillingRecovery(BackupTestCase):
         )
         self.assertEqual(recovered.backup_snapshot().after_seq, 103)
         self.assertEqual(recovered.backup_snapshot().sequence, 103)
-        with sqlite3.connect(target) as connection:
+        with closing(sqlite3.connect(target)) as connection, connection:
             ready, epoch = connection.execute(
                 'SELECT ready,epoch FROM billing_runtime'
             ).fetchone()
@@ -478,7 +479,7 @@ class BillingRecovery(BackupTestCase):
         self.assertEqual(
             (repeated.written, repeated.removed, repeated.commit), (0, 0, None)
         )
-        with sqlite3.connect(target) as connection:
+        with closing(sqlite3.connect(target)) as connection, connection:
             connection.execute(
                 'UPDATE users SET language=? WHERE id=?', ('en', user.id)
             )
@@ -492,7 +493,7 @@ class BillingRecovery(BackupTestCase):
         restore_backup(self.checkout, self.identity, second)
         again = AccountStore.open(second)
         self.assertEqual(again.user_by_id(user.id).language, 'en')
-        with sqlite3.connect(second) as connection:
+        with closing(sqlite3.connect(second)) as connection, connection:
             self.assertNotEqual(
                 connection.execute('SELECT epoch FROM billing_runtime').fetchone()[0],
                 epoch,
@@ -521,7 +522,7 @@ class BillingRecovery(BackupTestCase):
     def test_sequence_corruption_is_loud_before_a_change_can_be_skipped(self):
         self.store.create_user('one@example.invalid', 'fi')
         self.backup()
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute("UPDATE sqlite_sequence SET seq=0 WHERE name='changes'")
         with self.assertRaisesRegex(StoreError, 'high-water'):
             self.store.backup_snapshot()
@@ -596,7 +597,7 @@ class BillingRecovery(BackupTestCase):
                 b'whsec_',
             ]:
                 self.assertNotIn(forbidden, content)
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             connection.execute('DELETE FROM billing_jobs')
         with self.assertRaises(StoreError):
             self.backup()

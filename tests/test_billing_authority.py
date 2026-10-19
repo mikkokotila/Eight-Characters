@@ -1,6 +1,7 @@
 """Actual SQLite/age/Git durability with injected provider work boundaries."""
 
 import sqlite3
+from contextlib import closing
 from unittest.mock import patch
 
 from eight_characters.accounts.billing_access import BillingHold
@@ -22,7 +23,7 @@ class AuthorityCase(BackupTestCase):
         super().setUp()
         self.user = self.store.create_user('fixture@example.invalid', 'fi')
         self.other = self.store.create_user('other@example.invalid', 'en')
-        with sqlite3.connect(self.store.path) as connection:
+        with closing(sqlite3.connect(self.store.path)) as connection, connection:
             for statement in BILLING_SCHEMA_5:
                 connection.execute(statement)
             connection.execute('PRAGMA user_version=5')

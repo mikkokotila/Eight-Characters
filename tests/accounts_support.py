@@ -7,6 +7,7 @@ import sqlite3
 import subprocess
 import tempfile
 import unittest
+from contextlib import closing
 from datetime import UTC, datetime, timedelta
 from email.message import EmailMessage
 from email.policy import default
@@ -53,7 +54,7 @@ def legacy_store(path: Path, clock: Clock) -> AccountStore:
     Opening through the writer would deliberately migrate it to schema 5.
     """
     path.touch(mode=0o600, exist_ok=False)
-    with sqlite3.connect(path) as connection:
+    with closing(sqlite3.connect(path)) as connection, connection:
         connection.execute('BEGIN IMMEDIATE')
         for migration in LEGACY_MIGRATIONS:
             for statement in migration:
