@@ -4,16 +4,12 @@ import hashlib
 import json
 import sqlite3
 import unittest
-from dataclasses import replace
 from unittest.mock import patch
 
 import pyrage
-from pydantic import ValidationError
 
 from eight_characters.accounts.backup import (
-    BackupError,
     billing_files,
-    manifest_bytes,
     read_manifest,
     run_backup,
     squash_history,
@@ -396,7 +392,7 @@ class BillingRecovery(BackupTestCase):
         restore_backup(self.checkout, self.identity, target)
         self.assertEqual(len(AccountStore.open(target).billing_records()), 3)
 
-    def test_future_journal_failure_publishes_no_database(self):
+    def test_late_sql_failure_publishes_no_database(self):
         user = self.store.create_user('one@example.invalid', 'fi')
         target = self.directory / 'never.sqlite3'
         with patch(
@@ -407,6 +403,15 @@ class BillingRecovery(BackupTestCase):
                 AccountStore.restore(
                     target, [(user, None)], head='a' * 40, billing=records(user)
                 )
+        self.assertFalse(target.exists())
+        self.assertFalse(target.with_name(target.name + '.partial').exists())
+
+    def test_journal_failure_publishes_no_database(self):
+        user = self.store.create_user('one@example.invalid', 'fi')
+        target = self.directory / 'never-journal.sqlite3'
+        with patch('eight_characters.accounts.store._prepare_journal', side_effect=StoreError('injected journal failure')):
+            with self.assertRaises(StoreError):
+                AccountStore.restore(target, [(user, None)], head='a' * 40, billing=records(user))
         self.assertFalse(target.exists())
         self.assertFalse(target.with_name(target.name + '.partial').exists())
 

@@ -18,7 +18,6 @@ from pathlib import Path
 from typing import Any, Final, cast
 
 from eight_characters.accounts.billing_records import (
-    AccountBillingRecord,
     BillingDocument,
     billing_path,
     validate_billing_graph,
@@ -419,6 +418,22 @@ def _fsync_directory(directory: Path) -> None:
         os.close(descriptor)
 
 
+def _prepare_journal(path: Path) -> None:
+    # Construction cursors, including TEMP-schema statements, must be finalized
+    # before checkpointing. Reopen the still-private file after that connection closes.
+    with _connection(path) as connection:
+        cursor = connection.execute('PRAGMA journal_mode = WAL')
+        modes = cursor.fetchall()
+        cursor.close()
+        if modes != [('wal',)]:
+            raise StoreError('The partial database cannot use a write-ahead log.')
+        cursor = connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+        checkpoint = cursor.fetchall()
+        cursor.close()
+        if len(checkpoint) != 1 or checkpoint[0][0] != 0:
+            raise StoreError('The partial database could not complete its checkpoint.')
+
+
 def _user_from_row(row: tuple[Any, ...]) -> User:
     fields = [str(value) if isinstance(value, str) else None for value in row]
     identifier, email, language, plan, created_at, updated_at = fields
@@ -695,12 +710,7 @@ class AccountStore:
                     connection.execute('ROLLBACK')
                     raise
                 connection.execute('COMMIT')
-                mode = connection.execute('PRAGMA journal_mode = WAL').fetchone()
-                if mode is None or mode[0] != 'wal':
-                    raise StoreError(
-                        'The partial database cannot use a write-ahead log.'
-                    )
-                connection.execute('PRAGMA wal_checkpoint(TRUNCATE)')
+            _prepare_journal(partial)
             # A hard link moves it into place only if nothing is there yet.
             os.link(partial, path)
         except sqlite3.IntegrityError as exc:

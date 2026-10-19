@@ -60,6 +60,10 @@ def make_remote_and_checkout(base: Path) -> tuple[Path, Path]:
     remote = base / 'remote.git'
     checkout = base / 'checkout'
     subprocess.run(('git', 'init', '--quiet', '--bare', str(remote)), check=True)
+    # receive-pack runs in this bare remote. Its detached maintenance must not
+    # outlive a test and race destruction of the owned temporary directory.
+    for name in ('gc.autoDetach', 'maintenance.autoDetach'):
+        subprocess.run(('git', '-C', str(remote), 'config', name, 'false'), check=True)
     subprocess.run(
         ('git', 'clone', '--quiet', str(remote), str(checkout)),
         check=True,

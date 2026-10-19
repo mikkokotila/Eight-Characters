@@ -11,7 +11,6 @@ import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
-from eight_characters.accounts.store import BillingReadOnly
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -26,6 +25,7 @@ from eight_characters.accounts.records import (
     Schools,
 )
 from eight_characters.accounts.records import Place as AccountPlace
+from eight_characters.accounts.store import BillingReadOnly
 from eight_characters.accounts.web import (
     AccountsDependency,
     BirthBody,

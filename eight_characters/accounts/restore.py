@@ -12,24 +12,24 @@ import pyrage
 
 from eight_characters.accounts.backup import (
     BackupError,
+    billing_files,
     checkout_lock,
     head_commit,
     read_manifest,
     record_files,
-    billing_files,
     require_clean,
     work_tree,
+)
+from eight_characters.accounts.billing_records import (
+    BillingDocument,
+    decode_billing,
+    validate_billing_graph,
 )
 from eight_characters.accounts.records import (
     RecordError,
     Settings,
     User,
     decode_user,
-)
-from eight_characters.accounts.billing_records import (
-    BillingDocument,
-    decode_billing,
-    validate_billing_graph,
 )
 from eight_characters.accounts.store import AccountStore, StoreError
 
