@@ -6,12 +6,14 @@ and recover uncertain outcomes before replaying an original operation.
 
 import hmac
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
+from types import MappingProxyType
 
-from eight_characters.accounts.billing_access import BillingConfig, BillingHold, binding_mac
+from eight_characters.accounts.billing_access import BillingConfig, BillingHold, binding_mac, check_scope
 from eight_characters.accounts.billing_native import Native, mapping, request_digest
 from eight_characters.accounts.billing_records import AccountBillingRecord, Deletion, Operation, ScopeRecord
-from eight_characters.accounts.records import parse_timestamp
+from eight_characters.accounts.records import RecordError, parse_timestamp
 
 _PURPOSES = {
     'customer_create': ('customer_create',),
@@ -29,7 +31,10 @@ _PURPOSES = {
 class NativeRequest:
     method: str
     path: str
-    parameters: dict[str, str] = field(repr=False)
+    parameters: Mapping[str, str] = field(repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, 'parameters', MappingProxyType(dict(self.parameters)))
 
     @property
     def digest(self) -> str:
@@ -47,7 +52,10 @@ def customer_mac(config: BillingConfig, owner_id: str, customer_id: str, operati
 
 
 def deletion_mac(config: BillingConfig, owner_id: str, customer_id: str, nonce: str, requested_at: str) -> str:
-    parse_timestamp(requested_at)
+    try:
+        parse_timestamp(requested_at)
+    except RecordError:
+        raise BillingHold('ownership_conflict') from None
     return binding_mac(config, owner_id, customer_id, 'customer-delete:' + requested_at, nonce)
 
 
@@ -72,6 +80,7 @@ def prepare_request(
     intent_id: str | None,
     subject_id: str | None,
 ) -> NativeRequest:
+    check_scope(config, scope)
     operation_key(config, owner.id, purpose, operation_id)
     shared = {'ec_scope': scope.id, 'ec_owner': owner.id}
     if purpose == 'customer_create':
@@ -203,5 +212,11 @@ def sealed_checkout(config: BillingConfig, owner: AccountBillingRecord, session:
     if not isinstance(checkout_id, str) or not isinstance(original_id, str) or not isinstance(seal, str) or not isinstance(intent_id, str) or not isinstance(offer_id, str):
         raise BillingHold('ownership_conflict')
     if not hmac.compare_digest(seal, binding_mac(config, owner.id, checkout_id, 'checkout-sealed', original_id)):
+        raise BillingHold('ownership_conflict')
+    if re.fullmatch(r'[0-9a-f]{32}', intent_id) is None or re.fullmatch(r'[0-9a-f]{32}', original_id) is None or re.fullmatch(r'[0-9a-f]{64}', offer_id) is None:
+        raise BillingHold('ownership_conflict')
+    tag = values.get('ec_creation_mac')
+    expected_tag = binding_mac(config, owner.id, f'{owner.customer_id}:{intent_id}:{offer_id}', 'checkout-create', original_id)
+    if not isinstance(tag, str) or not hmac.compare_digest(tag, expected_tag):
         raise BillingHold('ownership_conflict')
     return intent_id, offer_id
