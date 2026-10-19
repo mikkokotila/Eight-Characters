@@ -11,7 +11,7 @@ from eight_characters.accounts.backup import read_manifest
 from eight_characters.accounts.billing_schema import BILLING_SCHEMA_5
 from eight_characters.accounts.records import timestamp
 from eight_characters.accounts.restore import restore_backup
-from eight_characters.accounts.store import AccountStore, LEGACY_MIGRATIONS, Session
+from eight_characters.accounts.store import LEGACY_MIGRATIONS, AccountStore, Session
 from tests.test_accounts_backup import BackupTestCase
 from tests.test_accounts_settings import BIRTH
 
