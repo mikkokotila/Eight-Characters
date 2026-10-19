@@ -84,6 +84,7 @@ class Discovery(unittest.TestCase):
         self.events.append(
             {
                 'object': 'event',
+                'id': 'evt_creation',
                 'type': 'customer.created',
                 'livemode': False,
                 'request': {

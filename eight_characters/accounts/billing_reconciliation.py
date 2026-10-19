@@ -66,7 +66,7 @@ def _creation_proven(
         ):
             raise BillingHold('scope_mismatch')
         request = event.get('request')
-        if not isinstance(request, dict):
+        if request is None:
             continue
         if mapping(request).get('idempotency_key') != key:
             continue

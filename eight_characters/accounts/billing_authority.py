@@ -268,7 +268,7 @@ class Authority:
                 raise BillingHold('clock_unavailable')
             now = timestamp(self.clock())
             owner = AccountBillingRecord(
-                schema_version=2,
+                schema=2,
                 id=owner_id,
                 owner_id=owner_id,
                 scope_id=scope.id,
