@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m unittest \
             tests.test_billing_access \
+            tests.test_billing_native \
             tests.test_billing_webhook \
             tests.test_accounts_billing_recovery \
             tests.test_accounts_billing \
