@@ -110,6 +110,9 @@
         && (value.chart_limit === null || (Number.isInteger(value.chart_limit) && value.chart_limit > 0))
         // How many couples one chart may be in on the account's plan; null for no cap.
         && (value.couples_per_chart === null || (Number.isInteger(value.couples_per_chart) && value.couples_per_chart > 0))
+        && (value.billing === undefined || (value.billing && ['free', 'basic', 'plus', 'pro'].includes(value.billing.tier)
+          && ['free', 'paid', 'pending', 'held', 'expired', 'deleting', 'deleted'].includes(value.billing.status)
+          && (value.billing.paid_through === null || Number.isSafeInteger(value.billing.paid_through))))
         && (value.place === null || typeof value.place === 'object');
       if (!ok) throw new Error(t('settings_answer_error', { status: 200 }));
       return value;
@@ -203,6 +206,7 @@
           if (!(err instanceof Refused)) throw err;
           // Awaited here, so that the drawing below shows the settings read again.
           if (err.status === 412) return await reread(t('settings_changed_elsewhere'));
+          if (settings?.billing && (err.status === 400 || err.status === 503)) return await reread(err.message);
           if (err.status === 401) {
             // Signed out elsewhere: the server is asked first, since the page may still
             // hold the account; then a sign-in, and the settings of the account signed in.
@@ -381,6 +385,14 @@
         const field = chartsBody.querySelector(`#settings-rename-${CSS.escape(renaming)}`);
         const chart = library.chartWith(settings, renaming);
         if (field && chart) field.value = chart.name ?? '';
+      }
+      if (settings.billing) {
+        const billing = settings.billing;
+        const summary = t('billing_summary', { tier: t(`billing_tier_${billing.tier}`), status: t(`billing_state_${billing.status}`) });
+        const through = billing.paid_through === null ? '' : t('billing_paid_through', {
+          date: new Intl.DateTimeFormat(language(), { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(billing.paid_through * 1000)),
+        });
+        chartsBody.insertAdjacentHTML('afterbegin', `<p class="settings-note" data-billing-status role="status">${esc(summary)}${through ? ` · ${esc(through)}` : ''}</p>`);
       }
       chartsBody.insertAdjacentHTML('beforeend', `<p class="settings-note">${esc(t('settings_consent'))}</p>`);
     };
