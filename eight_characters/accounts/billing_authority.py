@@ -204,6 +204,9 @@ class Authority:
     def begin_recovery(self) -> str:
         """Close the global gate durably before the first native HTTP request."""
         with self.write() as connection:
+            runtime = connection.execute('SELECT reason FROM billing_runtime WHERE id=1').fetchone()
+            # Restores never carry this non-backed-up normal-database marker.
+            reason = 'unverified:normal' if runtime is not None and runtime[0].endswith(':normal') else 'unverified'
             records = billing_records_in(connection)
             now = timestamp(self.clock())
             if records:
@@ -239,8 +242,8 @@ class Authority:
                 self._put(connection, (scope,))
             epoch = secrets.token_hex(32)
             connection.execute(
-                "INSERT INTO billing_runtime(id,epoch,ready,reason,checked_at) VALUES(1,?,0,'unverified',NULL) ON CONFLICT(id) DO UPDATE SET epoch=excluded.epoch,ready=0,reason='unverified',checked_at=NULL",
-                (epoch,),
+                'INSERT INTO billing_runtime(id,epoch,ready,reason,checked_at) VALUES(1,?,0,?,NULL) ON CONFLICT(id) DO UPDATE SET epoch=excluded.epoch,ready=0,reason=excluded.reason,checked_at=NULL',
+                (epoch, reason),
             )
             connection.execute('DELETE FROM billing_leases')
             return epoch
@@ -313,7 +316,7 @@ class Authority:
             raise BillingHold('processing_failed')
         with self.write() as connection:
             changed = connection.execute(
-                'UPDATE billing_runtime SET ready=0,reason=? WHERE id=1 AND epoch=?',
+                "UPDATE billing_runtime SET ready=0,reason=? || CASE WHEN reason LIKE '%:normal' THEN ':normal' ELSE '' END WHERE id=1 AND epoch=?",
                 (reason, epoch),
             ).rowcount
             if changed != 1:
@@ -323,7 +326,7 @@ class Authority:
         """Fence bounded native threads still completing after task cancellation."""
         with self.write() as connection:
             changed = connection.execute(
-                "UPDATE billing_runtime SET epoch=?,ready=0,reason=CASE WHEN ready=1 THEN 'unverified' ELSE reason END WHERE id=1 AND epoch=?",
+                "UPDATE billing_runtime SET epoch=?,ready=0,reason=CASE WHEN ready=1 THEN CASE WHEN reason LIKE '%:normal' THEN 'unverified:normal' ELSE 'unverified' END ELSE reason END WHERE id=1 AND epoch=?",
                 (secrets.token_hex(32), epoch),
             ).rowcount
             if changed == 1:
@@ -517,6 +520,13 @@ class Authority:
                 (int(self.clock().timestamp()) + self.config.lease_seconds, lease.owner_id, lease.token),
             )
 
+    def unsent_is_proven(self, lease: Lease) -> bool:
+        """A prepared flag is trusted only in a verified, un-restored database."""
+        with self.write() as connection:
+            self._check_lease(connection, lease)
+            row = connection.execute('SELECT reason FROM billing_runtime WHERE id=1 AND epoch=?', (lease.epoch,)).fetchone()
+            return row is not None and row[0].endswith(':normal')
+
     def apply(
         self,
         lease: Lease,
@@ -687,6 +697,6 @@ class Authority:
                 ),
             )
             connection.execute(
-                "UPDATE billing_runtime SET ready=1,reason='verified',checked_at=? WHERE id=1 AND epoch=?",
+                "UPDATE billing_runtime SET ready=1,reason='verified:normal',checked_at=? WHERE id=1 AND epoch=?",
                 (int(self.clock().timestamp()), epoch),
             )

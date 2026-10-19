@@ -1,16 +1,66 @@
 """Actual SQLite reservations around injected HTTP, without native proof claims."""
 
 from urllib.parse import parse_qs
+from unittest.mock import patch
 
 import httpx
 
 from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_executor import Work
+from eight_characters.accounts.billing_authority import Authority
 from eight_characters.accounts.billing_native import Stripe
+from eight_characters.accounts.restore import restore_backup
+from eight_characters.accounts.store import AccountStore
 from tests.test_billing_authority import AuthorityCase
 
 
 class NativeExecution(AuthorityCase):
+    def prepared_before_send(self):
+        work = self.work(self.response)
+        original = work.save
+        writes = 0
+        def crash(owner):
+            nonlocal writes
+            writes += 1
+            if writes == 2:
+                raise RuntimeError('injected crash before sent commit')
+            original(owner)
+        with patch.object(work, 'save', side_effect=crash):
+            with self.assertRaises(RuntimeError):
+                work.execute('customer_create')
+        self.assertEqual(work.owner.operations[0].state, 'prepared')
+        self.assertIsNone(work.owner.operations[0].sent_at)
+        self.authority.release(work.lease)
+        self.clock.advance(86401)
+        return work
+
+    def test_proven_unsent_work_survives_normal_restart_after_key_retention(self):
+        old = self.prepared_before_send()
+        authority = Authority(self.store, self.config, clock=self.clock)
+        epoch = authority.begin_recovery()
+        lease, owner = authority.claim(self.user.id, recovery_epoch=epoch)
+        work = Work(authority, old.native, old.origin, old.scope, lease, owner, True)
+        work.execute('customer_create')
+        self.assertEqual(work.owner.customer_id, 'cus_created')
+        self.assertEqual(work.owner.operations[0].idempotency_key, old.owner.operations[0].idempotency_key)
+        self.assertEqual(work.owner.operations[0].request_sha256, old.owner.operations[0].request_sha256)
+        authority.release(work.lease)
+
+    def test_restored_prepared_flag_is_not_proof_that_native_http_never_happened(self):
+        old = self.prepared_before_send()
+        self.backup()
+        target = self.directory / 'restored-prepared.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        authority = Authority(AccountStore.open(target), self.config, clock=self.clock)
+        epoch = authority.begin_recovery()
+        lease, owner = authority.claim(self.user.id, recovery_epoch=epoch)
+        work = Work(authority, old.native, old.origin, old.scope, lease, owner, True)
+        self.assertFalse(authority.unsent_is_proven(lease))
+        with self.assertRaises(BillingHold):
+            work.execute('customer_create')
+        self.assertIsNone(work.owner.customer_id)
+        authority.release(work.lease)
+
     def test_native_history_longer_than_one_lease_keeps_a_live_fenced_claim(self):
         calls = []
         def slow(request):

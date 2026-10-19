@@ -93,16 +93,8 @@ class Work:
                     else 'invoices'
                 )
                 return self.native.request('GET', collection + '/' + result_id)
-            if (
-                not self.discovered
-                or int(now.timestamp())
-                - int(
-                    parse_timestamp(
-                        operation.sent_at or operation.created_at
-                    ).timestamp()
-                )
-                >= 24 * 3600
-            ):
+            never_sent = operation.state == 'prepared' and operation.sent_at is None and self.authority.unsent_is_proven(self.lease)
+            if not self.discovered or (not never_sent and int(now.timestamp()) - int(parse_timestamp(operation.sent_at or operation.created_at).timestamp()) >= 24 * 3600):
                 raise BillingHold('uncertain_operation')
             request = request_for(
                 config, self.origin, self.scope, self.owner, operation
