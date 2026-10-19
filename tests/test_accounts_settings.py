@@ -642,7 +642,9 @@ class TestSettingsStore(StoreCase):
                     return 'saved'
 
                 with ThreadPoolExecutor(max_workers=2) as pool:
-                    expected = ['saved', 'capped after refresh'] if cap == 1 else ['saved', 'saved']
+                    expected = ['saved', 'saved']
+                    if cap == 1:
+                        expected[1] = 'capped after refresh'
                     self.assertCountEqual(pool.map(save, (0, 1)), expected)
                 settings = owner.settings(user.id)
                 assert settings is not None
