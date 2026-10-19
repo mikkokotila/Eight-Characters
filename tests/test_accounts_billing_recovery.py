@@ -75,25 +75,51 @@ def records(owner):
     )
     intent_id, operation_id = new_id(), new_id()
     purchase = Intent(
-        id=intent_id, offer_id=scope.offers[0].id, created_at=NOW,
-        expires_at=1792411200, state='complete', checkout_id='cs_test_one',
+        id=intent_id,
+        offer_id=scope.offers[0].id,
+        created_at=NOW,
+        expires_at=1792411200,
+        state='complete',
+        checkout_id='cs_test_one',
         subscription_id='sub_one',
     )
     operation = Operation(
-        id=operation_id, intent_id=intent_id, kind='customer_seal', subject_id='cus_one',
-        request_sha256='e' * 64, idempotency_key='test_seal_one', created_at=NOW,
-        sent_at=NOW, state='done', result_id='cus_one', reason=None,
+        id=operation_id,
+        intent_id=intent_id,
+        kind='customer_seal',
+        subject_id='cus_one',
+        request_sha256='e' * 64,
+        idempotency_key='test_seal_one',
+        created_at=NOW,
+        sent_at=NOW,
+        state='done',
+        result_id='cus_one',
+        reason=None,
     )
     coverage = Coverage(
-        invoice_id='in_one', line_id='il_one', invoice_payment_id='inpay_one',
-        subscription_id='sub_one', subscription_item_id='si_one',
-        price_id=scope.offers[0].price_id, offer_id=scope.offers[0].id,
-        payment_intent_id='pi_one', charge_id='ch_one', currency='usd',
-        period_start=1792404000, period_end=1795082400, paid_at=1792404000,
-        allocated_amount=1499, captured_amount=1499, base_amount=1499, tax_amount=0,
-        refunds=(RefundFact(id='re_partial', amount=100, status='succeeded'),
-                 RefundFact(id='re_pending', amount=200, status='pending')),
-        disputes=(DisputeFact(id='du_one', status='warning_closed'),), verified_at=NOW,
+        invoice_id='in_one',
+        line_id='il_one',
+        invoice_payment_id='inpay_one',
+        subscription_id='sub_one',
+        subscription_item_id='si_one',
+        price_id=scope.offers[0].price_id,
+        offer_id=scope.offers[0].id,
+        payment_intent_id='pi_one',
+        charge_id='ch_one',
+        currency='usd',
+        period_start=1792404000,
+        period_end=1795082400,
+        paid_at=1792404000,
+        allocated_amount=1499,
+        captured_amount=1499,
+        base_amount=1499,
+        tax_amount=0,
+        refunds=(
+            RefundFact(id='re_partial', amount=100, status='succeeded'),
+            RefundFact(id='re_pending', amount=200, status='pending'),
+        ),
+        disputes=(DisputeFact(id='du_one', status='warning_closed'),),
+        verified_at=NOW,
     )
     account = AccountBillingRecord(
         id=owner.id,
@@ -136,6 +162,10 @@ class BillingRecovery(BackupTestCase):
             with self.assertRaises(RecordError) as failure:
                 encode_billing(record.model_copy(update=update))
             self.assertNotIn('DO_NOT_LOG', str(failure.exception))
+        wire = json.loads(encode_billing(records(user)[0]))
+        wire['schema_version'] = wire.pop('schema')
+        with self.assertRaises(RecordError):
+            decode_billing(canonical_json(wire))
 
     def test_reader_refuses_premature_billing_service_configuration(self):
         environment = account_environment(self.directory, EC_BILLING_MODE='sandbox')
@@ -157,7 +187,9 @@ class BillingRecovery(BackupTestCase):
         recovered = AccountStore.open(target)
         self.assertEqual(recovered.schema_version(), 5)
         with sqlite3.connect(target) as connection:
-            self.assertEqual(connection.execute('SELECT ready FROM billing_runtime').fetchone()[0], 0)
+            self.assertEqual(
+                connection.execute('SELECT ready FROM billing_runtime').fetchone()[0], 0
+            )
 
     def future(self, *, tombstone=False, sequence=100):
         user = self.store.create_user('private.person@example.invalid', 'fi')

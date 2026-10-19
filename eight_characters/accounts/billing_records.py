@@ -75,7 +75,11 @@ def _unique(values: Sequence[object]) -> None:
 
 class StrictRecord(BaseModel):
     model_config = ConfigDict(
-        extra='forbid', strict=True, frozen=True, revalidate_instances='always'
+        extra='forbid',
+        strict=True,
+        frozen=True,
+        revalidate_instances='always',
+        populate_by_name=True,
     )
 
     @model_validator(mode='after')
@@ -441,7 +445,9 @@ def encode_billing(record: BillingDocument) -> bytes:
     try:
         validated = _ADAPTER.validate_python(record, strict=True)
     except (ValidationError, ValueError, TypeError):
-        raise RecordError('A billing instance does not match the strict schema 1.') from None
+        raise RecordError(
+            'A billing instance does not match the strict schema 1.'
+        ) from None
     return canonical_json(validated.model_dump(mode='json', by_alias=True))
 
 
