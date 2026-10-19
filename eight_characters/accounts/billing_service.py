@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 
 from eight_characters.accounts.billing import BillingError, verify_sandbox_catalogue
 from eight_characters.accounts.billing_access import (
+    BillingBusy,
     BillingConfig,
     BillingHold,
     effective_access,
@@ -76,6 +77,7 @@ class BillingService:
             clock,
         )
         self.authority = Authority(store, config, clock=clock)
+        self._owner_retries: dict[str, tuple[int, int]] = {}
         # No native HTTP has occurred when this gate commits.
         self.epoch = self.authority.begin_recovery()
 
@@ -741,8 +743,15 @@ class BillingService:
             if proof.owner_id not in existing:
                 self._adopt(scope, proof)
         _, owners, _ = self._snapshot()
+        holds: list[str] = []
         for owner in owners:
-            self.reconcile(owner.id, proofs=proofs)
+            try:
+                self.reconcile(owner.id, proofs=proofs)
+            except BillingHold as exc:
+                logger.warning('Billing startup owner remains held: %s', exc.reason)
+                holds.append(exc.reason)
+        if holds:
+            raise BillingHold(holds[0])
         self.authority.finish_recovery(self.epoch, started_at=started_at)
 
     def reconcile(
@@ -921,38 +930,50 @@ class BillingService:
         self.reconcile(owner_id)
         return self.store.user_by_id(owner_id) is None
 
+    def tick(self) -> int:
+        """One busy or held account cannot suspend other accounts' useful work."""
+        _, owners, ready = self._snapshot()
+        if not ready:
+            self.recover()
+            return self.config.poll_seconds
+        records = self.authority.snapshot()[0]
+        now = int(self.clock().timestamp())
+        waits = [self.config.poll_seconds]
+        for owner in owners:
+            attempts, retry_at = self._owner_retries.get(owner.id, (0, 0))
+            if retry_at > now:
+                waits.append(retry_at - now)
+                continue
+            pending = [record for record in records if isinstance(record, EventRecord) and record.owner_id == owner.id and record.state == 'pending']
+            if pending and all(record.next_attempt_at is not None and record.next_attempt_at > now for record in pending):
+                waits.append(min(record.next_attempt_at - now for record in pending if record.next_attempt_at is not None))
+                continue
+            try:
+                self.reconcile(owner.id)
+            except BillingBusy:
+                logger.debug('Billing owner already has a live worker.')
+                waits.append(5)
+            except BillingHold as exc:
+                attempts += 1
+                delay = min(300, 5 * 2 ** min(attempts - 1, 6))
+                self._owner_retries[owner.id] = (attempts, now + delay)
+                logger.warning('Billing owner held for retry: %s', exc.reason)
+                waits.append(delay)
+            else:
+                self._owner_retries.pop(owner.id, None)
+        return min(waits)
+
     async def run(self) -> None:
         delay = self.config.poll_seconds
         try:
             while True:
                 try:
-                    _, owners, ready = self._snapshot()
-                    if not ready:
-                        await asyncio.to_thread(self.recover)
-                    else:
-                        records = self.authority.snapshot()[0]
-                        now = int(self.clock().timestamp())
-                        for owner in owners:
-                            pending = [
-                                record
-                                for record in records
-                                if isinstance(record, EventRecord)
-                                and record.owner_id == owner.id
-                                and record.state == 'pending'
-                            ]
-                            if pending and all(
-                                record.next_attempt_at is not None
-                                and record.next_attempt_at > now
-                                for record in pending
-                            ):
-                                continue
-                            await asyncio.to_thread(self.reconcile, owner.id)
-                    delay = self.config.poll_seconds
+                    delay = await asyncio.to_thread(self.tick)
                 except asyncio.CancelledError:
                     raise
                 except BillingHold as exc:
                     self.authority.hold_runtime(self.epoch, exc.reason)
-                    logger.warning('Billing reconciliation held: %s', exc.reason)
+                    logger.warning('Billing namespace recovery held: %s', exc.reason)
                     delay = min(300, max(5, delay * 2))
                 except BaseException:
                     self.authority.hold_runtime(self.epoch, 'processing_failed')

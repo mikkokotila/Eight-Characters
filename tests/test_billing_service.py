@@ -225,6 +225,55 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def other_deleting_owner(self, *, native=False):
+        other_client = site_client()
+        self.addCleanup(other_client.close)
+        sign_in(other_client, self.accounts, 'other-cleanup@example.invalid')
+        other = self.accounts.store.user_by_email('other-cleanup@example.invalid')
+        if native:
+            response = other_client.post('/api/account/billing/checkout', json={'key': account_key(other), 'plan': 'basic', 'period': 'monthly'})
+            self.assertEqual(response.status_code, 200, response.text)
+        else:
+            self.service.authority.ensure_owner(other.id)
+        self.service.authority.request_deletion(other.id)
+        return other
+
+    def test_live_owner_contention_does_not_close_every_accounts_paid_access(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        other = self.other_deleting_owner()
+        lease, _ = self.service.authority.claim(self.user.id)
+        self.service.tick()
+        self.assertTrue(self.service.authority.snapshot()[2])
+        self.assertEqual(self.accounts.store.capacity(self.user.id)[0].tier, 'plus')
+        self.assertIsNone(self.accounts.store.user_by_id(other.id))
+        self.service.authority.release(lease)
+
+    def test_one_persistent_financial_hold_does_not_starve_another_native_erasure(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        other = self.other_deleting_owner(native=True)
+        self.provider.invoices['in_one']['billing_reason'] = 'manual'
+        self.service.tick()
+        self.assertTrue(self.service.authority.snapshot()[2])
+        self.assertEqual(self.accounts.store.capacity(self.user.id)[0].status, 'held')
+        self.assertIsNone(self.accounts.store.user_by_id(other.id))
+        self.assertEqual(self.provider.sessions['cs_test_2']['status'], 'expired')
+
+    def test_startup_stays_closed_but_attempts_other_owners_cleanup_before_reporting_hold(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        other = self.other_deleting_owner(native=True)
+        self.provider.invoices['in_one']['billing_reason'] = 'manual'
+        self.service.authority.hold_runtime(self.service.epoch, 'unverified')
+        with self.assertRaises(BillingHold):
+            self.service.recover()
+        self.assertFalse(self.service.authority.snapshot()[2])
+        self.assertIsNone(self.accounts.store.user_by_id(other.id))
+
     def interrupted_checkout(self, *, prepared=False):
         original_execute = Work.execute
         original_save = Work.save
