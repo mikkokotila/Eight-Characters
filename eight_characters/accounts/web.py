@@ -32,6 +32,7 @@ from typing_extensions import TypedDict
 
 from eight_characters.accounts.billing import BillingError
 from eight_characters.accounts.billing_access import (
+    BillingBusy,
     BillingConfig,
     BillingHold,
     load_runtime_config,
@@ -850,11 +851,18 @@ def billing_return(
     current: SessionDependency, accounts: AccountsDependency
 ) -> RedirectResponse:
     user = _signed_in(current).user
-    _billing(accounts).reconcile(user.id)
+    service = _billing(accounts)
+    headers = {'Cache-Control': 'no-store'}
+    try:
+        service.reconcile(user.id)
+    except BillingBusy:
+        # The current owner worker retains the only apply fence. Returning to
+        # account status cannot grant the unconfirmed payment in the query.
+        headers['Retry-After'] = str(service.config.poll_seconds)
     return RedirectResponse(
         accounts.config.origin + '/',
         status_code=303,
-        headers={'Cache-Control': 'no-store'},
+        headers=headers,
     )
 
 

@@ -236,6 +236,34 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_busy_return_redirects_without_granting_an_unreconciled_payment(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        lease, _ = self.service.authority.claim(self.user.id)
+        returned = self.client.get(
+            '/account/billing/return?payment_status=paid&customer=cus_forged',
+            follow_redirects=False,
+        )
+        self.assertEqual(returned.status_code, 303)
+        self.assertEqual(returned.headers['location'], self.accounts.config.origin + '/')
+        self.assertEqual(returned.headers['retry-after'], str(self.service.config.poll_seconds))
+        view = self.client.get('/api/account/settings').json()
+        self.assertEqual((view['billing']['tier'], view['chart_limit']), ('free', 1))
+        self.service.authority.release(lease)
+        self.assertEqual(
+            self.client.get('/account/billing/return', follow_redirects=False).status_code,
+            303,
+        )
+        view = self.client.get('/api/account/settings').json()
+        self.assertEqual((view['billing']['tier'], view['chart_limit']), ('plus', 25))
+        with patch.object(
+            self.service, 'reconcile', side_effect=BillingHold('native_unavailable')
+        ):
+            self.assertEqual(
+                self.client.get('/account/billing/return', follow_redirects=False).status_code,
+                503,
+            )
+
     def test_unsupported_checkout_methods_never_return_a_bearer_url(self):
         self.provider.payment_methods = ['card', 'link']
         response = self.checkout()
