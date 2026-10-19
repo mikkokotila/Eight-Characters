@@ -472,14 +472,15 @@ class BillingService:
             and record.state == 'pending'
         )
 
-    def _observe(self, work: Work) -> Observation:
+    def _observe(self, work: Work, *, allow_funding_hold: bool = False) -> Observation:
         return observe_owner(
             work.native,
             work.scope,
             work.owner,
             wall_time=int(self.clock().timestamp()),
             verified_at=timestamp(self.clock()),
-            allow_funding_hold=work.owner.lifecycle in ('deleting', 'deleted'),
+            allow_funding_hold=allow_funding_hold
+            or work.owner.lifecycle in ('deleting', 'deleted'),
         )
 
     def _reserve_command(
@@ -521,20 +522,33 @@ class BillingService:
             strict=True,
         )
 
-    def _save_money(self, work: Work, observation: Observation) -> None:
+    def _save_money(
+        self, work: Work, observation: Observation, *, stop_renewal: bool = False
+    ) -> None:
         owner = work.owner
         operations = list(owner.operations)
-        for fact in observation.coverage:
-            if returned_amount(fact) == fact.captured_amount and not any(
+        stops = {
+            fact.subscription_id for fact in observation.coverage
+            if returned_amount(fact) == fact.captured_amount
+        }
+        if stop_renewal:
+            stops.update(
+                identity(subscription.get('id'), 'sub')
+                for subscription in observation.subscriptions
+                if subscription.get('status') not in ('canceled', 'incomplete_expired')
+                and subscription.get('cancel_at_period_end') is not True
+            )
+        for subscription_id in sorted(stops):
+            if not any(
                 operation.kind == 'cancel'
-                and operation.subject_id == fact.subscription_id
+                and operation.subject_id == subscription_id
                 and operation_purpose(self.config, owner.id, operation)
                 == 'cancel_period'
                 for operation in operations
             ):
                 operations.append(
                     self._reserve_command(
-                        work, owner, 'cancel_period', fact.subscription_id
+                        work, owner, 'cancel_period', subscription_id
                     )
                 )
         previous = {fact.invoice_id for fact in owner.coverage}
@@ -569,7 +583,9 @@ class BillingService:
         if late and lifecycle == 'deleted' and deletion is not None:
             lifecycle = 'deleting'
             deletion = deletion.model_copy(update={'completed_at': None})
-        if (
+        if observation.funding_hold is not None and lifecycle in ('active', 'held') and deletion is None:
+            lifecycle = 'held'
+        elif (
             lifecycle == 'held'
             and self.store.user_by_id(owner.id) is not None
             and deletion is None
@@ -594,7 +610,7 @@ class BillingService:
         )
 
     def _reconcile(
-        self, work: Work, proofs: Sequence[CustomerProof]
+        self, work: Work, proofs: Sequence[CustomerProof], *, stop_renewal: bool = False
     ) -> Observation | None:
         self._customer(work, proofs)
         if (
@@ -610,10 +626,10 @@ class BillingService:
         if work.owner.customer_id is None:
             return None
         self._sessions(work)
-        observation = self._observe(work)
+        observation = self._observe(work, allow_funding_hold=stop_renewal)
         # Money changes, revocation commands and late-settlement disposition
         # commit together. A crash cannot forget why erasure remained pending.
-        self._save_money(work, observation)
+        self._save_money(work, observation, stop_renewal=stop_renewal)
         self._commands(work, observation)
         return observation
 
@@ -800,16 +816,19 @@ class BillingService:
         self.authority.finish_recovery(self.epoch, started_at=started_at)
 
     def reconcile(
-        self, owner_id: str, *, proofs: Sequence[CustomerProof] | None = None
+        self, owner_id: str, *, proofs: Sequence[CustomerProof] | None = None,
+        stop_renewal: bool = False,
     ) -> Observation | None:
         work = self._claim(owner_id)
         try:
             if proofs is None:
                 proofs = discover_customers(work.native, work.scope)
-            observation = self._reconcile(work, proofs)
+            observation = self._reconcile(work, proofs, stop_renewal=stop_renewal)
             if not self._delete(work, observation):
                 self.authority.apply(
-                    work.lease, work.owner, applied_events=self._events(owner_id)
+                    work.lease, work.owner,
+                    applied_events=self._events(owner_id)
+                    if observation is None or observation.funding_hold is None else (),
                 )
             return observation
         except BillingHold as exc:
@@ -950,26 +969,7 @@ class BillingService:
 
     def cancel(self, owner_id: str) -> None:
         self.authority.ensure_owner(owner_id, clock_id=self.config.purchase_clock)
-        self.reconcile(owner_id)
-        work = self._claim(owner_id)
-        if work.owner.customer_id is None:
-            self.authority.release(work.lease)
-            return
-        try:
-            observation = self._observe(work)
-            for subscription in observation.subscriptions:
-                if (
-                    subscription.get('status') not in ('canceled', 'incomplete_expired')
-                    and subscription.get('cancel_at_period_end') is not True
-                ):
-                    work.execute(
-                        'cancel_period',
-                        subject_id=identity(subscription.get('id'), 'sub'),
-                    )
-            self.authority.apply(work.lease, work.owner)
-        except BillingHold as exc:
-            self.authority.defer(work.lease, exc.reason)
-            raise
+        self.reconcile(owner_id, stop_renewal=True)
 
     def delete(self, owner_id: str) -> bool:
         self.authority.ensure_owner(owner_id, clock_id=self.config.purchase_clock)

@@ -23,6 +23,7 @@ from eight_characters.accounts.billing import OFFERS, BillingError
 from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_executor import Work
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
+from eight_characters.accounts.billing_webhook import Delivery
 from eight_characters.accounts.store import AccountStore, ChartLimit
 from eight_characters.accounts.web import (
     Accounts,
@@ -236,6 +237,39 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_cancel_stops_proven_subscription_while_unsupported_money_stays_held(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        self.provider.invoices['in_one']['billing_reason'] = 'manual'
+        self.service.authority.enqueue(
+            Delivery('evt_unsupported', 'invoice.paid', 'in_one', 'cus_1', 'f' * 64, True)
+        )
+        for _ in range(2):
+            response = self.client.post('/api/account/billing/cancel', json={'key': self.key})
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()['status'], 'held')
+            self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
+        self.assertEqual(self.provider.calls.count(('POST', '/v1/subscriptions/sub_one')), 1)
+        current = self.client.get('/api/account/settings').json()
+        self.assertEqual((current['billing']['tier'], current['chart_limit']), ('free', 1))
+        with self.assertRaises(BillingHold):
+            self.accounts.store.save_chart(self.user.id, birth(0), None)
+        event = next(record for record in self.accounts.store.billing_records()
+                     if isinstance(record, EventRecord) and record.event_id == 'evt_unsupported')
+        self.assertEqual(event.state, 'pending')
+
+    def test_cancel_cannot_control_an_unproven_subscription(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        extra = copy.deepcopy(self.provider.subscriptions['sub_one'])
+        extra['id'] = 'sub_unproven'
+        self.provider.subscriptions[extra['id']] = extra
+        response = self.client.post('/api/account/billing/cancel', json={'key': self.key})
+        self.assertEqual(response.status_code, 503)
+        self.assertFalse(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
+        self.assertFalse(self.provider.subscriptions['sub_unproven']['cancel_at_period_end'])
+
     def prepared_checkout_before_send(self):
         original = Work.save
         def crash(work, owner):
