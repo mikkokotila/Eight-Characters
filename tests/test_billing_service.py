@@ -20,6 +20,8 @@ from fastapi.testclient import TestClient
 
 import tests.test_billing_native as native_fixtures
 from eight_characters.accounts.billing import OFFERS
+from eight_characters.accounts.billing import BillingError
+from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
 from eight_characters.accounts.store import AccountStore, ChartLimit
 from eight_characters.accounts.web import (
@@ -255,6 +257,27 @@ class ServiceApi(unittest.TestCase):
             '/api/account/billing/checkout',
             json={'key': self.key, 'plan': 'plus', 'period': 'monthly', **changes},
         )
+
+    def assert_customerless_recovery(self, failure):
+        with failure:
+            response = self.checkout()
+        self.assertEqual(response.status_code, 503, response.text)
+        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        self.assertEqual(owner.lifecycle, 'held')
+        self.assertIsNone(owner.customer_id)
+        self.assertFalse(owner.operations)
+        self.service.authority.hold_runtime(self.service.epoch, 'native_unavailable')
+        self.service.recover()
+        self.assertTrue(self.service.authority.snapshot()[2])
+        self.assertEqual(self.checkout().status_code, 200)
+        self.assertEqual(len(self.provider.customers), 1)
+        self.assertEqual(len(self.provider.sessions), 1)
+
+    def test_customerless_discovery_failure_recovers_without_a_permanent_hold(self):
+        self.assert_customerless_recovery(patch.object(self.service.native, 'all', side_effect=BillingHold('native_unavailable')))
+
+    def test_customerless_catalogue_failure_recovers_without_a_permanent_hold(self):
+        self.assert_customerless_recovery(patch('eight_characters.accounts.billing_service.verify_sandbox_catalogue', side_effect=BillingError('injected unavailable catalogue')))
 
     def test_actual_managed_api_checkout_resume_and_recovery_never_fall_back_to_fifty(
         self,
