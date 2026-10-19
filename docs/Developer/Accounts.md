@@ -44,7 +44,8 @@ any; schema 2 records hold settings with a partner's chart (below). Both still
 restore.
 
 An account's settings are part of its record:
-- `charts`: the saved charts, in the order saved, at most 50. Each is an `id` (32
+- `charts`: the saved charts, in the order saved. New additions currently stop at
+  50; reading a retained record has no plan-size limit. Each is an `id` (32
   random hex digits) and a `birth`, which holds `name` (`null` or 1 to 80 printable
   characters), `date`, `time`, `place`, `fold` (`0`, `1` or `null`), `gender`
   (`male`/`female`) and `zi` (`split_midnight`/`whole_zi_23`), checked by the first
@@ -80,6 +81,25 @@ transaction. Sessions, sign-in codes and the record of codes asked for are kept 
 database too (schema 2) but stay out of the backup: after a restore, people sign in
 again. So does the record of first charts asked for (schema 3), kept for an hour for
 the limit per client.
+
+### Library allowances: readers before writers
+
+The record, database, export, encrypted backup and restore readers accept retained
+libraries larger than the current 50-chart write allowance. Identity, uniqueness,
+birth and couple-reference validation still applies to every saved chart. Editing
+or removing an existing chart remains possible above the allowance; adding another
+does not. A downgrade must never make retained data unreadable.
+
+The browser also understands a future `chart_limit: null` as unlimited in Settings,
+the library and birth-saving controls. A positive integer remains a finite write
+allowance; an omitted or malformed limit is an error. The API still returns 50 and
+the store still refuses the 51st addition. This release enables no paid allowance.
+
+Deploy these readers everywhere before any writer can store more than 50 charts.
+Once such a writer runs, the rollback floor is 0.63.0: older releases reject those
+records and can stop backup or restore. Going further back requires restoring a
+backup from before the first over-50 library, losing subsequent changes. Neither
+the record shape/schema nor the database schema changes in this reader release.
 
 ## Signing in
 

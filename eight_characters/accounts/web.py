@@ -661,8 +661,8 @@ class SettingsView(TypedDict):
     # A partner's chart kept from before accounts kept charts: it pairs with the
     # person's own chart when one is first marked.
     pending_partner: str | None
-    # How many charts the account keeps at most.
-    chart_limit: int
+    # The write allowance; null means unlimited. Reads retain over-limit charts.
+    chart_limit: int | None
     # How many couples one saved chart may be in on the account's plan; None for no
     # cap (plans.py).
     couples_per_chart: int | None

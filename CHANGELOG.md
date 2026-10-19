@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.63.0
+
+### Changed
+- Account readers preserve saved chart libraries above the current write allowance
+  through reading, export, encrypted backup and restore. Existing charts remain
+  editable; additions still stop at 50. This prepares safe plan downgrades (#128).
+- Settings and library controls understand a future unlimited chart allowance
+  (`null`), while rejecting malformed limits. No paid allowance or checkout opens.
+- Deploy these readers before any writer exceeds 50 charts; after that, rolling
+  back before 0.63.0 requires an earlier backup (see Developer/Accounts).
+
+### Tests
+- Retained 51-chart records, references, edits, exports and encrypted recovery;
+  unlimited and malformed browser allowances, alongside existing finite-limit tests.
+
 ## 0.62.0
 
 The last details of the look-and-feel review: one name, numbers and quotes set as a

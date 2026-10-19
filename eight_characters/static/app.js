@@ -1930,7 +1930,7 @@ document.addEventListener('DOMContentLoaded', () => {
       library.sayName();
       return;
     }
-    if (current.charts.length >= current.chart_limit) {
+    if (current.chart_limit !== null && current.charts.length >= current.chart_limit) {
       showToast(requiredTranslation('library_full', { limit: current.chart_limit }), true);
       return;
     }
@@ -2101,7 +2101,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (!request.gender) return requiredTranslation('save_chart_needs_gender');
     const kept = settingsPage.current();
-    if (mode.as !== 'correct' && kept !== null && kept.charts.length >= kept.chart_limit) {
+    if (mode.as !== 'correct' && kept !== null && kept.chart_limit !== null && kept.charts.length >= kept.chart_limit) {
       return requiredTranslation('library_full', { limit: kept.chart_limit });
     }
     // A corrected birth keeps its Zi-hour convention, and its pass while its day, time

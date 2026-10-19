@@ -106,7 +106,8 @@
           && couple.charts[0] !== couple.charts[1])
         // A chart can be in any number of couples (#98), each pair once.
         && new Set(value.couples.map((couple) => [...couple.charts].sort().join(' '))).size === value.couples.length
-        && Number.isInteger(value.chart_limit) && value.chart_limit > 0
+        // A future unlimited allowance is null; an omitted or malformed limit is not.
+        && (value.chart_limit === null || (Number.isInteger(value.chart_limit) && value.chart_limit > 0))
         // How many couples one chart may be in on the account's plan; null for no cap.
         && (value.couples_per_chart === null || (Number.isInteger(value.couples_per_chart) && value.couples_per_chart > 0))
         && (value.place === null || typeof value.place === 'object');
@@ -388,7 +389,7 @@
     const chosenIn = (selector) => view.querySelector(selector)?.value ?? null;
     // A full library takes no new birth: said here, in the page's language.
     const full = () => {
-      if (drawn.charts.length < drawn.chart_limit) return false;
+      if (drawn.chart_limit === null || drawn.charts.length < drawn.chart_limit) return false;
       say(t('library_full', { limit: drawn.chart_limit }), true);
       return true;
     };

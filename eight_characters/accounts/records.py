@@ -49,7 +49,8 @@ ZI_CONVENTIONS: Final[tuple[ZiConvention, ...]] = ('split_midnight', 'whole_zi_2
 # refused.
 RECORD_SCHEMA: Final = 3
 READABLE_SCHEMAS: Final = (1, 2, 3)
-# The most charts an account keeps.
+# The current write limit. Records remain readable above it: a smaller allowance
+# must never make a retained library unreadable, unexportable or unrestorable.
 CHART_LIMIT: Final = 50
 EMAIL_MAX_LENGTH: Final = 254
 NAME_MAX_LENGTH: Final = 80
@@ -419,8 +420,6 @@ class Settings:
         keys = [chart.birth.chart_key() for chart in self.charts]
         if len(set(keys)) != len(keys):
             raise RecordError('The same birth is saved twice.')
-        if len(ids) > CHART_LIMIT:
-            raise RecordError(f'An account keeps at most {CHART_LIMIT} charts.')
         if self.my_chart is not None and self.my_chart not in ids:
             raise RecordError('My chart is not one of the saved charts.')
         couples = [couple.id for couple in self.couples]

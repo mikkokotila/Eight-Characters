@@ -842,6 +842,44 @@ for (const profile of profiles) {
       assert.deepEqual((await read(page)).charts.map((chart) => chart.name), ['Once']);
     });
 
+    check('an unlimited library can save the chart and start another from Settings', async (page) => {
+      await reset(page);
+      // This release's server still writes finite allowances. Exercise the reader
+      // contract against its real settings, changing only that future value.
+      await page.route('**/api/account/settings', async (route) => {
+        const response = await route.fetch();
+        const value = await response.json();
+        await route.fulfill({ response, json: { ...value, chart_limit: null } });
+      });
+      await openLink(page, chartLink(), { place: HELSINKI });
+      await openLibrary(page);
+      await page.locator('#library-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      await page.locator('#save-chart-name').fill('Unlimited reader');
+      await page.locator('#save-chart-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      assert.deepEqual((await read(page)).charts.map((chart) => chart.name), ['Unlimited reader']);
+      await openSettings(page);
+      await page.locator('#settings-mine-body [data-settings-action="add-mine"]').click();
+      await page.locator('#save-note').waitFor({ state: 'visible' });
+      assert.match(await page.locator('#save-note-text').textContent(), /saved as your chart/);
+    });
+
+    check('malformed library allowances are refused visibly', async (page) => {
+      await reset(page);
+      for (const limit of [undefined, 0, -1, 1.5, '50', false]) {
+        await page.route('**/api/account/settings', async (route) => {
+          const response = await route.fetch();
+          const value = await response.json();
+          await route.fulfill({ response, json: { ...value, chart_limit: limit } });
+        });
+        await openSettings(page);
+        assert.match(await page.locator('#settings-status').textContent(), /200/);
+        assert.equal(await page.locator('#settings-charts-body [data-settings-action="open"]').count(), 0);
+        await page.unroute('**/api/account/settings');
+      }
+    });
+
     check('a full library says so before anything is asked, in the library and in Settings', async (page) => {
       await reset(page);
       const limit = (await read(page)).chart_limit;
