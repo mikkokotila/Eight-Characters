@@ -184,7 +184,7 @@ class Authority:
             raise BillingHold('uncertain_operation')
         return owner
 
-    def apply(self, lease: Lease, replacement: AccountBillingRecord, *, applied_events: Sequence[str] = (), remove_user: bool = False) -> None:
+    def apply(self, lease: Lease, replacement: AccountBillingRecord, *, applied_events: Sequence[str] = (), remove_user: bool = False, keep_lease: bool = False) -> AccountBillingRecord:
         """Receipt/command changes, delivery results and backup logs commit together."""
         with self.write() as connection:
             old = self._check_lease(connection, lease)
@@ -211,7 +211,9 @@ class Authority:
                     connection.execute('DELETE FROM users WHERE id=?', (old.id,))
                     connection.execute('DELETE FROM sign_in_codes WHERE email=?', (user.email,))
                     log_record_change(connection, 'user', user.id, f'users/{user.id[:2]}/{user.id}/user.json')
-            connection.execute('UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?', (old.id, lease.token))
+            if not keep_lease:
+                connection.execute('UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?', (old.id, lease.token))
+        return replacement
 
     def enqueue(self, delivery: Delivery) -> EventRecord:
         with self.write() as connection:
