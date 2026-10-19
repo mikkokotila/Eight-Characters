@@ -309,7 +309,9 @@ def request_for(
     return request
 
 
-def operation_purpose(config: BillingConfig, owner_id: str, operation: Operation) -> str:
+def operation_purpose(
+    config: BillingConfig, owner_id: str, operation: Operation
+) -> str:
     purpose = next(
         (
             value
