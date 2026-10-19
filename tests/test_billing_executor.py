@@ -1,13 +1,13 @@
 """Actual SQLite reservations around injected HTTP, without native proof claims."""
 
-from urllib.parse import parse_qs
 from unittest.mock import patch
+from urllib.parse import parse_qs
 
 import httpx
 
 from eight_characters.accounts.billing_access import BillingHold
-from eight_characters.accounts.billing_executor import Work
 from eight_characters.accounts.billing_authority import Authority
+from eight_characters.accounts.billing_executor import Work
 from eight_characters.accounts.billing_native import Stripe
 from eight_characters.accounts.restore import restore_backup
 from eight_characters.accounts.store import AccountStore
