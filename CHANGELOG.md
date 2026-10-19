@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.64.0
+
+### Added
+- `python -m eight_characters.accounts billing-preflight` independently verifies the
+  configured sandbox Stripe account and all six approved USD recurring prices before
+  purchases are implemented (#130). It uses GET only, pins the API version and emits
+  nonsecret catalogue facts. Wrong account, live mode, missing configuration, price
+  mismatches and provider failures stop verification explicitly.
+- Billing remains disabled without configuration. A verified catalogue grants no
+  checkout, payment, paid access or calculated-tax readiness.
+
+### Tests
+- All six native price/product checks, bad/missing catalogue fields, sanitized
+  provider failures, refused redirects, configuration isolation and CLI outcomes.
+
 ## 0.62.0
 
 The last details of the look-and-feel review: one name, numbers and quotes set as a

@@ -474,3 +474,42 @@ offline. `age --decrypt --identity backup-key.txt FILE` reads any one record.
 | `squash-history --database PATH --checkout DIR` | one commit of the current files |
 
 Each prints one line and exits `0`, or prints `error: …` and exits `1`.
+
+## Sandbox billing catalogue preflight
+
+`python -m eight_characters.accounts billing-preflight` is a read-only prerequisite
+for #119. It creates nothing, changes no account or access, and opens no checkout.
+No SDK is added: bounded `httpx` GET requests read the credential's own account and
+the six configured Prices with their Products expanded. Every response must carry
+the exact configured API version. Redirects, unavailable evidence and mismatches
+stop the command, without logging credentials or raw provider bodies.
+
+Configure only in the server/operator environment, never browser code or source:
+
+| Variable | Required value |
+|---|---|
+| `EC_BILLING_MODE` | `sandbox`; absent or `disabled` is explicit disabled status, exit 2. `live` is refused. |
+| `EC_STRIPE_API_KEY` | Existing authorized product sandbox secret/restricted key (`sk_test_…` / `rk_test_…`); separate from Adslop accounting. This preflight needs account and Price/Product read access only. |
+| `EC_STRIPE_API_VERSION` | Exact dated named version supported by the configured native integration; required, with response-version verification. |
+| `EC_STRIPE_ACCOUNT_ID` | Expected sandbox account ID; compared with `GET /v1/account`, never a browser selection. |
+| `EC_STRIPE_PRODUCT_BASIC`, `_PLUS`, `_PRO` | Three distinct approved native Product IDs. |
+| `EC_STRIPE_PRICE_BASIC_MONTHLY`, `_BASIC_YEARLY`, `_PLUS_MONTHLY`, `_PLUS_YEARLY`, `_PRO_MONTHLY`, `_PRO_YEARLY` | Six distinct approved native Price IDs. |
+
+The offer follows the published pricing contract: Basic 699/5900, Plus 1499/12900,
+Pro 2900/24900 USD minor units, monthly/yearly. Each active sandbox Price and
+Product must match the configured IDs, per-unit licensed billing, exact integer
+and decimal amount, interval/count one, exclusive tax basis, no custom amount,
+quantity transform, tiered billing or trial. The report's `required_quantity: 1`
+is the future checkout constraint, not evidence of any subscription quantity.
+
+Exit 0 proves only the native catalogue at that read. `checkout_available`,
+`payment_verified`, `paid_access_verified` and `tax_calculation_verified` remain
+false. Exclusive tax behavior does not itself calculate or collect tax. Exit 1
+means invalid configuration or unverified native evidence. Partial Stripe
+configuration while mode is disabled is an error. The app does not consume this
+configuration yet, and neither a test key nor this CLI is a live launch switch.
+
+Provider contracts: [Price object](https://docs.stripe.com/api/prices/object),
+[API keys](https://docs.stripe.com/keys),
+[API versioning](https://docs.stripe.com/api/versioning). No native account/product/
+price identifier, operator identity or credential is hard-coded.
