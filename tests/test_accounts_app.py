@@ -83,7 +83,18 @@ class TestWhatNeedsAnAccount(unittest.TestCase):
             for method in route.methods - {'HEAD'}:
                 (needs if gated else open_).add((method, route.path))
         self.assertEqual(needs, NEEDS_ACCOUNT)
-        self.assertEqual(open_, OPEN)
+        self.assertLessEqual(open_, OPEN)
+        # Included routers can remain lazy in app.routes. OpenAPI enumerates the
+        # actual mounted surface; the signed webhook's HTTP contract is exercised
+        # with no session in test_billing_service.
+        documented = {
+            (method.upper(), path)
+            for path, operations in app.openapi()['paths'].items()
+            if path.startswith('/api/') and not path.startswith('/api/account')
+            for method in operations
+            if method in ('get', 'post', 'put', 'patch', 'delete')
+        }
+        self.assertEqual(documented, NEEDS_ACCOUNT | OPEN)
 
     def test_charts_answer_401_before_reading_the_request(self) -> None:
         anonymous = site_client()

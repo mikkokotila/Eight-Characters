@@ -306,9 +306,9 @@ class BillingRecovery(BackupTestCase):
         with self.assertRaises(RecordError):
             decode_billing(canonical_json(wire))
 
-    def test_reader_refuses_premature_billing_service_configuration(self):
+    def test_writer_refuses_incomplete_billing_service_configuration(self):
         environment = account_environment(self.directory, EC_BILLING_MODE='sandbox')
-        with self.assertRaisesRegex(ConfigError, 'requires the billing writer'):
+        with self.assertRaisesRegex(ConfigError, 'EC_STRIPE_API_KEY'):
             load_config(environment)
 
     def test_empty_future_database_keeps_its_generation_after_encrypted_restore(self):

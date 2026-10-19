@@ -26,7 +26,7 @@ from eight_characters.main import app
 from tests.accounts_support import Clock, FakePersonCheck, account_environment, sign_in, site_client
 from tests.test_billing_access import configuration
 from tests.test_billing_capacity import birth
-from tests.test_billing_native import FundingGraph
+import tests.test_billing_native as native_fixtures
 
 
 class Provider:
@@ -91,7 +91,7 @@ class Provider:
         return httpx.Response(200, json=value, headers={'Stripe-Version': self.config.catalogue.api_version})
 
     def complete(self):
-        graph = FundingGraph('test_archived_historical_offer_and_full_native_chain')
+        graph = native_fixtures.FundingGraph('test_archived_historical_offer_and_full_native_chain')
         graph.setUp()
         try:
             self.objects = copy.deepcopy(graph.objects)
