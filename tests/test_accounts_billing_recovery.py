@@ -157,7 +157,7 @@ def records(owner):
 
 
 class BillingRecovery(BackupTestCase):
-    def schema2_deletion(self, *, completed=False):
+    def schema2_deletion(self, *, completed=False, missing_personal=False, held=False):
         user = self.store.create_user('pending@example.invalid', 'fi')
         self.backup()
         scope, owner, _ = records(user)
@@ -180,6 +180,8 @@ class BillingRecovery(BackupTestCase):
                 retain_until=None,
             ),
         )
+        if held:
+            value.update(lifecycle='held', deletion=None)
         owner = decode_billing(canonical_json(value))
         with sqlite3.connect(self.store.path) as connection:
             connection.execute('PRAGMA foreign_keys=ON')
@@ -187,7 +189,7 @@ class BillingRecovery(BackupTestCase):
             for statement in BILLING_SCHEMA_5:
                 connection.execute(statement)
             connection.execute('PRAGMA user_version=5')
-            if completed:
+            if completed or missing_personal:
                 connection.execute('DELETE FROM users WHERE id=?', (user.id,))
                 connection.execute(
                     'INSERT INTO changes(kind,record_id,path) VALUES(?,?,?)',
@@ -222,7 +224,7 @@ class BillingRecovery(BackupTestCase):
             recovered.delete_user(user.id)
 
     def test_schema2_no_customer_tombstone_survives_squash_and_restore(self):
-        user, _, owner = self.schema2_deletion(completed=True)
+        user, scope, owner = self.schema2_deletion(completed=True)
         self.backup()
         squash_history(self.store, self.checkout)
         target = self.directory / 'no-customer-tombstone.sqlite3'
@@ -232,6 +234,34 @@ class BillingRecovery(BackupTestCase):
         self.assertIn(owner, recovered.billing_records())
         self.assertFalse((self.checkout / f'users/{user.id[:2]}/{user.id}').exists())
         self.assertEqual(read_manifest(self.checkout).billing_count, 2)
+        with self.assertRaises(RecordError):
+            validate_billing_graph((scope, owner), (user,))
+
+    def test_schema2_missing_personal_identity_is_retained_held_without_active_fallback(self):
+        _, scope, owner = self.schema2_deletion(missing_personal=True, held=True)
+        self.backup()
+        target = self.directory / 'orphan-held.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        recovered = AccountStore.open(target)
+        self.assertEqual(recovered.users(), [])
+        self.assertIn(owner, recovered.billing_records())
+        for changed in (
+            owner.model_copy(update={'schema_version': 1}),
+            owner.model_copy(update={'lifecycle': 'active'}),
+        ):
+            with self.assertRaises(RecordError):
+                validate_billing_graph((scope, changed), ())
+
+    def test_schema2_pending_delete_can_resume_when_the_personal_record_is_absent(self):
+        _, _, owner = self.schema2_deletion(missing_personal=True)
+        self.backup()
+        target = self.directory / 'orphan-deleting.sqlite3'
+        restore_backup(self.checkout, self.identity, target)
+        recovered = AccountStore.open(target)
+        self.assertEqual(recovered.users(), [])
+        self.assertIn(owner, recovered.billing_records())
+        self.assertEqual(owner.lifecycle, 'deleting')
+        self.assertIsNone(owner.deletion.completed_at)
 
     def test_schema1_null_targets_mismatched_pairs_and_future_versions_are_refused(
         self,
