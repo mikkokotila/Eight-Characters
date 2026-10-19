@@ -300,8 +300,26 @@ class FundingGraph(unittest.TestCase):
             self.coverage()
         self.invoice['issuer'] = {'type': 'self'}
         for path, fields in (
-            ('payment_intents/pi_one', ('application', 'application_fee_amount', 'on_behalf_of', 'transfer_data')),
-            ('charges/ch_one', ('application', 'application_fee', 'application_fee_amount', 'on_behalf_of', 'transfer_data', 'destination')),
+            (
+                'payment_intents/pi_one',
+                (
+                    'application',
+                    'application_fee_amount',
+                    'on_behalf_of',
+                    'transfer_data',
+                ),
+            ),
+            (
+                'charges/ch_one',
+                (
+                    'application',
+                    'application_fee',
+                    'application_fee_amount',
+                    'on_behalf_of',
+                    'transfer_data',
+                    'destination',
+                ),
+            ),
         ):
             for field in fields:
                 with self.subTest(path=path, field=field):
