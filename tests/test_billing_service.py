@@ -19,8 +19,7 @@ import httpx
 from fastapi.testclient import TestClient
 
 import tests.test_billing_native as native_fixtures
-from eight_characters.accounts.billing import OFFERS
-from eight_characters.accounts.billing import BillingError
+from eight_characters.accounts.billing import OFFERS, BillingError
 from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
 from eight_characters.accounts.store import AccountStore, ChartLimit
