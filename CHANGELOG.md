@@ -9,7 +9,7 @@
 - Settings and library controls understand a future unlimited chart allowance
   (`null`), while rejecting malformed limits. No paid allowance or checkout opens.
 - Deploy these readers before any writer exceeds 50 charts; after that, rolling
-  back before 0.63.0 requires an earlier backup (see Developer/Accounts).
+  back before 0.65.0 requires an earlier backup (see Developer/Accounts).
 
 ### Tests
 - Retained 51-chart records, references, edits, exports and encrypted recovery;
