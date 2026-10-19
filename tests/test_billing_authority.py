@@ -95,7 +95,7 @@ class FencedAuthority(BackupTestCase):
     def test_queue_commit_failure_keeps_no_false_acknowledgment_record(self):
         self.bound()
         delivery = Delivery('evt_abort', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True)
-        with patch('eight_characters.accounts.billing_authority._log_change', side_effect=sqlite3.OperationalError('injected commit boundary')):
+        with patch('eight_characters.accounts.billing_authority.log_record_change', side_effect=sqlite3.OperationalError('injected commit boundary')):
             with self.assertRaises(sqlite3.OperationalError):
                 self.authority.enqueue(delivery)
         self.assertFalse(any(getattr(record, 'event_id', None) == 'evt_abort' for record in self.store.billing_records()))

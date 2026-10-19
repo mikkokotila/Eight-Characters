@@ -29,13 +29,12 @@ from eight_characters.accounts.billing_records import (
 from eight_characters.accounts.records import canonical_json, new_id, parse_timestamp, timestamp
 from eight_characters.accounts.store import (
     AccountStore,
-    _billing_records,
-    _check_version,
-    _connection,
-    _log_change,
-    _select_user,
-    _USER_COLUMNS,
-    _user_from_row,
+    billing_records_in,
+    check_database_version,
+    account_connection,
+    log_record_change,
+    user_in,
+    users_in,
 )
 from eight_characters.accounts.billing_webhook import Delivery
 
@@ -70,10 +69,10 @@ class Authority:
 
     @contextmanager
     def write(self) -> Generator[sqlite3.Connection, None, None]:
-        with _connection(self.store.path) as connection:
+        with account_connection(self.store.path) as connection:
             connection.execute('BEGIN IMMEDIATE')
             try:
-                if _check_version(connection) != 5:
+                if check_database_version(connection) != 5:
                     raise BillingHold('unverified')
                 if connection.execute("SELECT 1 FROM users WHERE plan != 'free' LIMIT 1").fetchone() is not None:
                     raise BillingHold('legacy_identity_ambiguous')
@@ -84,8 +83,8 @@ class Authority:
             connection.execute('COMMIT')
 
     def snapshot(self) -> tuple[tuple[BillingDocument, ...], str, bool]:
-        with self.store._read() as connection:
-            records = _billing_records(connection)
+        with self.store.read_transaction() as connection:
+            records = billing_records_in(connection)
             self.scope(records)
             runtime = connection.execute('SELECT epoch,ready FROM billing_runtime WHERE id=1').fetchone()
             if runtime is None:
@@ -100,14 +99,10 @@ class Authority:
         return scope
 
     def _put(self, connection: sqlite3.Connection, records: Sequence[BillingDocument], *, removed_user: str | None = None) -> None:
-        previous = {record.id: record for record in _billing_records(connection)}
+        previous = {record.id: record for record in billing_records_in(connection)}
         changed = {record.id: decode_billing(encode_billing(record)) for record in records}
         merged = {**previous, **changed}
-        users = [
-            _user_from_row(row)
-            for row in connection.execute(f'SELECT {_USER_COLUMNS} FROM users')
-            if row[0] != removed_user
-        ]
+        users = [user for user in users_in(connection) if user.id != removed_user]
         validate_billing_graph(tuple(merged.values()), users)
         for record in changed.values():
             old = previous.get(record.id)
@@ -122,12 +117,12 @@ class Authority:
                 connection.executemany('INSERT INTO billing_resources(scope_id,native_id,native_kind,owner_id) VALUES(?,?,?,?)', [(record.scope_id, native_id, kind, record.owner_id) for native_id, kind in resource_claims(record).items()])
             elif isinstance(record, EventRecord):
                 connection.execute('INSERT INTO billing_jobs(event_id,record_id) VALUES(?,?) ON CONFLICT(event_id) DO NOTHING', (record.event_id, record.id))
-            _log_change(connection, 'billing', record.id, billing_path(record.id))
+            log_record_change(connection, 'billing', record.id, billing_path(record.id))
 
     def begin_recovery(self) -> str:
         """Close the global gate durably before the first native HTTP request."""
         with self.write() as connection:
-            records = _billing_records(connection)
+            records = billing_records_in(connection)
             now = timestamp(self.clock())
             if records:
                 scope = self.scope(records)
@@ -145,12 +140,12 @@ class Authority:
 
     def ensure_owner(self, owner_id: str, *, clock_id: str | None = None) -> AccountBillingRecord:
         with self.write() as connection:
-            records = _billing_records(connection)
+            records = billing_records_in(connection)
             scope = self.scope(records)
             found = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == owner_id), None)
             if found is not None:
                 return found
-            user = _select_user(connection, 'id', owner_id)
+            user = user_in(connection, 'id', owner_id)
             if user is None or user.plan != 'free':
                 raise BillingHold('unknown_owner')
             if clock_id is not None and clock_id not in scope.clock_ids:
@@ -162,7 +157,7 @@ class Authority:
 
     def claim(self, owner_id: str, *, recovery_epoch: str | None = None) -> tuple[Lease, AccountBillingRecord]:
         with self.write() as connection:
-            records = _billing_records(connection)
+            records = billing_records_in(connection)
             self.scope(records)
             runtime = connection.execute('SELECT epoch,ready FROM billing_runtime WHERE id=1').fetchone()
             if runtime is None or (recovery_epoch is None and runtime[1] != 1) or (recovery_epoch is not None and runtime[0] != recovery_epoch):
@@ -182,7 +177,7 @@ class Authority:
     def _check_lease(self, connection: sqlite3.Connection, lease: Lease) -> AccountBillingRecord:
         runtime = connection.execute('SELECT epoch FROM billing_runtime WHERE id=1').fetchone()
         row = connection.execute('SELECT epoch,generation,token,expires_at FROM billing_leases WHERE record_id=?', (lease.owner_id,)).fetchone()
-        records = _billing_records(connection)
+        records = billing_records_in(connection)
         self.scope(records)
         owner = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == lease.owner_id), None)
         if runtime is None or runtime[0] != lease.epoch or row is None or tuple(row[:3]) != (lease.epoch, lease.generation, lease.token) or row[3] <= int(self.clock().timestamp()) or owner is None or (owner.revision, owner.lifecycle) != (lease.revision, lease.lifecycle):
@@ -199,7 +194,7 @@ class Authority:
             replacement = replacement.model_copy(update={'revision': old.revision + 1, 'updated_at': _next_time(old.updated_at, now)})
             changed: list[BillingDocument] = [replacement]
             handled: set[str] = set()
-            for record in _billing_records(connection):
+            for record in billing_records_in(connection):
                 if isinstance(record, EventRecord) and record.event_id in applied_events:
                     if record.owner_id != old.id or record.state != 'pending':
                         raise BillingHold('ownership_conflict')
@@ -211,16 +206,16 @@ class Authority:
             if remove_user:
                 if replacement.lifecycle != 'deleted':
                     raise BillingHold('deleted_owner')
-                user = _select_user(connection, 'id', old.id)
+                user = user_in(connection, 'id', old.id)
                 if user is not None:
                     connection.execute('DELETE FROM users WHERE id=?', (old.id,))
                     connection.execute('DELETE FROM sign_in_codes WHERE email=?', (user.email,))
-                    _log_change(connection, 'user', user.id, f'users/{user.id[:2]}/{user.id}/user.json')
+                    log_record_change(connection, 'user', user.id, f'users/{user.id[:2]}/{user.id}/user.json')
             connection.execute('UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?', (old.id, lease.token))
 
     def enqueue(self, delivery: Delivery) -> EventRecord:
         with self.write() as connection:
-            records = _billing_records(connection)
+            records = billing_records_in(connection)
             scope = self.scope(records)
             existing = next((record for record in records if isinstance(record, EventRecord) and record.event_id == delivery.event_id), None)
             if existing is not None:
@@ -239,7 +234,7 @@ class Authority:
 
     def finish_recovery(self, epoch: str, *, started_at: int) -> None:
         with self.write() as connection:
-            records = _billing_records(connection)
+            records = billing_records_in(connection)
             scope = self.scope(records)
             if any(isinstance(record, AccountBillingRecord) and (record.lifecycle in ('deleting', 'held') or any(operation.state in ('prepared', 'sent', 'held') for operation in record.operations)) for record in records):
                 raise BillingHold('uncertain_operation')
