@@ -92,9 +92,7 @@ class NativeBillingAcceptance(unittest.TestCase):
         check_scope(self.config, self.scope)
         self.assertTrue(self.ready, 'Native startup recovery remains incomplete.')
         self.assertEqual(set(self.profile['accounts']), {'A', 'B'})
-        expected = {
-            value['owner_id'] for value in self.profile['accounts'].values()
-        }
+        expected = {value['owner_id'] for value in self.profile['accounts'].values()}
         self.assertEqual(set(self.owners), expected)
         proofs = discover_customers(self.native, self.scope)
         self.assertEqual({proof.owner_id for proof in proofs}, expected)
@@ -121,7 +119,9 @@ class NativeBillingAcceptance(unittest.TestCase):
                     fact.model_dump(exclude={'verified_at'}),
                     retained.model_dump(exclude={'verified_at'}),
                 )
-                offer = next(item for item in self.scope.offers if item.id == fact.offer_id)
+                offer = next(
+                    item for item in self.scope.offers if item.id == fact.offer_id
+                )
                 funded.add((offer.plan, offer.period))
         self.assertEqual(funded, {(offer.plan, offer.period) for offer in OFFERS})
 
@@ -153,16 +153,20 @@ class NativeBillingAcceptance(unittest.TestCase):
             'Actual provider-signed CLI forwarding has not been verified.',
         )
         for event_type in (
-            'checkout.session.completed', 'invoice.paid', 'charge.refunded'
+            'checkout.session.completed',
+            'invoice.paid',
+            'charge.refunded',
         ):
             native_events = {
                 event['id']: event
                 for event in self.native.all('events', {'type': event_type})
             }
             applied = [
-                record for record in self.records
+                record
+                for record in self.records
                 if isinstance(record, EventRecord)
-                and record.state == 'applied' and record.event_type == event_type
+                and record.state == 'applied'
+                and record.event_type == event_type
                 and record.owner_id in self.owners
             ]
             self.assertTrue(applied, 'No applied native delivery for ' + event_type)
@@ -170,7 +174,9 @@ class NativeBillingAcceptance(unittest.TestCase):
                 event = native_events[record.event_id]
                 self.assertIs(event['livemode'], False)
                 self.assertEqual(event['api_version'], self.config.payload_version)
-                self.assertIn(event.get('account'), (None, self.config.catalogue.account_id))
+                self.assertIn(
+                    event.get('account'), (None, self.config.catalogue.account_id)
+                )
                 self.assertIsNone(event.get('context'))
                 self.assertEqual(
                     event['data']['object']['customer'],
@@ -182,7 +188,9 @@ class NativeBillingAcceptance(unittest.TestCase):
         # artifacts preserve transient refusal, crash and restore observations
         # that cannot be reconstructed from the final provider state alone.
         manifest_path = self.folder / 'native-trace-manifest.json'
-        self.assertTrue(manifest_path.is_file(), 'The full native trace run is incomplete.')
+        self.assertTrue(
+            manifest_path.is_file(), 'The full native trace run is incomplete.'
+        )
         manifest = json.loads(manifest_path.read_text())
         self.assertEqual(manifest['namespace'], self.config.namespace)
         self.assertEqual(set(manifest['cases']), REQUIRED_TRACES)
