@@ -237,7 +237,9 @@ class BillingRecovery(BackupTestCase):
         with self.assertRaises(RecordError):
             validate_billing_graph((scope, owner), (user,))
 
-    def test_schema2_missing_personal_identity_is_retained_held_without_active_fallback(self):
+    def test_schema2_missing_personal_identity_is_retained_held_without_active_fallback(
+        self,
+    ):
         _, scope, owner = self.schema2_deletion(missing_personal=True, held=True)
         self.backup()
         target = self.directory / 'orphan-held.sqlite3'
