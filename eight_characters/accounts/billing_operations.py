@@ -326,6 +326,14 @@ def operation_purpose(
     return purpose
 
 
+def _matches_mac(value: object, expected: str) -> bool:
+    return (
+        isinstance(value, str)
+        and re.fullmatch(r'[0-9a-f]{64}', value) is not None
+        and hmac.compare_digest(value, expected)
+    )
+
+
 def read_customer_binding(
     config: BillingConfig, customer: Native
 ) -> tuple[str, str, bool]:
@@ -353,10 +361,10 @@ def read_customer_binding(
     expected = binding_mac(
         config, owner, 'new-customer', 'customer-create', original_id
     )
-    if not isinstance(tag, str) or not hmac.compare_digest(tag, expected):
+    if not _matches_mac(tag, expected):
         raise BillingHold('ownership_conflict')
     seal = values.get('ec_customer_mac')
-    sealed = isinstance(seal, str) and hmac.compare_digest(
+    sealed = _matches_mac(
         seal, customer_mac(config, owner, customer_id, original_id)
     )
     return owner, original_id, sealed
@@ -387,7 +395,7 @@ def read_deletion(
     ):
         raise BillingHold('ownership_conflict')
     expected = deletion_mac(config, owner, customer_id, nonce, requested)
-    if not hmac.compare_digest(marker, expected):
+    if not _matches_mac(marker, expected):
         raise BillingHold('ownership_conflict')
     return owner, Deletion(
         requested_at=requested,
@@ -428,7 +436,7 @@ def sealed_checkout(
         or not isinstance(offer_id, str)
     ):
         raise BillingHold('ownership_conflict')
-    if not hmac.compare_digest(
+    if not _matches_mac(
         seal, binding_mac(config, owner.id, checkout_id, 'checkout-sealed', original_id)
     ):
         raise BillingHold('ownership_conflict')
@@ -446,6 +454,6 @@ def sealed_checkout(
         'checkout-create',
         original_id,
     )
-    if not isinstance(tag, str) or not hmac.compare_digest(tag, expected_tag):
+    if not _matches_mac(tag, expected_tag):
         raise BillingHold('ownership_conflict')
     return intent_id, offer_id

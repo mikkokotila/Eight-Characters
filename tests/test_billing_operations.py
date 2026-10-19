@@ -134,6 +134,19 @@ class NativeOperations(unittest.TestCase):
         self.assertFalse(
             read_customer_binding(self.config, {**customer, 'id': 'cus_other'})[2]
         )
+        for invalid in ('å' * 64, 'a' * 63, 'a' * 65, None):
+            with self.subTest(invalid=invalid):
+                self.assertFalse(
+                    read_customer_binding(
+                        self.config,
+                        {**customer, 'metadata': {**customer['metadata'], 'ec_customer_mac': invalid}},
+                    )[2]
+                )
+                with self.assertRaises(BillingHold):
+                    read_customer_binding(
+                        self.config,
+                        {**customer, 'metadata': {**customer['metadata'], 'ec_creation_mac': invalid}},
+                    )
         with self.assertRaises(BillingHold):
             read_customer_binding(
                 replace(self.config, binding_key=b'other' * 10), customer
@@ -166,7 +179,10 @@ class NativeOperations(unittest.TestCase):
             sealed_checkout(self.config, self.owner, session),
             (self.intent.id, self.intent.offer_id),
         )
-        for changes in ({'ec_offer': 'b' * 64}, {'ec_intent': new_id()}):
+        for changes in (
+            {'ec_offer': 'b' * 64}, {'ec_intent': new_id()},
+            {'ec_checkout_mac': 'å' * 64}, {'ec_creation_mac': 'å' * 64},
+        ):
             with self.assertRaises(BillingHold):
                 sealed_checkout(
                     self.config,
@@ -227,6 +243,11 @@ class NativeOperations(unittest.TestCase):
         )
         with self.assertRaises(BillingHold):
             read_deletion(self.config, {**customer, 'id': 'cus_other'})
+        with self.assertRaises(BillingHold):
+            read_deletion(
+                self.config,
+                {**customer, 'metadata': {**customer['metadata'], 'ec_delete_mac': 'å' * 64}},
+            )
         with self.assertRaises(BillingHold) as failure:
             read_deletion(
                 self.config,
