@@ -18,9 +18,12 @@ from eight_characters.accounts.billing_access import (
     BillingHold,
     check_scope,
 )
+from eight_characters.accounts.billing_operations import deletion_mac
 from eight_characters.accounts.billing_records import (
+    REASONS,
     AccountBillingRecord,
     BillingDocument,
+    Deletion,
     EventRecord,
     OfferSnapshot,
     ScopeRecord,
@@ -265,6 +268,7 @@ class Authority:
                 raise BillingHold('clock_unavailable')
             now = timestamp(self.clock())
             owner = AccountBillingRecord(
+                schema_version=2,
                 id=owner_id,
                 owner_id=owner_id,
                 scope_id=scope.id,
@@ -282,6 +286,97 @@ class Authority:
             )
             self._put(connection, (owner,))
             return owner
+
+    def adopt(self, owner: AccountBillingRecord, *, epoch: str) -> None:
+        """Persist a natively proven recovery owner, including an orphan hold."""
+        with self.write() as connection:
+            records = billing_records_in(connection)
+            scope = self.scope(records)
+            runtime = connection.execute(
+                'SELECT epoch,ready FROM billing_runtime WHERE id=1'
+            ).fetchone()
+            if (
+                runtime is None or tuple(runtime) != (epoch, 0)
+                or owner.scope_id != scope.id or owner.schema_version != 2
+                or owner.revision != 0 or any(record.id == owner.id for record in records)
+            ):
+                raise BillingHold('ownership_conflict')
+            self._put(connection, (owner,))
+
+    def hold_runtime(self, epoch: str, reason: str) -> None:
+        """A provider failure or worker death closes grants before surfacing."""
+        if reason not in REASONS:
+            raise BillingHold('processing_failed')
+        with self.write() as connection:
+            changed = connection.execute(
+                'UPDATE billing_runtime SET ready=0,reason=? WHERE id=1 AND epoch=?',
+                (reason, epoch),
+            ).rowcount
+            if changed != 1:
+                raise BillingHold('uncertain_operation')
+
+    def release(self, lease: Lease) -> None:
+        with self.write() as connection:
+            self._check_lease(connection, lease)
+            connection.execute(
+                'UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?',
+                (lease.owner_id, lease.token),
+            )
+
+    def request_deletion(self, owner_id: str) -> AccountBillingRecord:
+        """Gate the owner and fence work before any cleanup HTTP, even mid-create."""
+        with self.write() as connection:
+            records = billing_records_in(connection)
+            self.scope(records)
+            owner = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == owner_id), None)
+            if owner is None:
+                raise BillingHold('unknown_owner')
+            if owner.lifecycle in ('deleting', 'deleted'):
+                return owner
+            now = timestamp(self.clock())
+            nonce = new_id()
+            deletion = Deletion(
+                requested_at=now, completed_at=None, nonce=nonce,
+                native_object_id=owner.customer_id,
+                native_marker=None if owner.customer_id is None else deletion_mac(self.config, owner.id, owner.customer_id, nonce, now),
+                retain_until=None,
+            )
+            changed = owner.model_copy(update={
+                'schema_version': 2, 'lifecycle': 'deleting', 'deletion': deletion,
+                'revision': owner.revision + 1,
+                'updated_at': _next_time(owner.updated_at, self.clock()),
+            })
+            self._put(connection, (changed,))
+            connection.execute(
+                'UPDATE billing_leases SET expires_at=0,generation=generation+1 WHERE record_id=?',
+                (owner_id,),
+            )
+            return changed
+
+    def defer(self, lease: Lease, reason: str) -> None:
+        """Keep wake-ups pending, persist bounded retry and remove stale grants."""
+        if reason not in REASONS:
+            raise BillingHold('processing_failed')
+        with self.write() as connection:
+            owner = self._check_lease(connection, lease)
+            now = self.clock()
+            changed: list[BillingDocument] = [owner.model_copy(update={
+                'lifecycle': 'held' if owner.lifecycle == 'active' else owner.lifecycle,
+                'revision': owner.revision + 1,
+                'updated_at': _next_time(owner.updated_at, now),
+            })]
+            for record in billing_records_in(connection):
+                if isinstance(record, EventRecord) and record.owner_id == owner.id and record.state == 'pending':
+                    attempts = record.attempts + 1
+                    changed.append(record.model_copy(update={
+                        'revision': record.revision + 1,
+                        'updated_at': _next_time(record.updated_at, now),
+                        'attempts': attempts,
+                        'next_attempt_at': int(now.timestamp()) + min(300, 5 * 2 ** min(attempts - 1, 6)),
+                        'reason': reason,
+                    }))
+            self._put(connection, changed)
+            connection.execute('UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?', (owner.id, lease.token))
 
     def claim(
         self, owner_id: str, *, recovery_epoch: str | None = None

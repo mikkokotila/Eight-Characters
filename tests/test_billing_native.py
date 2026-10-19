@@ -163,6 +163,7 @@ class FundingGraph(unittest.TestCase):
                 dict(
                     id='inpay_one',
                     object='invoice_payment',
+                    is_default=True,
                     invoice='in_one',
                     livemode=False,
                     currency='usd',

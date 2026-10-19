@@ -347,6 +347,7 @@ def captured_coverage(
         payment,
         {
             'object': 'invoice_payment',
+            'is_default': True,
             'invoice': invoice_id,
             'livemode': False,
             'currency': 'usd',
