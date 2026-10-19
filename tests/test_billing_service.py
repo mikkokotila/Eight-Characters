@@ -241,6 +241,8 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
         self.service.reconcile(self.user.id)
+        self.accounts.store.save_chart(self.user.id, birth(0), None)
+        self.accounts.store.save_chart(self.user.id, birth(1), None)
         self.provider.invoices['in_one']['billing_reason'] = 'manual'
         self.service.authority.enqueue(
             Delivery(
@@ -263,8 +265,8 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(
             (current['billing']['tier'], current['chart_limit']), ('free', 1)
         )
-        with self.assertRaises(BillingHold):
-            self.accounts.store.save_chart(self.user.id, birth(0), None)
+        with self.assertRaises(ChartLimit):
+            self.accounts.store.save_chart(self.user.id, birth(2), None)
         event = next(
             record
             for record in self.accounts.store.billing_records()
@@ -309,7 +311,9 @@ class ServiceApi(unittest.TestCase):
 
     def test_delete_disables_proven_unsent_checkout_without_creating_a_session(self):
         before = self.prepared_checkout_before_send()
-        response = self.client.request('DELETE', '/api/account', json={'key': self.key})
+        response = self.client.request(
+            'DELETE', '/api/account', json={'key': self.key, 'email': self.user.email}
+        )
         self.assertEqual(response.status_code, 204, response.text)
         self.assertIsNone(self.accounts.store.user_by_id(self.user.id))
         self.assertFalse(self.provider.sessions)
@@ -336,7 +340,7 @@ class ServiceApi(unittest.TestCase):
             self.service.authority, 'unsent_is_proven', return_value=False
         ):
             response = self.client.request(
-                'DELETE', '/api/account', json={'key': self.key}
+                'DELETE', '/api/account', json={'key': self.key, 'email': self.user.email}
             )
             self.assertEqual(response.status_code, 503)
             self.assertIsNotNone(self.accounts.store.user_by_id(self.user.id))
