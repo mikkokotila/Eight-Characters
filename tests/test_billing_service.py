@@ -288,8 +288,10 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
         self.service.reconcile(self.user.id)
-        self.accounts.store.save_chart(self.user.id, birth(0), None)
-        self.accounts.store.save_chart(self.user.id, birth(1), None)
+        settings, _ = self.accounts.store.save_chart(self.user.id, birth(0), None)
+        settings, _ = self.accounts.store.save_chart(
+            self.user.id, birth(1), settings.updated_at
+        )
         self.provider.invoices['in_one']['billing_reason'] = 'manual'
         self.service.authority.enqueue(
             Delivery(
@@ -313,7 +315,7 @@ class ServiceApi(unittest.TestCase):
             (current['billing']['tier'], current['chart_limit']), ('free', 1)
         )
         with self.assertRaises(ChartLimit):
-            self.accounts.store.save_chart(self.user.id, birth(2), None)
+            self.accounts.store.save_chart(self.user.id, birth(2), settings.updated_at)
         event = next(
             record
             for record in self.accounts.store.billing_records()
