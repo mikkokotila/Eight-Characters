@@ -262,7 +262,11 @@ class ServiceApi(unittest.TestCase):
         with failure:
             response = self.checkout()
         self.assertEqual(response.status_code, 503, response.text)
-        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        owner = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord)
+        )
         self.assertEqual(owner.lifecycle, 'held')
         self.assertIsNone(owner.customer_id)
         self.assertFalse(owner.operations)
@@ -274,10 +278,21 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(len(self.provider.sessions), 1)
 
     def test_customerless_discovery_failure_recovers_without_a_permanent_hold(self):
-        self.assert_customerless_recovery(patch.object(self.service.native, 'all', side_effect=BillingHold('native_unavailable')))
+        self.assert_customerless_recovery(
+            patch.object(
+                self.service.native,
+                'all',
+                side_effect=BillingHold('native_unavailable'),
+            )
+        )
 
     def test_customerless_catalogue_failure_recovers_without_a_permanent_hold(self):
-        self.assert_customerless_recovery(patch('eight_characters.accounts.billing_service.verify_sandbox_catalogue', side_effect=BillingError('injected unavailable catalogue')))
+        self.assert_customerless_recovery(
+            patch(
+                'eight_characters.accounts.billing_service.verify_sandbox_catalogue',
+                side_effect=BillingError('injected unavailable catalogue'),
+            )
+        )
 
     def test_actual_managed_api_checkout_resume_and_recovery_never_fall_back_to_fifty(
         self,
