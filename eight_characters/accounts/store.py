@@ -9,6 +9,7 @@ place only when complete.
 
 import hmac
 import os
+import secrets
 import sqlite3
 from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
@@ -65,7 +66,7 @@ from eight_characters.school_presets import (
 
 # Numbered migrations: the database's `user_version` is how many have run. Each runs
 # in its own transaction, so a database is always at one version or the next.
-MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
+LEGACY_MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
     (
         """
         CREATE TABLE users (
@@ -154,6 +155,7 @@ MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (
         """,
     ),
 )
+MIGRATIONS: Final[tuple[tuple[str, ...], ...]] = (*LEGACY_MIGRATIONS, BILLING_SCHEMA_5)
 SCHEMA_VERSION: Final = len(MIGRATIONS)
 # SQLite's own field for telling an application's files from others ('E8CH').
 APPLICATION_ID: Final = 0x45384348
@@ -389,6 +391,12 @@ def _migrate(connection: sqlite3.Connection) -> None:
             if not current:
                 for statement in MIGRATIONS[version]:
                     connection.execute(statement)
+                if version + 1 == BILLING_SCHEMA_VERSION:
+                    require_billing_layout(connection, LEGACY_MIGRATIONS)
+                    connection.execute(
+                        "INSERT INTO billing_runtime(id,epoch,ready,reason,checked_at) VALUES(1,?,0,'unverified',NULL)",
+                        (secrets.token_hex(32),),
+                    )
                 connection.execute(f'PRAGMA user_version = {version + 1}')
         except BaseException:
             connection.execute('ROLLBACK')
@@ -403,8 +411,9 @@ def check_database_version(connection: sqlite3.Connection) -> int:
     if version > SCHEMA_VERSION:
         if version != BILLING_SCHEMA_VERSION:
             raise StoreError(f'The database has unknown schema {version}.')
+    if version == BILLING_SCHEMA_VERSION:
         try:
-            require_billing_layout(connection, MIGRATIONS)
+            require_billing_layout(connection, LEGACY_MIGRATIONS)
         except RecordError as exc:
             raise StoreError(str(exc)) from exc
     return version
@@ -686,7 +695,7 @@ class AccountStore:
                 _migrate(connection)
                 connection.execute('BEGIN IMMEDIATE')
                 try:
-                    if billing is not None:
+                    if billing is not None and _user_version(connection) < BILLING_SCHEMA_VERSION:
                         for statement in BILLING_SCHEMA_5:
                             connection.execute(statement)
                         connection.execute(
@@ -701,6 +710,7 @@ class AccountStore:
                         (head, backup_seq),
                     )
                     if billing is not None:
+                        connection.execute('DELETE FROM billing_runtime')
                         restore_billing(connection, billing)
                         connection.execute(
                             "DELETE FROM sqlite_sequence WHERE name = 'changes'"
@@ -709,7 +719,7 @@ class AccountStore:
                             "INSERT INTO sqlite_sequence (name,seq) VALUES ('changes',?)",
                             (sequence,),
                         )
-                        require_billing_layout(connection, MIGRATIONS)
+                        require_billing_layout(connection, LEGACY_MIGRATIONS)
                         read_billing(connection, [user for user, _ in accounts])
                 except BaseException:
                     connection.execute('ROLLBACK')
@@ -738,6 +748,19 @@ class AccountStore:
                 return ()
             return billing_records_in(connection)
 
+    def financially_managed(self) -> bool:
+        with self.read_transaction() as connection:
+            return self._financially_managed_in(connection)
+
+    @staticmethod
+    def _financially_managed_in(connection: sqlite3.Connection) -> bool:
+        if _user_version(connection) < BILLING_SCHEMA_VERSION:
+            return False
+        return any(
+            connection.execute(f'SELECT 1 FROM {table} LIMIT 1').fetchone() is not None
+            for table in ('billing_records', 'billing_resources', 'billing_jobs', 'billing_leases')
+        )
+
     def limits(self, plan: Plan) -> PlanLimits:
         """What the plan lets an account keep (plans.py)."""
         return self._limits[plan]
@@ -750,7 +773,7 @@ class AccountStore:
             connection.execute('BEGIN IMMEDIATE')
             try:
                 version = check_database_version(connection)
-                if version > SCHEMA_VERSION and not backup_progress:
+                if (version > SCHEMA_VERSION or self._financially_managed_in(connection)) and not backup_progress:
                     raise BillingReadOnly(
                         'This release can read, export and back up billing records; '
                         'business changes require the billing writer.'

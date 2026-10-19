@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.68.0
+
+### Changed
+- Append the exact reader-reviewed billing migration as schema 5, retaining legacy
+  personal data, authentication rows and backup sequence continuity. New and
+  restored databases contain a closed financial runtime gate.
+- Preserve the refusal of business writes and account service for bound financial
+  records until the writer service owns their context; unbound disabled accounts
+  retain their existing allowances.
+- Add strict sandbox authority configuration, captured-card funding verification,
+  raw delivery signatures, durable jobs and fenced financial transactions.
+
+
 ## 0.67.0
 
 ### Changed

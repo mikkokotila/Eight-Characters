@@ -1,7 +1,6 @@
-"""Exact future billing layout shared by the recovery reader and next writer.
+"""Exact billing layout shared by the deployed recovery reader and this writer.
 
-This release does not append these statements to MIGRATIONS. Only an explicit
-schema-5 restore/fixture construction uses them; normal account creation stays 4.
+The numbered writer migration consumes this unchanged reader-reviewed definition.
 """
 
 from typing import Final

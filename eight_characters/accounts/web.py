@@ -296,7 +296,7 @@ class Accounts:
     ) -> 'Accounts':
         now = clock or (lambda: datetime.now(UTC))
         store = AccountStore.open(config.database, clock=now)
-        if store.schema_version() > SCHEMA_VERSION:
+        if store.schema_version() > SCHEMA_VERSION or store.financially_managed():
             raise ConfigError(
                 'This release can recover schema-5 billing records but cannot serve '
                 'financially managed accounts. Use the billing writer for account service.'
@@ -329,7 +329,7 @@ def get_accounts() -> Accounts:
     accounts = accounts_from_environment()
     # Another process may migrate the shared database after this service starts.
     # Even a session that needs no renewal must not serve legacy plan limits.
-    if accounts.store.schema_version() > SCHEMA_VERSION:
+    if accounts.store.schema_version() > SCHEMA_VERSION or accounts.store.financially_managed():
         raise BillingReadOnly('This reader cannot serve financially managed accounts.')
     return accounts
 
