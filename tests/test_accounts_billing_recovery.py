@@ -205,11 +205,15 @@ class BillingRecovery(BackupTestCase):
         user, _, owner = self.schema2_deletion()
         self.backup()
         ciphertext = (self.checkout / (billing_path(owner.id) + '.age')).read_bytes()
-        self.assertEqual(pyrage.decrypt(ciphertext, [self.identity]), encode_billing(owner))
+        self.assertEqual(
+            pyrage.decrypt(ciphertext, [self.identity]), encode_billing(owner)
+        )
         target = self.directory / 'pending-delete.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         recovered = AccountStore.open(target)
-        restored = next(record for record in recovered.billing_records() if record.id == user.id)
+        restored = next(
+            record for record in recovered.billing_records() if record.id == user.id
+        )
         self.assertEqual(restored, owner)
         self.assertEqual(restored.schema_version, 2)
         self.assertIsNone(restored.deletion.native_object_id)
@@ -229,7 +233,9 @@ class BillingRecovery(BackupTestCase):
         self.assertFalse((self.checkout / f'users/{user.id[:2]}/{user.id}').exists())
         self.assertEqual(read_manifest(self.checkout).billing_count, 2)
 
-    def test_schema1_null_targets_mismatched_pairs_and_future_versions_are_refused(self):
+    def test_schema1_null_targets_mismatched_pairs_and_future_versions_are_refused(
+        self,
+    ):
         _, scope, owner = self.schema2_deletion()
         original = json.loads(encode_billing(owner))
         malformed = [
@@ -238,8 +244,13 @@ class BillingRecovery(BackupTestCase):
             {**original, 'schema': True},
             {**original, 'customer_id': 'cus_unknown'},
         ]
-        for key, value in [('native_object_id', 'cus_unknown'), ('native_marker', 'a' * 64)]:
-            malformed.append({**original, 'deletion': {**original['deletion'], key: value}})
+        for key, value in [
+            ('native_object_id', 'cus_unknown'),
+            ('native_marker', 'a' * 64),
+        ]:
+            malformed.append(
+                {**original, 'deletion': {**original['deletion'], key: value}}
+            )
         for key in ('native_object_id', 'native_marker'):
             nested = dict(original['deletion'])
             del nested[key]
