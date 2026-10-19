@@ -241,7 +241,11 @@ class ServiceApi(unittest.TestCase):
         self.service.reconcile(self.user.id)
         self.assertGreaterEqual(self.provider.session_pages, 4)
         self.assertTrue(self.service.authority.snapshot()[2])
-        owner = self.service.authority.owner(self.user.id)
+        owner = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord) and record.id == self.user.id
+        )
         self.assertEqual(owner.lifecycle, 'active')
         self.assertEqual(len(self.provider.sessions), 1)
 
