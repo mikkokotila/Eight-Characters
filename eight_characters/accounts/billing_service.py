@@ -242,7 +242,7 @@ class BillingService:
     def _sessions(self, work: Work) -> None:
         if work.owner.customer_id is None:
             return
-        sessions = self.native.all(
+        sessions = work.native.all(
             'checkout/sessions', {'customer': work.owner.customer_id}
         )
         for session in sessions:
@@ -365,6 +365,8 @@ class BillingService:
                 and intent.state not in ('complete', 'expired')
                 and work.owner.lifecycle == 'active'
             ):
+                if intent.expires_at <= int(self.clock().timestamp()):
+                    work.refresh_unsent_checkout(intent.id)
                 work.execute('checkout_create', intent_id=intent.id)
                 current = next(
                     value for value in work.owner.intents if value.id == intent.id

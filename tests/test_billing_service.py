@@ -21,6 +21,7 @@ from fastapi.testclient import TestClient
 import tests.test_billing_native as native_fixtures
 from eight_characters.accounts.billing import OFFERS, BillingError
 from eight_characters.accounts.billing_access import BillingHold
+from eight_characters.accounts.billing_executor import Work
 from eight_characters.accounts.billing_records import AccountBillingRecord, EventRecord
 from eight_characters.accounts.store import AccountStore, ChartLimit
 from eight_characters.accounts.web import (
@@ -224,6 +225,43 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def interrupted_checkout(self, *, prepared=False):
+        original_execute = Work.execute
+        original_save = Work.save
+        def crash_before_send(work, owner):
+            if any(operation.kind == 'checkout_create' and operation.state == 'sent' for operation in owner.operations):
+                raise RuntimeError('injected before Session sent commit')
+            original_save(work, owner)
+        def crash_before_reservation(work, purpose, **kwargs):
+            if purpose == 'checkout_create':
+                raise RuntimeError('injected before Session reservation')
+            return original_execute(work, purpose, **kwargs)
+        with patch.object(Work, 'save', crash_before_send) if prepared else patch.object(Work, 'execute', crash_before_reservation):
+            with self.assertRaises(RuntimeError):
+                self.checkout()
+        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        self.assertFalse(self.provider.sessions)
+        self.clock.advance(3601)
+        self.service.recover()
+        current = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        self.assertEqual(current.intents[0].id, owner.intents[0].id)
+        self.assertEqual(current.intents[0].offer_id, owner.intents[0].offer_id)
+        self.assertEqual(len(self.provider.sessions), 1)
+        session = next(iter(self.provider.sessions.values()))
+        self.assertEqual(session['expires_at'] - session['created'], 3600)
+        if prepared:
+            old = next(operation for operation in owner.operations if operation.kind == 'checkout_create')
+            resumed = next(operation for operation in current.operations if operation.id == old.id)
+            self.assertEqual(resumed.idempotency_key, old.idempotency_key)
+            self.assertNotEqual(resumed.request_sha256, old.request_sha256)
+            self.assertIsNone(old.sent_at)
+
+    def test_expired_unsent_reservation_recovers_before_first_session_request(self):
+        self.interrupted_checkout()
+
+    def test_expired_prepared_but_proven_unsent_session_refreshes_only_its_deadline(self):
+        self.interrupted_checkout(prepared=True)
+
     def setUp(self):
         self.directory = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.directory)

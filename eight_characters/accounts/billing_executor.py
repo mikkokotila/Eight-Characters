@@ -50,6 +50,26 @@ class Work:
             self.lease, revision=self.owner.revision, lifecycle=self.owner.lifecycle
         )
 
+    def refresh_unsent_checkout(self, intent_id: str) -> None:
+        """Renew only a proven never-submitted deadline after complete discovery."""
+        if not self.discovered or not self.authority.unsent_is_proven(self.lease):
+            raise BillingHold('uncertain_operation')
+        intent = next(value for value in self.owner.intents if value.id == intent_id)
+        if intent.checkout_id is not None:
+            raise BillingHold('uncertain_operation')
+        creators = [operation for operation in self.owner.operations if operation.kind == 'checkout_create' and operation.intent_id == intent_id]
+        if len(creators) > 1 or any(operation.state != 'prepared' or operation.sent_at is not None for operation in creators):
+            raise BillingHold('uncertain_operation')
+        changed = intent.model_copy(update={'expires_at': int(self.authority.clock().timestamp()) + 3600})
+        owner = self.owner.model_copy(update={'intents': tuple(changed if value.id == intent_id else value for value in self.owner.intents)})
+        operations = []
+        for operation in owner.operations:
+            if operation in creators:
+                request = prepare_request(self.authority.config, self.origin, self.scope, owner, purpose='checkout_create', operation_id=operation.id, intent_id=intent_id, subject_id=None)
+                operation = operation.model_copy(update={'request_sha256': request.digest})
+            operations.append(operation)
+        self.save(owner.model_copy(update={'operations': tuple(operations)}))
+
     def execute(
         self,
         purpose: str,
@@ -223,14 +243,14 @@ class Work:
             intent = next(value for value in owner.intents if value.id == intent_id)
             if (
                 result.get('expires_at') != intent.expires_at
-                or result.get('status') != 'open'
+                or result.get('status') not in ('open', 'complete', 'expired')
             ):
                 raise BillingHold('uncertain_operation')
             owner = owner.model_copy(
                 update={
                     'intents': tuple(
                         value.model_copy(
-                            update={'checkout_id': result_id, 'state': 'open'}
+                            update={'checkout_id': result_id, 'state': result['status'], 'subscription_id': None if result.get('subscription') is None else identity(result.get('subscription'), 'sub')}
                         )
                         if value.id == intent_id
                         else value
