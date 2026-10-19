@@ -281,8 +281,8 @@ class Deletion(StrictRecord):
     requested_at: str
     completed_at: str | None
     nonce: Identifier
-    native_object_id: CustomerId
-    native_marker: Digest
+    native_object_id: CustomerId | None
+    native_marker: Digest | None
     retain_until: str | None
 
     @field_validator('requested_at', 'completed_at', 'retain_until')
@@ -294,6 +294,8 @@ class Deletion(StrictRecord):
 
     @model_validator(mode='after')
     def ordered(self) -> Self:
+        if (self.native_object_id is None) != (self.native_marker is None):
+            raise ValueError('A deletion target and its marker must be known together.')
         if self.completed_at is not None and self.completed_at < self.requested_at:
             raise ValueError('Deletion cannot finish before its request.')
         if self.retain_until is not None and self.retain_until < self.requested_at:
@@ -353,6 +355,7 @@ class ScopeRecord(BillingRecord):
 
 
 class AccountBillingRecord(BillingRecord):
+    schema_version: Annotated[int, Field(ge=1, le=2)] = Field(default=1, alias='schema')
     record_type: Literal['account'] = 'account'
     owner_id: Identifier
     customer_id: CustomerId | None
@@ -394,6 +397,8 @@ class AccountBillingRecord(BillingRecord):
         if self.lifecycle in ('deleting', 'deleted') and self.deletion is None:
             raise ValueError('Deleting an owner needs its durable deletion decision.')
         if self.deletion is not None:
+            if self.schema_version == 1 and self.deletion.native_object_id is None:
+                raise ValueError('Account schema 1 requires a native deletion target.')
             if self.deletion.native_object_id != self.customer_id:
                 raise ValueError('Deletion marker names another customer.')
             if (self.lifecycle == 'deleted') != (
