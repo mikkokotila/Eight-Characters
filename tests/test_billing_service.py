@@ -231,7 +231,10 @@ class ServiceApi(unittest.TestCase):
         sign_in(other_client, self.accounts, 'other-cleanup@example.invalid')
         other = self.accounts.store.user_by_email('other-cleanup@example.invalid')
         if native:
-            response = other_client.post('/api/account/billing/checkout', json={'key': account_key(other), 'plan': 'basic', 'period': 'monthly'})
+            response = other_client.post(
+                '/api/account/billing/checkout',
+                json={'key': account_key(other), 'plan': 'basic', 'period': 'monthly'},
+            )
             self.assertEqual(response.status_code, 200, response.text)
         else:
             self.service.authority.ensure_owner(other.id)
@@ -262,7 +265,9 @@ class ServiceApi(unittest.TestCase):
         self.assertIsNone(self.accounts.store.user_by_id(other.id))
         self.assertEqual(self.provider.sessions['cs_test_2']['status'], 'expired')
 
-    def test_startup_stays_closed_but_attempts_other_owners_cleanup_before_reporting_hold(self):
+    def test_startup_stays_closed_but_attempts_other_owners_cleanup_before_reporting_hold(
+        self,
+    ):
         self.assertEqual(self.checkout().status_code, 200)
         self.provider.complete()
         self.service.reconcile(self.user.id)
@@ -277,30 +282,54 @@ class ServiceApi(unittest.TestCase):
     def interrupted_checkout(self, *, prepared=False):
         original_execute = Work.execute
         original_save = Work.save
+
         def crash_before_send(work, owner):
-            if any(operation.kind == 'checkout_create' and operation.state == 'sent' for operation in owner.operations):
+            if any(
+                operation.kind == 'checkout_create' and operation.state == 'sent'
+                for operation in owner.operations
+            ):
                 raise RuntimeError('injected before Session sent commit')
             original_save(work, owner)
+
         def crash_before_reservation(work, purpose, **kwargs):
             if purpose == 'checkout_create':
                 raise RuntimeError('injected before Session reservation')
             return original_execute(work, purpose, **kwargs)
-        with patch.object(Work, 'save', crash_before_send) if prepared else patch.object(Work, 'execute', crash_before_reservation):
+
+        with (
+            patch.object(Work, 'save', crash_before_send)
+            if prepared
+            else patch.object(Work, 'execute', crash_before_reservation)
+        ):
             with self.assertRaises(RuntimeError):
                 self.checkout()
-        owner = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        owner = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord)
+        )
         self.assertFalse(self.provider.sessions)
         self.clock.advance(3601)
         self.service.recover()
-        current = next(record for record in self.accounts.store.billing_records() if isinstance(record, AccountBillingRecord))
+        current = next(
+            record
+            for record in self.accounts.store.billing_records()
+            if isinstance(record, AccountBillingRecord)
+        )
         self.assertEqual(current.intents[0].id, owner.intents[0].id)
         self.assertEqual(current.intents[0].offer_id, owner.intents[0].offer_id)
         self.assertEqual(len(self.provider.sessions), 1)
         session = next(iter(self.provider.sessions.values()))
         self.assertEqual(session['expires_at'] - session['created'], 3600)
         if prepared:
-            old = next(operation for operation in owner.operations if operation.kind == 'checkout_create')
-            resumed = next(operation for operation in current.operations if operation.id == old.id)
+            old = next(
+                operation
+                for operation in owner.operations
+                if operation.kind == 'checkout_create'
+            )
+            resumed = next(
+                operation for operation in current.operations if operation.id == old.id
+            )
             self.assertEqual(resumed.idempotency_key, old.idempotency_key)
             self.assertNotEqual(resumed.request_sha256, old.request_sha256)
             self.assertIsNone(old.sent_at)
@@ -308,7 +337,9 @@ class ServiceApi(unittest.TestCase):
     def test_expired_unsent_reservation_recovers_before_first_session_request(self):
         self.interrupted_checkout()
 
-    def test_expired_prepared_but_proven_unsent_session_refreshes_only_its_deadline(self):
+    def test_expired_prepared_but_proven_unsent_session_refreshes_only_its_deadline(
+        self,
+    ):
         self.interrupted_checkout(prepared=True)
 
     def setUp(self):

@@ -187,7 +187,13 @@ def verify_sandbox_catalogue(
     for index, offer in enumerate(OFFERS):
         price_id = config.price_ids[index]
         product_id = config.product_ids[index // 2]
-        price = _native_get(client, config, f'prices/{price_id}', expanded_product=True, before_request=before_request)
+        price = _native_get(
+            client,
+            config,
+            f'prices/{price_id}',
+            expanded_product=True,
+            before_request=before_request,
+        )
         _verify_price(price, offer, price_id, product_id)
         verified.append(
             {

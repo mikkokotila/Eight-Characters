@@ -70,7 +70,13 @@ def request_digest(method: str, path: str, parameters: Parameters) -> str:
 
 
 class Stripe:
-    def __init__(self, config: BillingConfig, client: httpx.Client, *, before_request: Callable[[], None] | None = None) -> None:
+    def __init__(
+        self,
+        config: BillingConfig,
+        client: httpx.Client,
+        *,
+        before_request: Callable[[], None] | None = None,
+    ) -> None:
         self.config = config
         self.client = client
         self.before_request = before_request

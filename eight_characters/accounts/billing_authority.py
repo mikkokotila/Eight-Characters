@@ -204,9 +204,15 @@ class Authority:
     def begin_recovery(self) -> str:
         """Close the global gate durably before the first native HTTP request."""
         with self.write() as connection:
-            runtime = connection.execute('SELECT reason FROM billing_runtime WHERE id=1').fetchone()
+            runtime = connection.execute(
+                'SELECT reason FROM billing_runtime WHERE id=1'
+            ).fetchone()
             # Restores never carry this non-backed-up normal-database marker.
-            reason = 'unverified:normal' if runtime is not None and runtime[0].endswith(':normal') else 'unverified'
+            reason = (
+                'unverified:normal'
+                if runtime is not None and runtime[0].endswith(':normal')
+                else 'unverified'
+            )
             records = billing_records_in(connection)
             now = timestamp(self.clock())
             if records:
@@ -517,14 +523,21 @@ class Authority:
             self._check_lease(connection, lease)
             connection.execute(
                 'UPDATE billing_leases SET expires_at=? WHERE record_id=? AND token=?',
-                (int(self.clock().timestamp()) + self.config.lease_seconds, lease.owner_id, lease.token),
+                (
+                    int(self.clock().timestamp()) + self.config.lease_seconds,
+                    lease.owner_id,
+                    lease.token,
+                ),
             )
 
     def unsent_is_proven(self, lease: Lease) -> bool:
         """A prepared flag is trusted only in a verified, un-restored database."""
         with self.write() as connection:
             self._check_lease(connection, lease)
-            row = connection.execute('SELECT reason FROM billing_runtime WHERE id=1 AND epoch=?', (lease.epoch,)).fetchone()
+            row = connection.execute(
+                'SELECT reason FROM billing_runtime WHERE id=1 AND epoch=?',
+                (lease.epoch,),
+            ).fetchone()
             return row is not None and row[0].endswith(':normal')
 
     def apply(
@@ -596,7 +609,11 @@ class Authority:
             else:
                 connection.execute(
                     'UPDATE billing_leases SET expires_at=? WHERE record_id=? AND token=?',
-                    (int(self.clock().timestamp()) + self.config.lease_seconds, old.id, lease.token),
+                    (
+                        int(self.clock().timestamp()) + self.config.lease_seconds,
+                        old.id,
+                        lease.token,
+                    ),
                 )
         return replacement
 

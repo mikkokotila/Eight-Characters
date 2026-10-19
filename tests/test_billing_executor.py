@@ -19,12 +19,14 @@ class NativeExecution(AuthorityCase):
         work = self.work(self.response)
         original = work.save
         writes = 0
+
         def crash(owner):
             nonlocal writes
             writes += 1
             if writes == 2:
                 raise RuntimeError('injected crash before sent commit')
             original(owner)
+
         with patch.object(work, 'save', side_effect=crash):
             with self.assertRaises(RuntimeError):
                 work.execute('customer_create')
@@ -42,8 +44,14 @@ class NativeExecution(AuthorityCase):
         work = Work(authority, old.native, old.origin, old.scope, lease, owner, True)
         work.execute('customer_create')
         self.assertEqual(work.owner.customer_id, 'cus_created')
-        self.assertEqual(work.owner.operations[0].idempotency_key, old.owner.operations[0].idempotency_key)
-        self.assertEqual(work.owner.operations[0].request_sha256, old.owner.operations[0].request_sha256)
+        self.assertEqual(
+            work.owner.operations[0].idempotency_key,
+            old.owner.operations[0].idempotency_key,
+        )
+        self.assertEqual(
+            work.owner.operations[0].request_sha256,
+            old.owner.operations[0].request_sha256,
+        )
         authority.release(work.lease)
 
     def test_restored_prepared_flag_is_not_proof_that_native_http_never_happened(self):
@@ -63,12 +71,18 @@ class NativeExecution(AuthorityCase):
 
     def test_native_history_longer_than_one_lease_keeps_a_live_fenced_claim(self):
         calls = []
+
         def slow(request):
             calls.append(request.url.path)
             self.clock.advance(self.config.lease_seconds - 1)
             if request.method == 'GET':
-                return httpx.Response(200, json={'object': 'account', 'id': self.config.catalogue.account_id}, headers={'Stripe-Version': self.config.catalogue.api_version})
+                return httpx.Response(
+                    200,
+                    json={'object': 'account', 'id': self.config.catalogue.account_id},
+                    headers={'Stripe-Version': self.config.catalogue.api_version},
+                )
             return self.response(request)
+
         work = self.work(slow)
         for _ in range(5):
             work.native.account()

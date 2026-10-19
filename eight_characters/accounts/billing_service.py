@@ -823,7 +823,9 @@ class BillingService:
                         'Existing paid time or collection must finish before another purchase.'
                     )
             try:
-                verify_sandbox_catalogue(self.config.catalogue, self.native.client, before_request=work.renew)
+                verify_sandbox_catalogue(
+                    self.config.catalogue, self.native.client, before_request=work.renew
+                )
             except BillingError:
                 raise BillingHold('native_unavailable') from None
             offer = next(
@@ -944,9 +946,24 @@ class BillingService:
             if retry_at > now:
                 waits.append(retry_at - now)
                 continue
-            pending = [record for record in records if isinstance(record, EventRecord) and record.owner_id == owner.id and record.state == 'pending']
-            if pending and all(record.next_attempt_at is not None and record.next_attempt_at > now for record in pending):
-                waits.append(min(record.next_attempt_at - now for record in pending if record.next_attempt_at is not None))
+            pending = [
+                record
+                for record in records
+                if isinstance(record, EventRecord)
+                and record.owner_id == owner.id
+                and record.state == 'pending'
+            ]
+            if pending and all(
+                record.next_attempt_at is not None and record.next_attempt_at > now
+                for record in pending
+            ):
+                waits.append(
+                    min(
+                        record.next_attempt_at - now
+                        for record in pending
+                        if record.next_attempt_at is not None
+                    )
+                )
                 continue
             try:
                 self.reconcile(owner.id)
