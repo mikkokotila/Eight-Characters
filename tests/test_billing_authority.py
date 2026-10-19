@@ -75,20 +75,40 @@ class FencedAuthority(AuthorityCase):
         self.backup()
         target = self.directory / 'pending-delete.sqlite3'
         restore_backup(self.checkout, self.identity, target)
-        restored = next(record for record in AccountStore.open(target).billing_records() if record.id == self.user.id)
+        restored = next(
+            record
+            for record in AccountStore.open(target).billing_records()
+            if record.id == self.user.id
+        )
         self.assertEqual(restored, deleting)
 
     def test_retry_is_durable_and_pending_delivery_never_becomes_applied(self):
         lease, _ = self.bound()
         self.authority.release(lease)
-        self.authority.enqueue(Delivery('evt_retry', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True))
+        self.authority.enqueue(
+            Delivery('evt_retry', 'invoice.paid', 'in_one', 'cus_one', 'e' * 64, True)
+        )
         for attempt in range(1, 9):
             lease, owner = self.authority.claim(self.user.id)
             self.authority.defer(lease, 'native_unavailable')
-            event = next(record for record in self.store.billing_records() if getattr(record, 'event_id', None) == 'evt_retry')
-            self.assertEqual((event.state, event.attempts, event.reason), ('pending', attempt, 'native_unavailable'))
-            self.assertEqual(event.next_attempt_at - int(self.clock().timestamp()), min(300, 5 * 2 ** (attempt - 1)))
-            owner = next(record for record in self.store.billing_records() if record.id == owner.id)
+            event = next(
+                record
+                for record in self.store.billing_records()
+                if getattr(record, 'event_id', None) == 'evt_retry'
+            )
+            self.assertEqual(
+                (event.state, event.attempts, event.reason),
+                ('pending', attempt, 'native_unavailable'),
+            )
+            self.assertEqual(
+                event.next_attempt_at - int(self.clock().timestamp()),
+                min(300, 5 * 2 ** (attempt - 1)),
+            )
+            owner = next(
+                record
+                for record in self.store.billing_records()
+                if record.id == owner.id
+            )
             self.assertEqual(owner.lifecycle, 'held')
         self.authority.hold_runtime(self.epoch, 'permission_missing')
         self.assertFalse(self.authority.snapshot()[2])

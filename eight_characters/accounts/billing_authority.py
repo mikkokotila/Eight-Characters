@@ -296,9 +296,12 @@ class Authority:
                 'SELECT epoch,ready FROM billing_runtime WHERE id=1'
             ).fetchone()
             if (
-                runtime is None or tuple(runtime) != (epoch, 0)
-                or owner.scope_id != scope.id or owner.schema_version != 2
-                or owner.revision != 0 or any(record.id == owner.id for record in records)
+                runtime is None
+                or tuple(runtime) != (epoch, 0)
+                or owner.scope_id != scope.id
+                or owner.schema_version != 2
+                or owner.revision != 0
+                or any(record.id == owner.id for record in records)
             ):
                 raise BillingHold('ownership_conflict')
             self._put(connection, (owner,))
@@ -328,7 +331,15 @@ class Authority:
         with self.write() as connection:
             records = billing_records_in(connection)
             self.scope(records)
-            owner = next((record for record in records if isinstance(record, AccountBillingRecord) and record.id == owner_id), None)
+            owner = next(
+                (
+                    record
+                    for record in records
+                    if isinstance(record, AccountBillingRecord)
+                    and record.id == owner_id
+                ),
+                None,
+            )
             if owner is None:
                 raise BillingHold('unknown_owner')
             if owner.lifecycle in ('deleting', 'deleted'):
@@ -336,16 +347,24 @@ class Authority:
             now = timestamp(self.clock())
             nonce = new_id()
             deletion = Deletion(
-                requested_at=now, completed_at=None, nonce=nonce,
+                requested_at=now,
+                completed_at=None,
+                nonce=nonce,
                 native_object_id=owner.customer_id,
-                native_marker=None if owner.customer_id is None else deletion_mac(self.config, owner.id, owner.customer_id, nonce, now),
+                native_marker=None
+                if owner.customer_id is None
+                else deletion_mac(self.config, owner.id, owner.customer_id, nonce, now),
                 retain_until=None,
             )
-            changed = owner.model_copy(update={
-                'schema_version': 2, 'lifecycle': 'deleting', 'deletion': deletion,
-                'revision': owner.revision + 1,
-                'updated_at': _next_time(owner.updated_at, self.clock()),
-            })
+            changed = owner.model_copy(
+                update={
+                    'schema_version': 2,
+                    'lifecycle': 'deleting',
+                    'deletion': deletion,
+                    'revision': owner.revision + 1,
+                    'updated_at': _next_time(owner.updated_at, self.clock()),
+                }
+            )
             self._put(connection, (changed,))
             connection.execute(
                 'UPDATE billing_leases SET expires_at=0,generation=generation+1 WHERE record_id=?',
@@ -360,23 +379,41 @@ class Authority:
         with self.write() as connection:
             owner = self._check_lease(connection, lease)
             now = self.clock()
-            changed: list[BillingDocument] = [owner.model_copy(update={
-                'lifecycle': 'held' if owner.lifecycle == 'active' else owner.lifecycle,
-                'revision': owner.revision + 1,
-                'updated_at': _next_time(owner.updated_at, now),
-            })]
+            changed: list[BillingDocument] = [
+                owner.model_copy(
+                    update={
+                        'lifecycle': 'held'
+                        if owner.lifecycle == 'active'
+                        else owner.lifecycle,
+                        'revision': owner.revision + 1,
+                        'updated_at': _next_time(owner.updated_at, now),
+                    }
+                )
+            ]
             for record in billing_records_in(connection):
-                if isinstance(record, EventRecord) and record.owner_id == owner.id and record.state == 'pending':
+                if (
+                    isinstance(record, EventRecord)
+                    and record.owner_id == owner.id
+                    and record.state == 'pending'
+                ):
                     attempts = record.attempts + 1
-                    changed.append(record.model_copy(update={
-                        'revision': record.revision + 1,
-                        'updated_at': _next_time(record.updated_at, now),
-                        'attempts': attempts,
-                        'next_attempt_at': int(now.timestamp()) + min(300, 5 * 2 ** min(attempts - 1, 6)),
-                        'reason': reason,
-                    }))
+                    changed.append(
+                        record.model_copy(
+                            update={
+                                'revision': record.revision + 1,
+                                'updated_at': _next_time(record.updated_at, now),
+                                'attempts': attempts,
+                                'next_attempt_at': int(now.timestamp())
+                                + min(300, 5 * 2 ** min(attempts - 1, 6)),
+                                'reason': reason,
+                            }
+                        )
+                    )
             self._put(connection, changed)
-            connection.execute('UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?', (owner.id, lease.token))
+            connection.execute(
+                'UPDATE billing_leases SET expires_at=0 WHERE record_id=? AND token=?',
+                (owner.id, lease.token),
+            )
 
     def claim(
         self, owner_id: str, *, recovery_epoch: str | None = None
