@@ -208,6 +208,8 @@ def effective_access(
         return Access(current[0][0], 'paid', max(end for _, end in current))
     if held:
         return Access('free', 'held', None, 'unverified')
+    if any(intent.state == 'held' for intent in owner.intents):
+        return Access('free', 'held', None, 'uncertain_operation')
     if any(intent.state not in ('expired', 'complete') for intent in owner.intents):
         return Access('free', 'pending', None)
     return Access('free', 'expired' if owner.coverage else 'free', None)
