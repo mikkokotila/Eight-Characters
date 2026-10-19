@@ -3,6 +3,7 @@
 import email
 import re
 import shutil
+import sqlite3
 import subprocess
 import tempfile
 import unittest
@@ -13,7 +14,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from eight_characters.accounts.store import AccountStore
+from eight_characters.accounts.store import APPLICATION_ID, LEGACY_MIGRATIONS, AccountStore
 from eight_characters.accounts.web import Accounts, get_accounts, load_config
 from eight_characters.main import app
 
@@ -40,6 +41,22 @@ class Clock:
 
     def advance(self, seconds: float) -> None:
         self.now += timedelta(seconds=seconds)
+
+
+def legacy_store(path: Path, clock: Clock) -> AccountStore:
+    """A frozen schema-4 input for manifest-1 compatibility and migration tests.
+
+    Opening through the writer would deliberately migrate it to schema 5.
+    """
+    path.touch(mode=0o600, exist_ok=False)
+    with sqlite3.connect(path) as connection:
+        connection.execute('BEGIN IMMEDIATE')
+        for migration in LEGACY_MIGRATIONS:
+            for statement in migration:
+                connection.execute(statement)
+        connection.execute(f'PRAGMA application_id={APPLICATION_ID}')
+        connection.execute('PRAGMA user_version=4')
+    return AccountStore(path, clock=clock)
 
 
 def git(root: Path, *args: str) -> str:

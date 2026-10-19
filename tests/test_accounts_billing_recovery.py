@@ -215,8 +215,9 @@ class BillingRecovery(BackupTestCase):
         try:
             connection.execute('PRAGMA foreign_keys=ON')
             connection.execute('BEGIN IMMEDIATE')
-            for statement in BILLING_SCHEMA_5:
-                connection.execute(statement)
+            if connection.execute('PRAGMA user_version').fetchone()[0] < 5:
+                for statement in BILLING_SCHEMA_5:
+                    connection.execute(statement)
             connection.execute('PRAGMA user_version=5')
             if tombstone:
                 connection.execute('DELETE FROM users WHERE id=?', (user.id,))
@@ -224,6 +225,7 @@ class BillingRecovery(BackupTestCase):
                     'INSERT INTO changes(kind,record_id,path) VALUES (?,?,?)',
                     ('user', user.id, f'users/{user.id[:2]}/{user.id}/user.json'),
                 )
+            connection.execute('DELETE FROM billing_runtime')
             restore_billing(connection, data)
             # Model a future producer after pruning at a nonzero high-water.
             connection.execute('DELETE FROM changes')
@@ -248,16 +250,19 @@ class BillingRecovery(BackupTestCase):
             connection.close()
         return user, data
 
-    def test_normal_open_and_backup_stay_schema4_manifest1(self):
+    def test_legacy_backup_stays_manifest1_until_the_writer_migrates(self):
         self.store.create_user('legacy@example.invalid', 'fi')
         self.backup()
         before = git(self.checkout, 'rev-parse', 'HEAD^{tree}')
-        AccountStore.open(self.store.path)
         self.backup()
         self.assertEqual(before, git(self.checkout, 'rev-parse', 'HEAD^{tree}'))
         self.assertEqual(self.store.schema_version(), 4)
         self.assertIsNone(read_manifest(self.checkout).billing_count)
         self.assertFalse((self.checkout / 'billing').exists())
+        AccountStore.open(self.store.path)
+        self.backup()
+        self.assertEqual(self.store.schema_version(), 5)
+        self.assertEqual(read_manifest(self.checkout).billing_count, 0)
 
     def test_preopened_handle_fences_future_business_writes_and_unknown_reads(self):
         user, _ = self.future()
@@ -384,14 +389,14 @@ class BillingRecovery(BackupTestCase):
         with self.assertRaisesRegex(StoreError, 'high-water'):
             self.store.backup_snapshot()
 
-    def test_legacy_restore_resets_sequence_and_financial_writer_is_absent(self):
+    def test_legacy_restore_resets_sequence_and_starts_a_held_writer_generation(self):
         self.store.create_user('one@example.invalid', 'fi')
         self.backup()
         target = self.directory / 'legacy.sqlite3'
         restore_backup(self.checkout, self.identity, target)
         recovered = AccountStore.open(target)
         self.assertEqual(
-            (recovered.schema_version(), recovered.backup_snapshot().after_seq), (4, 0)
+            (recovered.schema_version(), recovered.backup_snapshot().after_seq), (5, 0)
         )
         self.assertEqual(recovered.billing_records(), ())
 

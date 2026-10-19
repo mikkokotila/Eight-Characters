@@ -31,6 +31,7 @@ from tests.accounts_support import (
     Clock,
     all_object_contents,
     git,
+    legacy_store,
     make_remote_and_checkout,
 )
 
@@ -43,9 +44,7 @@ class BackupTestCase(unittest.TestCase):
         self.identity = pyrage.x25519.Identity.generate()
         self.recipient = self.identity.to_public()
         self.clock = Clock()
-        self.store = AccountStore.create(
-            self.directory / 'accounts.sqlite3', clock=self.clock
-        )
+        self.store = legacy_store(self.directory / 'accounts.sqlite3', self.clock)
 
     def backup(self) -> None:
         run_backup(self.store, self.checkout, self.recipient)
