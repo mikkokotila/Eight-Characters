@@ -815,8 +815,12 @@ class BillingService:
         return reply
 
     def cancel(self, owner_id: str) -> None:
+        self.authority.ensure_owner(owner_id, clock_id=self.config.purchase_clock)
         self.reconcile(owner_id)
         work = self._claim(owner_id)
+        if work.owner.customer_id is None:
+            self.authority.release(work.lease)
+            return
         try:
             observation = self._observe(work)
             for subscription in observation.subscriptions:
@@ -865,6 +869,9 @@ class BillingService:
                             continue
                         await asyncio.to_thread(self.reconcile, owner.id)
                 delay = self.config.poll_seconds
+            except asyncio.CancelledError:
+                self.authority.stop(self.epoch)
+                raise
             except BillingHold as exc:
                 self.authority.hold_runtime(self.epoch, exc.reason)
                 logger.warning('Billing reconciliation held: %s', exc.reason)

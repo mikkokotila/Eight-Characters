@@ -50,6 +50,7 @@ NEEDS_ACCOUNT = {
     ('POST', '/api/today/days'),
 }
 OPEN = {
+    ('POST', '/api/billing/stripe/webhook'),
     ('POST', '/api/first_chart'),
     ('POST', '/api/location_search'),
     ('POST', '/api/location_suggest'),

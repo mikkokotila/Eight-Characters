@@ -318,6 +318,16 @@ class Authority:
             if changed != 1:
                 raise BillingHold('uncertain_operation')
 
+    def stop(self, epoch: str) -> None:
+        """Fence bounded native threads still completing after task cancellation."""
+        with self.write() as connection:
+            changed = connection.execute(
+                "UPDATE billing_runtime SET epoch=?,ready=0,reason='unverified' WHERE id=1 AND epoch=?",
+                (secrets.token_hex(32), epoch),
+            ).rowcount
+            if changed == 1:
+                connection.execute('UPDATE billing_leases SET expires_at=0')
+
     def release(self, lease: Lease) -> None:
         with self.write() as connection:
             self._check_lease(connection, lease)

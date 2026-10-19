@@ -12,6 +12,7 @@ import hmac
 import logging
 import os
 import re
+import sqlite3
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -23,10 +24,18 @@ from urllib.parse import urlsplit
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
 from fastapi import Path as PathPart
 from pydantic import BaseModel, ConfigDict, Field
-from typing_extensions import TypedDict
+from starlette.concurrency import run_in_threadpool
+from typing_extensions import NotRequired, TypedDict
 
+from eight_characters.accounts.billing import BillingError
+from eight_characters.accounts.billing_access import BillingConfig, BillingHold, load_runtime_config
+from eight_characters.accounts.billing_records import AccountBillingRecord
+from eight_characters.accounts.billing_native import Stripe
+from eight_characters.accounts.billing_service import BillingService, PurchaseConflict
+from eight_characters.accounts.billing_webhook import MAX_BODY, InvalidDelivery, verify_delivery
 from eight_characters.accounts.mail import (
     DirectoryTransport,
     Mailer,
@@ -136,6 +145,7 @@ class AccountsConfig:
     chart_requests_per_client: int
     # The secret a trusted proxy shows (see PROXY_SECRET_HEADER); None trusts none.
     proxy_secret: bytes | None
+    billing: BillingConfig | None = None
 
     @property
     def secure(self) -> bool:
@@ -178,12 +188,6 @@ def _positive(env: Mapping[str, str], name: str, errors: list[str]) -> int:
 
 def load_config(env: Mapping[str, str]) -> AccountsConfig:
     """The account settings in `env`, or ConfigError naming everything wrong."""
-    if env.get('EC_BILLING_MODE', 'disabled') != 'disabled' or any(
-        name.startswith('EC_STRIPE_') for name in env
-    ):
-        raise ConfigError(
-            'Billing service configuration requires the billing writer; this release is a recovery reader.'
-        )
     required = (
         'EC_APP_ORIGIN',
         'EC_DATABASE_PATH',
@@ -257,6 +261,10 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
             errors.append('EC_PROXY_SECRET must be at least 32 bytes, or not set.')
     if errors:
         raise ConfigError(' '.join(errors))
+    try:
+        billing = load_runtime_config(env, session_secret=secret_key)
+    except BillingError as exc:
+        raise ConfigError(str(exc)) from None
     return AccountsConfig(
         origin=origin,
         database=Path(env['EC_DATABASE_PATH']),
@@ -271,6 +279,7 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
         limits=Limits(per_address=per_address, per_client=per_client),
         chart_requests_per_client=charts_per_client,
         proxy_secret=proxy_secret,
+        billing=billing,
     )
 
 
@@ -284,6 +293,7 @@ class Accounts:
     mailer: Mailer
     person_check: PersonCheck
     clock: Callable[[], datetime]
+    billing: BillingService | None = None
 
     @classmethod
     def open(
@@ -293,10 +303,12 @@ class Accounts:
         mailer: Mailer | None = None,
         person_check: PersonCheck | None = None,
         clock: Callable[[], datetime] | None = None,
+        billing_client: httpx.Client | None = None,
     ) -> 'Accounts':
         now = clock or (lambda: datetime.now(UTC))
-        store = AccountStore.open(config.database, clock=now)
-        if store.schema_version() > SCHEMA_VERSION or store.financially_managed():
+        native = None if config.billing is None else Stripe(config.billing, billing_client if billing_client is not None else httpx.Client())
+        store = AccountStore.open(config.database, clock=now, billing_config=config.billing, billing_clock=None if native is None else native.clock)
+        if store.schema_version() > SCHEMA_VERSION or (store.financially_managed() and config.billing is None):
             raise ConfigError(
                 'This release can recover schema-5 billing records but cannot serve '
                 'financially managed accounts. Use the billing writer for account service.'
@@ -316,6 +328,7 @@ class Accounts:
             person_check=person_check
             or Turnstile(config.turnstile_secret, httpx.Client()),
             clock=now,
+            billing=None if native is None or config.billing is None else BillingService(store, config.billing, config.origin, native, clock=now),
         )
 
 
@@ -331,7 +344,7 @@ def get_accounts() -> Accounts:
     # Even a session that needs no renewal must not serve legacy plan limits.
     if (
         accounts.store.schema_version() > SCHEMA_VERSION
-        or accounts.store.financially_managed()
+        or (accounts.store.financially_managed() and accounts.billing is None)
     ):
         raise BillingReadOnly('This reader cannot serve financially managed accounts.')
     return accounts
@@ -526,6 +539,11 @@ class AccountRequest(BaseModel):
     key: str
 
 
+class CheckoutRequest(AccountRequest):
+    plan: Literal['basic', 'plus', 'pro']
+    period: Literal['monthly', 'yearly']
+
+
 class DeleteRequest(BaseModel):
     model_config = ConfigDict(extra='forbid')
 
@@ -671,6 +689,13 @@ class CoupleView(TypedDict):
     charts: list[str]
 
 
+class BillingView(TypedDict):
+    tier: str
+    status: str
+    paid_through: int | None
+    reason: str | None
+
+
 class SettingsView(TypedDict):
     # The charts the account keeps, in the order they were saved: a new one comes
     # last. Each with its pillars, as a partner's chart had them.
@@ -694,6 +719,7 @@ class SettingsView(TypedDict):
     # When the settings last changed; None for an account that has set nothing.
     updated_at: str | None
     key: str
+    billing: NotRequired[BillingView]
 
 
 class SavedReply(SettingsView):
@@ -707,6 +733,94 @@ def _not_cached(response: Response) -> None:
 
 
 router = APIRouter(prefix='/api/account', dependencies=[Depends(_not_cached)])
+provider_router = APIRouter()
+
+
+def _billing(accounts: Accounts) -> BillingService:
+    if accounts.billing is None:
+        raise HTTPException(status_code=503, detail='Sandbox billing is not enabled.')
+    return accounts.billing
+
+
+def _capacity_view(accounts: Accounts, user: User) -> tuple[BillingView | None, PlanLimits]:
+    try:
+        access, limits = accounts.store.capacity(user.id)
+    except BillingHold as exc:
+        if accounts.billing is None:
+            raise
+        # Preserve retained-library reads/edits while billing cannot make an
+        # addition decision. The store still refuses additions until verified.
+        return BillingView(tier='free', status='held', paid_through=None, reason=exc.reason), PlanLimits(accounts.store.limits(user.plan).couples_per_chart, 1)
+    if access is None:
+        return None, limits
+    return BillingView(tier=access.tier, status=access.status, paid_through=access.paid_through, reason=access.reason), limits
+
+
+def _settings_reply(accounts: Accounts, user: User, settings: Settings | None) -> SettingsView:
+    billing, limits = _capacity_view(accounts, user)
+    reply = settings_view(user, settings, limits)
+    if billing is not None:
+        reply['billing'] = billing
+    return reply
+
+
+@router.get('/billing')
+def read_billing_status(current: SessionDependency, accounts: AccountsDependency) -> BillingView:
+    user = _signed_in(current).user
+    _billing(accounts)
+    billing, _ = _capacity_view(accounts, user)
+    if billing is None:
+        raise BillingHold('unverified')
+    return billing
+
+
+@router.post('/billing/checkout')
+def create_billing_checkout(payload: CheckoutRequest, request: Request, current: SessionDependency, accounts: AccountsDependency) -> dict[str, object]:
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    try:
+        return _billing(accounts).checkout(user.id, payload.plan, payload.period)
+    except PurchaseConflict as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from None
+
+
+@router.post('/billing/cancel')
+def cancel_billing_renewal(payload: AccountRequest, request: Request, current: SessionDependency, accounts: AccountsDependency) -> BillingView:
+    _same_origin(request, accounts)
+    user = _signed_in(current).user
+    _named(user, payload.key)
+    _billing(accounts).cancel(user.id)
+    billing, _ = _capacity_view(accounts, user)
+    if billing is None:
+        raise BillingHold('unverified')
+    return billing
+
+
+@provider_router.get('/account/billing/return')
+def billing_return(current: SessionDependency, accounts: AccountsDependency) -> RedirectResponse:
+    user = _signed_in(current).user
+    _billing(accounts).reconcile(user.id)
+    return RedirectResponse(accounts.config.origin + '/', status_code=303, headers={'Cache-Control': 'no-store'})
+
+
+@provider_router.post('/api/billing/stripe/webhook', status_code=202)
+async def stripe_webhook(request: Request, accounts: AccountsDependency) -> dict[str, str]:
+    service = _billing(accounts)
+    raw = bytearray()
+    async for chunk in request.stream():
+        if len(raw) + len(chunk) > MAX_BODY:
+            raise HTTPException(status_code=413, detail='Invalid Stripe delivery.')
+        raw.extend(chunk)
+    try:
+        delivery = verify_delivery(bytes(raw), request.headers.get('Stripe-Signature'), service.config, wall_time=int(accounts.clock().timestamp()))
+    except InvalidDelivery as exc:
+        raise HTTPException(status_code=exc.status, detail=str(exc)) from None
+    try:
+        event = await run_in_threadpool(service.authority.enqueue, delivery)
+    except (sqlite3.Error, BillingHold):
+        raise HTTPException(status_code=503, detail='Billing delivery could not be committed.') from None
+    return {'status': event.state}
 
 
 def _named(user: User, key: str) -> None:
@@ -867,7 +981,16 @@ def export_account(
     response.headers['Content-Disposition'] = (
         'attachment; filename="eight-chord-account.json"'
     )
-    return {**data, 'exported_at': timestamp(accounts.clock())}
+    exported = {**data, 'exported_at': timestamp(accounts.clock())}
+    if accounts.billing is not None:
+        billing, _ = _capacity_view(accounts, user)
+        owner = next((record for record in accounts.store.billing_records() if isinstance(record, AccountBillingRecord) and record.id == user.id and record.lifecycle != 'deleted'), None)
+        exported['billing'] = {
+            'status': billing,
+            'customer_id': None if owner is None else owner.customer_id,
+            'invoices': [] if owner is None else [{'invoice_id': fact.invoice_id, 'charge_id': fact.charge_id, 'subscription_id': fact.subscription_id} for fact in owner.coverage],
+        }
+    return exported
 
 
 @router.delete('', status_code=204)
@@ -893,6 +1016,12 @@ def delete_account(
         raise HTTPException(
             status_code=400, detail='Type the account’s email address to delete it.'
         )
+    if accounts.billing is not None:
+        if accounts.billing.delete(user.id):
+            _clear_session_cookie(response, accounts)
+        else:
+            response.status_code = 202
+        return
     try:
         accounts.store.delete_user(user.id)
     except UnknownUser as exc:
@@ -1051,7 +1180,7 @@ def _store_change(change: Callable[[], _Changed]) -> _Changed:
 def _changed(
     accounts: Accounts, user: User, change: Callable[[], Settings | None]
 ) -> SettingsView:
-    return settings_view(user, _store_change(change), accounts.store.limits(user.plan))
+    return _settings_reply(accounts, user, _store_change(change))
 
 
 @router.get('/settings')
@@ -1061,9 +1190,7 @@ def read_settings(
     """Your saved charts, your own among them, your couples, where you are, and your
     schools."""
     user = _signed_in(current).user
-    return settings_view(
-        user, accounts.store.settings(user.id), accounts.store.limits(user.plan)
-    )
+    return _settings_reply(accounts, user, accounts.store.settings(user.id))
 
 
 @router.post('/charts', status_code=201)
@@ -1094,7 +1221,7 @@ def save_chart(
         )
     )
     return SavedReply(
-        **settings_view(user, settings, accounts.store.limits(user.plan)),
+        **_settings_reply(accounts, user, settings),
         saved=chart_id,
     )
 

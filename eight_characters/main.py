@@ -1,3 +1,4 @@
+import asyncio
 import json
 import re
 from collections.abc import AsyncGenerator
@@ -26,6 +27,7 @@ from eight_characters.accounts.records import (
 )
 from eight_characters.accounts.records import Place as AccountPlace
 from eight_characters.accounts.store import BillingReadOnly
+from eight_characters.accounts.billing_access import BillingHold
 from eight_characters.accounts.web import (
     AccountsDependency,
     BirthBody,
@@ -39,6 +41,7 @@ from eight_characters.accounts.web import (
     require_account,
 )
 from eight_characters.accounts.web import router as account_router
+from eight_characters.accounts.web import provider_router as billing_provider_router
 from eight_characters.canon import load_canon
 from eight_characters.conventions import ConventionSettings
 from eight_characters.data import (
@@ -144,12 +147,30 @@ QI_HIERARCHY_BY_TYPE: dict[str, int] = {'main': 3, 'middle': 2, 'residual': 1}
 async def lifespan(_app: FastAPI) -> AsyncGenerator[None]:
     # Validate service and account settings before accepting requests.
     load_geocoding_config()
-    accounts_from_environment()
-    yield
+    accounts = accounts_from_environment()
+    if accounts.billing is None:
+        yield
+    else:
+        try:
+            async with asyncio.TaskGroup() as group:
+                task = group.create_task(accounts.billing.run())
+                try:
+                    yield
+                finally:
+                    task.cancel()
+                    accounts.billing.authority.stop(accounts.billing.epoch)
+        finally:
+            accounts.billing.native.client.close()
 
 
 app = FastAPI(title='Eight Characters', lifespan=lifespan)
 app.include_router(account_router)
+app.include_router(billing_provider_router)
+
+
+@app.exception_handler(BillingHold)
+async def billing_temporarily_held(_request: Request, exc: BillingHold) -> JSONResponse:
+    return JSONResponse(status_code=503, content={'detail': 'Billing verification is temporarily unavailable.', 'billing': {'status': 'held', 'reason': exc.reason}}, headers={'Cache-Control': 'no-store'})
 
 
 @app.exception_handler(BillingReadOnly)
