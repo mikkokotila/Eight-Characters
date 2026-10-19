@@ -9,11 +9,15 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import cast
 
-import pyrage
 import httpx
+import pyrage
 
 from eight_characters.accounts.backup import BackupError, run_backup, squash_history
-from eight_characters.accounts.billing import BillingError, load_billing_config, verify_sandbox_catalogue
+from eight_characters.accounts.billing import (
+    BillingError,
+    load_billing_config,
+    verify_sandbox_catalogue,
+)
 from eight_characters.accounts.records import RecordError, timestamp
 from eight_characters.accounts.restore import read_identity, restore_backup
 from eight_characters.accounts.store import AccountStore, StoreError
