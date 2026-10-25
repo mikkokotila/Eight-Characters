@@ -21,7 +21,7 @@
     const choices = [...panel.querySelectorAll('[data-billing-plan]')];
     const controls = [open, period, ...choices, resume, cancel];
     let key = null, view = null, generation = 0;
-    let returnRequested = enabled === 'true' && location.hash === '#plan';
+    let returnRequested = false;
     const date = (value) => new Intl.DateTimeFormat(language(), { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' })
       .format(new Date(value * 1000));
     const quote = (offer) => t('billing_buy', {
@@ -142,6 +142,7 @@
     }));
     return {
       sync, controls, wantsReturn: () => returnRequested,
+      requestReturn: () => { returnRequested = enabled === 'true'; },
       resumeReturn: () => {
         if (returnRequested && getAccount() !== null) { returnRequested = false; open.click(); }
       },

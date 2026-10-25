@@ -784,7 +784,6 @@
       refusedHere, elsewhere,
     });
     billing.sync(account);
-    if (billing.wantsReturn()) open();
 
     return {
       signedIn: () => account !== null,
@@ -794,6 +793,11 @@
       recheck: (wanted) => refusedNow(forget, { wanted }),
       signIn,
       open,
+      openPlan: () => {
+        billing.requestReturn();
+        if (dialog.open && step === 'menu') confirmSession();
+        else open();
+      },
       isOpen: () => dialog.open,
       refresh,
     };

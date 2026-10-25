@@ -69,9 +69,11 @@ for (const [name, width, height] of [['desktop', 1280, 1000], ['mobile-320', 320
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     } finally {
       if (browser) await browser.close();
-      const exited = once(child, 'exit');
-      child.kill('SIGTERM');
-      await exited;
+      if (child.exitCode === null && child.signalCode === null) {
+        const exited = once(child, 'exit');
+        child.kill('SIGTERM');
+        await exited;
+      }
     }
   });
 }
