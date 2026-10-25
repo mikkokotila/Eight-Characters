@@ -17,7 +17,7 @@ const billing = (key, changes = {}) => ({
 });
 
 async function prepare(page, { enabled = true, state = {} } = {}) {
-  const account = await (await page.request.get(new URL('/api/account', baseURL).href)).json();
+  let account;
   if (enabled) {
     await page.route((url) => url.origin === BASE && url.pathname === '/', async (route) => {
       const response = await route.fetch();
@@ -27,6 +27,7 @@ async function prepare(page, { enabled = true, state = {} } = {}) {
   }
   await page.route('**/api/account/billing', (route) => route.fulfill({ json: billing(account.key, state) }));
   await visit(page);
+  account = JSON.parse(await page.locator('#account-state').textContent());
   await page.locator('#account-btn').click();
   await page.waitForFunction(() => !document.getElementById('account-export').disabled);
   return account;

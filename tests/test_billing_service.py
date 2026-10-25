@@ -240,6 +240,16 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_signed_out_billing_return_redirects_without_native_calls(self):
+        self.client.cookies.clear()
+        before = list(self.provider.calls)
+        response = self.client.get('/account/billing/return', follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers['location'], self.accounts.config.origin + '/#plan'
+        )
+        self.assertEqual(self.provider.calls, before)
+
     def test_billing_replies_name_the_authenticated_account_without_caching(self):
         response = self.client.get('/api/account/billing')
         self.assertEqual(response.status_code, 200)

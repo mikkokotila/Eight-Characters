@@ -606,3 +606,32 @@ Billing-disabled deployments show no Plan controls and send no billing requests.
 This interface is for the private sandbox only: saved-chart allowances are the
 accepted capability, not all advertised paid features. It does not enable live
 keys, production checkout, proration, reminders or tax calculation.
+
+Plan reads report the frozen current offers, a pending offer and its checkout
+expiry, and native renewal state (`active`, `stopping`, `none` or `unverified`).
+Reading these controls acquires the existing ephemeral owner lease but sends
+native GETs only. A pending purchase resumes its original offer/session; expired
+paid coverage does not hide Stop renewal when a subscription is still active.
+Stopped renewal remains visible on later reads. Stopping renewal does not issue
+a refund. Settings retains its last-read access summary; Plan refreshes the
+customer controls when opened. Neither display grants access.
+
+Checkout returns to `/#plan`. The account is verified before Plan is opened;
+a signed-out return asks for authentication without native financial actions.
+The fragment carries navigation only, never evidence of payment.
+
+The explicit browser contract uses the real product routes, SQLite and the
+existing injected Stripe transport. It covers desktop and 320px layouts, pending
+resume, verified test access, failed-renewal expiry and persistent cancellation.
+It creates no native Stripe objects. Run once per browser with the configured
+Playwright installation and product Python executable:
+
+```sh
+EC_PYTHON=/absolute/path/to/python \
+EC_PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
+EC_BROWSER=chromium node --test --test-reporter=tap tests/browser/billing-contract.mjs
+```
+
+Repeat with `EC_BROWSER=webkit`. The protocol-fixture suite remains
+`tests/browser/account-billing.test.mjs`; it checks all six displayed offers and
+transport failures separately from the real-route contract.
