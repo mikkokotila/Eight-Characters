@@ -2655,6 +2655,11 @@ kbd {
 }
 /* Deleting the account stands apart from the rest, in the error's ink. */
 .account-actions.account-danger { margin-top: var(--space-2); }
+#account-billing, #account-billing-offers {
+  display: grid;
+  gap: var(--space-3);
+}
+#account-billing[hidden], #account-billing-offers[hidden] { display: none; }
 .account-delete {
   display: grid;
   gap: var(--space-3);

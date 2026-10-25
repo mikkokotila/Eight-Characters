@@ -624,11 +624,13 @@
       <p class="account-note" data-i18n="billing_sandbox_note"></p>
       <p id="account-billing-summary" class="account-note" role="status"></p>
       <div id="account-billing-offers" hidden>
-        <label for="account-billing-period" data-i18n="billing_period"></label>
-        <select id="account-billing-period">
-          <option value="yearly" data-i18n="billing_yearly"></option>
-          <option value="monthly" data-i18n="billing_monthly"></option>
-        </select>
+        <div class="field-group">
+          <label for="account-billing-period" data-i18n="billing_period"></label>
+          <select id="account-billing-period">
+            <option value="yearly" data-i18n="billing_yearly"></option>
+            <option value="monthly" data-i18n="billing_monthly"></option>
+          </select>
+        </div>
         <div class="account-actions">
           <button type="button" class="bar-action" data-billing-plan="basic"></button>
           <button type="button" class="bar-action" data-billing-plan="plus"></button>

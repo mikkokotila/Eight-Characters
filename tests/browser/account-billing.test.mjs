@@ -42,6 +42,7 @@ for (const profile of profiles) {
     check('all six offers keep their account and open only hosted test checkout', async (page) => {
       const requests = [];
       const destination = 'https://checkout.stripe.com/c/pay/cs_test_ui_fixture';
+      const quotes = { yearly: { basic: '$59', plus: '$129', pro: '$249' }, monthly: { basic: '$6.99', plus: '$14.99', pro: '$29' } };
       await page.route('https://checkout.stripe.com/**', (route) => route.fulfill({ contentType: 'text/html', body: '<p>Hosted test checkout fixture</p>' }));
       await page.route('**/api/account/billing/checkout', (route) => {
         requests.push(route.request().postDataJSON());
@@ -55,7 +56,9 @@ for (const profile of profiles) {
           assert.match(await page.locator('#account-billing').textContent(), /Private sandbox: no real charges/);
           await page.locator('#account-billing-period').selectOption(period);
           const button = page.locator(`[data-billing-plan="${plan}"]`);
-          assert.match(await button.textContent(), /USD/);
+          const interval = period === 'yearly' ? 'a year' : 'a month';
+          const name = plan[0].toUpperCase() + plan.slice(1);
+          assert.equal(await button.textContent(), `Choose ${name} · ${quotes[period][plan]} USD ${interval}`);
           await button.click();
           await page.waitForURL(destination);
           assert.deepEqual(requests.at(-1), { key: account.key, plan, period });
