@@ -9,8 +9,10 @@ import fcntl
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
-from typing import Literal, TypedDict
+from typing import Literal
 from urllib.parse import urlsplit
+
+from typing_extensions import TypedDict
 
 from eight_characters.accounts.billing import BillingError, verify_sandbox_catalogue
 from eight_characters.accounts.billing_access import (

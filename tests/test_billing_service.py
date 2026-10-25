@@ -245,6 +245,16 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()['key'], self.key)
         self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('data-billing-enabled="true"', self.client.get('/').text)
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        response = self.client.post(
+            '/api/account/billing/cancel', json={'key': self.key}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['key'], self.key)
+        self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
+        self.assertEqual(response.headers['cache-control'], 'no-store')
 
     def test_plan_reads_resume_terms_and_persistent_renewal_without_native_writes(self):
         self.assertEqual(self.checkout().status_code, 200)
@@ -276,16 +286,6 @@ class ServiceApi(unittest.TestCase):
         self.assertEqual(
             self.client.get('/api/account/billing').json()['renewal'], 'stopping'
         )
-        self.assertIn('data-billing-enabled="true"', self.client.get('/').text)
-        self.assertEqual(self.checkout().status_code, 200)
-        self.provider.complete()
-        response = self.client.post(
-            '/api/account/billing/cancel', json={'key': self.key}
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json()['key'], self.key)
-        self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
-        self.assertEqual(response.headers['cache-control'], 'no-store')
 
     def test_second_service_is_refused_without_invalidating_the_serving_epoch(self):
         before = self.service.authority.snapshot()[1:]
