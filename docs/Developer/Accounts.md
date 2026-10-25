@@ -590,3 +590,19 @@ fields and restored local operation flags never prove there were no side effects
 Schema-1 bytes and presence/non-null deletion requirements are unchanged. Scope
 and Event records stay schema 1, the shared SQL stays version 5, and normal reader
 create/open stays schema 4. Deploy this reader before the writer emits schema 2.
+
+
+### Private sandbox Plan controls
+
+An explicitly sandbox-configured app exposes Plan in its authenticated account
+dialog. It reads verified tier/status/paid expiry, opens the server-created hosted
+test checkout for one of the six existing offers, and stops renewal through the
+existing authenticated cancellation API. Billing reads and cancellation replies
+name their account by the same non-session key used by the account API. Stale or
+other-account replies are discarded. All writes keep their account key and exact
+product-Origin checks. A return URL never grants access.
+
+Billing-disabled deployments show no Plan controls and send no billing requests.
+This interface is for the private sandbox only: saved-chart allowances are the
+accepted capability, not all advertised paid features. It does not enable live
+keys, production checkout, proration, reminders or tax calculation.

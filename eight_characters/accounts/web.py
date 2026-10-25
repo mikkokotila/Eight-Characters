@@ -722,6 +722,10 @@ class BillingView(TypedDict):
     reason: str | None
 
 
+class NamedBillingView(BillingView):
+    key: str
+
+
 class SettingsView(TypedDict):
     # The charts the account keeps, in the order they were saved: a new one comes
     # last. Each with its pillars, as a partner's chart had them.
@@ -804,13 +808,13 @@ def _settings_reply(
 @router.get('/billing')
 def read_billing_status(
     current: SessionDependency, accounts: AccountsDependency
-) -> BillingView:
+) -> NamedBillingView:
     user = _signed_in(current).user
     _billing(accounts)
     billing, _ = _capacity_view(accounts, user)
     if billing is None:
         raise BillingHold('unverified')
-    return billing
+    return {**billing, 'key': account_key(user)}
 
 
 @router.post('/billing/checkout')
@@ -835,7 +839,7 @@ def cancel_billing_renewal(
     request: Request,
     current: SessionDependency,
     accounts: AccountsDependency,
-) -> BillingView:
+) -> NamedBillingView:
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
@@ -843,7 +847,7 @@ def cancel_billing_renewal(
     billing, _ = _capacity_view(accounts, user)
     if billing is None:
         raise BillingHold('unverified')
-    return billing
+    return {**billing, 'key': account_key(user)}
 
 
 @provider_router.get('/account/billing/return')

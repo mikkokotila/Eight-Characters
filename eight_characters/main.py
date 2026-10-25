@@ -1076,6 +1076,7 @@ async def index(
             'app_version': __version__,
             'turnstile_site_key': accounts.config.turnstile_site_key,
             'account': None if current is None else account_view(current.user),
+            'billing_enabled': accounts.billing is not None,
             # The engine accepts any local date within its supported years.
             'birth_date_min': f'{MIN_SUPPORTED_YEAR:04d}-01-01',
             'birth_date_max': f'{MAX_SUPPORTED_YEAR:04d}-12-31',

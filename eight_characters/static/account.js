@@ -100,6 +100,7 @@
     // A chart waiting for a sign-in: { promise, resolve, reject }.
     let waiting = null;
     let busy = false;
+    let billing = null;
     // The menu opened while an action or a question was under way: who the session is
     // is asked again when that one ends.
     let confirmLater = false;
@@ -133,6 +134,7 @@
     // Everything the dialog and the button say that depends on the step, the mode or
     // the account, in the page's language.
     const refresh = () => window.EC_MOTION.layout(document.body, () => {
+      billing?.sync(account);
       button.dataset.i18n = account ? 'account_title' : 'account_sign_in';
       button.textContent = t(button.dataset.i18n);
       start.classList.toggle('hidden', step !== 'start');
@@ -576,6 +578,7 @@
     const actions = () => [
       ...languageSwitch.querySelectorAll('button[data-account-lang]'),
       exportButton, signOutButton, signOutEverywhereButton, deleteOpen, deleteConfirm,
+      ...billing.controls,
     ];
     // Who the session belongs to now, asked as the menu opens: another tab may have
     // signed out, or in to another account. Until the answer, the menu does nothing;
@@ -772,6 +775,13 @@
         email.focus();
       }
     };
+
+    billing = window.EC_ACCOUNT_BILLING.create({
+      dialog, translate: t, language, act, call, moment,
+      getAccount: () => account,
+      refusedHere, elsewhere,
+    });
+    billing.sync(account);
 
     return {
       signedIn: () => account !== null,
