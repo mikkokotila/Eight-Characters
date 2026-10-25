@@ -240,6 +240,63 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_signed_out_billing_return_redirects_without_native_calls(self):
+        self.client.cookies.clear()
+        before = list(self.provider.calls)
+        response = self.client.get('/account/billing/return', follow_redirects=False)
+        self.assertEqual(response.status_code, 303)
+        self.assertEqual(
+            response.headers['location'], self.accounts.config.origin + '/#plan'
+        )
+        self.assertEqual(self.provider.calls, before)
+
+    def test_billing_replies_name_the_authenticated_account_without_caching(self):
+        response = self.client.get('/api/account/billing')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['key'], self.key)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('data-billing-enabled="true"', self.client.get('/').text)
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        response = self.client.post(
+            '/api/account/billing/cancel', json={'key': self.key}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['key'], self.key)
+        self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+
+    def test_plan_reads_resume_terms_and_persistent_renewal_without_native_writes(self):
+        self.assertEqual(self.checkout().status_code, 200)
+        before = self.accounts.store.billing_records()
+        self.provider.calls.clear()
+        response = self.client.get('/api/account/billing')
+        self.assertEqual(response.status_code, 200, response.text)
+        view = response.json()
+        self.assertEqual((view['status'], view['renewal']), ('pending', 'none'))
+        self.assertEqual(
+            (view['pending']['plan'], view['pending']['period']), ('plus', 'monthly')
+        )
+        self.assertEqual(len(view['offers']), 6)
+        self.assertTrue(all(method == 'GET' for method, _ in self.provider.calls))
+        self.assertEqual(self.accounts.store.billing_records(), before)
+        self.assertEqual(self.checkout().status_code, 200)
+        self.assertEqual(len(self.provider.sessions), 1)
+        self.provider.complete()
+        self.service.reconcile(self.user.id)
+        self.clock.advance(3601)
+        self.provider.subscriptions['sub_one']['status'] = 'past_due'
+        view = self.client.get('/api/account/billing').json()
+        self.assertEqual((view['status'], view['renewal']), ('expired', 'active'))
+        stopped = self.client.post(
+            '/api/account/billing/cancel', json={'key': self.key}
+        )
+        self.assertEqual(stopped.status_code, 200, stopped.text)
+        self.assertEqual(stopped.json()['renewal'], 'stopping')
+        self.assertEqual(
+            self.client.get('/api/account/billing').json()['renewal'], 'stopping'
+        )
+
     def test_second_service_is_refused_without_invalidating_the_serving_epoch(self):
         before = self.service.authority.snapshot()[1:]
         with self.assertRaises(BillingBusy):
@@ -412,7 +469,7 @@ class ServiceApi(unittest.TestCase):
         )
         self.assertEqual(returned.status_code, 303)
         self.assertEqual(
-            returned.headers['location'], self.accounts.config.origin + '/'
+            returned.headers['location'], self.accounts.config.origin + '/#plan'
         )
         self.assertEqual(
             returned.headers['retry-after'], str(self.service.config.poll_seconds)

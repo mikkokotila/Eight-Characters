@@ -560,7 +560,7 @@
      ═══════════════════════════════════════════════════ -->
 <!-- Signing in, or creating an account, with a code sent by email; and, signed in, the
      account itself. Cloudflare Turnstile checks that a person asks for the code. -->
-<dialog id="account-dialog" class="chart-dialog account-dialog" aria-labelledby="account-title" data-site-key="{{ turnstile_site_key }}">
+<dialog id="account-dialog" class="chart-dialog account-dialog" aria-labelledby="account-title" data-site-key="{{ turnstile_site_key }}" data-billing-enabled="{{ 'true' if billing_enabled else 'false' }}">
   <div class="chart-dialog-bar">
     <h2 id="account-title" class="chart-dialog-title"></h2>
     <button type="button" class="panel-close" data-close-dialog data-i18n="panel_close">Sulje</button>
@@ -614,11 +614,36 @@
       <p id="account-language-menu-note" class="account-note" data-i18n="account_language_note"></p>
     </div>
     <div class="account-actions">
+      <button type="button" id="account-billing-open" class="bar-action" hidden aria-expanded="false" aria-controls="account-billing" data-i18n="billing_open">Plan</button>
       <button type="button" id="account-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
       <button type="button" id="account-export" class="bar-action" data-i18n="account_export">Lataa tietoni</button>
       <button type="button" id="account-sign-out" class="bar-action" data-i18n="account_sign_out">Kirjaudu ulos</button>
       <button type="button" id="account-sign-out-everywhere" class="bar-action" data-i18n="account_sign_out_everywhere">Kirjaudu ulos kaikilta laitteilta</button>
     </div>
+    <section id="account-billing" hidden>
+      <p class="account-note" data-i18n="billing_sandbox_note"></p>
+      <p id="account-billing-summary" class="account-note" role="status"></p>
+      <p id="account-billing-renewal" class="account-note" role="status"></p>
+      <p id="account-billing-pending" class="account-note"></p>
+      <button type="button" id="account-billing-resume" class="bar-action" hidden data-i18n="billing_resume"></button>
+      <div id="account-billing-offers" hidden>
+        <div class="field-group">
+          <label for="account-billing-period" data-i18n="billing_period"></label>
+          <select id="account-billing-period">
+            <option value="yearly" data-i18n="billing_yearly"></option>
+            <option value="monthly" data-i18n="billing_monthly"></option>
+          </select>
+        </div>
+        <div class="account-actions">
+          <button type="button" class="bar-action" data-billing-plan="basic"></button>
+          <button type="button" class="bar-action" data-billing-plan="plus"></button>
+          <button type="button" class="bar-action" data-billing-plan="pro"></button>
+        </div>
+        <p class="account-note" data-i18n="billing_renewal"></p>
+      </div>
+      <button type="button" id="account-billing-cancel" class="bar-action" hidden data-i18n="billing_cancel"></button>
+      <p id="account-billing-result" class="account-note" role="status"></p>
+    </section>
     <!-- Deleting the account, apart from the rest. -->
     <div class="account-actions account-danger">
       <button type="button" id="account-delete-open" class="bar-action is-danger" aria-expanded="false" aria-controls="account-delete" data-i18n="account_delete">Poista tili</button>
@@ -653,6 +678,7 @@
 <script src="/static/luck.js?v={{ app_version }}"></script>
 <script src="/static/palette.js?v={{ app_version }}"></script>
 <script src="/static/compare.js?v={{ app_version }}"></script>
+<script src="/static/account-billing.js?v={{ app_version }}"></script>
 <script src="/static/account.js?v={{ app_version }}"></script>
 <script src="/static/place-search.js?v={{ app_version }}"></script>
 <script src="/static/today.js?v={{ app_version }}"></script>

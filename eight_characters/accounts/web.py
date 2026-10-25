@@ -39,7 +39,11 @@ from eight_characters.accounts.billing_access import (
 )
 from eight_characters.accounts.billing_native import Stripe
 from eight_characters.accounts.billing_records import AccountBillingRecord
-from eight_characters.accounts.billing_service import BillingService, PurchaseConflict
+from eight_characters.accounts.billing_service import (
+    BillingService,
+    PlanControls,
+    PurchaseConflict,
+)
 from eight_characters.accounts.billing_webhook import (
     MAX_BODY,
     InvalidDelivery,
@@ -722,6 +726,10 @@ class BillingView(TypedDict):
     reason: str | None
 
 
+class NamedBillingView(BillingView, PlanControls):
+    key: str
+
+
 class SettingsView(TypedDict):
     # The charts the account keeps, in the order they were saved: a new one comes
     # last. Each with its pillars, as a partner's chart had them.
@@ -804,13 +812,17 @@ def _settings_reply(
 @router.get('/billing')
 def read_billing_status(
     current: SessionDependency, accounts: AccountsDependency
-) -> BillingView:
+) -> NamedBillingView:
     user = _signed_in(current).user
-    _billing(accounts)
+    return _plan_reply(accounts, user)
+
+
+def _plan_reply(accounts: Accounts, user: User) -> NamedBillingView:
+    service = _billing(accounts)
     billing, _ = _capacity_view(accounts, user)
     if billing is None:
         raise BillingHold('unverified')
-    return billing
+    return {**billing, **service.controls(user.id), 'key': account_key(user)}
 
 
 @router.post('/billing/checkout')
@@ -835,24 +847,25 @@ def cancel_billing_renewal(
     request: Request,
     current: SessionDependency,
     accounts: AccountsDependency,
-) -> BillingView:
+) -> NamedBillingView:
     _same_origin(request, accounts)
     user = _signed_in(current).user
     _named(user, payload.key)
     _billing(accounts).cancel(user.id)
-    billing, _ = _capacity_view(accounts, user)
-    if billing is None:
-        raise BillingHold('unverified')
-    return billing
+    return _plan_reply(accounts, user)
 
 
 @provider_router.get('/account/billing/return')
 def billing_return(
     current: SessionDependency, accounts: AccountsDependency
 ) -> RedirectResponse:
-    user = _signed_in(current).user
     service = _billing(accounts)
     headers = {'Cache-Control': 'no-store'}
+    if current is None:
+        return RedirectResponse(
+            accounts.config.origin + '/#plan', status_code=303, headers=headers
+        )
+    user = current.user
     try:
         service.reconcile(user.id)
     except BillingBusy:
@@ -860,7 +873,7 @@ def billing_return(
         # account status cannot grant the unconfirmed payment in the query.
         headers['Retry-After'] = str(service.config.poll_seconds)
     return RedirectResponse(
-        accounts.config.origin + '/',
+        accounts.config.origin + '/#plan',
         status_code=303,
         headers=headers,
     )

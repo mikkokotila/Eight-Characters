@@ -82,6 +82,11 @@ class TestApiIndexRoute(unittest.TestCase):
         self.assertTrue(response.headers['content-type'].startswith('text/html'))
         self.assertIn('id="chart-form"', response.text)
         self.assertIn('id="pillars"', response.text)
+        self.assertIn('data-billing-enabled="false"', response.text)
+        self.assertLess(
+            response.text.index('/static/account-billing.js'),
+            response.text.index('/static/account.js'),
+        )
 
     def test_relationship_view_has_accessible_controls(self) -> None:
         response = self.client.get('/')

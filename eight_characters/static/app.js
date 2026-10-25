@@ -2225,6 +2225,10 @@ document.addEventListener('DOMContentLoaded', () => {
     compare.hide();
     settingsPage.hide();
     today.hide();
+    if (location.hash === '#plan') {
+      account.openPlan();
+      return;
+    }
     if (location.hash.startsWith(SAVE_ROUTE)) {
       // A birth added or corrected from Settings: the settings are the account's, so a
       // session that ended asks for a sign-in first.

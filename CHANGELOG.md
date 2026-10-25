@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.69.0
+
+### Added
+- Add authenticated private sandbox Plan controls for verified status, the six existing test offers and cancellation on the product origin. Bind billing replies to their account and discard stale responses.
+- Keep Plan controls unavailable when billing is disabled; make the limited sandbox fulfillment scope explicit.
+
 ## 0.68.0
 
 ### Changed
