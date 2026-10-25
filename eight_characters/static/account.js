@@ -288,6 +288,7 @@
       const requested = waiting !== null;
       closeSignedIn();
       onSignedIn({ requested });
+      if (billing.wantsReturn()) open();
     };
     // The dialog closes, signed in, and what waited for a sign-in goes on with the
     // account the page holds.
@@ -615,6 +616,7 @@
       } finally {
         busy = false;
         if (answered) actions().forEach((control) => { control.disabled = false; });
+        if (answered && step === 'menu' && dialog.open) billing.resumeReturn();
         askedMeanwhile();
       }
     };
@@ -782,6 +784,7 @@
       refusedHere, elsewhere,
     });
     billing.sync(account);
+    if (billing.wantsReturn()) open();
 
     return {
       signedIn: () => account !== null,

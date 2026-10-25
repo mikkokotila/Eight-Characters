@@ -428,7 +428,7 @@ class ServiceApi(unittest.TestCase):
         )
         self.assertEqual(returned.status_code, 303)
         self.assertEqual(
-            returned.headers['location'], self.accounts.config.origin + '/'
+            returned.headers['location'], self.accounts.config.origin + '/#plan'
         )
         self.assertEqual(
             returned.headers['retry-after'], str(self.service.config.poll_seconds)

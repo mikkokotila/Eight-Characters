@@ -9,6 +9,7 @@ import fcntl
 import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
+from typing import Literal, TypedDict
 from urllib.parse import urlsplit
 
 from eight_characters.accounts.billing import BillingError, verify_sandbox_catalogue
@@ -48,6 +49,7 @@ from eight_characters.accounts.billing_records import (
     Binding,
     EventRecord,
     Intent,
+    OfferSnapshot,
     Operation,
     ScopeRecord,
 )
@@ -59,6 +61,32 @@ logger = logging.getLogger(__name__)
 
 class PurchaseConflict(Exception):
     """An existing purchase or paid period occupies this account."""
+
+
+class PlanOffer(TypedDict):
+    plan: str
+    period: str
+    currency: str
+    amount_minor: int
+
+
+class PendingPlan(PlanOffer):
+    expires_at: int
+
+
+class PlanControls(TypedDict):
+    offers: list[PlanOffer]
+    pending: PendingPlan | None
+    renewal: Literal['active', 'stopping', 'none', 'unverified']
+
+
+def _plan_offer(offer: OfferSnapshot) -> PlanOffer:
+    return {
+        'plan': offer.plan,
+        'period': offer.period,
+        'currency': offer.currency,
+        'amount_minor': offer.amount,
+    }
 
 
 class BillingService:
@@ -120,6 +148,80 @@ class BillingService:
         scope, _, _ = self._snapshot()
         lease, owner = self.authority.claim(owner_id, recovery_epoch=self.epoch)
         return Work(self.authority, self.native, self.origin, scope, lease, owner)
+
+    def controls(self, owner_id: str) -> PlanControls:
+        """Read frozen terms and native renewal flags; never execute commands."""
+        scope, owners, ready = self._snapshot()
+        if not ready:
+            raise BillingHold('unverified')
+        offers = [
+            _plan_offer(offer)
+            for price in self.config.catalogue.price_ids
+            for offer in scope.offers
+            if offer.price_id == price
+        ]
+        if len(offers) != len(self.config.catalogue.price_ids):
+            raise BillingHold('scope_mismatch')
+        owner = next((owner for owner in owners if owner.id == owner_id), None)
+        if owner is None:
+            return {'offers': offers, 'pending': None, 'renewal': 'none'}
+        work = self._claim(owner_id)
+        try:
+            pending = next(
+                (
+                    intent
+                    for intent in work.owner.intents
+                    if intent.state not in ('complete', 'expired')
+                ),
+                None,
+            )
+            selected = (
+                None
+                if pending is None
+                else next(
+                    (
+                        offer
+                        for offer in work.scope.offers
+                        if offer.id == pending.offer_id
+                    ),
+                    None,
+                )
+            )
+            if pending is not None and selected is None:
+                raise BillingHold('scope_mismatch')
+            detail: PendingPlan | None = None
+            if pending is not None and selected is not None:
+                detail = {**_plan_offer(selected), 'expires_at': pending.expires_at}
+            if work.owner.customer_id is None:
+                return {
+                    'offers': offers,
+                    'pending': detail,
+                    'renewal': 'unverified' if work.owner.operations else 'none',
+                }
+            observation = self._observe(work, allow_funding_hold=True)
+            active = [
+                subscription
+                for subscription in observation.subscriptions
+                if subscription.get('status') not in ('canceled', 'incomplete_expired')
+            ]
+            if any(
+                type(subscription.get('cancel_at_period_end')) is not bool
+                for subscription in active
+            ):
+                raise BillingHold('unverified')
+            renewal: Literal['active', 'stopping', 'none', 'unverified'] = (
+                'none'
+                if not active
+                else 'stopping'
+                if all(
+                    subscription['cancel_at_period_end'] is True
+                    for subscription in active
+                )
+                else 'active'
+            )
+            return {'offers': offers, 'pending': detail, 'renewal': renewal}
+        finally:
+            self.authority.release(work.lease)
 
     def _adopt(self, scope: ScopeRecord, proof: CustomerProof) -> None:
         if not proof.creation_proven:
