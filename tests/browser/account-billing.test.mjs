@@ -93,7 +93,7 @@ for (const profile of profiles) {
     });
 
     check('held, foreign-account and malformed replies never enable purchases', async (page) => {
-      await prepare(page, { state: { status: 'held', reason: 'native_unavailable' } });
+      const account = await prepare(page, { state: { status: 'held', reason: 'native_unavailable' } });
       await page.locator('#account-billing-open').click();
       await page.waitForFunction(() => document.getElementById('account-billing-summary').textContent.includes('verification held'));
       assert.equal(await page.locator('#account-billing-offers').isVisible(), false);
@@ -102,6 +102,23 @@ for (const profile of profiles) {
       await page.waitForFunction(() => document.getElementById('account-status').textContent.includes('account changed'));
       assert.equal(await page.locator('#account-billing-summary').textContent(), '');
       assert.equal(await page.locator('#account-billing-offers').isVisible(), false);
+      await page.route('**/api/account/billing', (route) => route.fulfill({ json: billing(account.key, { tier: 'unknown' }) }));
+      await page.locator('#account-billing-open').click();
+      await page.waitForFunction(() => document.getElementById('account-status').textContent.includes('could not be verified'));
+      assert.equal(await page.locator('#account-billing-offers').isVisible(), false);
+    });
+
+    check('a checkout conflict refreshes the current account instead of claiming it switched', async (page) => {
+      const account = await prepare(page);
+      await page.locator('#account-billing-open').click();
+      await page.locator('#account-billing-offers').waitFor({ state: 'visible' });
+      await page.route('**/api/account/billing', (route) => route.fulfill({ json: billing(account.key, { status: 'pending' }) }));
+      await page.route('**/api/account/billing/checkout', (route) => route.fulfill({ status: 409, json: { detail: 'Existing purchase' } }));
+      await page.locator('[data-billing-plan="basic"]').click();
+      await page.waitForFunction(() => document.getElementById('account-billing-result').textContent.includes('existing purchase'));
+      assert.match(await page.locator('#account-billing-summary').textContent(), /payment pending/);
+      assert.equal(await page.locator('#account-billing-offers').isVisible(), false);
+      assert.equal(await page.locator('#account-status').textContent(), '');
     });
 
     check('closing a pending checkout discards its late redirect and duplicate clicks', async (page) => {

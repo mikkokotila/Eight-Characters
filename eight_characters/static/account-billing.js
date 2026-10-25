@@ -63,6 +63,10 @@
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
       if (revision !== generation || getAccount()?.key !== named) return null;
+      if (value === null || typeof value !== 'object'
+        || typeof value.key !== 'string' || !/^[0-9a-f]{64}$/.test(value.key)) {
+        throw new Error(t('billing_bad_response'));
+      }
       if (value.key !== named) { await elsewhere(at); return null; }
       if (!TIERS.includes(value.tier) || !STATES.includes(value.status)
         || !(value.paid_through === null || (Number.isSafeInteger(value.paid_through)
@@ -103,7 +107,16 @@
       });
       if (revision !== generation || getAccount()?.key !== named) return;
       if (response.status === 401) return refusedHere(at);
-      if (response.status === 409) return elsewhere(at);
+      if (response.status === 409) {
+        const current = await call('GET', '/api/account/billing');
+        const value = await receive(current, named, at, revision);
+        if (value !== null) {
+          view = value;
+          render();
+          result.textContent = t('billing_existing');
+        }
+        return;
+      }
       if (!response.ok) throw new Error(t('account_server_error', { status: response.status }));
       const value = await response.json();
       if (revision !== generation || getAccount()?.key !== named) return;
