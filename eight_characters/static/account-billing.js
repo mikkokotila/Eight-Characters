@@ -85,6 +85,14 @@
       if (value !== null) { view = value; render(); }
     }));
     period.addEventListener('change', render);
+    dialog.addEventListener('close', () => {
+      generation += 1;
+      view = null;
+      panel.hidden = true;
+      open.setAttribute('aria-expanded', 'false');
+      result.textContent = '';
+      render();
+    });
     choices.forEach((button) => button.addEventListener('click', () => act(button, async () => {
       if (view === null || !['free', 'expired'].includes(view.status)) return;
       const named = key;

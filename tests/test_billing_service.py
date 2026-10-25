@@ -240,6 +240,22 @@ class Provider:
 
 
 class ServiceApi(unittest.TestCase):
+    def test_billing_replies_name_the_authenticated_account_without_caching(self):
+        response = self.client.get('/api/account/billing')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['key'], self.key)
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+        self.assertIn('data-billing-enabled="true"', self.client.get('/').text)
+        self.assertEqual(self.checkout().status_code, 200)
+        self.provider.complete()
+        response = self.client.post(
+            '/api/account/billing/cancel', json={'key': self.key}
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['key'], self.key)
+        self.assertTrue(self.provider.subscriptions['sub_one']['cancel_at_period_end'])
+        self.assertEqual(response.headers['cache-control'], 'no-store')
+
     def test_second_service_is_refused_without_invalidating_the_serving_epoch(self):
         before = self.service.authority.snapshot()[1:]
         with self.assertRaises(BillingBusy):
