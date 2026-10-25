@@ -31,6 +31,7 @@
     });
     const canBuy = () => view !== null && ['free', 'expired'].includes(view.status)
       && view.renewal === 'none' && view.pending === null;
+    const canResume = () => view !== null && view.pending !== null && !['deleting', 'deleted'].includes(view.status);
     const render = () => {
       summary.textContent = view === null ? '' : t('billing_summary', {
         tier: t(`billing_tier_${view.tier}`), status: t(`billing_state_${view.status}`),
@@ -39,7 +40,7 @@
       renewal.textContent = view === null ? '' : t(`billing_renewal_${view.renewal}`);
       pending.textContent = view?.pending ? `${quote(view.pending)} · ${t('billing_pending_until', { date: date(view.pending.expires_at) })}` : '';
       offers.hidden = !canBuy();
-      resume.hidden = view?.status !== 'pending' || view.pending === null;
+      resume.hidden = !canResume();
       cancel.hidden = view?.renewal !== 'active';
       choices.forEach((button) => {
         const offer = view?.offers.find((offer) => offer.plan === button.dataset.billingPlan && offer.period === period.value);
@@ -126,7 +127,7 @@
       await checkout(offer);
     })));
     resume.addEventListener('click', () => act(resume, async () => {
-      if (view?.status === 'pending' && view.pending !== null) await checkout(view.pending);
+      if (canResume()) await checkout(view.pending);
     }));
     cancel.addEventListener('click', () => act(cancel, async () => {
       if (view?.renewal !== 'active') return;
