@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- The browser's own bar in the page's tone, by day and by night (style.css, --bg). -->
+<meta name="theme-color" content="#F5F0E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1916" media="(prefers-color-scheme: dark)">
+<!-- A shared link's preview, as the website gives its own: the app's name, at its address. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Eightchord">
+<meta property="og:title" content="Eightchord">
+<meta property="og:url" content="{{ app_url }}">
 <title data-i18n="page_title">Eightchord — Neljä pilaria</title>
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="/static/favicon.svg?v={{ app_version }}" type="image/svg+xml">

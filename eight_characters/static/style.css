@@ -415,6 +415,20 @@ body {
   letter-spacing: var(--tracking-1);
 }
 
+/* The page for an address the app does not have (not_found.html): the start page's
+   header, a line and the way home. */
+.not-found { text-align: center; }
+.not-found-line {
+  color: var(--ink-2);
+  margin-bottom: var(--space-5);
+}
+.not-found-home a {
+  color: var(--ink-1);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+.not-found-home a:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+
 /* The start page's tools: its language, and signing in or the account. */
 .page-tools {
   display: flex;
