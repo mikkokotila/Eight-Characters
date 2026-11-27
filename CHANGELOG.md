@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.71.0
+
+The app takes the name and the pages of eightchord.com, the website in front of it.
+
+### Changed
+- **The app is Eightchord**, as the website, its Privacy Policy and its Terms call it:
+  the tab and the start page, the chart's, day's, comparison's and Settings' titles,
+  the explorer, the account's emails ("an Eightchord account") and its export file,
+  `eightchord-account.json`. The repository and the engine keep the name Eight
+  Characters.
+
+### Added
+- **The website's pages beside the app.** The start page and Settings end with the
+  website's Method, Terms and Privacy Policy, which cover my.eightchord.com too, and the
+  address to write to, hello@eightchord.com; the account window links the Terms and the
+  Privacy Policy before a code is asked for.
+- **A page for an address the app does not have.** A browser got FastAPI's JSON; it gets
+  the website's own words for its 404 in the start page's header, and the way home. The
+  API, code asking for files and every other refusal answer as before.
+- **Link previews.** A shared link previews the app as the website previews itself:
+  `og:type`, `og:site_name` and `og:title` name Eightchord, and `og:url` gives the app's
+  address from `EC_APP_ORIGIN`. The browser's bar takes the page tone by day and by
+  night.
+- **More of the chart on paper.** The relationships the arcs draw are named under the
+  pillars, as their list names them; a saved chart's name prints as text, and a chart not
+  saved says nothing of it.
+
+### Docs
+- Account (the website's pages; the export file), Copy and Print.
+
+### Tests
+- Python: the 404 page against the API's answers, the previews' address, the bar's tones
+  against the `--bg` tokens, the website's links. Browser: the links on the start page,
+  in the account window and in Settings; the relationships and the saved name on paper.
+- Version bumped to `0.71.0`; the regression fixture changes only in `engine.version`.
+
 ## 0.70.0
 
 The coherence part of the 2026-11-27 review (Evolution aside): one set of actions, one

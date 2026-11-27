@@ -32,10 +32,14 @@ that the text was copied, or that the browser refused.
 ## Printing
 
 The browser's own print (or Print among the commands) prints the chart:
-- the chart's name and its precision line (true solar time and the clock offset);
+- the chart's date and its precision line (true solar time and the clock offset);
+- a saved chart's name, as text under the date (a chart not saved says nothing of it);
 - the Day Master, and any notices;
 - the pillars, in the display on screen, in their element colours, with their arcs
   and any opened hidden stems;
+- the relationships the arcs draw, named under the pillars as their list names them
+  ("Relationships: Day–Month · Stem combination · …"), since on paper the arcs carry
+  no words;
 - the open topic, below the chart at the page's width, whatever the screen's width.
 
 The controls are left out: the display, view and language switches, the bar's
