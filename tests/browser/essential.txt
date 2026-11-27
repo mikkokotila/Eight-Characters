@@ -13,3 +13,12 @@ account-sessions
 
 # Payments: the plans' checkout, each offer with its account, and cancelling.
 account-billing
+
+# What the account keeps: its saved charts, your own, couples, where you are and the
+# schools, every change from the settings as read; after a sign-out, nothing of the
+# account before.
+settings
+
+# Today, the page used every day: every number the API's; after a sign-out, nothing of
+# the account before.
+today

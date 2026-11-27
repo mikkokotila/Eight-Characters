@@ -499,7 +499,8 @@ def plural(count: int, word: str) -> str:
 
 
 def default_workers() -> int:
-    return max(1, min(8, (os.cpu_count() or 2) // 2))
+    """Two CPUs fewer than the machine has, for its own work, and at most eight."""
+    return max(1, min(8, (os.cpu_count() or 3) - 2))
 
 
 def run_browser(args: argparse.Namespace, node: str) -> int:
@@ -651,7 +652,7 @@ def main() -> int:
         type=int,
         default=default_workers(),
         help='How many suites run at once, each against its own app server '
-        '(default: %(default)s, half the CPUs, at most 8)',
+        '(default: %(default)s, two fewer than the CPUs, at most 8)',
     )
     args = parser.parse_args()
     if args.check == 'types':

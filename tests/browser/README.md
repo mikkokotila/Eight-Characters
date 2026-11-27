@@ -36,9 +36,10 @@ only when every run passed.
 Agents and pull requests run the same set, which `tests/run_checks.py` chooses:
 
 - [`essential.txt`](essential.txt): the core journeys, the suites that guard what must
-  never break: the engine's numbers on the chart, who is signed in and whose charts and
-  settings a page shows, and the plans' payments. A new suite that guards one of those
-  belongs in this list.
+  never break: the engine's numbers on the chart (`engine-truth`); who is signed in,
+  and whose charts, settings and day a page shows (`account`, `account-sessions`,
+  `settings`, `today`); and the plans' payments (`account-billing`). A new suite that
+  guards one of those belongs in this list. Changing the list runs every suite.
 - Any suite the change edits, and any suite that directly imports a changed helper
   (`chart-helpers.mjs`, `account-page.mjs` and the others). One step only.
 - The suites mapped to a changed area of the app (`AREAS` in `tests/run_checks.py`): a
