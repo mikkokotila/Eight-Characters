@@ -1990,6 +1990,11 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   });
 
+  // The comparison's account, at the end of its bar as of every page's.
+  const compareAccountBtn = document.getElementById('compare-account');
+  if (!compareAccountBtn) throw new Error('Comparison is incomplete.');
+  compareAccountBtn.addEventListener('click', () => account.open());
+
   // What the account keeps (settings.js), on two pages of one view: the saved charts at
   // #charts (your chart, the couples, the charts), and Settings at #settings (where you
   // are, the schools, the toolbar). Close goes back to the page either was opened from,
@@ -2209,12 +2214,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveChartChart = document.getElementById('save-chart-chart');
   const saveChartName = document.getElementById('save-chart-name');
   const saveChartStatus = document.getElementById('save-chart-status');
-  const saveChartCancel = document.getElementById('save-chart-cancel');
+  const saveChartClose = document.getElementById('save-chart-close');
   const saveChartGender = document.getElementById('save-chart-gender');
   const saveChartGenderStatus = document.getElementById('save-chart-gender-status');
   const saveChartMine = document.getElementById('save-chart-mine');
   const saveChartMineNote = document.getElementById('save-chart-mine-note');
-  if (!saveChartDialog || !saveChartForm || !saveChartChart || !saveChartName || !saveChartStatus || !saveChartCancel
+  if (!saveChartDialog || !saveChartForm || !saveChartChart || !saveChartName || !saveChartStatus || !saveChartClose
     || !saveChartGender || !saveChartGenderStatus || !saveChartMine || !saveChartMineNote) {
     throw new Error('Saving a chart is incomplete.');
   }
@@ -2283,7 +2288,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveChartDialog.showModal();
     saveChartName.focus();
   };
-  saveChartCancel.addEventListener('click', () => saveChartDialog.close());
+  saveChartClose.addEventListener('click', () => saveChartDialog.close());
   saveChartDialog.addEventListener('close', () => {
     chartToSave = null;
     chartBasis = null;
@@ -2632,6 +2637,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let arrivals = 0;
   const followAddress = async () => {
     const arrival = ++arrivals;
+    dropErrorToast();
     // Until the address is followed, opening its topic is not a reader's step.
     addressed = null;
     // An earlier arrival or a creation still under way is superseded, and so is its wait.
@@ -2955,24 +2961,32 @@ document.addEventListener('DOMContentLoaded', () => {
   toast.setAttribute('role', 'status');
   document.body.append(toast);
   let toastTimer = null;
+  // The toast enters, or leaves keeping its words until it has left (docs/Natural-Flow.md).
+  const fadeToast = (visible, from) => motion.spring(toast, 'toast', {
+    from: { progress: from }, to: { progress: visible ? 1 : 0 },
+    write: ({ progress }) => {
+      toast.style.opacity = String(Math.max(0, Math.min(1, progress)));
+      toast.style.transform = `translate(-50%, ${(1 - progress) * 8}px)`;
+    },
+    complete: () => { if (!visible) { toast.classList.remove('is-shown'); toast.textContent = ''; } },
+  });
+  const hideToast = () => {
+    clearTimeout(toastTimer);
+    fadeToast(false, Number(getComputedStyle(toast).opacity));
+  };
+  // An error said about a page leaves when another page is followed to: it would read as
+  // the new page's. A confirmation stays its time, as one said just before a page opens.
+  const dropErrorToast = () => {
+    if (toast.classList.contains('is-error') && toast.classList.contains('is-shown')) hideToast();
+  };
   const showToast = (text, isError) => {
     clearTimeout(toastTimer);
     const initialOpacity = Number(getComputedStyle(toast).opacity);
     toast.textContent = text;
     toast.classList.toggle('is-error', isError);
     toast.classList.add('is-shown');
-    const fade = (visible) => motion.spring(toast, 'toast', {
-      from: { progress: visible ? initialOpacity : Number(getComputedStyle(toast).opacity) }, to: { progress: visible ? 1 : 0 },
-      write: ({ progress }) => {
-        toast.style.opacity = String(Math.max(0, Math.min(1, progress)));
-        toast.style.transform = `translate(-50%, ${(1 - progress) * 8}px)`;
-      },
-      complete: () => { if (!visible) { toast.classList.remove('is-shown'); toast.textContent = ''; } },
-    });
-    fade(true);
-    toastTimer = setTimeout(() => {
-      fade(false);
-    }, isError ? 6000 : 3000);
+    fadeToast(true, initialOpacity);
+    toastTimer = setTimeout(hideToast, isError ? 6000 : 3000);
   };
   copyLinkBtn.addEventListener('click', async () => {
     try {

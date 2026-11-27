@@ -879,6 +879,44 @@ for (const profile of profiles) {
       assert.equal((await read(page)).charts.length, 1);
     });
 
+    check('the save window is every window: its title in the bar with Close, which saves nothing, and Save its one action', async (page) => {
+      await reset(page);
+      await openLink(page, chartLink(), { place: HELSINKI });
+      await openLibrary(page);
+      await page.locator('#library-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      // As the library's and the account's windows: a serif title, and Close beside it.
+      const looks = (selector) => page.locator(selector).evaluate((node) => {
+        const style = getComputedStyle(node);
+        return [style.fontFamily, style.fontSize, style.fontWeight];
+      });
+      assert.deepEqual(await looks('#save-chart-title'), await looks('#library-title'));
+      assert.equal(await page.locator('#save-chart-dialog .chart-dialog-bar #save-chart-close').isVisible(), true);
+      assert.equal(await page.locator('#save-chart-save').getAttribute('class'), 'submit-btn');
+      assert.equal(await page.locator('#save-chart-dialog button').filter({ hasText: 'Cancel' }).count(), 0);
+      await page.locator('#save-chart-name').fill('Not kept');
+      await page.locator('#save-chart-close').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      assert.deepEqual((await read(page)).charts, []);
+      assert.equal(await nameOnScreen(page), 'Unsaved chart');
+    });
+
+    check('an error said about a page goes when another page opens; a confirmation stays its time', async (page) => {
+      await page.addInitScript(() => {
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async () => { throw new Error('Refused by the test.'); } } });
+      });
+      await reset(page);
+      await changeElsewhere(page, 'PUT', '/api/account/place', { place: PLACE });
+      await openLink(page, chartLink(), { place: HELSINKI });
+      await press(page, '#copy-link-btn');
+      await page.waitForFunction(() => document.querySelector('.toast.is-error.is-shown') !== null);
+      // The chart's error is not the day's.
+      await page.locator('#page-switch [data-page="today"]').click();
+      await page.locator('#today-view').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => !document.querySelector('.toast').classList.contains('is-shown'));
+      assert.equal(await page.locator('.toast').textContent(), '');
+    });
+
     check('a name with quotes is changed from the name itself, quotes and all', async (page) => {
       await reset(page);
       const name = 'Quoted "name" <b>bold</b> & \'single\'';

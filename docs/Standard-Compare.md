@@ -30,10 +30,12 @@ relationships are each chart's own. A chart whose link has a gender has its own
 [luck pillars](Standard-Luck-Pillars.md), natal until they are shown; the second birth
 starts without one.
 
-The comparison's bar holds what belongs to the pair:
+The comparison's bar holds what belongs to the pair, as a chart's bar holds what
+belongs to the chart ([The toolbar](Standard-Toolbar.md)):
 - the language: both charts are asked for again in it;
-- Swap sides: each chart keeps what is open in it;
-- Copy link: the pair's address;
+- Actions, the pair's menu: **Swap sides** (each chart keeps what is open in it) and
+  **Copy link** (the pair's address);
+- Account, as at the end of every page's bar;
 - Close: back to the first chart.
 
 Narrower than 900px, one chart shows at a time, with a switch between them.

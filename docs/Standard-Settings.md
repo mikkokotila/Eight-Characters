@@ -36,7 +36,8 @@ day's heading has the same button, for the chart whose day it shows: a chart cho
 there opens its day, on the date shown, and the day offers no save. The start page and
 a comparison's second chart list the saved charts in the same way (see Coming back and
 [Compare](Standard-Compare.md)).
-**Save the chart on screen** asks for a name (optional: one line, at most 80 characters)
+**Save the chart on screen** opens a window that looks as every window does (its title,
+and Close, which saves nothing), with Save its one action. It asks for a name (optional: one line, at most 80 characters)
 and keeps the chart as it is on screen: its date, time and place, its pass, its gender
 and its Zi-hour convention. A saved chart needs a gender, since the day reads its luck
 pillars: a chart without one is given it in the same window (Female or Male, none chosen

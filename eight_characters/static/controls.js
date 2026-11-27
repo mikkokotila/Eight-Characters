@@ -14,7 +14,7 @@
     '.role-choice', '[data-root-pillar]', '[data-role-back]', '.relationship-chip',
     '.canon-line-toggle', '.canon-link', '.canon-clause', '.luck-step', '.luck-today',
     '.luck-chip', '.luck-phase', '.luck-identity', '[data-zi-convention]',
-    '#compare-sides button', '#compare-swap', '#compare-copy-link', '#compare-close',
+    '#compare-sides button', '#compare-swap', '#compare-copy-link', '#compare-account', '#compare-close',
     '#compare-cancel', '#create-chart-btn', '.gender-option',
     '#page-switch button', '#today-page-switch button', '.library-btn', '#save-cancel', '#settings-close',
     '#today-language button', '.today-step', '.today-now', '#today-copy-link', '#today-copy-text',
@@ -37,12 +37,13 @@
   // panel; the day's Today step, a jump rather than a step, says its word too.
   const ACTIONS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn',
     'chart-account', 'today-copy-link', 'today-copy-text', 'today-print',
-    'today-account', 'settings-account', 'compare-swap', 'compare-copy-link', 'compare-close'];
+    'today-account', 'settings-account', 'compare-swap', 'compare-copy-link', 'compare-account', 'compare-close'];
   const fixed = {
     'copy-link-btn': ['link-2', 'link'], 'copy-text-btn': ['clipboard-list', 'copy'], 'print-btn': ['printer', 'print'],
     'back-btn': ['pencil', 'edit'], 'new-chart-btn': ['square-plus', 'new'],
     'chart-account': ['user-round', 'account'],
     'today-account': ['user-round', 'account'], 'settings-account': ['user-round', 'account'],
+    'compare-account': ['user-round', 'account'],
     'compare-btn': ['columns-2', 'compare'], 'compare-swap': ['arrow-left-right', 'swap'],
     'compare-copy-link': ['link-2', 'link'], 'compare-close': ['x', 'comparison_close'],
     'settings-close': ['x', 'settings_close'],
