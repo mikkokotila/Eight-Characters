@@ -214,7 +214,8 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#chart-actions > button'), ITEMS.map(() => ['', true]));
       assert.equal(await page.locator('#copy-link-btn').isVisible(), true);
       assert.equal(await page.locator('#copy-link-btn').getAttribute('tabindex'), null);
-      // Words again: the menu, and the switches' words.
+      // Words again: the menu, and the switches' words; on a phone, as its compact bar
+      // has them (0.72.0), the switches' icons, their words a screen reader's.
       await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
       await page.locator('#settings-toolbar').waitFor({ state: 'visible' });
       assert.equal(await page.locator('#settings-toolbar-icons').isChecked(), true);
@@ -222,7 +223,11 @@ for (const profile of profiles) {
       await openLink(page, chartLink(), { place: HELSINKI });
       assert.equal(await way(page), 'words');
       assert.equal((await menu(page)).role, 'menu');
-      assert.deepEqual(await shown(page, '#display-switch button'), [['Characters', false], ['Ten Gods', false], ['Hidden stems', false]]);
+      const phone = page.viewportSize().width <= 640;
+      assert.deepEqual(await shown(page, '#display-switch button'), phone
+        ? [['', true], ['', true], ['', true]]
+        : [['Characters', false], ['Ten Gods', false], ['Hidden stems', false]]);
+      assert.deepEqual(await page.locator('#display-switch button .control-label').allTextContents(), ['Characters', 'Ten Gods', 'Hidden stems']);
     });
 
     check('another page of this browser follows the toolbar chosen in one', async (page) => {
