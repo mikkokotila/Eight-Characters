@@ -178,10 +178,13 @@ settings as read, and checks:
   same birth with the same gender said to be saved already; the save window's bar (its
   title as the library's, and Close, which saves nothing) and Save its one action; an
   error toast leaving when another page opens;
-- your chart and the couples: marked and unmarked, a partner added as a new birth and
-  paired at once, every partner of a chart named (past three as so many more), Pair's
-  second list following its first, no pair left, a plan's cap said and kept out of
-  both lists, and a partner kept from before charts pairing (or, past a cap, not);
+- your chart and the couples, from each chart's own buttons: marked and unmarked (the
+  focus going to the button in its place), a partner added as a new birth and paired
+  at once, each couple on a line of its own under each of its charts, with its End,
+  Pair with… offering only the charts a chart can pair with
+  (taking the focus, and giving it back when closed or paired), no pair left, a plan's
+  cap said and kept out of the choices, and a partner kept from before charts pairing
+  (or, past a cap, not);
 - where you are and the schools: searched, saved, removed and chosen, with late
   answers and failures changing nothing later;
 - answers refused, never drawn: a couple naming one chart twice, the same pair twice,

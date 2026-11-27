@@ -399,7 +399,7 @@
       + '#location-suggestions, #settings-location-suggestions';
     const contents = '#context-detail, #pillar-detail, #luck-detail, #relationship-detail, '
       + '#today-detail, #today-scale, #today-pillars, #today-couple, #today-in-chart, #today-hours, '
-      + '#settings-mine-body, #settings-couples-body, #settings-charts-body, #library-list, '
+      + '#settings-charts-body, #library-list, '
       + '#parameterPane, #legendPanel, #detailPanel, #basinMetaPanel, #pillarStrip, #modifierBands';
     const previous = new WeakMap();
     document.querySelectorAll(contents).forEach((element) => previous.set(element, element.innerHTML));

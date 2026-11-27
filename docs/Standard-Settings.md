@@ -53,36 +53,34 @@ saved saves nothing more. Someone else's chart is their data:
 save it only with their consent. The library is also among the commands. It is not in
 a comparison's frames.
 
-The saved charts' page has three parts:
-- **Your chart**: the chart marked as yours, with Open and Unmark; a choice from the
-  saved charts to mark; and **Add a new birth**, saved as yours. Signed in, each visit
-  to the site's bare address opens your chart's day (see below).
-- **Couples**: each couple, with both charts' pillars, and End the couple, which ends
-  that couple alone and keeps both charts. A chart can be in any number of couples,
-  each with its own card, in the order paired.
-  - **Pair** joins two saved charts. Its first list offers each chart that can take
-    another couple and is not yet paired with every chart it could be, starting at
-    yours; its second list follows the first, offering only the charts the first can
-    pair with (never itself or one of its partners). With no pair left to form, the
-    page says so instead.
-  - **Add the partner as a new birth** saves one and pairs it with the chosen chart in
-    one write, for any chart that can take another couple, even one paired with every
-    other.
-  - On a plan that caps how many couples a chart may be in (none does for now), a
-    chart at the cap is in neither list, and the page says why.
-  - A partner's chart kept from before accounts kept charts is listed as waiting, and
-    pairs with your chart once you mark one; marking it, or saving a new birth as
-    yours, then says with whom it paired, or, with your chart at its plan's cap, that
-    it did not and waits no longer.
-- **Saved charts**: each with Open, Rename, Correct the birth and Remove. Rename starts
-  from the name as it is, quotes and all. Remove asks once more on its own button,
-  saying what else ends: the chart's being yours, each of its couples (naming the other
-  charts), or its wait to pair with your chart. Each saved chart names its partners in
-  the order paired, an unnamed one by its birth date, and past three says how many
-  more ("Couple with A, B, C, and 2 more"). A chart the engine no longer charts says
-  why, and can still be renamed or removed.
+The saved charts' page is one list, as the library's: your chart first, then the
+others in the order saved, each opening its chart when chosen. **Add your own birth**,
+above it, saves a new birth as yours. With charts saved and none yours, the page asks
+which one is. Under each chart are its couples, each on a line of its own in the order
+paired ("Couple with A", an unnamed partner by its birth date, however long the name),
+with **End the couple**, which ends that couple alone and keeps both charts. Then its
+buttons:
+- **Mark as yours**, or **Unmark** on yours. Signed in, each visit to the site's bare
+  address opens your chart's day (see below).
+- **Pair with…** opens, under the chart, the charts it can pair with (never itself or
+  one of its partners), and **A new birth**, which saves one and pairs it with this
+  chart in one write, even for a chart paired with every other. Cancel, or Pair with…
+  again, closes them. A chart can be in any number of couples. With no pair left to
+  form, the page says so.
+- **Rename**, **Correct the birth** and **Remove**. Rename starts from the name as it
+  is, quotes and all. Remove asks once more on its own button, saying what else ends:
+  the chart's being yours, each of its couples (naming the other charts), or its wait
+  to pair with your chart.
 
-**Add a new birth**, **Add the partner as a new birth** and **Correct the birth** open
+On a plan that caps how many couples a chart may be in (none does for now), a chart at
+the cap has no Pair with… and is offered to none, and the page says why. A partner's
+chart kept from before accounts kept charts is marked as waiting to pair, and pairs
+with your chart once you mark one; marking it, or saving a new birth as yours, then
+says with whom it paired, or, with your chart at its plan's cap, that it did not and
+waits no longer. A chart the engine no longer charts says why, and can still be renamed
+or removed.
+
+**Add your own birth**, **A new birth** (under Pair with…) and **Correct the birth** open
 the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or
 `#save?as=correct&chart=<id>`. The form says what it saves, asks for a name, needs a
 gender (it leaves "Not given" out and chooses none for you), and checks the birth as it
@@ -92,7 +90,7 @@ charts' page, and Cancel goes back without saving. **Edit** on a saved chart, in
 opens the same correction at `#save?as=correct&chart=<id>&back=chart`: Save and Cancel
 then go back to the chart, corrected or as it was. A correction keeps the chart's Zi-hour
 convention, and its pass while its day, time and zone are unchanged. With the library
-full, Add a new birth and Add the partner as a new birth say so instead.
+full, Add your own birth and A new birth say so instead.
 
 ## Coming back
 

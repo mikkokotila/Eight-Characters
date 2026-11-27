@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.80.0
+
+The saved charts, one list like every other.
+
+### Changed
+- **The saved charts' page is one list.** It had three parts (your chart, the couples,
+  the charts), with drop-down lists to choose a chart to mark or two charts to pair,
+  where every other list of charts is a list you press. It is now one list, as the
+  library's, your chart first, with **Add your own birth** above it. Under each chart
+  are its couples, each on a line of its own with End the couple, then its buttons:
+  Mark as yours (or Unmark), Pair with…, Rename, Correct the birth and Remove. Pair
+  with… opens, under the chart, the charts it can pair with and A new birth; Cancel
+  closes them.
+
+### Docs
+- Standard-Settings (the saved charts' page).
+
 ## 0.79.1
 
 ### Fixed

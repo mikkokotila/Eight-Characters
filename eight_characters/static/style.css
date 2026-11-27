@@ -314,7 +314,6 @@ button, input, select, textarea { font-family: inherit; }
 .account-field > label,
 .account-field > legend,
 .account-label,
-.settings-choose label,
 .settings-rename label,
 .today-partner-label,
 .pillar-plain,
@@ -3392,20 +3391,52 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   flex-direction: column;
   gap: var(--space-3);
 }
-.saved-cards,
-.couple-cards {
+/* The saved charts' page: one list, each chart as every list shows it, what can be done
+   with it under it, and a pairing's choices under those. */
+.saved-list {
   list-style: none;
   display: grid;
-  gap: var(--space-3);
+  gap: var(--space-5);
 }
-.saved-card,
-.couple-card {
-  display: flex;
-  flex-direction: column;
+.saved-item {
+  display: grid;
   gap: var(--space-2);
-  padding: var(--space-4);
+}
+/* A chart's couples, each on its line: with whom, as text that wraps however long the
+   name, and its End beside it, or under it when the line is full. */
+.saved-couples {
+  list-style: none;
+  display: grid;
+  gap: var(--space-2);
+}
+.saved-couple {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2) var(--space-3);
+}
+.saved-couple-with {
+  min-width: 0;
+  font-size: var(--text-1);
+  line-height: var(--leading-3);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+/* A chart offered as a partner keeps its control's one line: a name too long for it is
+   cut, whole to a screen reader. */
+.settings-pair-choices [data-settings-action="pair"] {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.settings-pair-choices {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--line-1);
-  border-radius: var(--radius-5);
+  border-radius: var(--radius-4);
   background: var(--surface-1);
 }
 .saved-head {
@@ -3445,31 +3476,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   width: 46px;
   padding: var(--space-1) 0;
 }
-.couple-names {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-.couple-and { font-family: var(--font-serif); color: var(--ink-3); }
-.couple-strips { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-5); }
-/* A row of lists and the actions on them, level at their foot. */
-.settings-choose {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: var(--space-2) var(--space-3);
-}
-/* A label over its list, as the start page's fields wear theirs. */
-.settings-pick {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--space-2);
-  min-width: 0;
-  max-width: 100%;
-}
-.settings-choose select,
 .settings-rename input {
   min-width: 0;
   max-width: 100%;
@@ -3702,7 +3708,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .today-partner select:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 /* A list draws its own chevron, so that it takes the controls' shape and height in every
    browser: Safari draws a native list at its own height and corners. */
-.settings-choose select,
 .today-partner select {
   -webkit-appearance: none;
   appearance: none;
@@ -4457,7 +4462,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .canon-link,
   .gender-option span,
   .today-partner select,
-  .settings-choose select,
   .settings-rename input,
   .time-unknown { min-height: var(--control-touch); }
   /* The start page's language switch stands level with the account's button. */

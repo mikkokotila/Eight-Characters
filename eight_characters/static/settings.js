@@ -20,8 +20,6 @@
     if (!window.EC_LIBRARY) throw new Error('Settings need the library.');
     const library = window.EC_LIBRARY;
     const statusLine = view.querySelector('#settings-status');
-    const mineBody = view.querySelector('#settings-mine-body');
-    const couplesBody = view.querySelector('#settings-couples-body');
     const chartsBody = view.querySelector('#settings-charts-body');
     const placeNow = view.querySelector('#settings-place-now');
     const placeForm = view.querySelector('#settings-place-form');
@@ -34,7 +32,7 @@
     const toolbarChoice = view.querySelector('#settings-toolbar-choice');
     const closeButton = view.querySelector('#settings-close');
     const accountButton = view.querySelector('#settings-account');
-    if (!statusLine || !mineBody || !couplesBody || !chartsBody || !placeNow || !placeForm || !placeInput || !suggestionList || !placeStatus
+    if (!statusLine || !chartsBody || !placeNow || !placeForm || !placeInput || !suggestionList || !placeStatus
       || !placeSave || !placeRemove || !schoolsBody || !toolbarChoice || !closeButton || !accountButton) throw new Error('Settings view is incomplete.');
     if (!window.EC_TOOLBAR) throw new Error('Settings need the toolbar.');
 
@@ -251,7 +249,9 @@
       return false;
     };
 
-    // ── Your chart, your couples and your saved charts ──
+    // ── The saved charts: one list, as the library, the start page and a comparison list
+    // them, yours first; each chart opens its chart, and what can be done with it stands
+    // under it: no lists to choose from ──
     const birthHeading = (birth) => {
       const reading = format.parseWallClock(`${birth.date}T${birth.time}`);
       if (!reading) throw new Error(t('settings_answer_error', { status: 200 }));
@@ -266,42 +266,11 @@
     const names = (charts) => library.partnerList(charts, {
       lang: language(), nameOf: listName, more: (count) => t('names_more', { count }),
     });
-    // A saved chart as a card: its name, its marks, its birth and its pillars.
-    const card = (kept, chart, actions) => {
-      const partners = library.partnersOf(kept, chart.id);
-      const marks = [
-        chart.id === kept.my_chart ? `<span class="saved-mark is-mine">${esc(t('library_mine'))}</span>` : '',
-        partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', { names: names(partners) }))}</span>`,
-        chart.id === kept.pending_partner ? `<span class="saved-mark">${esc(t('settings_waiting'))}</span>` : '',
-      ].join('');
-      return `<li class="saved-card" data-chart="${esc(chart.id)}">
-          <p class="saved-head"><span class="saved-name">${esc(chartName(chart))}</span>${marks}</p>
-          <p class="saved-birth">${esc(birthHeading(chart))}</p>
-          ${library.strip(chart, { escape: esc, translate: t })}
-          <div class="settings-actions">${actions}</div>
-        </li>`;
-    };
+    // A chart offered as a partner, by its name; an unnamed one by its birth, so that two
+    // can be told apart.
+    const choiceName = (chart) => chart.name ?? `${t('library_unnamed')} · ${birthHeading(chart)}`;
     const action = (name, chart, label, extra = '') => `<button type="button" class="bar-action" data-settings-action="${name}"
         ${chart === null ? '' : `data-chart="${esc(chart.id)}"`} ${extra}>${esc(label)}</button>`;
-    const options = (charts, chosen = null) => charts.map((chart) => `<option value="${esc(chart.id)}"${chart.id === chosen ? ' selected' : ''}>${esc(
-      `${chartName(chart)} · ${birthHeading(chart)}`,
-    )}</option>`).join('');
-
-    const drawMine = () => {
-      const mine = settings.my_chart === null ? null : library.chartWith(settings, settings.my_chart);
-      const others = settings.charts.filter((chart) => chart.id !== settings.my_chart);
-      const choose = others.length === 0 ? '' : `
-        <div class="settings-choose">
-          <span class="settings-pick"><label for="settings-mine-choice">${esc(t(mine === null ? 'settings_mine_choose' : 'settings_mine_change'))}</label>
-          <select id="settings-mine-choice">${options(others)}</select></span>
-          ${action('mark', null, t('settings_mine_mark'))}
-        </div>`;
-      mineBody.innerHTML = `${mine === null
-        ? `<p class="settings-note">${esc(t('settings_mine_none'))}</p>`
-        : `<ul class="saved-cards">${card(settings, mine, `${action('open', mine, t('settings_chart_open'))}${action('unmark', mine, t('settings_mine_clear'))}`)}</ul>`}
-        ${choose}
-        <div class="settings-actions">${action('add-mine', null, t('settings_new_birth'))}</div>`;
-    };
 
     // A chart can take one more couple: any chart, as many as the account's plan allows
     // (couples_per_chart, null for no cap).
@@ -311,76 +280,81 @@
     // partners.
     const pairable = (kept, chart) => kept.charts.filter((other) => other.id !== chart.id
       && underCap(kept, other) && library.coupleBetween(kept, chart.id, other.id) === null);
-    // The second list follows the first: the charts the first can pair with.
-    const drawPairSecond = () => {
-      const first = view.querySelector('#settings-pair-first');
-      const second = view.querySelector('#settings-pair-second');
-      if (!first || !second) return;
-      const chart = library.chartWith(settings, first.value);
-      const choices = chart === null ? [] : pairable(settings, chart);
-      second.innerHTML = options(choices, choices[0]?.id ?? null);
+
+    // A rename is asked for in place, on the chart's own row, and so is a pairing: Pair
+    // with… opens the charts it can pair with, and a new birth, under it.
+    let renaming = null;
+    let pairing = null;
+    const pairChoices = (chart) => {
+      const others = pairable(settings, chart);
+      return `<div class="settings-pair-choices" role="group" aria-labelledby="settings-pair-${esc(chart.id)}">
+          <p class="settings-note" id="settings-pair-${esc(chart.id)}">${esc(t(others.length === 0 ? 'settings_pair_none_for' : 'settings_pair_choose', { name: choiceName(chart) }))}</p>
+          <div class="settings-actions">
+            ${others.map((other) => `<button type="button" class="bar-action" data-settings-action="pair" data-chart="${esc(chart.id)}" data-with="${esc(other.id)}">${esc(choiceName(other))}</button>`).join('')}
+            ${action('add-partner', chart, t('settings_pair_new_birth'))}
+            ${action('pair-cancel', chart, t('cancel'))}
+          </div>
+        </div>`;
     };
-    const drawCouples = () => {
-      // Pair offers each chart that can take one more couple and is not yet paired with
-      // every chart it could be; a new birth can be the partner of any chart under the
-      // cap, even one paired with every other.
-      const firsts = settings.charts.filter((chart) => underCap(settings, chart) && pairable(settings, chart).length > 0);
-      const open = settings.charts.filter((chart) => underCap(settings, chart));
-      const couples = settings.couples.map((couple) => {
-        const [first, second] = couple.charts.map((id) => library.chartWith(settings, id));
-        return `<li class="couple-card" data-couple="${esc(couple.id)}">
-            <p class="couple-names"><span class="saved-name">${esc(chartName(first))}</span>
-              <span class="couple-and" aria-hidden="true">＆</span><span class="sr-only">${esc(t('couple_and'))}</span>
-              <span class="saved-name">${esc(chartName(second))}</span></p>
-            <div class="couple-strips">${library.strip(first, { escape: esc, translate: t })}${library.strip(second, { escape: esc, translate: t })}</div>
-            <div class="settings-actions">
-              <button type="button" class="bar-action" data-settings-action="end" data-couple="${esc(couple.id)}">${esc(t('settings_couple_end'))}</button>
-            </div>
+    const actionsOf = (chart) => {
+      if (renaming === chart.id) {
+        return `<form class="settings-rename" data-chart="${esc(chart.id)}" novalidate>
+            <label for="settings-rename-${esc(chart.id)}">${esc(t('settings_rename_label'))}</label>
+            <input type="text" id="settings-rename-${esc(chart.id)}" maxlength="80" autocomplete="off" spellcheck="false">
+            <button type="submit" class="bar-action" data-settings-action="rename-save" data-chart="${esc(chart.id)}">${esc(t('settings_rename_save'))}</button>
+            <button type="button" class="bar-action" data-settings-action="rename-cancel" data-chart="${esc(chart.id)}">${esc(t('cancel'))}</button>
+          </form>`;
+      }
+      return `<div class="settings-actions">
+          ${chart.id === settings.my_chart ? action('unmark', chart, t('settings_mine_clear')) : action('mark', chart, t('settings_mine_mark'))}
+          ${underCap(settings, chart) ? action('pair-start', chart, t('settings_pair_with'), `aria-expanded="${pairing === chart.id}"`) : ''}
+          ${action('rename', chart, t('settings_chart_rename'))}${action('correct', chart, t('settings_chart_correct'))}${action('remove', chart, t('settings_chart_remove'))}
+        </div>
+        ${pairing === chart.id ? pairChoices(chart) : ''}`;
+    };
+    // Each couple the chart is in, in the order paired, on a line of its own: with whom,
+    // as text that wraps however long the name, and End the couple, which ends that
+    // couple alone and keeps both charts. Its End names the partner to a screen reader.
+    const couplesIn = (chart) => {
+      const couples = library.couplesOf(settings, chart.id);
+      if (couples.length === 0) return '';
+      return `<ul class="saved-couples">${couples.map((couple) => {
+        const name = listName(library.chartWith(settings, couple.charts.find((id) => id !== chart.id)));
+        return `<li class="saved-couple">
+            <span class="saved-couple-with">${esc(t('library_with', { names: name }))}</span>
+            ${action('end', chart, t('settings_couple_end'), `data-couple="${esc(couple.id)}" aria-label="${esc(t('settings_couple_end_with', { name }))}"`)}
           </li>`;
-      }).join('');
+      }).join('')}</ul>`;
+    };
+    const drawCharts = () => {
+      const mine = settings.my_chart === null ? null : library.chartWith(settings, settings.my_chart);
+      const charts = mine === null ? settings.charts : [mine, ...settings.charts.filter((chart) => chart.id !== mine.id)];
       const pending = settings.pending_partner === null ? null : library.chartWith(settings, settings.pending_partner);
-      // Each list starts at my chart, else at its first chart.
-      const first = firsts.find((chart) => chart.id === settings.my_chart) ?? firsts[0] ?? null;
-      const partnerOf = open.find((chart) => chart.id === settings.my_chart) ?? open[0] ?? null;
-      // Under a plan's cap, a chart in as many couples as it allows is not offered: the
-      // page says why.
+      // Under a plan's cap, a chart in as many couples as it allows is offered no pairing:
+      // the page says why. With two charts or more, the page says so when no pair is left.
+      const open = settings.charts.filter((chart) => underCap(settings, chart));
       const capped = settings.couples_per_chart !== null && open.length < settings.charts.length;
       const cap = () => (settings.couples_per_chart === 1 ? t('settings_couple_cap_one')
         : t('settings_couple_cap', { count: settings.couples_per_chart }));
-      couplesBody.innerHTML = `
-        ${couples === '' ? `<p class="settings-note">${esc(t('settings_couples_none'))}</p>` : `<ul class="couple-cards">${couples}</ul>`}
-        ${pending === null ? '' : `<p class="settings-note">${esc(t('settings_pending', { name: chartName(pending) }))}</p>`}
-        ${capped ? `<p class="settings-note">${esc(cap())}</p>` : ''}
-        ${first !== null ? `
-          <div class="settings-choose settings-pair">
-            <span class="settings-pick"><label for="settings-pair-first">${esc(t('settings_pair_first'))}</label>
-            <select id="settings-pair-first">${options(firsts, first.id)}</select></span>
-            <span class="settings-pick"><label for="settings-pair-second">${esc(t('settings_pair_second'))}</label>
-            <select id="settings-pair-second"></select></span>
-            ${action('pair', null, t('settings_pair'))}
-          </div>` : settings.charts.length < 2 ? '' : `<p class="settings-note">${esc(t('settings_pair_none'))}</p>`}
-        ${partnerOf === null ? '' : `
-          <div class="settings-choose">
-            <span class="settings-pick"><label for="settings-partner-of">${esc(t('settings_partner_of'))}</label>
-            <select id="settings-partner-of">${options(open, partnerOf.id)}</select></span>
-            ${action('add-partner', null, t('settings_partner_new_birth'))}
-          </div>`}`;
-      drawPairSecond();
-    };
-
-    // A rename is asked for in place, on the chart's card.
-    let renaming = null;
-    const drawCharts = () => {
-      chartsBody.innerHTML = settings.charts.length === 0
-        ? `<p class="settings-note">${esc(t('settings_charts_none'))}</p>`
-        : `<ul class="saved-cards">${settings.charts.map((chart) => card(settings, chart, renaming === chart.id
-          ? `<form class="settings-rename" data-chart="${esc(chart.id)}" novalidate>
-              <label for="settings-rename-${esc(chart.id)}">${esc(t('settings_rename_label'))}</label>
-              <input type="text" id="settings-rename-${esc(chart.id)}" maxlength="80" autocomplete="off" spellcheck="false">
-              <button type="submit" class="bar-action" data-settings-action="rename-save" data-chart="${esc(chart.id)}">${esc(t('settings_rename_save'))}</button>
-              <button type="button" class="bar-action" data-settings-action="rename-cancel" data-chart="${esc(chart.id)}">${esc(t('cancel'))}</button>
-            </form>`
-          : `${chart.pillars === null ? '' : action('open', chart, t('settings_chart_open'))}${action('rename', chart, t('settings_chart_rename'))}${action('correct', chart, t('settings_chart_correct'))}${action('remove', chart, t('settings_chart_remove'))}`)).join('')}</ul>`;
+      const noPairLeft = settings.charts.length >= 2 && !open.some((chart) => pairable(settings, chart).length > 0);
+      const notes = [
+        settings.charts.length > 0 && mine === null ? t('start_mine_choose') : null,
+        pending === null ? null : t('settings_pending', { name: chartName(pending) }),
+        capped ? cap() : null,
+        noPairLeft ? t('settings_pair_none') : null,
+      ].filter((note) => note !== null);
+      const tools = { translate: t, escape: esc, format, language };
+      chartsBody.innerHTML = `
+        <div class="settings-actions">${action('add-mine', null, t('settings_mine_new_birth'))}</div>
+        ${notes.map((note) => `<p class="settings-note">${esc(note)}</p>`).join('')}
+        ${settings.charts.length === 0 ? `<p class="settings-note">${esc(t('settings_charts_none'))}</p>` : `<ul class="saved-list">${charts.map((chart) => `
+          <li class="saved-item" data-chart="${esc(chart.id)}">
+            <button type="button" class="library-chart" data-settings-action="open" data-chart="${esc(chart.id)}"${chart.pillars === null ? ' disabled' : ''}>
+              ${library.row(settings, chart, { ...tools, withPartners: false, waiting: chart.id === settings.pending_partner })}
+            </button>
+            ${couplesIn(chart)}
+            ${actionsOf(chart)}
+          </li>`).join('')}</ul>`}`;
       // The name being changed goes in as the field's value, never into the markup: a
       // name is text, quotes and all.
       if (renaming !== null) {
@@ -400,7 +374,6 @@
     };
 
     // What a change from these parts asks the API, made from the settings drawn here.
-    const chosenIn = (selector) => view.querySelector(selector)?.value ?? null;
     // A full library takes no new birth: said here, in the page's language.
     const full = () => {
       if (drawn.chart_limit === null || drawn.charts.length < drawn.chart_limit) return false;
@@ -460,14 +433,12 @@
       const chart = id === null ? null : library.chartWith(drawn, id);
       switch (button.dataset.settingsAction) {
         case 'open':
-          if (chart !== null) onOpenChart(library.chartParams(chart, language()));
+          if (chart !== null && chart.pillars !== null) onOpenChart(library.chartParams(chart, language()));
           break;
-        case 'mark': {
-          const chosen = chosenIn('#settings-mine-choice');
-          if (chosen === null) break;
-          await once(`mark ${chosen}`, () => change('PUT', '/api/account/my-chart', { chart: chosen }, markedSaying(chosen)));
+        case 'mark':
+          if (chart === null) break;
+          await once(`mark ${chart.id}`, () => change('PUT', '/api/account/my-chart', { chart: chart.id }, markedSaying(chart.id)));
           break;
-        }
         case 'unmark':
           await once('unmark', () => change('DELETE', '/api/account/my-chart', {}, t('settings_mine_cleared')));
           break;
@@ -475,27 +446,48 @@
           if (full()) break;
           onAddBirth({ as: 'mine' });
           break;
+        case 'pair-start':
+          // One chart's partners are chosen at a time; pressed again, the choice closes.
+          // Opened, the choices take the focus; closed, it goes back to Pair with… (draw).
+          pairing = pairing === id ? null : id;
+          draw();
+          if (pairing !== null) chartsBody.querySelector(`.saved-item[data-chart="${CSS.escape(id)}"] .settings-pair-choices button`)?.focus();
+          break;
+        case 'pair-cancel':
+          pairing = null;
+          draw();
+          break;
         case 'pair': {
-          const first = chosenIn('#settings-pair-first');
-          const second = chosenIn('#settings-pair-second');
+          const first = id;
+          const second = button.dataset.with ?? null;
           if (first === null || second === null) break;
           if (first === second) {
             say(t('settings_pair_same'), true);
             break;
           }
+          // A choice left over from settings changed since (another tab's pairing, say)
+          // is refused here, in the page's language, before the API is asked.
           if (library.coupleBetween(drawn, first, second) !== null) {
             say(t('settings_pair_twice'), true);
             break;
           }
+          let paired = false;
           // A couple is the same whichever chart is chosen first.
-          await once(`pair ${[first, second].sort().join(' ')}`, () => change('POST', '/api/account/couples', { charts: [first, second] }, t('settings_paired')));
+          await once(`pair ${[first, second].sort().join(' ')}`, async () => {
+            paired = await change('POST', '/api/account/couples', { charts: [first, second] }, t('settings_paired'));
+          });
+          // Paired, the choice closes, and the focus goes back to Pair with… (draw).
+          if (paired && pairing === first) {
+            pairing = null;
+            draw();
+          }
           break;
         }
-        case 'add-partner': {
-          const of = chosenIn('#settings-partner-of');
-          if (of !== null && !full()) onAddBirth({ as: 'partner', with: of });
+        case 'add-partner':
+          if (chart === null || full()) break;
+          pairing = null;
+          onAddBirth({ as: 'partner', with: chart.id });
           break;
-        }
         case 'end': {
           const couple = button.dataset.couple;
           await once(`end ${couple}`, () => change('DELETE', `/api/account/couples/${encodeURIComponent(couple)}`, {}, t('settings_couple_ended')));
@@ -528,15 +520,12 @@
           break;
       }
     };
-    [mineBody, couplesBody, chartsBody].forEach((part) => part.addEventListener('click', (event) => {
+    chartsBody.addEventListener('click', (event) => {
       if (event.target.closest('button[type="submit"]')) return;
       onLibrary(event).catch((err) => {
         console.error(err);
         say(err.message || t('settings_load_error'), true);
       });
-    }));
-    couplesBody.addEventListener('change', (event) => {
-      if (event.target.id === 'settings-pair-first') drawPairSecond();
     });
     chartsBody.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -651,22 +640,30 @@
     // Drawing replaces the controls: the one that had focus hands it to its counterpart
     // (the same preset or action), or, gone, to the first control of its part, so the
     // keyboard stays where it was. A control hidden or disabled has lost focus too.
+    // A control gone from a chart's row hands it to the one in its place there (Mark's to
+    // Unmark and back; a choice of partner's, or an ended couple's, to Pair with…), or
+    // else to the chart itself.
     const focusable = (node) => node.isConnected && !node.closest('.hidden') && !node.disabled;
+    const IN_PLACE_OF = {
+      mark: 'unmark', unmark: 'mark', pair: 'pair-start', 'pair-cancel': 'pair-start', 'add-partner': 'pair-start', end: 'pair-start',
+    };
     const draw = () => {
       if (settings === null) return;
       const focused = view.contains(document.activeElement) ? document.activeElement : null;
-      const part = focused?.closest('#settings-mine-body, #settings-couples-body, #settings-charts-body, #settings-schools-body') ?? null;
+      const part = focused?.closest('#settings-charts-body, #settings-schools-body') ?? null;
+      const row = focused?.closest('.saved-item')?.dataset.chart ?? null;
+      const instead = row === null ? null : IN_PLACE_OF[focused.dataset.settingsAction] ?? null;
       let counterpart = null;
       if (focused?.id) counterpart = `#${CSS.escape(focused.id)}`;
       else if (focused?.dataset.settingsAction) {
         counterpart = `[data-settings-action="${CSS.escape(focused.dataset.settingsAction)}"]`
           + (focused.dataset.chart ? `[data-chart="${CSS.escape(focused.dataset.chart)}"]` : '')
-          + (focused.dataset.couple ? `[data-couple="${CSS.escape(focused.dataset.couple)}"]` : '');
+          + (focused.dataset.couple ? `[data-couple="${CSS.escape(focused.dataset.couple)}"]` : '')
+          + (focused.dataset.with ? `[data-with="${CSS.escape(focused.dataset.with)}"]` : '');
       }
-      // A chart renamed or removed elsewhere ends its rename here.
+      // A chart renamed or removed elsewhere ends its rename here, and its pairing.
       if (renaming !== null && library.chartWith(settings, renaming) === null) renaming = null;
-      drawMine();
-      drawCouples();
+      if (pairing !== null && library.chartWith(settings, pairing) === null) pairing = null;
       drawCharts();
       drawPlace();
       if (catalog !== null) drawSchools();
@@ -674,7 +671,13 @@
       drawnBasis = basis;
       if (focused === null || focusable(focused)) return;
       const found = counterpart === null ? null : view.querySelector(counterpart);
-      const next = found !== null && focusable(found) ? found : [...(part?.querySelectorAll('button, input, select') ?? [])].find(focusable);
+      const item = row === null ? null : chartsBody.querySelector(`.saved-item[data-chart="${CSS.escape(row)}"]`);
+      const near = item === null ? [] : [
+        instead === null ? null : item.querySelector(`[data-settings-action="${instead}"]`),
+        item.querySelector('[data-settings-action="open"]'),
+      ];
+      const next = [found, ...near].find((node) => node !== null && focusable(node))
+        ?? [...(part?.querySelectorAll('button, input, select') ?? [])].find(focusable);
       // The place's Remove, gone with the place, hands focus to the place's search.
       (next ?? placeInput).focus();
     };
@@ -765,8 +768,7 @@
         ended = why;
         latest = null;
         renaming = null;
-        mineBody.innerHTML = '';
-        couplesBody.innerHTML = '';
+        pairing = null;
         chartsBody.innerHTML = '';
         placeNow.textContent = '';
         placeRemove.classList.add('hidden');
