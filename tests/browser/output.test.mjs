@@ -22,9 +22,21 @@ async function stubClipboard(page) {
   });
 }
 
-// The pillars in written order, year to hour, from the API's own record.
-const written = (payload) => ['year', 'month', 'day', 'hour']
-  .map((name) => `${payload.four_pillars[name].stem.chinese}${payload.four_pillars[name].branch.chinese}`).join(' ');
+// The pillars in the chart's order, hour to year, each by its name in the page's
+// language: its characters from the API's own record, then their pinyin.
+const NAMES = {
+  en: { hour: 'Hour', day: 'Day', month: 'Month', year: 'Year' },
+  fi: { hour: 'Tunti', day: 'Päivä', month: 'Kuukausi', year: 'Vuosi' },
+};
+const ORDER = ['hour', 'day', 'month', 'year'];
+const charactersOf = (payload, name) => `${payload.four_pillars[name].stem.chinese}${payload.four_pillars[name].branch.chinese}`;
+// The pillars as the chart shows them: its cards' characters and its header's pinyin.
+const onCards = (page, lang) => page.evaluate(({ names, order }) => order.map((name) => {
+  const stem = document.querySelector(`.card.stem[data-pillar="${name}"]`).dataset.char;
+  const branch = document.querySelector(`.card.branch[data-pillar="${name}"]`).dataset.char;
+  const pinyin = document.querySelector(`.pillar-identity[data-pillar="${name}"] .pillar-pinyin`).textContent;
+  return `${names[name]} ${stem}${branch} ${pinyin}`;
+}).join(' · '), { names: NAMES[lang], order: ORDER });
 
 // What the screen shows of the chart: its name, its true solar time (before the clock
 // offset) and the convention the chart was read with.
@@ -47,8 +59,13 @@ for (const profile of profiles) {
         await press(page, '#copy-text-btn');
         await page.waitForFunction(() => document.querySelector('.toast').classList.contains('is-shown'));
         const [pillars, line] = (await page.evaluate(() => window.__copied.at(-1))).split('\n');
-        assert.equal(pillars, written(payload));
-        assert.equal(pillars, '丁卯 癸丑 己丑 壬申');
+        assert.equal(pillars, await onCards(page, lang));
+        // Each pillar's characters are the API's, and none stands without its pinyin.
+        assert.deepEqual(pillars.split(' · ').map((part) => part.split(' ')[1]), ORDER.map((name) => charactersOf(payload, name)));
+        assert.equal(pillars, {
+          en: 'Hour 壬申 Ren Shen · Day 己丑 Ji Chou · Month 癸丑 Gui Chou · Year 丁卯 Ding Mao',
+          fi: 'Tunti 壬申 Ren Shen · Päivä 己丑 Ji Chou · Kuukausi 癸丑 Gui Chou · Vuosi 丁卯 Ding Mao',
+        }[lang]);
         const shown = await onScreen(page);
         // Outside the Zi hour the convention is the engine's default: the day changes at midnight.
         assert.equal(shown.zi, null);
@@ -66,8 +83,7 @@ for (const profile of profiles) {
         await page.waitForFunction((count) => window.__copied.length > count, copied);
         return page.evaluate(() => window.__copied.at(-1).split('\n'));
       };
-      const cards = () => page.evaluate(() => ['year', 'month', 'day', 'hour'].map((name) =>
-        `${document.querySelector(`.card.stem[data-pillar="${name}"]`).dataset.char}${document.querySelector(`.card.branch[data-pillar="${name}"]`).dataset.char}`).join(' '));
+      const cards = () => onCards(page, 'en');
       const [before, beforeLine] = await copy();
       assert.equal(before, await cards());
       const first = await onScreen(page);

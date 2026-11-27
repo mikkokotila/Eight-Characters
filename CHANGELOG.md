@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.69.1
+
+Defects found by the 2026-11-27 review of the whole app (Evolution aside).
+
+### Fixed
+- **Today names its schools.** The day's page and its copied text gave the API's school
+  ids ("Water rules the season (eighteen)", "Schools: support, eighteen, phases"); they
+  now give the names Settings gives (`GET /api/schools`), in the day's language. An id
+  the catalogue lacks fails loudly.
+- **Copy as text pairs every character.** The chart's first line was bare characters,
+  year to hour; each pillar now goes in the chart's order with its name and its
+  characters' pinyin ("Hour 甲辰 Jia Chen · Day …"). Today's copied run gives each
+  day's pinyin too.
+- **Sign in signs in.** The start page's Sign in opened "Create a free account"; it now
+  opens signing in, with creating an account a press away. A chart that needs an account
+  still asks for one to be made.
+- **A saved birth's gender is a real choice.** The form for a birth added from Settings
+  ("Gender (needed)") left "Not given" offered and chosen; it now leaves it out and
+  chooses none. The plain form offers it again.
+- **Today reads the canon in the chart's lines.** The day's readings were browser
+  disclosures with whole canon sentences set as capitals labels and the stem keyed by the
+  canon's persona. They now use the decade page's lines (`EC_READINGS.reader`, shared):
+  keys in the app's words, the first sentence beside the key, the chevron, each
+  relationship's entry and what its kind is. Each pillar's lines open apart.
+
+### Tests
+- Browser: Today's school names in English and Finnish, its copied schools, its reading
+  lines and keys; the copied chart's labelled pillars in both languages and the Zi hour;
+  Sign in opening signing in; the gender-needed form without "Not given".
+- Version bumped to `0.69.1`; the regression fixture changes only in `engine.version`.
+
 ## 0.69.0
 
 ### Added

@@ -995,11 +995,62 @@ for (const profile of profiles) {
       const { request, payload } = answers.at(-1);
       assert.equal(request.lang, 'fi');
       assert.equal(payload.readings, null);
-      assert.equal(await page.locator('.today-reading').count(), 0);
+      assert.equal(await page.locator('#today-panel .canon-line').count(), 0);
       const finnish = new Intl.NumberFormat('fi', { minimumFractionDigits: 2, maximumFractionDigits: 2, signDisplay: 'exceptZero' })
         .format(payload.layers.day.pull.score);
       assert.ok((await page.locator('#today-pull-line').textContent()).includes(finnish));
       assert.equal(await page.evaluate(() => document.documentElement.lang), 'fi');
+      // The schools by the names Settings gives them, in Finnish.
+      const notes = await page.locator('#today-detail > .settings-note').allTextContents();
+      assert.equal(notes[1], 'Koulukunnat: Tue ja hillitse, Maan 18 päivää, Vaiheittain');
+    });
+
+    check('the day’s page names its schools as Settings does, and reads the canon in the chart’s lines', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      await page.addInitScript(() => {
+        window.__copied = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.__copied.push(text); } } });
+      });
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      await page.goto(new URL(todayLink({ topic: 'day' }), process.env.EC_BASE_URL).href);
+      await shown(page);
+      await settled(page);
+      const { payload } = answers.at(-1);
+      // The account's schools are the defaults: named, never by their ids.
+      assert.deepEqual(payload.schools, { favourable: 'support', season: 'eighteen', transits: 'phases' });
+      const notes = await page.locator('#today-detail > .settings-note').allTextContents();
+      assert.equal(notes[0], `${ELEMENT_NAMES[payload.season.ruler]} rules the season (Earth’s 18 days).`);
+      assert.equal(notes[1], 'Schools: Support and restrain, Earth’s 18 days, By phase');
+      await press(page, '#today-copy-text');
+      await page.waitForFunction(() => window.__copied.length === 1);
+      assert.ok((await page.evaluate(() => window.__copied[0])).split('\n').includes(notes[1]));
+      // The readings, as the decade page reads a luck pillar: a key in the app's words, the
+      // passage's first sentence, the rest beneath; no browser disclosure, no persona.
+      assert.equal(await page.locator('#today-detail details').count(), 0);
+      const roleName = (id) => id.split('_').map((word) => word[0].toUpperCase() + word.slice(1)).join(' ');
+      for (const [name, reading] of Object.entries(payload.readings)) {
+        const key = (part) => page.locator(`#today-detail .canon-line[data-canon-part="${name}:${part}"] .canon-line-key`).textContent();
+        const { branch } = payload.layers[name].pillar;
+        const dm = payload.natal.day.stem;
+        assert.equal(await key('luck-stem'), `Its stem · ${roleName(reading.stem.ten_god)}`);
+        assert.equal(await key('luck-ground-about'), `About the ${branch.sign}`);
+        assert.equal(await key('luck-meets'),
+          `Your ${ELEMENT_NAMES[dm.element]} on this ground · ${dm.pinyin} ${dm.chinese} on ${branch.pinyin} ${branch.chinese}`);
+        assert.equal(await key('luck-stage'),
+          `Your ${ELEMENT_NAMES[dm.element]}’s stage here · ${reading.branch.stage.name} ${reading.branch.stage.chinese}`);
+        const persona = reading.stem.name.split(' (')[0];
+        const keys = await page.locator('#today-detail .canon-line-key').allTextContents();
+        assert.ok(keys.every((text) => !text.includes(persona)), `${persona} in ${keys.join(' | ')}`);
+      }
+      // A line opens in place, and only its own.
+      const line = page.locator('#today-detail .canon-line[data-canon-part="day:luck-stem"]');
+      await line.locator('.canon-line-toggle').click();
+      await settled(page);
+      assert.equal(await line.locator('.canon-line-toggle').getAttribute('aria-expanded'), 'true');
+      assert.equal(await line.locator('.canon-line-passage').isVisible(), true);
+      assert.equal(await page.locator('#today-detail .canon-line-toggle[aria-expanded="true"]').count(), 1);
     });
 
     check('printed, the day keeps its run with each band as a word, and loses its controls', async (page) => {
@@ -1029,7 +1080,7 @@ for (const profile of profiles) {
       // The canon's own passages are quoted as they are; everything else pairs each
       // character with its pinyin, beside it.
       const lonely = await page.evaluate(() => [...document.querySelectorAll('#today-view [lang="zh-Hant"]')]
-        .filter((node) => !node.closest('.today-reading'))
+        .filter((node) => !node.closest('.today-readings'))
         .filter((node) => {
           const around = (node.parentElement?.textContent ?? '').replace(node.textContent, '');
           return !/[A-Z][a-z]+/.test(around);

@@ -276,7 +276,18 @@
       waiting = null;
       reject(new Error(t('account_needed')));
     });
-    button.addEventListener('click', open);
+    // The button says Sign in while no one is signed in, and it opens signing in. A chart
+    // that needs an account (signIn) asks for one to be made, with signing in a press
+    // away; a code already sent stays asked for.
+    button.addEventListener('click', () => {
+      if (!account && step === 'start' && mode !== 'sign_in') {
+        mode = 'sign_in';
+        setStatus(emailStatus, '');
+        setStatus(languageStatus, '');
+        setStartError('');
+      }
+      open();
+    });
 
     // ── Signing in ──
     const signedIn = (value) => {

@@ -89,11 +89,16 @@ From the top:
   Today follow the clock while the page is open: past an hour's end or midnight, they
   change within half a minute, and at once when the page is seen again.
 
-The day's page gives, for each of the four pillars, the parts of its pull (each
-character, its element, its weight, how much it counts and its value) and the canon's
-readings, as the decade page reads a luck pillar. A pillar's own page, opened from its
-card, gives the same for that pillar alone. Health says it reads the day's elements,
-not the body: it is not health advice.
+The day's page names the season's ruler and the schools the day followed, by the names
+Settings gives them ("Earth's 18 days", never the API's `eighteen`). It gives, for each
+of the four pillars, the parts of its pull (each character, its element, its weight, how
+much it counts and its value) and the canon's readings, as the decade page reads a luck
+pillar and in the same lines: a key in the app's words ("Its stem · Hurting Officer",
+never the canon's persona), the passage's first sentence beside it, and the rest opening
+beneath; then each relationship the pillar forms, as its entry reads, and what each
+kind of them is. Each pillar's lines open apart from the others'. A pillar's own page,
+opened from its card, gives the same for that pillar alone. Health says it reads the
+day's elements, not the body: it is not health advice.
 
 ## Moving through the days
 

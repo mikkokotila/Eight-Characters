@@ -672,17 +672,17 @@ document.addEventListener('DOMContentLoaded', () => {
     dayMasterContext.render(pillarsData.day_master_context, chartData, tenGodsData, pillarsData.hidden_stems, pillarsData.role_profile);
     closePanel();
     applyDisplay(false);
-    // The chart as text, for notes and messages: the pillars on its cards in written
-    // order, year to hour, then the birth as entered, its true solar time and the
-    // convention that set the day.
-    const onCards = Object.fromEntries(['hour', 'day', 'month', 'year'].map((name) => {
-      const stem = chartView.querySelector(`.card.stem[data-pillar="${name}"]`);
-      const branch = chartView.querySelector(`.card.branch[data-pillar="${name}"]`);
-      return [name, `${stem.dataset.char}${branch.dataset.char}`];
-    }));
+    // The chart as text, for notes and messages: each pillar in the chart's order, hour
+    // to year, by its name, with its characters and their pinyin ("Hour 甲辰 Jia Chen"),
+    // then the birth as entered, its true solar time and the convention that set the day.
+    // Characters never stand alone.
+    const pillarsLine = ['hour', 'day', 'month', 'year'].map((name, index) => {
+      const { stem, branch } = chartData.pillars[index];
+      return `${requiredTranslation('pillar_' + name)} ${stem.char}${branch.char} ${stem.pinyin} ${branch.pinyin}`;
+    }).join(' · ');
     const zi = request.conventions?.zi_convention ?? ZI_CONVENTIONS[0];
     const text = [
-      ['year', 'month', 'day', 'hour'].map((name) => onCards[name]).join(' '),
+      pillarsLine,
       [heading, solarTime.solar, requiredTranslation(`zi_${zi}`)].join(' · '),
     ].join('\n');
     shown = { request, place, heading, text };
@@ -2015,7 +2015,11 @@ document.addEventListener('DOMContentLoaded', () => {
   const saveNameInput = document.getElementById('save-name');
   const saveNameStatus = document.getElementById('save-name-status');
   const genderLegend = form.querySelector('.gender-group legend');
-  if (!saveNote || !saveNoteText || !saveCancel || !saveNameGroup || !saveNameInput || !saveNameStatus || !genderLegend) {
+  // "Not given": a chart's choice, never a saved birth's.
+  const noGender = form.querySelector('input[name="gender"][value=""]');
+  const noGenderOption = noGender?.closest('.gender-option');
+  if (!saveNote || !saveNoteText || !saveCancel || !saveNameGroup || !saveNameInput || !saveNameStatus || !genderLegend
+    || !noGenderOption) {
     throw new Error('Saving a birth is incomplete.');
   }
   const readSaveLink = (hash) => {
@@ -2059,9 +2063,12 @@ document.addEventListener('DOMContentLoaded', () => {
     saveNameGroup.classList.remove('hidden');
     saveNameInput.value = correcting?.name ?? '';
     saveNameStatus.textContent = '';
-    // A saved birth needs a gender: the day needs its luck pillars.
+    // A saved birth needs a gender: the day needs its luck pillars. "Not given" is no
+    // choice here, and none is made for the reader.
     genderLegend.dataset.i18n = 'save_gender';
     genderLegend.textContent = t('save_gender');
+    noGenderOption.hidden = true;
+    noGender.checked = false;
     createChartBtn.setAttribute('data-i18n', 'save_create');
     createChartBtn.textContent = t('save_create');
     if (correcting !== null) {
@@ -2083,6 +2090,9 @@ document.addEventListener('DOMContentLoaded', () => {
       genderLegend.dataset.i18n = 'label_gender';
       genderLegend.textContent = t('label_gender');
     }
+    // A chart may go without a gender again, and does when none was chosen.
+    noGenderOption.hidden = false;
+    if (formGender() === null) noGender.checked = true;
   };
   const backToSettings = (method) => {
     stopSaving();

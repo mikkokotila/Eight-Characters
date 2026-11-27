@@ -482,6 +482,8 @@ for (const profile of profiles) {
           await page.goto(process.env.EC_BASE_URL);
           await page.locator(`[data-lang="${lang}"]`).click();
           await page.locator('#account-btn').click();
+          // The button opens signing in; making an account is its other side.
+          await page.locator('#account-mode').click();
           await turnstileAnswered(page);
           await page.locator('#account-send').click();
           await page.locator('#account-email-status.is-error').waitFor();

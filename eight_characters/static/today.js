@@ -15,6 +15,8 @@
   const NATAL = ['year', 'month', 'day', 'hour'];
   // The five gods, from the useful to the unfavourable (docs/Today.md).
   const GODS = ['useful', 'favourable', 'idle', 'enemy', 'unfavourable'];
+  // The three settings the day follows a school in, in Settings' order.
+  const SCHOOL_SETTINGS = ['favourable', 'season', 'transits'];
   // The pull's scale, the same for every layer and day: the rules' largest pull is 3.28
   // (test_schools.py holds every pull inside it).
   const SCALE = 3.5;
@@ -76,6 +78,8 @@
     const hours = need('#today-hours');
     const panel = need('#today-panel');
     const detail = need('#today-detail');
+    // The day's readings, in the lines the chart reads the canon in.
+    const canon = window.EC_READINGS.reader({ panel, escape: esc, subject: 'The day’s' });
     const status = need('#today-status');
     const placeSection = need('#today-place');
     const placeForm = need('#today-place-form');
@@ -89,6 +93,8 @@
     // the answer to the latest is drawn.
     let state = null;
     let shownSettings = null;
+    // The schools' names, as Settings gives them (GET /api/schools).
+    let catalog = null;
     let answer = null;
     let asked = 0;
     // The run drawn last, the strip: Home and End go to its ends. None while no day is
@@ -169,6 +175,16 @@
     const characters = (stem, branch) => `<span class="today-chars" lang="zh-Hant">${esc(stem.chinese + branch.chinese)}</span>`
       + `<span class="today-pinyin">${esc(`${stem.pinyin} ${branch.pinyin}`)}</span>`;
     const layerName = (layer) => t('today_layer_' + layer);
+    // A school by the name Settings gives it, in the day's language: never by its id.
+    const schoolName = (setting, id) => {
+      const preset = catalog?.settings.find((s) => s.id === setting)?.presets.find((p) => p.id === id);
+      if (!preset) throw new Error(t('today_answer_error'));
+      return preset.name[lang()];
+    };
+    // "Schools: Support and restrain, Earth's 18 days, By phase": those the day followed.
+    const schoolsUsed = () => t('today_schools_used', {
+      schools: SCHOOL_SETTINGS.map((setting) => schoolName(setting, answer.schools[setting])).join(', '),
+    });
     // A natal pillar by its name; a pillar of the day as this day's, month's or year's.
     const placeName = (pillar) => (FIFTH[pillar] ? t('today_member_' + FIFTH[pillar]) : t('pillar_' + pillar));
     const relationshipName = (kind) => t('relationship_' + kind);
@@ -924,22 +940,25 @@
           <td>${esc(score(part.value))}</td>
         </tr>`).join('')}</tbody>
       </table>`;
-    // The canon's readings for a pillar of the day, as the decade page reads a luck
-    // pillar (English only).
-    const passage = (key, paragraphs) => (paragraphs?.length ? `<details class="today-reading">
-        <summary><span class="canon-line-key">${esc(key)}</span></summary>
-        ${paragraphs.map((p) => `<p class="canon-text">${p.label === null ? '' : `<strong>${esc(p.label)}:</strong> `}${esc(p.text)}</p>`).join('')}
-      </details>` : '');
+    // The canon's readings for a pillar of the day, as the decade page reads a luck pillar
+    // and in the same lines (readings.js, English only): its stem by its role, its
+    // branch, the Day Master on it and its stage there, then each relationship it forms
+    // as its entry reads, and what each kind of them is. Each pillar's lines open apart
+    // from the others'.
     const readingOf = (name, layer) => {
       const reading = answer.readings?.[name];
       if (!reading) return '';
-      const stage = reading.branch.stage;
+      const dm = answer.natal.day.stem;
+      const { branch } = layer.pillar;
+      const found = Object.entries(reading.relationships);
       return `<div class="today-readings">
-        ${passage(`Its stem · ${reading.stem.name}`, reading.stem.core)}
-        ${passage(`About the ${layer.pillar.branch.sign}`, reading.branch.about)}
-        ${passage('On this ground', reading.branch.meets)}
-        ${passage(`The stage here · ${stage.name} ${stage.chinese}`, stage.paragraphs)}
-        ${Object.values(reading.relationships).map((r) => passage(`${r.entry.title}${r.line ? ` · ${r.line}` : ''}`, [...(r.introduction ?? []), ...r.entry.paragraphs])).join('')}
+        ${canon.decade(reading, {
+          dayMaster: { char: dm.chinese, pinyin: dm.pinyin, element: dm.element },
+          branch: { char: branch.chinese, pinyin: branch.pinyin },
+          role: (god) => t('ten_god_' + god),
+        }, `${name}:`)}
+        ${found.map(([id, r]) => canon.relationship(id, r, answer.natal.month.branch.pinyin, `${name}:${id}:`)).join('')}
+        ${canon.aboutFamilies(found.map(([, r]) => r), `${name}:`)}
         ${reading.settles.map((s) => `<p class="canon-condition">${esc(s.sentence)}</p>`).join('')}
       </div>`;
     };
@@ -962,8 +981,8 @@
       if (topic === 'day') {
         const season = answer.season;
         return `<h3 id="today-detail-title" class="panel-heading">${esc(t('today_topic_day'))}</h3>
-          <p class="settings-note">${esc(t('today_season', { element: t('element_' + season.ruler), school: season.school }))}</p>
-          <p class="settings-note">${esc(t('today_schools_used', { schools: Object.values(answer.schools).join(', ') }))}</p>
+          <p class="settings-note">${esc(t('today_season', { element: t('element_' + season.ruler), school: schoolName('season', season.school) }))}</p>
+          <p class="settings-note">${esc(schoolsUsed())}</p>
           ${LAYERS.map(pillarSection).join('')}
           ${lang() === 'fi' ? `<p class="settings-note">${esc(t('today_readings_english'))}</p>` : ''}`;
       }
@@ -1213,9 +1232,12 @@
         drawBar();
       });
       try {
-        const kept = await settings.load(() => mine === asked);
+        // The settings, and the schools by the names Settings gives them, which the day's
+        // page and its text name.
+        const [kept, named] = await Promise.all([settings.load(() => mine === asked), settings.catalog()]);
         if (mine !== asked) return;
         shownSettings = kept;
+        catalog = named;
         keepingFocus(drawBar);
         if (!state.chart.gender) {
           instead(t('today_needs_gender'), [['edit', t('edit_chart')]]);
@@ -1521,7 +1543,7 @@
       const other = state.who === 'partner' ? t('today_self') : (partner === null ? null : partnerName(partner));
       const lines = [
         `${longDate(state.day)} · ${chartLine.textContent}`,
-        t('today_schools_used', { schools: Object.values(answer.schools).join(', ') }),
+        schoolsUsed(),
         t('today_pull_line', { pull: pull(answer.layers.day.pull) }),
         GODS.map((god) => godLine(god, answer.favourable.gods[god])).join(' · '),
         ...LAYERS.map((name) => {
@@ -1534,7 +1556,7 @@
           `${other}: ${pull(answer.marriage.partner.pull)} · ${t(answer.marriage.pull_apart ? 'today_pull_apart' : 'today_pull_not_apart')}`,
         ]),
         `${t('today_run_label')}:`,
-        ...answer.run.map((day) => `  ${shortDate(day.date)} ${day.pillar.stem.chinese}${day.pillar.branch.chinese} · ${pull(day)}`),
+        ...answer.run.map((day) => `  ${shortDate(day.date)} ${day.pillar.stem.chinese}${day.pillar.branch.chinese} ${day.pillar.stem.pinyin} ${day.pillar.branch.pinyin} · ${pull(day)}`),
         `${t('today_hours')}:`,
         ...answer.hours.map((hour) => `  ${hour.branch} ${hour.pinyin} ${hour.spans.map((s) => `${clock(s.start)}–${clock(s.end)}`).join(', ')}${hour.call === null ? '' : ` · ${t('today_call_' + hour.call)}`}`),
       ];

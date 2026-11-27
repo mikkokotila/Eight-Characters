@@ -6,8 +6,9 @@ type a birth.
 
 ## Creating an account
 
-Create chart, while signed out, opens the account window (so does Sign in, at the top
-of the start page).
+Create chart, while signed out, opens the account window to create a free account.
+(Sign in, at the top of the start page, opens it to sign in; "No account yet? Create a
+free one" turns it to creating one.)
 - Type your email address and choose the account's language, Finnish or English.
   Nothing is chosen for you.
 - Wait for the check that you are a person (Cloudflare Turnstile) to finish, and send
@@ -17,8 +18,8 @@ of the start page).
 
 The chart you asked for then opens, in the account's language.
 
-Already have an account? Choose Sign in in the same window: only the address is
-needed. The email never says whether an address has an account to anyone but its
+Already have an account? Sign in, at the top of the start page, or "Already have an
+account? Sign in" in the same window: only the address is needed. The email never says whether an address has an account to anyone but its
 owner, so the window says only that a code is on its way if the address has one.
 
 ## Your language

@@ -104,11 +104,11 @@ for (const profile of profiles) {
       const account = await newAccount(playwright, { language: 'en', label: 'returning' });
       await visit(page, { lang: 'fi' });
       assert.equal(await text(page, '#account-btn'), 'Kirjaudu');
+      // The button that says Sign in opens signing in, with making an account a press away.
       await page.locator('#account-btn').click();
       await dialogOpens(page);
-      assert.equal(await text(page, '#account-title'), 'Luo maksuton tili');
-      await page.locator('#account-mode').click();
       assert.equal(await text(page, '#account-title'), 'Kirjaudu sisään');
+      assert.equal(await text(page, '#account-lead'), 'Lähetämme kirjautumiskoodin sähköpostiisi.');
       assert.equal(await page.locator('#account-language').isVisible(), false);
       assert.equal(await text(page, '#account-mode'), 'Ei vielä tiliä? Luo maksuton tili');
       // The address in another case is the same account's.
@@ -151,7 +151,6 @@ for (const profile of profiles) {
       await page.locator('#account-start-error').waitFor({ state: 'visible' });
       assert.equal(await text(page, '#account-start-error'), unloaded);
       await page.locator('#account-email').fill(newAddress());
-      await page.locator('#account-language input[value="en"]').check();
       await page.locator('#account-send').click();
       await page.waitForFunction(() => document.querySelectorAll('script[src*="challenges.cloudflare.com"]').length === 2);
       assert.equal(await text(page, '#account-start-error'), unloaded);
@@ -401,9 +400,9 @@ for (const profile of profiles) {
         await route.continue();
       });
       await visit(page, { lang: 'en' });
+      // The button opens signing in.
       await page.locator('#account-btn').click();
       await dialogOpens(page);
-      await page.locator('#account-mode').click();
       const email = newAddress('side');
       await page.locator('#account-email').fill(email);
       await turnstileAnswered(page);
@@ -429,6 +428,8 @@ for (const profile of profiles) {
       await visit(page, { lang: 'fi' });
       await page.locator('#account-btn').click();
       await dialogOpens(page);
+      // Making an account, the dialog's tallest side.
+      await page.locator('#account-mode').click();
       const viewport = page.viewportSize();
       const box = await page.locator('#account-dialog').boundingBox();
       assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, `${JSON.stringify(box)} in ${JSON.stringify(viewport)}`);
