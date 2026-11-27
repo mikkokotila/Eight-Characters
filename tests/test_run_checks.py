@@ -73,7 +73,49 @@ class EssentialSuites(unittest.TestCase):
             )
 
 
+class Jobs(unittest.TestCase):
+    def test_a_profile_over_the_part_length_runs_in_parts(self) -> None:
+        seconds = run_checks.PART_SECONDS * 2 + 1
+        planned = run_checks.jobs_of('today', 'desktop', seconds)
+        self.assertEqual(
+            [job.label for job, _ in planned],
+            ['today · desktop · 1/3', 'today · desktop · 2/3', 'today · desktop · 3/3'],
+        )
+        self.assertEqual({expected for _, expected in planned}, {seconds / 3})
+        [(job, expected)] = run_checks.jobs_of('theme', 'mobile', 7)
+        self.assertEqual((job.label, job.parts, expected), ('theme · mobile', 1, 7))
+
+    def test_the_longest_run_starts_first(self) -> None:
+        planned = [
+            *run_checks.jobs_of('a', 'desktop', 10),
+            *run_checks.jobs_of('b', 'desktop', 300),
+            *run_checks.jobs_of('c', 'mobile', 90),
+        ]
+        self.assertEqual(
+            [job.label for job in run_checks.order(planned)],
+            [
+                'b · desktop · 1/3',
+                'b · desktop · 2/3',
+                'b · desktop · 3/3',
+                'c · mobile',
+                'a · desktop',
+            ],
+        )
+
+
 class TheRepository(unittest.TestCase):
+    def test_every_suite_has_its_seconds(self) -> None:
+        available = run_checks.available_suites()
+        found = run_checks.durations(available)
+        self.assertEqual(sorted(found), available)
+        self.assertTrue(
+            all(
+                seconds > 0
+                for profiles in found.values()
+                for seconds in profiles.values()
+            )
+        )
+
     def test_the_core_journeys_and_areas_name_suites_that_exist(self) -> None:
         available = run_checks.available_suites()
         core = run_checks.core_journeys()

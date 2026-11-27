@@ -1,0 +1,36 @@
+# Seconds each suite's desktop and mobile profiles take, run one at a time: NAME DESKTOP
+# MOBILE, from one engine's full run (Chromium, main 0.71.1, 2026-11-27, 84 minutes).
+# tests/run_checks.py starts the longest runs first, and runs a profile that takes over
+# two minutes in parts, beside each other. A new suite needs its line: the runner prints
+# each run's seconds as it finishes (python tests/run_checks.py browser --suite NAME).
+account 62 58
+account-billing 21 23
+account-sessions 158 151
+arcs 76 24
+compare 62 56
+components 16 13
+controls 48 55
+day-master-context 85 75
+design-system 38 21
+engine-truth 55 50
+explorer-parameters 104 77
+finish 29 28
+foundations 326 298
+keyboard 42 37
+life 65 55
+links 61 54
+location 24 23
+luck 202 172
+motion 68 60
+output 27 25
+panel 211 112
+pointing 59 8
+reading 104 74
+relationships 68 62
+roles 125 125
+settings 253 185
+theme 7 6
+today 278 228
+tokens 17 17
+toolbar 19 19
+workbench 62 36

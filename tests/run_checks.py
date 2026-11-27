@@ -90,9 +90,10 @@ SERVER_SETTINGS = {
     'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '1000',
 }
 SERVER_START_SECONDS = 60
-# A suite's profile runs in parts, beside each other, one for every this many bytes of
-# its source: the longest suites would otherwise finish long after the rest.
-PART_BYTES = 50_000
+DURATIONS = SUITES / 'durations.txt'
+# A profile that takes longer runs in parts of about this long, beside each other: the
+# longest suites would otherwise finish long after the rest.
+PART_SECONDS = 120
 # A job that a stop interrupts gets this long to close its browser before it is killed.
 STOP_GRACE_SECONDS = 10
 
@@ -191,20 +192,38 @@ class Job:
         whole = f'{self.suite} · {self.profile}'
         return whole if self.parts == 1 else f'{whole} · {self.part}/{self.parts}'
 
-    @property
-    def size(self) -> float:
-        """How long it runs, as the share of its suite's source it runs."""
-        return suite_size(self.suite) / self.parts
+
+def durations(available: Sequence[str]) -> dict[str, dict[str, int]]:
+    """Each suite's seconds in each profile, from durations.txt."""
+    found: dict[str, dict[str, int]] = {}
+    for line in DURATIONS.read_text(encoding='utf-8').splitlines():
+        if not line.strip() or line.startswith('#'):
+            continue
+        fields = line.split()
+        if len(fields) != 1 + len(PROFILES) or not all(f.isdigit() for f in fields[1:]):
+            raise SystemExit(
+                f'{DURATIONS.relative_to(ROOT)}: not NAME DESKTOP MOBILE: {line}'
+            )
+        found[fields[0]] = dict(zip(PROFILES, map(int, fields[1:]), strict=True))
+    missing = sorted(set(available) - set(found))
+    unknown = sorted(set(found) - set(available))
+    if missing or unknown:
+        raise SystemExit(
+            f'{DURATIONS.relative_to(ROOT)} must give the seconds of every suite, and only '
+            f'those: missing {", ".join(missing) or "none"}; no such suite '
+            f'{", ".join(unknown) or "none"}.'
+        )
+    return found
 
 
-def suite_size(suite: str) -> int:
-    return (SUITES / f'{suite}.test.mjs').stat().st_size
-
-
-def jobs_of(suite: str, profile: str) -> list[Job]:
-    """A suite's profile as one job, or in parts when the suite is long (EC_PART)."""
-    parts = max(1, math.ceil(suite_size(suite) / PART_BYTES))
-    return [Job(suite, profile, part, parts) for part in range(1, parts + 1)]
+def jobs_of(suite: str, profile: str, seconds: int) -> list[tuple[Job, float]]:
+    """A suite's profile as one job, or in parts when it takes long (EC_PART), each
+    with the seconds it is expected to take."""
+    parts = max(1, math.ceil(seconds / PART_SECONDS))
+    return [
+        (Job(suite, profile, part, parts), seconds / parts)
+        for part in range(1, parts + 1)
+    ]
 
 
 @dataclass
@@ -264,9 +283,9 @@ def tap_failures(tap: str) -> list[str]:
     return found
 
 
-def order(jobs: list[Job]) -> list[Job]:
+def order(jobs: list[tuple[Job, float]]) -> list[Job]:
     """Longest first, so that no long job starts last."""
-    return sorted(jobs, key=lambda job: -job.size)
+    return [job for job, _ in sorted(jobs, key=lambda pair: -pair[1])]
 
 
 @dataclass
@@ -345,7 +364,7 @@ class Run:
     ) -> None:
         self.node = node
         self.tap = tap
-        self.pending = order(jobs)
+        self.pending = list(jobs)
         self.total = len(jobs)
         self.name = name
         self.results: list[Result] = []
@@ -514,12 +533,15 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
     if not chosen:
         raise SystemExit('No browser suite is left to run.')
     profiles = [args.profile] if args.profile else list(PROFILES)
-    jobs = [
-        job
-        for suite in chosen
-        for profile in profiles
-        for job in jobs_of(suite, profile)
-    ]
+    seconds = durations(available)
+    jobs = order(
+        [
+            planned
+            for suite in chosen
+            for profile in profiles
+            for planned in jobs_of(suite, profile, seconds[suite][profile])
+        ]
+    )
     workers = min(args.workers, len(jobs))
     what = {
         'essential': 'the essential browser tests',
