@@ -392,11 +392,11 @@ for (const profile of profiles) {
       await openSettings(page);
       const card = page.locator(`#settings-charts-body .saved-card[data-chart="${kept.id}"]`);
       assert.equal(await card.locator('.saved-name').textContent(), name);
-      // Its pillars, year first, each character with its pinyin.
+      // Its pillars in the chart's order, hour first, each character with its pinyin.
       const tiles = await card.locator('.saved-glyph').evaluateAll((items) => items.map((item) => [
         item.querySelector('.saved-char').textContent, item.querySelector('.saved-pinyin').textContent,
       ]));
-      assert.deepEqual(tiles, ['year', 'month', 'day', 'hour'].flatMap((p) => [
+      assert.deepEqual(tiles, ['hour', 'day', 'month', 'year'].flatMap((p) => [
         [kept.pillars[p].stem.chinese, kept.pillars[p].stem.pinyin],
         [kept.pillars[p].branch.chinese, kept.pillars[p].branch.pinyin],
       ]));

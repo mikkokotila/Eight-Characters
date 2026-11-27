@@ -4095,6 +4095,12 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   min-width: 0;
   padding: var(--space-1) var(--space-3);
 }
+/* The day's Today step: its icon and its word, between the arrows. */
+:root[data-toolbar='words'] .segmented button.icon-control[data-control-words='icon-label'] {
+  min-width: 0;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2);
+}
 /* A topic keeps its icon and its count, and says its name between them. */
 .control-title { display: none; }
 .control-title::before { content: attr(data-title); }

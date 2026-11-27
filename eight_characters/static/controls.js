@@ -33,7 +33,8 @@
   const firstWords = (label) => label.split(' · ')[0].trim().split(/\s+/).slice(0, 2).join(' ');
   // What the toolbar's words show of a control: a switch its label (`label`), an action
   // its icon and label (`icon-label`), a topic its title between its icon and its count
-  // (`title`). Navigation keeps its icons: the steps, Today's dates, Close on a panel.
+  // (`title`). Navigation keeps its icons: the steps' arrows, Today's dates, Close on a
+  // panel; the day's Today step, a jump rather than a step, says its word too.
   const ACTIONS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn',
     'chart-settings', 'chart-account', 'today-copy-link', 'today-copy-text', 'today-print', 'today-settings',
     'today-account', 'settings-account', 'compare-swap', 'compare-copy-link', 'compare-close'];
@@ -95,7 +96,7 @@
     } else if (node.matches('.luck-today')) { icon = 'calendar-check'; key = 'today'; only = true; }
     else if (node.matches('.today-step')) {
       [icon, key] = node.dataset.todayStep === '-1' ? ['chevron-left', 'day_previous'] : ['chevron-right', 'day_next']; only = true;
-    } else if (node.matches('.today-now')) { icon = 'calendar-check'; key = 'day_today'; only = true; }
+    } else if (node.matches('.today-now')) { icon = 'calendar-check'; key = 'day_today'; only = true; words = 'icon-label'; }
     else if (node.matches('.luck-chip')) {
       key = node.dataset.luck === 'before' ? 'before' : 'decade';
       label = node.dataset.luck === 'before' ? text('luck_before') : node.querySelector('.luck-chip-names').textContent.trim();
