@@ -123,6 +123,20 @@ for (const profile of profiles) {
       assert.equal(await text(page, '#account-btn'), 'Account');
     });
 
+    check('Sign in, closed, leaves a chart asking for an account to be made', async (page) => {
+      await visit(page, { lang: 'en' });
+      await page.locator('#account-btn').click();
+      await dialogOpens(page);
+      assert.equal(await text(page, '#account-title'), 'Sign in');
+      await page.keyboard.press('Escape');
+      await page.locator('#account-dialog').waitFor({ state: 'hidden' });
+      // A chart asks on its own side: making an account, as the page has known none.
+      await askForChart(page);
+      await dialogOpens(page);
+      assert.equal(await text(page, '#account-title'), 'Create a free account');
+      assert.equal(await page.locator('#account-language').isVisible(), true);
+    });
+
     check('closing the dialog asks for no chart, and the form says why', async (page) => {
       const asked = chartsAskedFor(page);
       await visit(page);
