@@ -1,9 +1,10 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Covers picking the birth place and handing it to the chart and the explorer.
 import assert from 'node:assert/strict';
-import { before, after, describe, it } from 'node:test';
+import { before, after, describe } from 'node:test';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
 import { press } from './bar-helpers.mjs';
+import { profiles, it } from './profiles.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -31,11 +32,6 @@ after(async () => {
   if (account) await deleteAccount(playwright, account);
   if (browser) await browser.close();
 });
-
-const profiles = [
-  { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
-  { name: 'mobile', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
-];
 
 // Suggestions as /api/location_suggest returns them, from open-meteo results (2026-09-25).
 function place(city, region, country, timezone, latitude, longitude) {

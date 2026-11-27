@@ -9,6 +9,7 @@ import {
 } from './chart-helpers.mjs';
 import { newAccount, asAccount, signInPage, stubTurnstile } from './account-helpers.mjs';
 import { dialogOpens, signInThroughDialog } from './account-page.mjs';
+import { desktop, describeOnce } from './profiles.mjs';
 
 // A made-up birth, of nobody: the luck suites' sample, 14 August 1975, 07:45, Helsinki.
 const CHART = { date: '1975-08-14', time: '07:45', gender: 'female' };
@@ -2136,7 +2137,7 @@ for (const profile of profiles) {
   });
 }
 
-describe(`${engineName} / today and the session`, { concurrency: false }, () => {
+describeOnce(`${engineName} / today and the session`, { concurrency: false }, () => {
   // An account of its own, with where you are kept, and a page signed in to it.
   const ownAccount = async (page, language, label) => {
     const own = await newAccount(playwright, { language, label });
@@ -2148,7 +2149,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     return own;
   };
 
-  it('a day asked for after the session ended asks for a sign-in, then is drawn', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('a day asked for after the session ended asks for a sign-in, then is drawn', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await page.clock.setFixedTime(NOW);
     const own = await ownAccount(page, 'en', 'today-ended');
     await signInPage(page, own);
@@ -2168,7 +2169,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     assert.equal(await page.locator('#today-notice').isHidden(), true);
   }, { signedIn: false }));
 
-  it('after a sign-out, the day shows nothing of the account before, even when the next read fails', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('after a sign-out, the day shows nothing of the account before, even when the next read fails', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await page.clock.setFixedTime(NOW);
     const first = await ownAccount(page, 'en', 'today-first');
     const second = await newAccount(playwright, { language: 'en', label: 'today-second' });
@@ -2218,7 +2219,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     assert.doesNotMatch(await page.locator('#today-view').textContent(), /First partner|Second partner/);
   }, { signedIn: false }));
 
-  it('another account taken while the day is read: the day is read again with its settings, and nothing of the one before stays', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('another account taken while the day is read: the day is read again with its settings, and nothing of the one before stays', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await page.clock.setFixedTime(NOW);
     const first = await ownAccount(page, 'en', 'today-taken-a');
     const second = await ownAccount(page, 'en', 'today-taken-b');
@@ -2269,7 +2270,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     assert.equal(answers.at(-1).request.charts.partner, undefined);
   }, { signedIn: false }));
 
-  it('another account taken while the day is hidden: opened again, Today shows nothing of the one before', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('another account taken while the day is hidden: opened again, Today shows nothing of the one before', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await page.clock.setFixedTime(NOW);
     const first = await ownAccount(page, 'en', 'today-hidden-a');
     const second = await ownAccount(page, 'en', 'today-hidden-b');
@@ -2325,7 +2326,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     assert.equal(answers.at(-1).request.charts.partner, undefined);
   }, { signedIn: false }));
 
-  it('signed in on a day’s link, the day is in the account’s language, and so is its address', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('signed in on a day’s link, the day is in the account’s language, and so is its address', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await page.clock.setFixedTime(NOW);
     const own = await ownAccount(page, 'fi', 'today-language');
     const { answers } = await recordToday(page);
@@ -2340,8 +2341,8 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
   }, { signedIn: false }));
 });
 
-describe(`${engineName} / today in a comparison`, { concurrency: false }, () => {
-  it('a compared chart has no Chart · Today and no library', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+describeOnce(`${engineName} / today in a comparison`, { concurrency: false }, () => {
+  it('a compared chart has no Chart · Today and no library', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     await openLink(page, `/?embed=1#chart?${chartParams()}`, { place: HELSINKI });
     assert.equal(await page.locator('#page-switch').isHidden(), true);
     assert.equal(await page.locator('#library-btn').isHidden(), true);

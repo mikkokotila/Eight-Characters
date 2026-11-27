@@ -1,33 +1,120 @@
 # Browser regression tests
 
-The classic controls suite covers preserved action names and command text, local
-icons on rerendered panels, chart evidence counts, luck and Zi-hour selections,
-localized keyboard descriptions, cancelled 500 ms hovers, hoverable tooltips,
-touch hold versus tap, Escape, reduced motion, dark mode and 320px layouts.
-It also verifies that printing keeps the selected Zi convention as readable text.
-Gender help describes the radio input, a tooltip stays open on return to its trigger,
-and branch help leaves the card's existing turn instructions unobscured.
-Tooltip text remains hoverable while passing clicks through to underlying controls,
-and activating a control cancels pending hover help. The runner emits TAP diagnostics;
-`--suite foundations --name 'text meets WCAG'` isolates its contrast checks.
+## Running them
 
-`EC_NODE` names the Node executable for `python tests/run_checks.py syntax` and
-`python tests/run_checks.py browser --browser chromium`. The browser runner uses
-the same settings below, selects the engine explicitly, and can run the controls
-alone with `--suite controls` or the other regressions with `--exclude controls`.
-`python tests/run_checks.py types` runs Pyright with the current Python environment.
+`python tests/run_checks.py browser` runs the essential tests, and `--full` runs every
+suite. Run each in both engines, `--browser chromium` and `--browser webkit`:
 
-The harness uses Node's built-in test runner and an existing Playwright installation
-with matching browser binaries. It does not install dependencies, add a frontend
-build step, or alter the running app. The server address, its mail folder, the module
-and the browser are explicit environment settings; a missing setting or browser fails
-the run.
+```bash
+python tests/run_checks.py browser --browser chromium
+```
 
-Charts need an account. Each suite signs in to an account of its own through the app's
-API, as the page does (`account-helpers.mjs`), reads the code from the folder the app
-writes its emails to, gives every page it opens that session, and deletes the account
-at the end. The account suites open their pages signed out instead, and make the
-accounts their tests need, on `example.com` addresses. Start the app with its account settings (see
+```bash
+python tests/run_checks.py browser --browser chromium --full
+```
+
+A command that names suites runs exactly those: `--suite NAME` (repeatable) runs
+`NAME.test.mjs` in both profiles. Flags alone steer the essential run: `--name PATTERN`
+keeps the tests whose names match (a pattern no test matches fails the run), `--profile
+desktop` or `mobile` one profile, `--exclude NAME` leaves a suite out, `--workers N`
+sets how many runs go at once (two fewer than the CPUs by default, at most eight), and
+`--tap-dir DIR` keeps each run's TAP. `--suite foundations --name 'text meets WCAG'`
+isolates the contrast checks.
+
+Use the Python that has the app installed (`pip install -e .`). `EC_NODE` names the
+Node executable (`python tests/run_checks.py syntax` checks the page scripts with it)
+and `EC_PLAYWRIGHT_MODULE` the Playwright module: its `index.mjs` path, or `playwright`
+when that resolves from the repository, from an installation with the browser's
+matching binary. No missing browser is skipped or substituted. The harness installs
+nothing and adds no build step. `python tests/run_checks.py types` runs Pyright.
+
+The runner prints the suites it chose, then a line as each run (a suite's profile, or
+a part of one) finishes, with its seconds. At the end it prints every failed test with
+its TAP diagnostics (or the end of the output of a run that failed otherwise), the
+totals, the slowest runs, and the load average at the start and the end. It exits 0
+only when every run passed.
+
+Timing tests fail when the machine is starved: when the load average was far above the
+CPU count, run the failed suites again when it is quieter before reading a failure.
+
+### The essential tests
+
+Agents and pull requests run the same set, which `tests/run_checks.py` chooses:
+
+- [`essential.txt`](essential.txt): the core journeys, the suites that guard what must
+  never break: the engine's numbers on the chart (`engine-truth`); who is signed in,
+  and whose charts, settings and day a page shows (`account`, `account-sessions`,
+  `settings`, `today`); and the plans' payments (`account-billing`). A new suite that
+  guards one of those belongs in this list. Changing the list runs every suite.
+- Any suite the change edits, and any suite that directly imports a changed helper
+  (`chart-helpers.mjs`, `account-page.mjs` and the others). One step only.
+- The suites mapped to a changed area of the app (`AREAS` in `tests/run_checks.py`): a
+  page module and the API module behind it, or the style sheet and the fonts. A path
+  outside those areas, such as `app.js` or `index.html`, adds no suite.
+
+The change is the work compared with `origin/main`, including uncommitted and
+untracked files. The run stops with a message if git cannot find `origin/main`.
+
+So passing the essential tests proves those suites on that change, not the whole
+suite, and a change can break a suite outside the set until the next full run.
+
+### The full run
+
+`--full` runs every suite. It runs on main, not as a pull request's check: nightly at
+03:41 UTC, as poise's and isomora's full suites do, and by hand. CI runs no browser
+tests here, so the nightly run is a scheduled task on the machine that runs the suites
+(it keeps that machine's clock, so summer time moves it by an hour): `--full` in
+Chromium, then WebKit, on a fresh copy of `origin/main` with a fresh install. A run
+that fails opens one issue, `fix: the full browser suite fails on main`, naming the
+commit and the failed tests. While it is open, each failed run adds a comment, never
+an edit, marking the tests that did not fail the run before. A run that passes closes
+it. The failure is fixed in a pull request of its own. A pull request runs the
+essential tests, which are every suite when it changes `essential.txt`.
+
+### How a run is made fast
+
+Every worker has an app server of its own (`app_server.py`), with a new database and
+mail folder, on a free port: the runner binds the socket and hands it to the app, so
+no port is fixed and no other process can take it. Each suite's desktop and mobile
+profiles are runs of their own (`EC_PROFILE`, read by `profiles.mjs`), each in a Node
+process and a browser of its own, one after another on a worker's server. A profile
+that takes over two minutes runs in parts of about two minutes (`EC_PART`): of every n
+tests the suite registers, part k runs the k-th, through `profiles.mjs`'s `it`.
+[`durations.txt`](durations.txt) gives each suite's seconds in each profile, from a
+full run one file at a time; the longest runs start first. Each run signs in to an
+account of its own, as every suite did. The tests outside a suite's profiles run once,
+in the desktop profile (`describeOnce`). No test asserts or waits for anything other
+than it did.
+
+The servers run with throwaway settings: Turnstile's test keys (which the app still
+checks with Cloudflare, so a run needs the network), mail written to the folder, and
+request limits a whole run stays within. None of the shell's `EC_` settings reaches
+them, and the runner refuses to start with `EC_BASE_URL` or `EC_MAIL_DIRECTORY` set.
+
+### Timings
+
+Measured on 2026-11-27 on a 10-CPU Apple M1 Max, with eight workers, while other
+work kept the machine at load averages of 25 to 160 (10 keeps it busy):
+
+| Run, in Chromium unless named | Load average, start to end | Time |
+|---|---|---|
+| Every suite one file at a time, main 0.71.1 | 24 to 76 | 83 min 39 s |
+| Every suite one file at a time, main 0.75.0 | 57 to 33 | 88 min 45 s |
+| `--full`, the same 0.75.0 commit | 34 to 127 | 24 min 10 s |
+| `--full`, main 0.79.1 | 45 to 33 | 13 min 1 s |
+| `--full` in WebKit, main 0.79.1 | 33 to 126 | 14 min 59 s |
+| The essential tests' core journeys, main 0.79.1 | 60 to 45 | 3 min 36 s |
+
+The suites hold about 88 minutes of work, 11 a worker. A busy machine stretches each
+run, up to about twice its seconds, and fails timing tests whichever way they run. A
+pull request's essential run takes the core journeys' time plus that of any suites
+its change adds.
+
+### Against a server of your own
+
+`node --test` runs a suite against an app you start yourself, both profiles in one
+process unless `EC_PROFILE` names one (and every test, unless `EC_PART` names a part).
+Start the app with its account settings (see
 [Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
 - `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
 - Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
@@ -46,13 +133,17 @@ EC_PLAYWRIGHT_MODULE=/absolute/path/to/playwright/index.mjs \
 EC_BASE_URL=http://127.0.0.1:8000 \
 EC_MAIL_DIRECTORY=/the/app/mail/folder \
 EC_BROWSER=chromium \
-node --test --test-concurrency=1 tests/browser/*.test.mjs
+node --test --test-concurrency=1 tests/browser/links.test.mjs
 ```
 
-`EC_PLAYWRIGHT_MODULE=playwright` also works when that module is resolvable from the
-repository. Run again with `EC_BROWSER=webkit` and an installation that has its
-matching WebKit binary. Each run covers desktop and touch-enabled mobile contexts.
-No missing browser is skipped or substituted.
+## The suites
+
+Charts need an account. Each suite signs in to an account of its own through the app's
+API, as the page does (`account-helpers.mjs`), reads the code from the folder the app
+writes its emails to, gives every page it opens that session, and deletes the account
+at the end. The account suites open their pages signed out instead, and make the
+accounts their tests need, on `example.com` addresses. Each run covers desktop and
+touch-enabled mobile contexts.
 
 Set `EC_SCREENSHOT_DIR` to an output directory to save overview, selection, clash,
 frame, and Finnish-language screenshots. Nothing is written into the repository
@@ -67,6 +158,16 @@ sessions suite also answers some requests itself, a refusal or an answer held on
 way, to play the late answers it checks. Malformed-response tests intentionally modify the real
 response to verify visible errors. No real birth records or saved user data are used,
 and every account is made for the run, on `example.com` addresses.
+
+The classic controls suite covers preserved action names and command text, local
+icons on rerendered panels, chart evidence counts, luck and Zi-hour selections,
+localized keyboard descriptions, cancelled 500 ms hovers, hoverable tooltips,
+touch hold versus tap, Escape, reduced motion, dark mode and 320px layouts.
+It also verifies that printing keeps the selected Zi convention as readable text.
+Gender help describes the radio input, a tooltip stays open on return to its trigger,
+and branch help leaves the card's existing turn instructions unobscured.
+Tooltip text remains hoverable while passing clicks through to underlying controls,
+and activating a control cancels pending hover help.
 
 The account suite (`account.test.mjs`) checks:
 - that the start page needs no account, and that creating a chart signed out shows its
@@ -121,7 +222,9 @@ The account sessions suite (`account-sessions.test.mjs`) checks:
 Their pages are shared through `account-page.mjs`. The two are separate files, so each
 runs in a browser of its own: WebKit stops loading pages after some sixty contexts in
 one browser (the 64th, a phone's 32nd, never loaded). The account sessions suite opens
-62, so a test more on each profile needs another file first.
+62 when both profiles run in one process, as `node --test` runs it, so a test more on
+each profile needs another file first. The runner runs each profile, or each part of
+one, in a browser of its own.
 
 The foundations suite also audits the account dialog's fonts and contrast, signed in
 and signed out, in both languages and both themes.
