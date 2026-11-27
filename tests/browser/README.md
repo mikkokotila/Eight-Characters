@@ -60,10 +60,12 @@ suite, and a change can break a suite outside the set until the next full run.
 
 `--full` runs every suite. It runs on main, not as a pull request's check: nightly at
 03:41 UTC, as poise's and isomora's full suites do, and by hand. CI runs no browser
-tests here, so the nightly run needs a schedule on the machine that runs the suites:
-`--full` in both engines on `origin/main`. A failure it finds is fixed in a pull
-request of its own. A pull request runs the essential tests, which are every suite
-when it changes `essential.txt`.
+tests here, so the nightly run is a scheduled task on the machine that runs the
+suites: `--full` in both engines on a fresh copy of `origin/main`. A run that fails
+opens one issue, `fix: the full browser suite fails on main`, naming the failed tests
+and the commit; another failure adds a comment, never an edit, and a run that passes
+closes it. The failure is fixed in a pull request of its own. A pull request runs the
+essential tests, which are every suite when it changes `essential.txt`.
 
 ### How a run is made fast
 
