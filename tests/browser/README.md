@@ -15,10 +15,11 @@ python tests/run_checks.py browser --browser chromium --full
 
 A command that names suites runs exactly those: `--suite NAME` (repeatable) runs
 `NAME.test.mjs` in both profiles. Flags alone steer the essential run: `--name PATTERN`
-keeps the tests whose names match, `--profile desktop` or `mobile` one profile,
-`--exclude NAME` leaves a suite out, `--workers N` sets how many runs go at once (two
-fewer than the CPUs by default, at most eight), and `--tap-dir DIR` keeps each run's
-TAP. `--suite foundations --name 'text meets WCAG'` isolates the contrast checks.
+keeps the tests whose names match (a pattern no test matches fails the run), `--profile
+desktop` or `mobile` one profile, `--exclude NAME` leaves a suite out, `--workers N`
+sets how many runs go at once (two fewer than the CPUs by default, at most eight), and
+`--tap-dir DIR` keeps each run's TAP. `--suite foundations --name 'text meets WCAG'`
+isolates the contrast checks.
 
 Use the Python that has the app installed (`pip install -e .`). `EC_NODE` names the
 Node executable (`python tests/run_checks.py syntax` checks the page scripts with it)

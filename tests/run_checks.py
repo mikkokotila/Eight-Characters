@@ -252,8 +252,23 @@ COUNTS = re.compile(r'^# (tests|suites|pass|fail|cancelled|skipped|todo) (\d+)$'
 
 
 # A suite in which no test matched the name pattern: Node reports the file itself as
-# one passed test.
+# one passed test, by the path job_command gives it.
 NO_TEST = re.compile(r'^ok \d+ - \S+\.test\.mjs$', re.M)
+
+
+def job_command(node: str, suite: str, name: str | None) -> list[str]:
+    """One run's command. It names the suite by its path from the repository root, which
+    has no spaces wherever the repository is, so NO_TEST knows the file's own line."""
+    command = [node, '--test', '--test-concurrency=1', '--test-reporter=tap']
+    if name:
+        command.extend(['--test-name-pattern', name])
+    command.append((SUITES / f'{suite}.test.mjs').relative_to(ROOT).as_posix())
+    return command
+
+
+def matched_nothing(results: Sequence['Result'], name: str | None) -> bool:
+    """A name pattern that no test in the run matched: nothing was tested."""
+    return bool(name) and not any(result.counts.get('tests', 0) for result in results)
 
 
 def tap_counts(tap: str) -> dict[str, int]:
@@ -406,10 +421,7 @@ class Run:
             self.stop()
 
     def run_job(self, worker: int, job: Job, server: Server, directory: Path) -> Result:
-        command = [self.node, '--test', '--test-concurrency=1', '--test-reporter=tap']
-        if self.name:
-            command.extend(['--test-name-pattern', self.name])
-        command.append(str(SUITES / f'{job.suite}.test.mjs'))
+        command = job_command(self.node, job.suite, self.name)
         environment = dict(
             os.environ,
             EC_BASE_URL=server.origin,
@@ -626,6 +638,9 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
     if run.errors:
         # The runner itself failed (a server stopped, say): the jobs left did not run.
         raise run.errors[0]
+    if passed and matched_nothing(run.results, args.name):
+        print(f"No test's name matches --name {args.name!r}: nothing was tested.", flush=True)
+        return 1
     return 0 if passed else 1
 
 
