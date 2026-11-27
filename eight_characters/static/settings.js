@@ -33,8 +33,9 @@
     const schoolsBody = view.querySelector('#settings-schools-body');
     const toolbarChoice = view.querySelector('#settings-toolbar-choice');
     const closeButton = view.querySelector('#settings-close');
+    const accountButton = view.querySelector('#settings-account');
     if (!statusLine || !mineBody || !couplesBody || !chartsBody || !placeNow || !placeForm || !placeInput || !suggestionList || !placeStatus
-      || !placeSave || !placeRemove || !schoolsBody || !toolbarChoice || !closeButton) throw new Error('Settings view is incomplete.');
+      || !placeSave || !placeRemove || !schoolsBody || !toolbarChoice || !closeButton || !accountButton) throw new Error('Settings view is incomplete.');
     if (!window.EC_TOOLBAR) throw new Error('Settings need the toolbar.');
 
     // The settings as the API last gave them, and the schools it lists.
@@ -707,6 +708,8 @@
       search.close();
     };
     closeButton.addEventListener('click', () => onClose());
+    // The account's own window, as the chart's and the day's menus open it.
+    accountButton.addEventListener('click', () => account.open());
 
     // Keeps a birth in the library, as the library's Save and the form's save mode ask
     // (app.js): null once kept, or why not. `mine` and `couple_with` mark it as the

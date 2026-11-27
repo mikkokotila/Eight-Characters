@@ -3133,6 +3133,9 @@ kbd {
 .is-embedded #back-btn,
 .is-embedded #new-chart-btn,
 .is-embedded #compare-btn,
+.is-embedded #print-btn,
+.is-embedded #chart-settings,
+.is-embedded #chart-account,
 .is-embedded #page-switch,
 .is-embedded #library-btn,
 .is-embedded .account-btn { display: none; }

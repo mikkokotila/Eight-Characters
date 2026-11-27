@@ -63,6 +63,7 @@
     const copyText = need('#today-copy-text');
     const printButton = need('#today-print');
     const settingsButton = need('#today-settings');
+    const accountButton = need('#today-account');
     const notice = need('#today-notice');
     const body = need('#today-body');
     const pullLine = need('#today-pull-line');
@@ -1524,6 +1525,7 @@
       if (button && state !== null) onChart(chartLink(state));
     });
     settingsButton.addEventListener('click', () => onSettings());
+    accountButton.addEventListener('click', () => account.open());
     printButton.addEventListener('click', () => {
       if (answer !== null) window.print();
     });
@@ -1615,6 +1617,7 @@
         );
       }
       list.push({ label: t('settings_open'), run: () => onSettings(), icon: 'settings' });
+      list.push({ label: t('account_title'), run: () => account.open(), icon: 'user-round' });
       return list;
     };
 

@@ -280,7 +280,8 @@ for (const profile of profiles) {
     check('in the toolbar\'s icons every action of the chart is a stop of its own', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.deepEqual(await tabStops(page), ['Chart', 'Today', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN',
-        'copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn', ...AFTER_BAR]);
+        'copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'chart-settings', 'chart-account',
+        ...AFTER_BAR]);
     }, { toolbar: 'icons' });
   });
 }

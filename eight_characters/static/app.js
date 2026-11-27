@@ -2537,6 +2537,15 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(requiredTranslation('text_copy_error'), true);
     }
   });
+  // Print, Settings and the account, as the day's menu has them: the page's own print,
+  // whose stylesheet prints the chart and its open topic.
+  const printBtn = document.getElementById('print-btn');
+  const chartSettingsBtn = document.getElementById('chart-settings');
+  const chartAccountBtn = document.getElementById('chart-account');
+  if (!printBtn || !chartSettingsBtn || !chartAccountBtn) throw new Error('Chart bar is incomplete.');
+  printBtn.addEventListener('click', () => window.print());
+  chartSettingsBtn.addEventListener('click', () => openSettings());
+  chartAccountBtn.addEventListener('click', () => account.open());
 
   // ── The keys, and the commands ──
   // ? lists the keys while the chart has focus: a character key acts only then (WCAG

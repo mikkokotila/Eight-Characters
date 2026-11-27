@@ -139,17 +139,23 @@
           <button type="button" data-chart-lang="fi" aria-pressed="false">FI</button>
           <button type="button" data-chart-lang="en" aria-pressed="false">EN</button>
         </div>
-        <!-- The chart's actions: in words, one menu; in icons, a button each (toolbar.js). -->
+        <!-- The chart's actions: in words, one menu; in icons, a button each (toolbar.js).
+             The day's menu has the same first and last parts: out of the page, then
+             Settings and the account. -->
         <div class="bar-menu" data-bar-menu>
           <button type="button" class="bar-action bar-menu-button" id="chart-actions-button" aria-haspopup="menu"
             aria-expanded="false" aria-controls="chart-actions"><span data-i18n="actions">Toiminnot</span></button>
           <div class="bar-menu-items" id="chart-actions">
             <button type="button" id="copy-link-btn" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
             <button type="button" id="copy-text-btn" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
+            <button type="button" id="print-btn" class="bar-action" data-i18n="print">Tulosta</button>
             <span class="bar-menu-rule"></span>
             <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
             <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
             <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
+            <span class="bar-menu-rule"></span>
+            <button type="button" id="chart-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
+            <button type="button" id="chart-account" class="bar-action" data-i18n="account_title">Tili</button>
           </div>
         </div>
       </div>
@@ -293,6 +299,7 @@
             <button type="button" id="today-print" class="bar-action" data-i18n="print">Tulosta</button>
             <span class="bar-menu-rule"></span>
             <button type="button" id="today-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
+            <button type="button" id="today-account" class="bar-action" data-i18n="account_title">Tili</button>
           </div>
         </div>
       </div>
@@ -364,6 +371,8 @@
   <header class="compare-bar settings-bar">
     <h1 class="compare-title" data-i18n="settings_title">Asetukset</h1>
     <div class="compare-tools">
+      <!-- The account's own window, as from the chart's and the day's menus. -->
+      <button type="button" id="settings-account" class="bar-action" data-i18n="account_title">Tili</button>
       <button type="button" id="settings-close" class="bar-action" data-i18n="settings_close">Sulje asetukset</button>
     </div>
   </header>
