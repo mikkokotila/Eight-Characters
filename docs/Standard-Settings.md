@@ -14,8 +14,8 @@ Everything both show comes from the API (`GET /api/account/settings`,
 ## Opening them
 
 **Saved charts**, in the account's window, and **Manage saved charts**, in the library,
-open `#charts`. **Settings**, in the account's window, in the chart's and the day's
-Actions and among the commands, opens `#settings`. Signed out, either asks for a sign-in
+open `#charts`. **Settings**, in the account's window and among the commands, opens
+`#settings`. Signed out, either asks for a sign-in
 first. The page's title names it, and its Close goes back to the page the first of them
 was opened from; Account, beside it, opens the account's window. Neither is offered in a
 comparison's frames. Each opening reads the settings anew, and only the latest one draws

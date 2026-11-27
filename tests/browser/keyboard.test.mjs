@@ -274,13 +274,13 @@ for (const profile of profiles) {
       // In the toolbar's words the actions are one stop, their menu's button; the arrows
       // reach its items (toolbar.test.mjs).
       assert.deepEqual(await tabStops(page), [
-        'Chart', 'Day', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN', 'chart-actions-button', ...AFTER_BAR]);
+        'Chart', 'Day', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN', 'chart-actions-button', 'chart-account', ...AFTER_BAR]);
     });
 
     check('in the toolbar\'s icons every action of the chart is a stop of its own', async (page) => {
       await openChart(page, { lang: 'en' });
       assert.deepEqual(await tabStops(page), ['Chart', 'Day', 'Characters', 'Ten Gods', 'Hidden stems', 'FI', 'EN',
-        'copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'chart-settings', 'chart-account',
+        'copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'chart-account',
         ...AFTER_BAR]);
     }, { toolbar: 'icons' });
   });

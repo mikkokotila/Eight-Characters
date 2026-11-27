@@ -62,7 +62,6 @@
     const copyLink = need('#today-copy-link');
     const copyText = need('#today-copy-text');
     const printButton = need('#today-print');
-    const settingsButton = need('#today-settings');
     const accountButton = need('#today-account');
     const notice = need('#today-notice');
     const body = need('#today-body');
@@ -1593,7 +1592,6 @@
       const button = event.target.closest('button[data-page="chart"]');
       if (button && state !== null) onChart(chartLink(state));
     });
-    settingsButton.addEventListener('click', () => onSettings());
     accountButton.addEventListener('click', () => account.open());
     printButton.addEventListener('click', () => {
       if (answer !== null) window.print();

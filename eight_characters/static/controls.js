@@ -8,7 +8,7 @@
     '#display-switch button', '#luck-switch button',
     '#chart-language button', '#compare-language button', '.lang-btn',
     '#copy-link-btn', '#copy-text-btn', '#print-btn', '#back-btn', '#new-chart-btn', '#compare-btn',
-    '#chart-settings', '#chart-account', '#today-account', '#settings-account',
+    '#chart-account', '#today-account', '#settings-account',
     '#relationships-topic', '#context-controls button', '.canon-day-master-line',
     '.panel-close', '.pillar-identity', '#pillars .card.branch',
     '.role-choice', '[data-root-pillar]', '[data-role-back]', '.relationship-chip',
@@ -18,7 +18,7 @@
     '#compare-cancel', '#create-chart-btn', '.gender-option',
     '#page-switch button', '#today-page-switch button', '.library-btn', '#save-cancel', '#settings-close',
     '#today-language button', '.today-step', '.today-now', '#today-copy-link', '#today-copy-text',
-    '#today-print', '#today-settings',
+    '#today-print',
   ].join(',');
   const text = (key, vars = {}) => {
     const lang = document.documentElement.lang;
@@ -36,18 +36,18 @@
   // (`title`). Navigation keeps its icons: the steps' arrows, Today's dates, Close on a
   // panel; the day's Today step, a jump rather than a step, says its word too.
   const ACTIONS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn',
-    'chart-settings', 'chart-account', 'today-copy-link', 'today-copy-text', 'today-print', 'today-settings',
+    'chart-account', 'today-copy-link', 'today-copy-text', 'today-print',
     'today-account', 'settings-account', 'compare-swap', 'compare-copy-link', 'compare-close'];
   const fixed = {
     'copy-link-btn': ['link-2', 'link'], 'copy-text-btn': ['clipboard-list', 'copy'], 'print-btn': ['printer', 'print'],
     'back-btn': ['pencil', 'edit'], 'new-chart-btn': ['square-plus', 'new'],
-    'chart-settings': ['settings', 'settings'], 'chart-account': ['user-round', 'account'],
+    'chart-account': ['user-round', 'account'],
     'today-account': ['user-round', 'account'], 'settings-account': ['user-round', 'account'],
     'compare-btn': ['columns-2', 'compare'], 'compare-swap': ['arrow-left-right', 'swap'],
     'compare-copy-link': ['link-2', 'link'], 'compare-close': ['x', 'comparison_close'],
     'settings-close': ['x', 'settings_close'],
     'today-copy-link': ['link-2', 'link'], 'today-copy-text': ['clipboard-list', 'copy_day'],
-    'today-print': ['printer', 'print'], 'today-settings': ['settings', 'settings'],
+    'today-print': ['printer', 'print'],
   };
   const info = (node) => {
     let label = labelOf(node);

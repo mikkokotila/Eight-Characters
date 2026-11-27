@@ -37,8 +37,9 @@ use, is set in the account window, and the app follows it.
 
 ## The account window
 
-Signed in, Account opens it: at the top of the start page, in the chart's and the day's
-Actions, in Settings' bar, and among the commands (⌘K or Ctrl+K):
+Signed in, Account opens it: at the top of the start page, at the end of the chart's
+and the day's bars, in the saved charts' and Settings' bar, and among the commands (⌘K
+or Ctrl+K):
 - the address, and the plan (Free);
 - the account's language;
 - Saved charts and Settings, the account's two pages

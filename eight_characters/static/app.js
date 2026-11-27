@@ -2992,14 +2992,13 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(requiredTranslation('text_copy_error'), true);
     }
   });
-  // Print, Settings and the account, as the day's menu has them: the page's own print,
-  // whose stylesheet prints the chart and its open topic.
+  // Print, as the day's menu has it: the page's own print, whose stylesheet prints the
+  // chart and its open topic. The account, at the end of the bar, opens its window, which
+  // holds the saved charts and Settings.
   const printBtn = document.getElementById('print-btn');
-  const chartSettingsBtn = document.getElementById('chart-settings');
   const chartAccountBtn = document.getElementById('chart-account');
-  if (!printBtn || !chartSettingsBtn || !chartAccountBtn) throw new Error('Chart bar is incomplete.');
+  if (!printBtn || !chartAccountBtn) throw new Error('Chart bar is incomplete.');
   printBtn.addEventListener('click', () => window.print());
-  chartSettingsBtn.addEventListener('click', () => openSettings(SETTINGS_ROUTE));
   chartAccountBtn.addEventListener('click', () => account.open());
 
   // ── The keys, and the commands ──

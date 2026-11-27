@@ -46,8 +46,8 @@ From the top:
   chart before its birth); Chart · Day; the day before, Today (where
   you are) and the day after; whose day, when the chart is in a couple, each side by its
   name; With, the partner in view, when it is in several; FI · EN; Actions: Copy link,
-  Copy as text, Print, Settings and Account. Below 640px the actions show as their
-  icons.
+  Copy as text and Print; and the account, whose window holds the saved charts and
+  Settings. Below 640px the actions show as their icons.
 - **The days.** The chosen day in the middle, as the chart's cards: a stem card over
   its branch card, each in its own element's colours, its character with its pinyin,
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's

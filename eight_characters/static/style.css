@@ -3299,7 +3299,6 @@ kbd {
 .is-embedded #new-chart-btn,
 .is-embedded #compare-btn,
 .is-embedded #print-btn,
-.is-embedded #chart-settings,
 .is-embedded #chart-account,
 .is-embedded #page-switch,
 .is-embedded #library-btn,
@@ -4398,6 +4397,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   margin: var(--space-1) var(--space-2);
   background: var(--line-1);
 }
+/* The account, after the menu, stands as tall as it. */
+:root[data-toolbar='words']:not(.is-embedded) .bar-account { min-height: calc(var(--control-2) + 2 * var(--space-1) + 2px); }
 /* A comparison's frame keeps only Copy as text, standing in its bar as a button, as in
    icons: the menu's rules above hold outside the frames alone. */
 /* On a phone the bar is compact: the page and the menu on the first line; on the
@@ -4407,14 +4408,23 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools { column-gap: var(--space-2); }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .page-switch { order: 1; }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .bar-menu { order: 2; margin-inline-start: auto; }
-  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :not(.page-switch, .bar-menu) { order: 3; }
+  /* The account stands after the menu, as its icon: its name is its tip's, and a
+     screen reader's. */
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .bar-account { order: 2; }
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :not(.page-switch, .bar-menu, .bar-account) { order: 3; }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :is(#chart-language, #today-language) { order: 4; }
   :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button.icon-control {
     min-width: var(--control-touch);
     padding: var(--space-2);
   }
   :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button > .control-icon { display: inline-block; }
-  :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button > .control-label.sr-only {
+  :root[data-toolbar='words']:not(.is-embedded) .bar-account.icon-control {
+    min-width: var(--control-touch);
+    justify-content: center;
+    padding: var(--space-2);
+  }
+  :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button > .control-label.sr-only,
+  :root[data-toolbar='words']:not(.is-embedded) .bar-account > .control-label.sr-only {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -4424,7 +4434,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 @media (max-width: 640px), (pointer: coarse) {
   :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action { min-height: var(--control-touch); }
-  :root[data-toolbar='words']:not(.is-embedded) .bar-menu-button { min-height: calc(var(--control-touch) + 2 * var(--space-1) + 2px); }
+  :root[data-toolbar='words']:not(.is-embedded) :is(.bar-menu-button, .bar-account) { min-height: calc(var(--control-touch) + 2 * var(--space-1) + 2px); }
 }
 @media (prefers-reduced-motion: reduce) {
   :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items.is-open { animation: none; }

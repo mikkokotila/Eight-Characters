@@ -12,10 +12,13 @@ Every switch says what it does, and the actions gather in one menu.
 - **The topics** under the chart's name keep their icons and say their names: Roots,
   Roles and Relationships, each with its count (Roots 3, Relationships 3). The season
   already said its month.
-- **Actions** is one button at the bar's end. Both menus begin and end alike: Copy
-  link, Copy as text and Print; then Settings and Account. Between them the chart's menu
-  holds Edit, New chart and Compare. Each item has its icon and its words, and needs no
-  tooltip. Settings' own bar opens the account too.
+- **Actions** is one button near the bar's end, and holds the page's own actions. Both
+  menus begin alike: Copy link, Copy as text and Print; the chart's then holds Edit, New
+  chart and Compare. Each item has its icon and its words, and needs no tooltip.
+- **Account** stands after it, at the bar's end, as tall as Actions, with its icon and
+  its word: its window holds the saved charts, Settings and the rest of the account
+  ([The account](Account.md)). The saved charts' and Settings' own bar opens it too, as
+  the start page's top does.
 - **A comparison** keeps its own actions in its bar, each with an icon and its words:
   Swap sides, Copy link and Close comparison. Its two charts keep their display and
   Copy as text in their own bars, without a menu.
@@ -23,10 +26,10 @@ Every switch says what it does, and the actions gather in one menu.
   arrows, and the ribbon its calendar: they move through dates, and say so. The day's
   Today, a jump rather than a step, says its word beside its calendar.
 
-On a phone the chart's bar is two lines: the page and Actions; then the display and the
-luck pillar's switches, as their icons (their names are their tips' and a screen
-reader's), and the language, which takes a line of its own below 390px. The day's bar
-is two lines too. The topics stand in one row under the Day Master's line, and scroll
+On a phone the chart's bar is two lines: the page, Actions and the account, as its
+icon; then the display and the luck pillar's switches, as their icons (their names are
+their tips' and a screen reader's), and the language, which takes a line of its own
+below 390px. The day's bar is two lines too. The topics stand in one row under the Day Master's line, and scroll
 sideways; a topic that takes the focus comes into sight.
 
 ### The menu
