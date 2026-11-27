@@ -276,7 +276,7 @@
         <!-- With a partner's chart saved: whose day the page shows. -->
         <div class="segmented today-who hidden" id="today-who" role="group" aria-labelledby="today-who-label">
           <span id="today-who-label" class="sr-only" data-i18n="today_who_label">Kenen päivä</span>
-          <button type="button" data-who="self" aria-pressed="true" data-i18n="today_self">Tämä kartta</button>
+          <button type="button" data-who="self" aria-pressed="true"><span class="today-self-name"></span></button>
           <button type="button" data-who="partner" aria-pressed="false"><span class="today-who-name"></span></button>
         </div>
         <!-- With the chart in several couples: the partner in view. -->
@@ -327,6 +327,18 @@
         </div>
       </div>
       <p id="today-place-note" class="today-place-note" data-i18n="today_place_note"></p>
+    </section>
+    <!-- A chart without a gender: the day asks for one, here, as it asks where you are,
+         and opens once one is chosen (the luck pillars run by it). -->
+    <section id="today-gender" class="today-place today-gender hidden" aria-labelledby="today-gender-title">
+      <span class="today-place-mark" aria-hidden="true"></span>
+      <h2 id="today-gender-title" class="today-place-title" data-i18n="today_gender_title">Nainen vai mies?</h2>
+      <p class="today-place-lead" data-i18n="today_gender_lead"></p>
+      <div class="segmented today-gender-choices" role="group" aria-labelledby="today-gender-title" aria-describedby="today-gender-note">
+        <button type="button" data-gender="female" data-i18n="gender_female">Nainen</button>
+        <button type="button" data-gender="male" data-i18n="gender_male">Mies</button>
+      </div>
+      <p id="today-gender-note" class="today-place-note" data-i18n="today_gender_note"></p>
     </section>
     <!-- Printed while a day is on its way, instead of the day before. -->
     <p class="today-pending-print" data-i18n="today_pending_print">Päivää luetaan vielä.</p>

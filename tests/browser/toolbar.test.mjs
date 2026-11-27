@@ -78,7 +78,7 @@ for (const profile of profiles) {
     check('in words, the default, every switch says what it does, the topics their names, and the actions are one menu', async (page) => {
       await openLink(page, chartLink(), { place: HELSINKI });
       assert.equal(await way(page), 'words');
-      assert.deepEqual(await shown(page, '#page-switch button'), [['Chart', false], ['Today', false]]);
+      assert.deepEqual(await shown(page, '#page-switch button'), [['Chart', false], ['Day', false]]);
       assert.deepEqual(await shown(page, '#display-switch button'), [['Characters', false], ['Ten Gods', false], ['Hidden stems', false]]);
       assert.deepEqual(await shown(page, '#luck-switch button'), [['Natal', false], ['With luck', false]]);
       // A topic: its icon, its name and its count; its full name for a screen reader.
@@ -173,7 +173,7 @@ for (const profile of profiles) {
       await page.goto(new URL(`/#today?${new URLSearchParams(BIRTH)}&day=2026-10-11`, process.env.EC_BASE_URL).href);
       await page.locator('#today-body').waitFor({ state: 'visible' });
       await settled(page);
-      assert.deepEqual(await shown(page, '#today-page-switch button'), [['Chart', false], ['Today', false]]);
+      assert.deepEqual(await shown(page, '#today-page-switch button'), [['Chart', false], ['Day', false]]);
       await page.locator('#today-actions-button').click();
       assert.deepEqual(await shown(page, '#today-actions > button'), [['Copy link', true], ['Copy as text', true], ['Print', true], ['Settings', true], ['Account', true]]);
       assert.deepEqual(await page.locator('#today-actions > button').evaluateAll((items) => items.map((item) => item.getAttribute('role'))),
