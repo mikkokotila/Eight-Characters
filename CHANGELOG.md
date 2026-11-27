@@ -1,5 +1,54 @@
 # Changelog
 
+## 0.70.0
+
+The coherence part of the 2026-11-27 review (Evolution aside): one set of actions, one
+meaning for Edit, the chart's own name on its day, and one word for each thing.
+
+### Changed
+- **Settings and the account from every view.** The chart's and the day's Actions share
+  their first and last parts: Copy link, Copy as text and Print; then Settings and
+  Account (the chart keeps Edit, New chart and Compare between). Settings' bar opens the
+  account too. The account had opened only from the start page or the commands.
+- **Edit corrects a saved chart.** On a saved chart, Edit opens its correction
+  (`#save?as=correct&chart=<id>&back=chart`), as Settings' Correct the birth does, and
+  the corrected chart comes back on screen; Cancel brings it back as it was. Edit on a
+  chart not saved goes back to the form, as before.
+- **Today goes by the chart's name.** The bar, the couple's sides and the chart's own
+  section name a saved chart ("Aino · …", "In the chart: Aino"); "In your chart" and "the
+  day pulls you apart" are said only when the chart on screen or its partner is yours,
+  otherwise "In this chart" and "the day pulls the couple apart".
+- **A chart without a gender is asked for one on its day**, as a missing place is, and
+  the day opens once one is chosen (the chart's link takes it). The start page's hint
+  says the day needs it too.
+- **The page switch says Day** (Päivä): the page shows any day; its Today step stays.
+  In the words toolbar that step says Today beside its icon. Where you are reads
+  "where you are: Helsinki".
+- **Saved charts read hour to year**, as the chart and every name of its pillars do (the
+  library's and Settings' strips read year to hour).
+- **Health in one measure.** `POST /api/today` gives each element's share of what the day
+  brings (`today_share`); the page sets it beside the chart's share, both written as the
+  language writes a percentage (65.8%, 65,8 %).
+- **A Finnish day's heading names the day**, capitalised ("Sunnuntai 11. lokakuuta
+  2026"), as its cards do, not the essive.
+- **One word for each thing.** Tooltips say relationships, hidden stems, the Day Master
+  and the Ten Gods as the page does; the plan says Basic in Finnish as the billing tiers
+  do; the sandbox's billing lines say what to do; English errors read "Could not …";
+  "favourability". Finnish: the Companion role group is Vertaiset, so that Kumppani is
+  only the partner (to be confirmed).
+- **Han characters in one Ming serif.** Beyond the 22 stems and branches, the canon's and
+  the sources' characters take the device's own Ming serif after Noto Serif TC.
+
+### Docs
+- Account, Links, Settings, Today (the page and the API) and the toolbar; Account's export
+  file is `eight-chord-account.json`.
+
+### Tests
+- Browser: the shared menus and tab stops, Settings' account, Edit's correction, Today's
+  names, its gender question, Day, Health's shares and the Finnish heading; the strips'
+  order; the changed words. Python: `today_share` beside `chart_share`.
+- Version bumped to `0.70.0`; the regression fixture changes only in `engine.version`.
+
 ## 0.69.1
 
 Defects found by the 2026-11-27 review of the whole app (Evolution aside).
