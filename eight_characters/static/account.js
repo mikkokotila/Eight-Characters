@@ -92,6 +92,10 @@
     const moment = () => ++moments;
     // 'create' or 'sign_in'; 'start', 'code' or 'menu'.
     let mode = 'create';
+    // The side a chart's request for an account opens on: making one, until this page has
+    // known an account (signed out, or its session ended), then signing in. The start
+    // page's Sign in opens signing in, whatever this says.
+    let starting = 'create';
     let step = 'start';
     // The address a code was sent to, and what for.
     let asked = null;
@@ -279,13 +283,17 @@
     // The button says Sign in while no one is signed in, and it opens signing in. A chart
     // that needs an account (signIn) asks for one to be made, with signing in a press
     // away; a code already sent stays asked for.
+    // Turns the start step to signing in or to making an account, and its fields'
+    // messages go with the side they were about.
+    const toSide = (next) => {
+      if (mode === next) return;
+      mode = next;
+      setStatus(emailStatus, '');
+      setStatus(languageStatus, '');
+      setStartError('');
+    };
     button.addEventListener('click', () => {
-      if (!account && step === 'start' && mode !== 'sign_in') {
-        mode = 'sign_in';
-        setStatus(emailStatus, '');
-        setStatus(languageStatus, '');
-        setStartError('');
-      }
+      if (!account && step === 'start') toSide('sign_in');
       open();
     });
 
@@ -520,6 +528,7 @@
     const ended = () => {
       account = null;
       mode = 'sign_in';
+      starting = 'sign_in';
       step = 'start';
       noticeKey = 'account_session_ended';
       refresh();
@@ -532,6 +541,7 @@
       known = moment();
       account = null;
       mode = 'sign_in';
+      starting = 'sign_in';
       step = 'start';
       noticeKey = key;
       closeDeleting();
@@ -749,6 +759,9 @@
         });
         waiting = { promise, resolve, reject };
       }
+      // A chart asks on the side it starts on (`starting`), not on the one the Sign in
+      // button left; a dialog already open is left as it is.
+      if (!dialog.open && !account && step === 'start') toSide(starting);
       open();
       return waiting.promise;
     };
@@ -779,6 +792,7 @@
     const forget = () => {
       account = null;
       mode = 'sign_in';
+      starting = 'sign_in';
       if (step === 'menu') step = 'start';
       noticeKey = 'account_session_ended';
       refresh();
