@@ -83,6 +83,30 @@
     }).join('')}</ol>`;
   };
 
+  // A saved chart as every list of them shows it (the library, the start page): its
+  // name, its marks (your chart, its partners, on screen when `here`), its birth and its
+  // pillars. `tools` are the page's: translate, escape, format and language.
+  const row = (kept, chart, { here = false, translate: t, escape: esc, format, language }) => {
+    const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
+    if (!reading) throw new Error(t('settings_answer_error', { status: 200 }));
+    const birthLine = [format.date(reading), format.time(reading, chart.time.length > 5), chart.place.city].join(' · ');
+    // A partner named in a list: an unnamed one by its birth date.
+    const listName = (partner) => partner.name ?? t('library_unnamed_born', {
+      date: format.date(format.parseWallClock(`${partner.date}T${partner.time}`)),
+    });
+    const partners = partnersOf(kept, chart.id);
+    const marks = [
+      chart.id === kept.my_chart ? `<span class="saved-mark is-mine">${esc(t('library_mine'))}</span>` : '',
+      partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', {
+        names: partnerList(partners, { lang: language(), nameOf: listName, more: (count) => t('names_more', { count }) }),
+      }))}</span>`,
+      here ? `<span class="saved-mark is-here">${esc(t('library_here'))}</span>` : '',
+    ].join('');
+    return `<span class="saved-head"><span class="saved-name">${esc(chart.name ?? t('library_unnamed'))}</span>${marks}</span>
+                <span class="saved-birth">${esc(birthLine)}</span>
+                ${strip(chart, { escape: esc, translate: t })}`;
+  };
+
   // The classic view's library: the saved charts, the one on screen marked, each opening
   // its chart; "Save the chart on screen" while it is unsaved; and Settings.
   const create = ({ dialog, button, translate: t, escape: esc, format, settings, screenBirth, language, onOpen, onSave, onSettings }) => {
@@ -100,15 +124,6 @@
     if (!label) throw new Error('The library button is incomplete.');
 
     const nameOf = (chart) => chart.name ?? t('library_unnamed');
-    // A partner named in a list: an unnamed one by its birth date.
-    const listName = (chart) => chart.name ?? t('library_unnamed_born', {
-      date: format.date(format.parseWallClock(`${chart.date}T${chart.time}`)),
-    });
-    const birthLine = (chart) => {
-      const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
-      if (!reading) throw new Error(t('settings_answer_error', { status: 200 }));
-      return [format.date(reading), format.time(reading, chart.time.length > 5), chart.place.city].join(' · ');
-    };
     // The saved chart on screen, by the settings last read: null when the chart is not
     // saved, undefined while no settings have been read.
     const onScreen = () => {
@@ -133,20 +148,11 @@
       list.innerHTML = kept.charts.length === 0
         ? `<li class="library-empty">${esc(t('library_empty'))}</li>`
         : kept.charts.map((chart) => {
-          const partners = partnersOf(kept, chart.id);
-          const marks = [
-            chart.id === kept.my_chart ? `<span class="saved-mark is-mine">${esc(t('library_mine'))}</span>` : '',
-            partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', {
-              names: partnerList(partners, { lang: language(), nameOf: listName, more: (count) => t('names_more', { count }) }),
-            }))}</span>`,
-            chart.id === saved?.id ? `<span class="saved-mark is-here">${esc(t('library_here'))}</span>` : '',
-          ].join('');
+          const here = chart.id === saved?.id;
           return `<li>
-              <button type="button" class="library-chart${chart.id === saved?.id ? ' is-here' : ''}" data-library-chart="${esc(chart.id)}"
-                ${chart.id === saved?.id ? 'aria-current="true"' : ''}>
-                <span class="saved-head"><span class="saved-name">${esc(nameOf(chart))}</span>${marks}</span>
-                <span class="saved-birth">${esc(birthLine(chart))}</span>
-                ${strip(chart, { escape: esc, translate: t })}
+              <button type="button" class="library-chart${here ? ' is-here' : ''}" data-library-chart="${esc(chart.id)}"
+                ${here ? 'aria-current="true"' : ''}>
+                ${row(kept, chart, { here, translate: t, escape: esc, format, language })}
               </button>
             </li>`;
         }).join('');
@@ -222,5 +228,5 @@
     };
   };
 
-  window.EC_LIBRARY = { create, keyOf, savedOf, chartWith, couplesOf, partnersOf, coupleBetween, listOf, partnerList, pairedSince, chartParams, strip };
+  window.EC_LIBRARY = { create, keyOf, savedOf, chartWith, couplesOf, partnersOf, coupleBetween, listOf, partnerList, pairedSince, chartParams, strip, row };
 })();

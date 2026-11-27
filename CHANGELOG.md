@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.75.0
+
+Coming back: the first of five changes from the 2026-11-27 review of the app as it is
+used again and again.
+
+### Changed
+- **The bare address opens your chart's day.** Signed in, each visit opened your chart,
+  which never changes, while what changes from one visit to the next is its day. Each
+  visit now opens your chart's day, today where you are, replacing the address.
+
+### Added
+- **The start page begins with your saved charts.** Signed in without a chart marked as
+  yours, coming back opened the empty form a first visitor sees, and only Settings could
+  mark a chart as yours. The start page now lists the saved charts as the library does,
+  each opening its chart, with **Mark as yours** under each: marked, its day opens, as
+  each visit then does. The form follows under **New chart**. New chart, from a chart,
+  still opens the form alone.
+
+### Docs
+- Standard-Settings: Coming back (was Signing in to your chart). Standard-Today: the bare
+  address opens your chart's day.
+
 ## 0.74.0
 
 The first chart: what a birth settles without its time, or without an account, from

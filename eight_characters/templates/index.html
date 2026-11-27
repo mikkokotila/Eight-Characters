@@ -39,6 +39,16 @@
     <h1 class="title" data-i18n="title">Eightchord</h1>
   </div>
 
+  <!-- Signed in, the start page begins with the account's saved charts, yours first, each
+       opening its chart; while none is yours, each can be marked as yours (app.js). The
+       form under them is then a new chart's. -->
+  <section id="start-charts" class="start-charts hidden" aria-labelledby="start-charts-title">
+    <h2 id="start-charts-title" class="settings-heading" data-i18n="library_title">Tallennetut kartat</h2>
+    <p id="start-charts-note" class="settings-note hidden" data-i18n="start_mine_choose"></p>
+    <ul id="start-charts-list" class="library-list start-list"></ul>
+    <h2 id="start-new-title" class="settings-heading" data-i18n="new_chart">Uusi kartta</h2>
+  </section>
+
   <!-- While a comparison's second chart is chosen: which chart it is compared with. -->
   <p id="compare-note" class="compare-note hidden">
     <span id="compare-note-text"></span>

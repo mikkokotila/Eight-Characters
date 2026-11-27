@@ -3529,7 +3529,28 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 .library-chart:hover { background: var(--surface-2); border-color: var(--line-2); }
 .library-chart:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 .library-chart.is-here { border-color: var(--ink-2); }
+/* A chart the engine no longer charts opens nothing. */
+.library-chart:disabled { cursor: default; }
+.library-chart:disabled:hover { background: var(--surface-1); border-color: var(--line-1); }
 .library-empty { color: var(--ink-2); font-size: var(--text-1); }
+/* Signed in, the start page begins with the saved charts, as the library lists them and
+   as wide as its window, each with Mark as yours under it while none is yours; the new
+   chart's heading then stands over the form, both headings centred as the page's own. */
+.start-charts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(640px, 100%);
+  margin: 0 auto var(--space-6);
+  text-align: center;
+}
+.start-list { margin-bottom: var(--space-3); }
+.start-list[aria-busy='true'] { cursor: progress; }
+.start-chart {
+  display: grid;
+  justify-items: end;
+  gap: var(--space-2);
+}
 .settings-problem { color: var(--ink-error); }
 .settings-place-form {
   display: flex;

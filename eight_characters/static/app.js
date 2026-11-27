@@ -1011,8 +1011,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       today.renew();
       if (shown !== null && !chartView.classList.contains('hidden')) nameChart();
-      // A landing on your chart under way lands on this account's.
+      // A landing on your chart under way lands on this account's, and the start page's
+      // saved charts are this account's.
       if (landingNow) openMyChart();
+      else if (!startCharts.classList.contains('hidden')) offerStart();
     },
     // Signed in from the account's own button, on the empty form: your chart opens.
     onSignedIn: ({ requested }) => {
@@ -1557,6 +1559,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const selectedLang = button.dataset.lang === 'en' ? 'en' : 'fi';
       currentLanguage = i18n.setLanguage(selectedLang);
       applyLanguage();
+      // The saved charts at the top of the start page are written in it too.
+      if (!startCharts.classList.contains('hidden')) offerStart();
     });
   });
 
@@ -1842,8 +1846,117 @@ document.addEventListener('DOMContentLoaded', () => {
     history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${pair}`);
     followAddress();
   });
+  // Signed in, the start page begins with the account's saved charts, yours first, each
+  // opening its chart (docs/Standard-Settings.md). While none is yours, each can be
+  // marked as yours, and its day then opens, as each visit will open it. The list is
+  // offered on the bare address, by New chart and on signing in there; only the latest
+  // asking draws it, and whatever else the form is asked for (a comparison's second
+  // chart, a birth to save, a chart link) takes it away.
+  const startCharts = document.getElementById('start-charts');
+  const startNote = document.getElementById('start-charts-note');
+  const startList = document.getElementById('start-charts-list');
+  if (!startCharts || !startNote || !startList) throw new Error('The start page is incomplete.');
+  let startAsked = 0;
+  // The basis of the settings the list was drawn from: a mark is made from them.
+  let startBasis = null;
+  let startMarking = null;
+  const hideStart = () => {
+    startAsked += 1;
+    startBasis = null;
+    startCharts.classList.add('hidden');
+    startList.replaceChildren();
+  };
+  const onStart = () => location.hash === '' && saving === null && comparingWith === null && !inputView.classList.contains('hidden');
+  const drawStart = (kept) => {
+    if (kept.charts.length === 0) {
+      hideStart();
+      return;
+    }
+    startBasis = settingsPage.basis();
+    const mine = kept.my_chart === null ? null : window.EC_LIBRARY.chartWith(kept, kept.my_chart);
+    const charts = mine === null ? kept.charts : [mine, ...kept.charts.filter((chart) => chart.id !== mine.id)];
+    const tools = {
+      translate: requiredTranslation, escape: esc, format: { parseWallClock, date: formatDate, time: formatTime }, language: () => currentLanguage,
+    };
+    // A chart the engine no longer charts says why, and opens nothing.
+    startList.innerHTML = charts.map((chart) => `<li class="start-chart">
+        <button type="button" class="library-chart" data-start-chart="${esc(chart.id)}"${chart.pillars === null ? ' disabled' : ''}>
+          ${window.EC_LIBRARY.row(kept, chart, tools)}
+        </button>
+        ${mine === null && chart.pillars !== null
+    ? `<button type="button" class="bar-action" data-start-mine="${esc(chart.id)}">${esc(requiredTranslation('settings_mine_mark'))}</button>` : ''}
+      </li>`).join('');
+    startNote.classList.toggle('hidden', mine !== null);
+    startCharts.classList.remove('hidden');
+  };
+  const offerStart = async () => {
+    hideStart();
+    const asked = startAsked;
+    if (embedded || !account.signedIn() || !onStart()) return;
+    let kept;
+    try {
+      // The list is no reason to ask for a sign-in.
+      kept = await settingsPage.load(() => asked === startAsked && onStart(), { signIn: false });
+    } catch (err) {
+      if (asked !== startAsked) return;
+      // A session that ended keeps no saved charts to offer.
+      if (err.status === 401) return;
+      console.error(err);
+      showToast(err.message || t('settings_load_error'), true);
+      return;
+    }
+    if (asked !== startAsked || !onStart()) return;
+    drawStart(kept);
+  };
+  startList.addEventListener('click', async (event) => {
+    const opening = event.target.closest('[data-start-chart]');
+    const marking = event.target.closest('[data-start-mine]');
+    if (!opening && !marking) return;
+    const id = opening ? opening.dataset.startChart : marking.dataset.startMine;
+    const kept = settingsPage.current();
+    const chart = kept === null ? null : window.EC_LIBRARY.chartWith(kept, id);
+    // Removed in another tab since it was listed: said, and the list read again.
+    if (chart === null) {
+      showToast(t('save_chart_gone'), true);
+      offerStart();
+      return;
+    }
+    if (opening) {
+      goToChart(window.EC_LIBRARY.chartParams(chart, currentLanguage));
+      return;
+    }
+    // A mark pressed again while one is on its way is asked for once.
+    if (startMarking !== null || startBasis === null) return;
+    const asked = startAsked;
+    startMarking = id;
+    startList.setAttribute('aria-busy', 'true');
+    let result;
+    try {
+      result = await settingsPage.markChart(id, startBasis);
+    } catch (err) {
+      console.error(err);
+      result = { problem: err.message || t('settings_load_error'), said: null };
+    } finally {
+      startMarking = null;
+      startList.removeAttribute('aria-busy');
+    }
+    if (result.problem !== null) {
+      // Refused (the settings changed elsewhere, say): said, and the list drawn anew.
+      showToast(result.problem, true);
+      if (asked === startAsked) offerStart();
+      return;
+    }
+    showToast(result.said, false);
+    // Marked from the start page still shown: the chart's day opens, as each visit will.
+    if (asked !== startAsked || !onStart()) return;
+    hideStart();
+    history.pushState(null, '', `${formAddress()}${TODAY_ROUTE}${window.EC_LIBRARY.chartParams(chart, currentLanguage)}`);
+    followAddress();
+  });
+
   // The form asks for a comparison's second chart, naming the first; or it is itself again.
   const askForSecond = (a) => {
+    hideStart();
     comparingWith = a;
     compareNoteText.textContent = t('compare_note', { chart: headingOf(a) });
     compareNote.classList.remove('hidden');
@@ -1853,6 +1966,7 @@ document.addEventListener('DOMContentLoaded', () => {
     offerSaved(a);
   };
   const askForChart = () => {
+    hideStart();
     comparingWith = null;
     savedAsked += 1;
     compareSaved.classList.add('hidden');
@@ -2370,9 +2484,10 @@ document.addEventListener('DOMContentLoaded', () => {
     return settingsPage.saveChart(birth, { mine: mode.as === 'mine', coupleWith: mode.with }, mode.basis);
   };
 
-  // Signed in, the bare address opens your chart; with none marked, the form stays.
-  // The address is replaced, so Back does not come here again. Each landing is
-  // numbered: a later one, for another account taken meanwhile, supersedes it.
+  // Signed in, the bare address opens your chart's day, today where you are: what each
+  // visit is for. With none marked, the start page begins with the saved charts. The
+  // address is replaced, so Back does not come here again. Each landing is numbered: a
+  // later one, for another account taken meanwhile, supersedes it.
   let landing = 0;
   let landingNow = false;
   const openMyChart = async () => {
@@ -2391,13 +2506,19 @@ document.addEventListener('DOMContentLoaded', () => {
     } finally {
       if (asked === landing) landingNow = false;
     }
-    if (!still() || kept.my_chart === null) return;
+    if (!still()) return;
+    hideStart();
+    if (kept.my_chart === null) {
+      drawStart(kept);
+      return;
+    }
     const mine = window.EC_LIBRARY.chartWith(kept, kept.my_chart);
     if (mine.pillars === null) {
       setFormError(requiredTranslation('my_chart_problem', { problem: mine.problem }));
+      drawStart(kept);
       return;
     }
-    history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${window.EC_LIBRARY.chartParams(mine, currentLanguage)}`);
+    history.replaceState(null, '', `${formAddress()}${TODAY_ROUTE}${window.EC_LIBRARY.chartParams(mine, currentLanguage)}`);
     followAddress();
   };
 
@@ -2658,6 +2779,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     if (link === null) {
       leaveChart();
+      offerStart();
       return;
     }
     if (link.lang !== currentLanguage) {

@@ -1166,7 +1166,7 @@ for (const profile of profiles) {
 }
 
 describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
-  it('signed in, the bare address opens my chart, replacing the address; a chart link opens itself', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('signed in, the bare address opens my chart\'s day, today where I am, replacing the address; a chart link opens itself', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
     const own = await newAccount(playwright, { language: 'en', label: 'settings-mine' });
     await asAccount(playwright, own, async (request) => {
       const kept = await request.post('/api/account/charts', { data: { ...SCREEN, name: 'Mine', mine: true, key: own.key, updated_at: null } });
@@ -1174,10 +1174,18 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     });
     await signInPage(page, own);
     await page.goto(new URL('/', process.env.EC_BASE_URL).href);
-    await page.locator('#chart-view').waitFor({ state: 'visible' });
-    assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
-    await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Mine');
-    // A chart link opens its own chart; New chart still opens the form.
+    const entries = await page.evaluate(() => history.length);
+    await page.locator('#today-view').waitFor({ state: 'visible' });
+    // Its day, by its name, on today's date: with no place kept, the browser's own.
+    const part = (name) => page.evaluate((name) => new URLSearchParams(location.hash.split('?')[1]).get(name), name);
+    assert.equal(await page.evaluate(() => location.hash.startsWith('#today?')), true);
+    assert.equal(await part('date'), BIRTH.date);
+    assert.equal(await part('day'), await page.evaluate(() => new Date().toLocaleDateString('sv-SE')));
+    await page.waitForFunction(() => document.getElementById('today-chart').textContent.startsWith('Mine · '));
+    // The address was replaced, not added to: Back does not come to it again.
+    assert.equal(await page.evaluate(() => history.length), entries);
+    assert.equal(await page.locator('#start-charts').isHidden(), true);
+    // A chart link opens its own chart; New chart still opens the form, and only the form.
     await page.goto(new URL(chartLink({ date: '1977-02-03' }), process.env.EC_BASE_URL).href);
     // The chart on screen was already shown: the link's own is drawn once its heading
     // names it.
@@ -1188,6 +1196,56 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     await press(page, '#new-chart-btn');
     await page.locator('#input-view').waitFor({ state: 'visible' });
     assert.equal(await page.evaluate(() => location.hash), '');
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator('#start-charts').isHidden(), true);
+  }, { signedIn: false }));
+
+  it('signed in without a chart of my own, the start page begins with my saved charts: each opens its chart, and Mark as yours opens its day', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+    const own = await newAccount(playwright, { language: 'en', label: 'settings-start' });
+    await signInPage(page, own);
+    // With nothing saved, the start page is the form alone.
+    await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+    await page.locator('#input-view').waitFor({ state: 'visible' });
+    await page.waitForTimeout(500);
+    assert.equal(await page.locator('#start-charts').isHidden(), true);
+    await saveElsewhere(page, { ...SCREEN, name: 'Aino' });
+    await saveElsewhere(page, partnerNamed('Ville'));
+    await page.reload();
+    await page.locator('#start-charts').waitFor({ state: 'visible' });
+    const names = () => page.locator('#start-charts-list .saved-name').allTextContents();
+    assert.deepEqual(await names(), ['Aino', 'Ville']);
+    assert.equal(await page.locator('#start-charts-note').textContent(), 'Which one is yours? Mark it as yours, and each visit opens its day.');
+    assert.deepEqual(await page.locator('[data-start-mine]').allTextContents(), ['Mark as yours', 'Mark as yours']);
+    assert.equal(await page.locator('#input-view').isVisible(), true);
+    // In the page's language, as it changes.
+    await page.locator('.lang-btn[data-lang="fi"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-start-mine]')?.textContent === 'Merkitse omaksi');
+    await page.locator('.lang-btn[data-lang="en"]').click();
+    await page.waitForFunction(() => document.querySelector('[data-start-mine]')?.textContent === 'Mark as yours');
+    // Each opens its chart, and Back comes to the start page again.
+    await page.locator('#start-charts-list [data-start-chart]').nth(1).click();
+    await page.locator('#chart-view').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Ville');
+    await page.goBack();
+    await page.locator('#start-charts').waitFor({ state: 'visible' });
+    assert.deepEqual(await names(), ['Aino', 'Ville']);
+    // A mark made from settings another tab has changed since is refused, said, and the
+    // list is drawn as the settings are now.
+    const [aino] = (await read(page)).charts;
+    await changeElsewhere(page, 'PUT', `/api/account/charts/${aino.id}/name`, { name: 'Aino K' });
+    await page.locator('[data-start-mine]').first().click();
+    await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Your settings changed elsewhere. They are shown as they are now: choose again.');
+    await page.waitForFunction(() => document.querySelector('#start-charts-list .saved-name')?.textContent === 'Aino K');
+    assert.equal((await read(page)).my_chart, null);
+    // Marked: its day opens, as each visit now opens it.
+    await page.locator('[data-start-mine]').first().click();
+    await page.locator('#today-view').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.querySelector('.toast')?.textContent === 'Your chart is marked.');
+    assert.equal((await read(page)).my_chart, aino.id);
+    assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
+    await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+    await page.locator('#today-view').waitFor({ state: 'visible' });
+    await page.waitForFunction(() => document.getElementById('today-chart').textContent.startsWith('Aino K · '));
   }, { signedIn: false }));
 
   it('Settings asks for a sign-in first', { timeout: 60000 }, () => withPage(profiles[0], async (page) => {
