@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.73.0
+
+Links keep what they get right, and a comparison can take a saved chart.
+
+### Changed
+- **A bad link keeps its good parts.** One wrong part (`display=glyphs`, say) emptied the
+  form. Each part is now read on its own: the form keeps the date, the time, the whole
+  place, the gender and the language the link gives right, and with the whole moment its
+  Zi-hour convention, beside the error that names the wrong part. A part it gets wrong
+  leaves its field empty. A refused day link keeps the chart's birth too.
+- **A day link without its day opens today** where you are, as Chart · Day does, and its
+  address then names the day. It was refused.
+
+### Added
+- **Compare with a saved chart.** Compare asked for the second birth to be typed again.
+  Under the note, "Or a saved chart" lists the account's saved charts by name and birth,
+  the first chart left out, and its Compare opens the pair.
+
+### Docs
+- Links, Today (the address), Compare.
+
+### Tests
+- Browser: each refused link's kept fields, and the chart its kept birth opens; the day
+  link without a day; a refused day link's form; choosing a saved chart to compare with,
+  and no list without one.
+- Version bumped to `0.73.0`; the regression fixture changes only in `engine.version`.
+
 ## 0.72.0
 
 The chart on a phone: more of it on the first screen.
