@@ -846,8 +846,16 @@ for (const profile of profiles) {
       await page.locator('#save-chart-mine').check();
       assert.equal(await page.locator('#save-chart-mine-note').textContent(), 'Each visit then opens its day. Given is yours no longer, and stays saved.');
       await page.locator('#save-chart-gender input[value="male"]').check();
+      const posted = [];
+      const record = (request) => {
+        if (new URL(request.url()).pathname === '/api/account/charts' && request.method() === 'POST') posted.push(request.url());
+      };
+      page.on('request', record);
       await page.locator('#save-chart-save').click();
       assert.equal(await page.locator('#save-chart-status').textContent(), 'This chart is saved already, as Given.');
+      await page.waitForTimeout(300);
+      page.off('request', record);
+      assert.deepEqual(posted, [], 'the API is not asked to save it');
       assert.equal((await read(page)).charts.length, 1);
     });
 
