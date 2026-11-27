@@ -33,6 +33,14 @@ for (const profile of profiles) {
       const asked = chartsAskedFor(page);
       await visit(page);
       assert.equal(await text(page, '#account-btn'), 'Sign in');
+      // The website's own pages, which cover the app too, and where to write.
+      const links = (selector) => page.locator(selector).evaluateAll((nodes) => nodes
+        .filter((node) => node.checkVisibility()).map((node) => [node.textContent, node.getAttribute('href')]));
+      const TERMS = ['Terms', 'https://eightchord.com/terms/'];
+      const PRIVACY = ['Privacy Policy', 'https://eightchord.com/privacy/'];
+      assert.deepEqual(await links('.site-links a'), [
+        ['Method', 'https://eightchord.com/method/'], TERMS, PRIVACY, ['hello@eightchord.com', 'mailto:hello@eightchord.com'],
+      ]);
       await page.locator('#location').fill(CHENGDU.city);
       await page.locator('.location-suggestion').waitFor();
       // Nothing failed, and nothing came from another site, before the dialog opened.
@@ -45,6 +53,7 @@ for (const profile of profiles) {
       assert.equal(await text(page, '#account-lead'),
         'Charts need an account. It is free and needs no password: we send a code to your email.');
       assert.equal(await page.evaluate(() => document.activeElement.id), 'account-email');
+      assert.deepEqual(await links('#account-dialog .account-policies a'), [TERMS, PRIVACY]);
       // No language is chosen for the reader.
       assert.equal(await page.locator('#account-language input:checked').count(), 0);
       // The widget has the page's site key, and speaks the page's language.
@@ -191,10 +200,10 @@ for (const profile of profiles) {
       assert.equal(stored.language, 'fi');
       // Everything kept for the account, as a file.
       const [download] = await Promise.all([page.waitForEvent('download'), page.locator('#account-export').click()]);
-      assert.equal(download.suggestedFilename(), 'eight-chord-account.json');
+      assert.equal(download.suggestedFilename(), 'eightchord-account.json');
       const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
       assert.deepEqual([exported.account.email, exported.account.language], [account.email, 'fi']);
-      await page.locator('#account-status').filter({ hasText: 'eight-chord-account.json' }).waitFor();
+      await page.locator('#account-status').filter({ hasText: 'eightchord-account.json' }).waitFor();
       // Signing out: the dialog says so and offers signing in again; the session is gone.
       await page.locator('#account-sign-out').click();
       await page.locator('#account-notice').filter({ hasText: 'Olet kirjautunut ulos.' }).waitFor();

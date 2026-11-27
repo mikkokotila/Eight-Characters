@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════
-   Eight Chord — the chart's styles
+   Eightchord — the chart's styles
    Faithfully matches the chart template aesthetic.
    ═══════════════════════════════════════════════════════ */
 
@@ -414,6 +414,20 @@ body {
   color: var(--ink-1);
   letter-spacing: var(--tracking-1);
 }
+
+/* The page for an address the app does not have (not_found.html): the start page's
+   header, a line and the way home. */
+.not-found { text-align: center; }
+.not-found-line {
+  color: var(--ink-2);
+  margin-bottom: var(--space-5);
+}
+.not-found-home a {
+  color: var(--ink-1);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+.not-found-home a:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 
 /* The start page's tools: its language, and signing in or the account. */
 .page-tools {
@@ -2654,6 +2668,31 @@ kbd {
   cursor: pointer;
 }
 .account-switch:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+/* The website's own pages, under the start page and Settings, and in the account window:
+   quiet links in the note's size and ink. */
+.site-links,
+.account-policies {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--space-2) var(--space-5);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+}
+.site-links { margin: var(--space-8) 0 var(--space-5); }
+/* Shown on paper only (the print rules below). */
+.print-relationships { display: none; }
+.account-policies { justify-content: flex-start; gap: var(--space-2) var(--space-4); }
+.site-links a,
+.account-policies a {
+  color: var(--ink-2);
+  text-decoration: underline;
+  text-underline-offset: var(--space-1);
+}
+.site-links a:hover,
+.account-policies a:hover { color: var(--ink-1); }
+.site-links a:focus-visible,
+.account-policies a:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 .account-actions {
   display: flex;
   flex-wrap: wrap;
@@ -3981,6 +4020,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 
   #input-view,
+  .site-links,
+  .library-btn:not([data-saved='true']),
   .chart-tools,
   .context-controls,
   #relationships-topic,
@@ -4002,6 +4043,17 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-scale-track {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
+  }
+
+  /* A saved chart's name, as text; the relationships the arcs draw, by name. */
+  .library-btn { padding: 0; border: none; background: none; }
+  .library-btn .control-icon { display: none; }
+  .print-relationships:not(:empty) {
+    display: block;
+    margin: var(--space-4) 0 0;
+    font-size: var(--text-1);
+    line-height: var(--leading-3);
+    color: var(--ink-1);
   }
 
   /* The convention the chart was read with, as text. */

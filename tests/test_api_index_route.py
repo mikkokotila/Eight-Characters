@@ -73,7 +73,7 @@ def _css_declarations(css: str) -> list[tuple[str, str, str]]:
 class TestApiIndexRoute(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        install_accounts(cls)
+        cls.accounts = install_accounts(cls)
         cls.client = TestClient(app)
 
     def test_index_renders_single_page_application(self) -> None:
@@ -87,6 +87,85 @@ class TestApiIndexRoute(unittest.TestCase):
             response.text.index('/static/account-billing.js'),
             response.text.index('/static/account.js'),
         )
+
+    def test_a_shared_link_previews_the_app_at_its_own_address(self) -> None:
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        properties = dict(
+            re.findall(
+                r'<meta property="(og:[a-z_]+)" content="([^"]*)">', response.text
+            )
+        )
+        self.assertEqual(
+            properties,
+            {
+                'og:type': 'website',
+                'og:site_name': 'Eightchord',
+                'og:title': 'Eightchord',
+                'og:url': self.accounts.config.origin + '/',
+            },
+        )
+
+    def test_the_browsers_bar_takes_the_page_tone_by_day_and_by_night(self) -> None:
+        css = (BASE_DIR / 'static' / 'style.css').read_text(encoding='utf-8')
+        tones = [value for _, name, value in _css_declarations(css) if name == '--bg']
+        self.assertEqual(len(tones), 2, tones)
+        pages = (
+            self.client.get('/').text,
+            self.client.get('/no-such-page', headers={'Accept': 'text/html'}).text,
+        )
+        for page in pages:
+            self.assertEqual(
+                re.findall(
+                    r'<meta name="theme-color" content="([^"]+)" '
+                    r'media="\(prefers-color-scheme: (light|dark)\)">',
+                    page,
+                ),
+                [(tones[0], 'light'), (tones[1], 'dark')],
+            )
+
+    def test_an_address_the_app_does_not_have_is_a_page_for_a_browser(self) -> None:
+        browser = 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8'
+        for method in ('GET', 'HEAD'):
+            page = self.client.request(
+                method, '/no-such-page', headers={'Accept': browser}
+            )
+            self.assertEqual(page.status_code, 404, method)
+            self.assertTrue(
+                page.headers['content-type'].startswith('text/html'), method
+            )
+        page = self.client.get('/explorer/no-such-page', headers={'Accept': browser})
+        self.assertEqual(page.status_code, 404)
+        self.assertIn('<title>Not found · Eightchord</title>', page.text)
+        self.assertIn('<meta name="robots" content="noindex">', page.text)
+        self.assertIn('<h1 class="title">This page is not here.</h1>', page.text)
+        self.assertIn('<a href="/">Go to the home page</a>', page.text)
+        self.assertIn(f'/static/style.css?v={__version__}', page.text)
+        # Code asking, the API and other refusals keep FastAPI's own answers.
+        for method, path, accept, status, detail in (
+            ('GET', '/no-such-page', '*/*', 404, 'Not Found'),
+            ('GET', '/static/no-such-file.js', '*/*', 404, 'Not Found'),
+            ('GET', '/api/no-such-route', browser, 404, 'Not Found'),
+            ('POST', '/no-such-page', browser, 404, 'Not Found'),
+            ('POST', '/', browser, 405, 'Method Not Allowed'),
+        ):
+            answer = self.client.request(method, path, headers={'Accept': accept})
+            self.assertEqual(answer.status_code, status, path)
+            self.assertEqual(answer.json(), {'detail': detail}, path)
+
+    def test_pages_link_the_websites_own_pages(self) -> None:
+        # The website's Privacy Policy and Terms cover the app too (my.eightchord.com):
+        # the start page and Settings link them with the Method and the address to
+        # write to, and the account window links the two before a code is asked for.
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        for page in ('method', 'terms', 'privacy'):
+            self.assertEqual(
+                response.text.count(f'href="https://eightchord.com/{page}/"'),
+                2 if page == 'method' else 3,
+                page,
+            )
+        self.assertEqual(response.text.count('href="mailto:hello@eightchord.com"'), 2)
 
     def test_relationship_view_has_accessible_controls(self) -> None:
         response = self.client.get('/')

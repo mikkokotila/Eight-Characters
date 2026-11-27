@@ -158,6 +158,31 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-panel').isVisible(), false);
     });
 
+    check('printed, the relationships the arcs draw are named under the chart, as the list names them', async (page) => {
+      const payload = await openChart(page, { lang: 'en', date: '1990-01-08', time: '12:00' });
+      assert.ok(payload.interactions.length > 0);
+      const line = page.locator('#print-relationships');
+      assert.equal(await line.isVisible(), false, 'on screen the list names them');
+      await openRelationships(page);
+      // Each chip's name: its one span without a class, beside its mark, icon and line.
+      const names = await page.locator('.relationship-chip > span:not([class])').allTextContents();
+      assert.equal(names.length, payload.interactions.length);
+      await page.emulateMedia({ media: 'print' });
+      await settled(page);
+      assert.equal(await line.isVisible(), true);
+      assert.equal(await line.textContent(), `Relationships: ${names.join(' · ')}`);
+      const [cards, printed] = await page.evaluate(() => [
+        Math.max(...[...document.querySelectorAll('#pillars .card')].map((card) => card.getBoundingClientRect().bottom)),
+        document.getElementById('print-relationships').getBoundingClientRect().top,
+      ]);
+      assert.ok(printed >= cards, 'the names follow the cards');
+      // In the page's language.
+      await page.emulateMedia({ media: 'screen' });
+      await page.locator('[data-chart-lang="fi"]').click();
+      await settled(page);
+      assert.match(await line.textContent(), /^Yhteydet: /);
+    });
+
     check('printed, each arc stands on its cards as on screen, and a Zi-hour chart shows its convention as text', async (page) => {
       if (profile.name === 'mobile') await page.setViewportSize({ width: 800, height: 1000 });
       const payload = await openChart(page, { date: '1990-01-08', time: '12:00' });
@@ -172,9 +197,12 @@ for (const profile of profiles) {
         const arc = [...document.querySelectorAll('.relationship-arc')].find((node) => node.dataset.relationshipId === relationship.id);
         const line = arc.querySelector('.relationship-arc-line').getBoundingClientRect();
         const stem = relationship.component === 'stem';
+        // Rounded to the pixel, a hair below zero is -0, which a strict comparison tells
+        // apart from 0: it is 0.
+        const px = (value) => Math.round(value) || 0;
         return [relationship.id,
-          Math.round(line.left - (first.left + first.width / 2)), Math.round(line.right - (last.left + last.width / 2)),
-          Math.round(stem ? first.top - line.bottom : line.top - first.bottom)];
+          px(line.left - (first.left + first.width / 2)), px(line.right - (last.left + last.width / 2)),
+          px(stem ? first.top - line.bottom : line.top - first.bottom)];
       }), payload.interactions);
       const screen = await where();
       assert.ok(screen.length > 0);

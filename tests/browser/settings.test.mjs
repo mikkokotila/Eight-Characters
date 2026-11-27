@@ -368,6 +368,10 @@ for (const profile of profiles) {
       await openLink(page, chartLink(), { place: HELSINKI });
       await page.waitForFunction(() => document.getElementById('library-btn').dataset.saved === 'false');
       assert.equal(await nameOnScreen(page), 'Unsaved chart');
+      // On paper a chart not saved says nothing of it.
+      await page.emulateMedia({ media: 'print' });
+      assert.equal(await page.locator('#library-btn').isVisible(), false);
+      await page.emulateMedia({ media: 'screen' });
       await openLibrary(page);
       assert.match(await page.locator('#library-list').textContent(), /No saved charts yet/);
       await page.locator('#library-save').click();
@@ -381,6 +385,13 @@ for (const profile of profiles) {
       assert.deepEqual([kept.date, kept.time, kept.gender, kept.zi, kept.place.city],
         [BIRTH.date, BIRTH.time, BIRTH.gender, 'split_midnight', HELSINKI.city]);
       await page.waitForFunction((name) => document.querySelector('#library-btn .library-label').textContent === name, name);
+      // On paper the saved chart's name is text under the date, not a button.
+      await page.emulateMedia({ media: 'print' });
+      assert.deepEqual(await page.locator('#library-btn').evaluate((node) => {
+        const style = getComputedStyle(node);
+        return [node.checkVisibility(), node.innerText, style.borderTopStyle, style.backgroundColor];
+      }), [true, name, 'none', 'rgba(0, 0, 0, 0)']);
+      await page.emulateMedia({ media: 'screen' });
       // Saved once: the library offers no second save, and marks the chart on screen.
       await openLibrary(page);
       assert.equal(await page.locator('#library-save').isHidden(), true);
@@ -390,6 +401,10 @@ for (const profile of profiles) {
       await page.locator('#library-dialog').waitFor({ state: 'hidden' });
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'library-btn');
       await openSettings(page);
+      // Under the settings, the website's own pages, as under the start page.
+      assert.deepEqual(await page.locator('.site-links a').evaluateAll((nodes) => nodes
+        .filter((node) => node.checkVisibility()).map((node) => node.textContent)),
+      ['Method', 'Terms', 'Privacy Policy', 'hello@eightchord.com']);
       const card = page.locator(`#settings-charts-body .saved-card[data-chart="${kept.id}"]`);
       assert.equal(await card.locator('.saved-name').textContent(), name);
       // Its pillars in the chart's order, hour first, each character with its pinyin.

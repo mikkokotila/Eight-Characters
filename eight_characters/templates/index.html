@@ -3,7 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title data-i18n="page_title">Eight Chord — Neljä pilaria</title>
+<!-- The browser's own bar in the page's tone, by day and by night (style.css, --bg). -->
+<meta name="theme-color" content="#F5F0E8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1C1916" media="(prefers-color-scheme: dark)">
+<!-- A shared link's preview, as the website gives its own: the app's name, at its address. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Eightchord">
+<meta property="og:title" content="Eightchord">
+<meta property="og:url" content="{{ app_url }}">
+<title data-i18n="page_title">Eightchord — Neljä pilaria</title>
 <link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <link rel="icon" href="/static/favicon.svg?v={{ app_version }}" type="image/svg+xml">
 <link rel="preload" href="/explorer/vendor/fonts/Manrope-normal-400.woff2" as="font" type="font/woff2" crossorigin>
@@ -28,7 +36,7 @@
       <button type="button" id="account-btn" class="bar-action account-btn" aria-haspopup="dialog" data-i18n="account_sign_in">Kirjaudu</button>
     </div>
     <p class="eyebrow" data-i18n="heading">Neljä pilaria</p>
-    <h1 class="title" data-i18n="title">Eight Chord</h1>
+    <h1 class="title" data-i18n="title">Eightchord</h1>
   </div>
 
   <!-- While a comparison's second chart is chosen: which chart it is compared with. -->
@@ -93,6 +101,15 @@
     </div>
 
   </form>
+
+  <!-- The website's own pages, which cover the app too: how a chart is made, the
+       Privacy Policy and the Terms, and where to write. -->
+  <footer class="site-links" aria-label="Eightchord">
+    <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
+    <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+    <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+    <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
+  </footer>
 </div>
 
 
@@ -177,6 +194,8 @@
     <span id="pillars-label" class="sr-only" data-i18n="pillars_label">Pilarit</span>
     <p id="pillars-keys" class="sr-only" data-i18n="pillars_keys"></p>
     <div class="pillars" id="pillars" role="group" aria-labelledby="pillars-label" aria-describedby="pillars-keys"></div>
+    <!-- On paper the arcs have no words: the relationships they draw, by name (relationships.js). -->
+    <p id="print-relationships" class="print-relationships"></p>
 
     <!-- The life grid of a chart with a gender: the chart's columns run on through the
          life, five years to a row (life.js). -->
@@ -447,6 +466,12 @@
         </div>
       </fieldset>
     </section>
+    <footer class="site-links" aria-label="Eightchord">
+      <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
+      <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+      <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+      <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
+    </footer>
   </div>
 </div>
 
@@ -610,6 +635,10 @@
     <button type="submit" id="account-send" class="submit-btn" data-i18n="account_send">Lähetä koodi</button>
     <button type="button" id="account-mode" class="account-switch"></button>
     <p class="account-note" data-i18n="account_privacy"></p>
+    <p class="account-note account-policies">
+      <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+      <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+    </p>
   </form>
 
   <form id="account-code-step" class="account-step hidden" novalidate>

@@ -10,12 +10,14 @@ from typing import Any, Literal, cast
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi.exception_handlers import http_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from starlette.concurrency import run_in_threadpool
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from typing_extensions import TypedDict
 
 from eight_characters import __version__
@@ -223,6 +225,23 @@ async def request_validation_exception_handler(
         status_code=400,
         content={'detail': _validation_error_message(exc)},
     )
+
+
+@app.exception_handler(StarletteHTTPException)
+async def not_found_page(request: Request, exc: StarletteHTTPException) -> Response:
+    """A browser opening an address the app does not have gets a page saying so, in
+    the website's words; the API, code asking (scripts, styles, fetch) and every other
+    refusal keep FastAPI's own answer."""
+    if (
+        exc.status_code == 404
+        and request.method in ('GET', 'HEAD')
+        and not request.url.path.startswith('/api/')
+        and 'text/html' in request.headers.get('accept', '')
+    ):
+        return templates.TemplateResponse(
+            request, 'not_found.html', {'app_version': __version__}, status_code=404
+        )
+    return await http_exception_handler(request, exc)
 
 
 # ── Request / Response models ──
@@ -1077,6 +1096,8 @@ async def index(
             'turnstile_site_key': accounts.config.turnstile_site_key,
             'account': None if current is None else account_view(current.user),
             'billing_enabled': accounts.billing is not None,
+            # Link previews name the app at its own address (EC_APP_ORIGIN).
+            'app_url': accounts.config.origin + '/',
             # The engine accepts any local date within its supported years.
             'birth_date_min': f'{MIN_SUPPORTED_YEAR:04d}-01-01',
             'birth_date_max': f'{MAX_SUPPORTED_YEAR:04d}-12-31',
