@@ -16,8 +16,9 @@ python tests/run_checks.py browser --browser chromium --full
 A command that names suites runs exactly those: `--suite NAME` (repeatable) runs
 `NAME.test.mjs` in both profiles. Flags alone steer the essential run: `--name PATTERN`
 keeps the tests whose names match, `--profile desktop` or `mobile` one profile,
-`--exclude NAME` leaves a suite out, and `--workers N` sets how many runs go at once.
-`--suite foundations --name 'text meets WCAG'` isolates the contrast checks.
+`--exclude NAME` leaves a suite out, `--workers N` sets how many runs go at once (two
+fewer than the CPUs by default, at most eight), and `--tap-dir DIR` keeps each run's
+TAP. `--suite foundations --name 'text meets WCAG'` isolates the contrast checks.
 
 Use the Python that has the app installed (`pip install -e .`). `EC_NODE` names the
 Node executable (`python tests/run_checks.py syntax` checks the page scripts with it)
@@ -26,10 +27,13 @@ when that resolves from the repository, from an installation with the browser's
 matching binary. No missing browser is skipped or substituted. The harness installs
 nothing and adds no build step. `python tests/run_checks.py types` runs Pyright.
 
-The runner prints the suites it chose, then a line as each suite's profile finishes.
-At the end it prints every failed test with its TAP diagnostics (or the end of the
-output of a run that failed otherwise), the totals and the slowest runs. It exits 0
-only when every run passed.
+The runner prints the suites it chose, then a line as each run (a suite's profile, or
+a part of one) finishes, with its seconds. At the end it prints every failed test with
+its TAP diagnostics (or the end of the output of a run that failed otherwise), the
+totals and the slowest runs. It exits 0 only when every run passed.
+
+Timing tests fail when the machine is starved: check `uptime` before reading a failure,
+and run again when the load average is far above the CPU count.
 
 ### The essential tests
 
@@ -88,7 +92,7 @@ TBD.
 ### Against a server of your own
 
 `node --test` runs a suite against an app you start yourself, both profiles in one
-process unless `EC_PROFILE` names one. Start the app with its account settings (see
+process unless `EC_PROFILE` names one (and every test, unless `EC_PART` names a part). Start the app with its account settings (see
 [Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
 - `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
 - Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
