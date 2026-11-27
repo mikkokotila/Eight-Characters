@@ -494,6 +494,17 @@ def report(
     return not failed
 
 
+def load(start: float, end: float, cpus: int | None) -> str:
+    """The machine's load over a run: timing tests fail on a starved machine."""
+    said = f'Load average {start:.1f} at the start, {end:.1f} at the end'
+    if cpus is None:
+        return f'{said}.'
+    said = f'{said}, on {plural(cpus, "CPU")}.'
+    if max(start, end) > cpus:
+        said += ' Timing tests fail on a machine this busy.'
+    return said
+
+
 def plural(count: int, word: str) -> str:
     return f'{count} {word}' if count == 1 else f'{count} {word}s'
 
@@ -573,6 +584,7 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
     if tap is not None:
         tap.mkdir(parents=True, exist_ok=True)
     run = Run(node, jobs, args.name, tap)
+    load_at_start = os.getloadavg()[0]
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='ec-browser-') as scratch:
         directory = Path(scratch)
@@ -610,6 +622,7 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
                     server.process.kill()
                     server.process.wait()
     passed = report(run.results, workers, time.monotonic() - started, args.name)
+    print(load(load_at_start, os.getloadavg()[0], os.cpu_count()), flush=True)
     if run.errors:
         # The runner itself failed (a server stopped, say): the jobs left did not run.
         raise run.errors[0]

@@ -1,5 +1,6 @@
 """The browser runner's choices (tests/run_checks.py): which suites the essential run
-takes, how a suite's two profiles run apart, and what it reads from a run's TAP."""
+takes, how a suite's two profiles run apart, what it reads from a run's TAP, and what
+it says of the machine's load."""
 
 import re
 import unittest
@@ -234,6 +235,27 @@ class Tap(unittest.TestCase):
         self.assertTrue(empty.passed(True))
         # A run that ended before its counts (a crash) did not pass.
         self.assertFalse(run_checks.Result(job, 1.0, 0, 'Error', {}).passed(True))
+
+
+class Load(unittest.TestCase):
+    def test_the_load_is_said_against_the_cpus(self) -> None:
+        self.assertEqual(
+            run_checks.load(3.04, 7.96, 10),
+            'Load average 3.0 at the start, 8.0 at the end, on 10 CPUs.',
+        )
+
+    def test_a_load_above_the_cpus_warns_of_timing_failures(self) -> None:
+        self.assertEqual(
+            run_checks.load(34.3, 127.4, 10),
+            'Load average 34.3 at the start, 127.4 at the end, on 10 CPUs. '
+            'Timing tests fail on a machine this busy.',
+        )
+
+    def test_without_a_cpu_count_only_the_load_is_said(self) -> None:
+        self.assertEqual(
+            run_checks.load(1.0, 2.0, None),
+            'Load average 1.0 at the start, 2.0 at the end.',
+        )
 
 
 if __name__ == '__main__':

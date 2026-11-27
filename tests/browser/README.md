@@ -30,10 +30,11 @@ nothing and adds no build step. `python tests/run_checks.py types` runs Pyright.
 The runner prints the suites it chose, then a line as each run (a suite's profile, or
 a part of one) finishes, with its seconds. At the end it prints every failed test with
 its TAP diagnostics (or the end of the output of a run that failed otherwise), the
-totals and the slowest runs. It exits 0 only when every run passed.
+totals, the slowest runs, and the load average at the start and the end. It exits 0
+only when every run passed.
 
-Timing tests fail when the machine is starved: check `uptime` before reading a failure,
-and run again when the load average is far above the CPU count.
+Timing tests fail when the machine is starved: when the load average was far above the
+CPU count, run the failed suites again when it is quieter before reading a failure.
 
 ### The essential tests
 
@@ -94,7 +95,8 @@ TBD.
 ### Against a server of your own
 
 `node --test` runs a suite against an app you start yourself, both profiles in one
-process unless `EC_PROFILE` names one (and every test, unless `EC_PART` names a part). Start the app with its account settings (see
+process unless `EC_PROFILE` names one (and every test, unless `EC_PART` names a part).
+Start the app with its account settings (see
 [Accounts, on a laptop](../../docs/Developer/Accounts.md#on-a-laptop)), with:
 - `EC_MAIL_TRANSPORT=directory`, and that folder as `EC_MAIL_DIRECTORY` here too;
 - Turnstile's test keys, which the app still checks with Cloudflare, so the run needs
