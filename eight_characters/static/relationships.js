@@ -101,7 +101,8 @@
     const detail = root.querySelector('#relationship-detail');
     const status = root.querySelector('#relationship-status');
     const pillars = root.querySelector('#pillars');
-    if (!list || !empty || !about || !detail || !status || !pillars || !spot || !canon) {
+    const printed = root.querySelector('#print-relationships');
+    if (!list || !empty || !about || !detail || !status || !pillars || !printed || !spot || !canon) {
       throw new Error('Relationship view is incomplete.');
     }
     let entries = [];
@@ -338,6 +339,10 @@
           ${luckEntries.map((relationship, index) => chipMarkup(relationship, entries.length + index)).join('')}`);
       list.querySelector('.relationship-chip[aria-expanded="true"]')?.classList.add('is-active');
       empty.classList.toggle('hidden', allEntries().length !== 0);
+      // On paper the arcs have no words: the relationships they draw, named as the list
+      // names them.
+      printed.textContent = allEntries().length === 0 ? ''
+        : `${t('relationships')}: ${allEntries().map(labelFor).join(' · ')}`;
       if (focused !== undefined && focused !== null) {
         const chip = [...list.querySelectorAll('[data-relationship]')].find((node) => node.dataset.relationship === focused);
         (chip ?? root.querySelector('#relationships-topic')).focus({ preventScroll: true });

@@ -88,6 +88,20 @@ class TestApiIndexRoute(unittest.TestCase):
             response.text.index('/static/account.js'),
         )
 
+    def test_pages_link_the_websites_own_pages(self) -> None:
+        # The website's Privacy Policy and Terms cover the app too (my.eightchord.com):
+        # the start page and Settings link them with the Method and the address to
+        # write to, and the account window links the two before a code is asked for.
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        for page in ('method', 'terms', 'privacy'):
+            self.assertEqual(
+                response.text.count(f'href="https://eightchord.com/{page}/"'),
+                2 if page == 'method' else 3,
+                page,
+            )
+        self.assertEqual(response.text.count('href="mailto:hello@eightchord.com"'), 2)
+
     def test_relationship_view_has_accessible_controls(self) -> None:
         response = self.client.get('/')
         for element_id in (

@@ -158,6 +158,30 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#chart-panel').isVisible(), false);
     });
 
+    check('printed, the relationships the arcs draw are named under the chart, as the list names them', async (page) => {
+      const payload = await openChart(page, { lang: 'en', date: '1990-01-08', time: '12:00' });
+      assert.ok(payload.interactions.length > 0);
+      const line = page.locator('#print-relationships');
+      assert.equal(await line.isVisible(), false, 'on screen the list names them');
+      await openRelationships(page);
+      const names = await page.locator('.relationship-chip > span:nth-child(2)').allTextContents();
+      assert.equal(names.length, payload.interactions.length);
+      await page.emulateMedia({ media: 'print' });
+      await settled(page);
+      assert.equal(await line.isVisible(), true);
+      assert.equal(await line.textContent(), `Relationships: ${names.join(' · ')}`);
+      const [cards, printed] = await page.evaluate(() => [
+        Math.max(...[...document.querySelectorAll('#pillars .card')].map((card) => card.getBoundingClientRect().bottom)),
+        document.getElementById('print-relationships').getBoundingClientRect().top,
+      ]);
+      assert.ok(printed >= cards, 'the names follow the cards');
+      // In the page's language.
+      await page.emulateMedia({ media: 'screen' });
+      await page.locator('[data-chart-lang="fi"]').click();
+      await settled(page);
+      assert.match(await line.textContent(), /^Yhteydet: /);
+    });
+
     check('printed, each arc stands on its cards as on screen, and a Zi-hour chart shows its convention as text', async (page) => {
       if (profile.name === 'mobile') await page.setViewportSize({ width: 800, height: 1000 });
       const payload = await openChart(page, { date: '1990-01-08', time: '12:00' });

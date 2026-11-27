@@ -93,6 +93,15 @@
     </div>
 
   </form>
+
+  <!-- The website's own pages, which cover the app too: how a chart is made, the
+       Privacy Policy and the Terms, and where to write. -->
+  <footer class="site-links" aria-label="Eightchord">
+    <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
+    <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+    <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+    <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
+  </footer>
 </div>
 
 
@@ -177,6 +186,8 @@
     <span id="pillars-label" class="sr-only" data-i18n="pillars_label">Pilarit</span>
     <p id="pillars-keys" class="sr-only" data-i18n="pillars_keys"></p>
     <div class="pillars" id="pillars" role="group" aria-labelledby="pillars-label" aria-describedby="pillars-keys"></div>
+    <!-- On paper the arcs have no words: the relationships they draw, by name (relationships.js). -->
+    <p id="print-relationships" class="print-relationships"></p>
 
     <!-- The life grid of a chart with a gender: the chart's columns run on through the
          life, five years to a row (life.js). -->
@@ -447,6 +458,12 @@
         </div>
       </fieldset>
     </section>
+    <footer class="site-links" aria-label="Eightchord">
+      <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
+      <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+      <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+      <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
+    </footer>
   </div>
 </div>
 
@@ -610,6 +627,10 @@
     <button type="submit" id="account-send" class="submit-btn" data-i18n="account_send">Lähetä koodi</button>
     <button type="button" id="account-mode" class="account-switch"></button>
     <p class="account-note" data-i18n="account_privacy"></p>
+    <p class="account-note account-policies">
+      <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
+      <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
+    </p>
   </form>
 
   <form id="account-code-step" class="account-step hidden" novalidate>
