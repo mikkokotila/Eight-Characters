@@ -325,6 +325,25 @@ class TestToday(unittest.TestCase):
         # 甲 Jia is ☳ Zhen, a whole line under two broken ones.
         self.assertEqual(build_stem_data('甲')['lines'], ['B', 'B', 'L'])
 
+    def test_health_gives_the_days_elements_as_shares_beside_the_charts(self) -> None:
+        """Each element's share of what the day brings, in percent, as the chart's share
+        of its tally is: the two columns read alike."""
+        elements = self.english['health']['elements']
+        self.assertEqual(
+            [e['element'] for e in elements],
+            ['wood', 'fire', 'earth', 'metal', 'water'],
+        )
+        brought = sum(e['today'] for e in elements)
+        self.assertGreater(brought, 0)
+        for element in elements:
+            # The counts are exact hundredths; their shares are rounded to a tenth.
+            self.assertAlmostEqual(
+                element['today_share'], 100 * element['today'] / brought, delta=0.051
+            )
+            self.assertEqual(element['today_share'] == 0, element['today'] == 0)
+        self.assertAlmostEqual(sum(e['today_share'] for e in elements), 100, delta=0.26)
+        self.assertAlmostEqual(sum(e['chart_share'] for e in elements), 100, delta=0.26)
+
     def test_the_run_is_seven_days_back_and_fourteen_ahead(self) -> None:
         run = self.english['run']
         self.assertEqual([day['offset'] for day in run], list(range(-7, 15)))

@@ -154,6 +154,11 @@
     const number = (value, digits = 1) => minus(new Intl.NumberFormat(locale(), {
       minimumFractionDigits: digits, maximumFractionDigits: digits,
     }).format(value));
+    // A share the API gives in percent, written as the language writes one: 65.8% in
+    // English, 65,8 % in Finnish.
+    const percent = (value) => new Intl.NumberFormat(locale(), {
+      style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1,
+    }).format(value / 100);
     const bandName = (band) => {
       if (!BANDS.includes(band)) throw new Error(t('today_answer_error'));
       return t('today_band_' + band);
@@ -161,9 +166,19 @@
     const pull = (value) => `${bandName(value.band)} (${score(value.score)})`;
     // A calendar date, held as UTC midnight so that formatting never moves it.
     const calendar = (day) => new Date(`${day}T00:00:00Z`);
-    const longDate = (day) => new Intl.DateTimeFormat(locale(), {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-    }).format(calendar(day));
+    // A day in full. Finnish writes a date's weekday in the essive ("perjantaina …"); a
+    // heading names the day itself, as the days' cards do, capitalised.
+    const longDate = (day) => {
+      if (lang() !== 'fi') {
+        return new Intl.DateTimeFormat(locale(), {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+        }).format(calendar(day));
+      }
+      const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long', timeZone: 'UTC' }).format(calendar(day));
+      const date = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(calendar(day));
+      return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${date}`;
+    };
     const shortDate = (day) => new Intl.DateTimeFormat(locale(), {
       weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC',
     }).format(calendar(day));
@@ -1049,8 +1064,8 @@
           </tr></thead>
           <tbody>${ELEMENTS.map((element) => {
             const e = h.elements.find((item) => item.element === element);
-            if (!e) throw new Error(t('today_answer_error'));
-            return `<tr><th scope="row">${esc(t('element_' + element))}</th><td>${esc(number(e.today, 2))}</td><td>${esc(number(e.chart_share))} %</td><td>${esc(e.organs)}</td></tr>`;
+            if (!e || !Number.isFinite(e.today_share) || !Number.isFinite(e.chart_share)) throw new Error(t('today_answer_error'));
+            return `<tr><th scope="row">${esc(t('element_' + element))}</th><td>${esc(percent(e.today_share))}</td><td>${esc(percent(e.chart_share))}</td><td>${esc(e.organs)}</td></tr>`;
           }).join('')}</tbody>
         </table>`;
     };

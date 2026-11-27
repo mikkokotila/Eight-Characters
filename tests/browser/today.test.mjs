@@ -1100,6 +1100,26 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-detail .canon-line-toggle[aria-expanded="true"]').count(), 1);
     });
 
+    check('Health reads the day and the chart in one measure, as each language writes a share; a Finnish heading names its day', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      for (const lang of ['en', 'fi']) {
+        await page.goto(new URL(todayLink({ topic: 'health' }, { lang }), process.env.EC_BASE_URL).href);
+        await shown(page);
+        const { payload } = answers.at(-1);
+        const percent = (value) => new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
+          .format(value / 100);
+        const rows = await page.locator('.today-health tbody tr').evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll('td')]
+          .slice(0, 2).map((td) => td.textContent)));
+        assert.deepEqual(rows, payload.health.elements.map((e) => [percent(e.today_share), percent(e.chart_share)]));
+        assert.match(rows[0][0], lang === 'en' ? /^\d+\.\d%$/ : /^\d+,\d\s%$/);
+      }
+      // In Finnish the heading names the day itself, capitalised, as the days' cards do.
+      assert.equal(await page.locator('#today-date').textContent(), 'Sunnuntai 11. lokakuuta 2026');
+    });
+
     check('printed, the day keeps its run with each band as a word, and loses its controls', async (page) => {
       await page.clock.setFixedTime(NOW);
       await recordToday(page);
