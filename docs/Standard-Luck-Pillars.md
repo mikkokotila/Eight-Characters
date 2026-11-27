@@ -93,8 +93,8 @@ recede too, in the secondary line. A relationship chosen in the list, natal or t
 pillar's, stands in the ink, and every other arc recedes. The outer band is there only
 while the luck pillar shows: natal, the arcs' rows are a chart's without a gender.
 
-On a phone the luck pillar stands above the two-by-two chart, its stem beside its
-branch.
+On a phone the luck pillar follows the two-by-two chart, as it stands right of the Year
+on a wider screen, its stem beside its branch.
 
 ## The topics with luck
 

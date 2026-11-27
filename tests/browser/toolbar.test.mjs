@@ -79,8 +79,14 @@ for (const profile of profiles) {
       await openLink(page, chartLink(), { place: HELSINKI });
       assert.equal(await way(page), 'words');
       assert.deepEqual(await shown(page, '#page-switch button'), [['Chart', false], ['Day', false]]);
-      assert.deepEqual(await shown(page, '#display-switch button'), [['Characters', false], ['Ten Gods', false], ['Hidden stems', false]]);
-      assert.deepEqual(await shown(page, '#luck-switch button'), [['Natal', false], ['With luck', false]]);
+      // On a phone the bar is compact: the display and the luck pillar's switches are
+      // icons there, their names a screen reader's and their tips'.
+      const switches = profile.name === 'mobile'
+        ? [[['', true], ['', true], ['', true]], [['', true], ['', true]]]
+        : [[['Characters', false], ['Ten Gods', false], ['Hidden stems', false]], [['Natal', false], ['With luck', false]]];
+      assert.deepEqual([await shown(page, '#display-switch button'), await shown(page, '#luck-switch button')], switches);
+      assert.deepEqual(await page.locator('#display-switch button, #luck-switch button').evaluateAll((nodes) => nodes.map((node) => node.textContent.trim())),
+        ['Characters', 'Ten Gods', 'Hidden stems', 'Natal', 'With luck']);
       // A topic: its icon, its name and its count; its full name for a screen reader.
       assert.deepEqual(await shown(page, '#relationships-topic'), [['Relationships 3', true]]);
       assert.equal(await page.locator('#relationships-topic .control-label').textContent(), 'Relationships (3)');
@@ -288,9 +294,9 @@ for (const profile of profiles) {
     }
 
     if (profile.name === 'mobile') {
-      check('on a phone, in words, the bar is three lines: the page and Actions, the display, the luck pillar and the language', async (page) => {
+      check('on a phone, in words, the bar is two lines: the page and Actions, then the display, the luck pillar and the language', async (page) => {
         await openLink(page, chartLink(), { place: HELSINKI });
-        const lines = await page.evaluate(() => {
+        const lines = () => page.evaluate(() => {
           const tops = new Map();
           for (const part of document.querySelectorAll('#chart-view .chart-tools > *')) {
             if (!part.checkVisibility()) continue;
@@ -299,12 +305,35 @@ for (const profile of profiles) {
           }
           return [...tops.entries()].sort((a, b) => a[0] - b[0]).map(([, parts]) => parts);
         });
-        assert.deepEqual(lines, [['page-switch', 'bar-menu'], ['display-switch'], ['luck-switch', 'chart-language']]);
+        assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch', 'chart-language']]);
+        // The topics: one row under the Day Master's line, from the page's edge to its
+        // edge, scrolled sideways.
+        const topics = () => page.evaluate(() => {
+          const row = document.querySelector('#day-master-context .topic-row');
+          const box = row.getBoundingClientRect();
+          return {
+            tops: [...new Set([...row.querySelectorAll('.topic-button, .context-toggle')].map((node) => Math.round(node.getBoundingClientRect().top)))].length,
+            below: box.top >= document.getElementById('day-master-heading').getBoundingClientRect().bottom,
+            edges: [Math.round(box.left), Math.round(box.right) - innerWidth],
+            scrolls: row.scrollWidth > row.clientWidth,
+          };
+        });
+        assert.deepEqual(await topics(), { tops: 1, below: true, edges: [0, 0], scrolls: true });
+        // A topic out of sight comes into sight when it takes the focus.
+        await page.locator('#relationships-topic').focus();
+        assert.equal(await page.locator('#relationships-topic').evaluate((node) => {
+          const box = node.getBoundingClientRect();
+          return box.left >= 0 && box.right <= innerWidth;
+        }), true);
+        // Narrower, the language takes a line of its own until it goes; nothing runs past
+        // the page's edge.
         for (const width of [390, 320]) {
           await page.setViewportSize({ width, height: 844 });
           await settled(page);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${width}px`);
         }
+        assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch'], ['chart-language']]);
+        assert.equal((await topics()).tops, 1);
       });
     }
   });
