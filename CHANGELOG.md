@@ -9,9 +9,10 @@ The saved charts, one list like every other.
   the charts), with drop-down lists to choose a chart to mark or two charts to pair,
   where every other list of charts is a list you press. It is now one list, as the
   library's, your chart first, with **Add your own birth** above it. Under each chart
-  are its buttons: Mark as yours (or Unmark), Pair with…, End the couple with … for
-  each of its couples, Rename, Correct the birth and Remove. Pair with… opens, under the
-  chart, the charts it can pair with and A new birth; Cancel closes them.
+  are its couples, each on a line of its own with End the couple, then its buttons:
+  Mark as yours (or Unmark), Pair with…, Rename, Correct the birth and Remove. Pair
+  with… opens, under the chart, the charts it can pair with and A new birth; Cancel
+  closes them.
 
 ### Docs
 - Standard-Settings (the saved charts' page).

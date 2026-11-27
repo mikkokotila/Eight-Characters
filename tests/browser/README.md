@@ -179,8 +179,8 @@ settings as read, and checks:
   error toast leaving when another page opens;
 - your chart and the couples, from each chart's own buttons: marked and unmarked (the
   focus going to the button in its place), a partner added as a new birth and paired
-  at once, every partner of a chart named (past three as so many more) with an End
-  button for each couple, Pair with… offering only the charts a chart can pair with
+  at once, each couple on a line of its own under each of its charts, with its End,
+  Pair with… offering only the charts a chart can pair with
   (taking the focus, and giving it back when closed or paired), no pair left, a plan's
   cap said and kept out of the choices, and a partner kept from before charts pairing
   (or, past a cap, not);

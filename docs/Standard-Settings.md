@@ -56,7 +56,10 @@ a comparison's frames.
 The saved charts' page is one list, as the library's: your chart first, then the
 others in the order saved, each opening its chart when chosen. **Add your own birth**,
 above it, saves a new birth as yours. With charts saved and none yours, the page asks
-which one is. Under each chart are its buttons:
+which one is. Under each chart are its couples, each on a line of its own in the order
+paired ("Couple with A", an unnamed partner by its birth date, however long the name),
+with **End the couple**, which ends that couple alone and keeps both charts. Then its
+buttons:
 - **Mark as yours**, or **Unmark** on yours. Signed in, each visit to the site's bare
   address opens your chart's day (see below).
 - **Pair with…** opens, under the chart, the charts it can pair with (never itself or
@@ -64,21 +67,18 @@ which one is. Under each chart are its buttons:
   chart in one write, even for a chart paired with every other. Cancel, or Pair with…
   again, closes them. A chart can be in any number of couples. With no pair left to
   form, the page says so.
-- **End the couple with …**, one for each of the chart's couples, in the order paired:
-  it ends that couple alone and keeps both charts.
 - **Rename**, **Correct the birth** and **Remove**. Rename starts from the name as it
   is, quotes and all. Remove asks once more on its own button, saying what else ends:
   the chart's being yours, each of its couples (naming the other charts), or its wait
   to pair with your chart.
 
-Each chart names its partners in the order paired, an unnamed one by its birth date,
-and past three says how many more ("Couple with A, B, C, and 2 more"). On a plan that
-caps how many couples a chart may be in (none does for now), a chart at the cap has no
-Pair with… and is offered to none, and the page says why. A partner's chart kept from
-before accounts kept charts is marked as waiting to pair, and pairs with your chart
-once you mark one; marking it, or saving a new birth as yours, then says with whom it
-paired, or, with your chart at its plan's cap, that it did not and waits no longer. A
-chart the engine no longer charts says why, and can still be renamed or removed.
+On a plan that caps how many couples a chart may be in (none does for now), a chart at
+the cap has no Pair with… and is offered to none, and the page says why. A partner's
+chart kept from before accounts kept charts is marked as waiting to pair, and pairs
+with your chart once you mark one; marking it, or saving a new birth as yours, then
+says with whom it paired, or, with your chart at its plan's cap, that it did not and
+waits no longer. A chart the engine no longer charts says why, and can still be renamed
+or removed.
 
 **Add your own birth**, **A new birth** (under Pair with…) and **Correct the birth** open
 the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or

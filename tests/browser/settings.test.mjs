@@ -522,10 +522,11 @@ for (const profile of profiles) {
       const now = await read(page);
       const partner = now.charts.find((chart) => chart.name === 'New partner');
       assert.deepEqual(now.couples.map((couple) => couple.charts), [[mine, partner.id]]);
-      // Each chart of the couple can end it, from its own row.
+      // Each chart of the couple lists it on a line of its own, with its End.
+      assert.deepEqual(await page.locator(`.saved-item[data-chart="${mine}"] .saved-couple-with`).allTextContents(), ['Couple with New partner']);
+      assert.match(await page.locator(`.saved-item[data-chart="${partner.id}"] .saved-couple-with`).textContent(), /^Couple with an unnamed chart \(born /);
       const end = page.locator(`[data-settings-action="end"][data-chart="${mine}"]`);
-      assert.equal(await end.textContent(), 'End the couple with New partner');
-      assert.match(await page.locator(`[data-settings-action="end"][data-chart="${partner.id}"]`).textContent(), /^End the couple with an unnamed chart \(born /);
+      assert.deepEqual([await end.textContent(), await end.getAttribute('aria-label')], ['End the couple', 'End the couple with New partner']);
       // Ended, both charts stay saved.
       await end.click();
       await page.waitForFunction(() => document.querySelector('#settings-charts-body [data-settings-action="end"]') === null);
@@ -534,7 +535,7 @@ for (const profile of profiles) {
       assert.equal(after.charts.length, 2);
     });
 
-    check('a chart in several couples, as #96 will keep them: every partner named, past three as so many more, and removal naming each couple', async (page) => {
+    check('a chart in several couples, as #96 will keep them: each couple on a line of its own, and removal naming each couple, past three as so many more', async (page) => {
       await reset(page);
       const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
       const partners = [];
@@ -553,16 +554,18 @@ for (const profile of profiles) {
         return route.fulfill({ response, json: { ...value, couples: [...value.couples, ...extra] } });
       });
       await openSettings(page, 'charts');
-      // My chart names every partner in the order paired, an unnamed one by its birth
-      // date, and past three says how many more.
-      const marks = await page.locator(`#settings-charts-body .saved-item[data-chart="${mine}"] .saved-head`).textContent();
-      assert.ok(marks.includes('Couple with First, an unnamed chart (born January 2, 1981), Third, and 1 more'), marks);
-      // Each partner names my chart; each couple can be ended from my chart's row.
-      assert.match(await page.locator(`#settings-charts-body .saved-item[data-chart="${partners[3]}"] .saved-head`).textContent(), /Couple with Mine/);
-      assert.deepEqual(await page.locator(`.saved-item[data-chart="${mine}"] [data-settings-action="end"]`).allTextContents(), [
+      // My chart lists each couple on a line of its own, in the order paired, an unnamed
+      // partner by its birth date, each with its End; each partner lists my chart. The
+      // heading names no partners here: the lines do.
+      assert.deepEqual(await page.locator(`.saved-item[data-chart="${mine}"] .saved-couple-with`).allTextContents(), [
+        'Couple with First', 'Couple with an unnamed chart (born January 2, 1981)', 'Couple with Third', 'Couple with Fourth',
+      ]);
+      assert.deepEqual(await page.locator(`.saved-item[data-chart="${mine}"] [data-settings-action="end"]`).evaluateAll((ends) => ends.map((end) => end.getAttribute('aria-label'))), [
         'End the couple with First', 'End the couple with an unnamed chart (born January 2, 1981)',
         'End the couple with Third', 'End the couple with Fourth',
       ]);
+      assert.deepEqual(await page.locator(`.saved-item[data-chart="${partners[3]}"] .saved-couple-with`).allTextContents(), ['Couple with Mine']);
+      assert.equal((await page.locator(`.saved-item[data-chart="${mine}"] .saved-head`).textContent()).includes('Couple with'), false);
       assert.equal(await couplesDrawn(page), 4);
       // Removing my chart names each couple it ends.
       const remove = page.locator(`#settings-charts-body [data-settings-action="remove"][data-chart="${mine}"]`);
@@ -722,7 +725,7 @@ for (const profile of profiles) {
       ]);
     });
 
-    check('a chart with many partners names three and how many more, and stays inside the page', async (page) => {
+    check('a chart with many partners lists each couple, and stays inside the page', async (page) => {
       await reset(page);
       const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
       for (let index = 0; index < 10; index += 1) {
@@ -730,8 +733,8 @@ for (const profile of profiles) {
         await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partner] });
       }
       await openSettings(page, 'charts');
-      const marks = await page.locator(`#settings-charts-body .saved-item[data-chart="${mine}"] .saved-head`).textContent();
-      assert.ok(marks.includes('Couple with Partner 1, Partner 2, Partner 3, and 7 more'), marks);
+      assert.deepEqual(await page.locator(`.saved-item[data-chart="${mine}"] .saved-couple-with`).allTextContents(),
+        Array.from({ length: 10 }, (_, index) => `Couple with Partner ${index + 1}`));
       assert.equal(await couplesDrawn(page), 10);
       assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), 'no sideways scroll');
     });

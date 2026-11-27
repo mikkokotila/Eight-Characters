@@ -305,17 +305,26 @@
             <button type="button" class="bar-action" data-settings-action="rename-cancel" data-chart="${esc(chart.id)}">${esc(t('cancel'))}</button>
           </form>`;
       }
-      const ends = library.couplesOf(settings, chart.id).map((couple) => {
-        const other = library.chartWith(settings, couple.charts.find((id) => id !== chart.id));
-        return `<button type="button" class="bar-action" data-settings-action="end" data-couple="${esc(couple.id)}" data-chart="${esc(chart.id)}">${esc(t('settings_couple_end_with', { name: listName(other) }))}</button>`;
-      });
       return `<div class="settings-actions">
           ${chart.id === settings.my_chart ? action('unmark', chart, t('settings_mine_clear')) : action('mark', chart, t('settings_mine_mark'))}
           ${underCap(settings, chart) ? action('pair-start', chart, t('settings_pair_with'), `aria-expanded="${pairing === chart.id}"`) : ''}
-          ${ends.join('')}
           ${action('rename', chart, t('settings_chart_rename'))}${action('correct', chart, t('settings_chart_correct'))}${action('remove', chart, t('settings_chart_remove'))}
         </div>
         ${pairing === chart.id ? pairChoices(chart) : ''}`;
+    };
+    // Each couple the chart is in, in the order paired, on a line of its own: with whom,
+    // as text that wraps however long the name, and End the couple, which ends that
+    // couple alone and keeps both charts. Its End names the partner to a screen reader.
+    const couplesIn = (chart) => {
+      const couples = library.couplesOf(settings, chart.id);
+      if (couples.length === 0) return '';
+      return `<ul class="saved-couples">${couples.map((couple) => {
+        const name = listName(library.chartWith(settings, couple.charts.find((id) => id !== chart.id)));
+        return `<li class="saved-couple">
+            <span class="saved-couple-with">${esc(t('library_with', { names: name }))}</span>
+            ${action('end', chart, t('settings_couple_end'), `data-couple="${esc(couple.id)}" aria-label="${esc(t('settings_couple_end_with', { name }))}"`)}
+          </li>`;
+      }).join('')}</ul>`;
     };
     const drawCharts = () => {
       const mine = settings.my_chart === null ? null : library.chartWith(settings, settings.my_chart);
@@ -341,8 +350,9 @@
         ${settings.charts.length === 0 ? `<p class="settings-note">${esc(t('settings_charts_none'))}</p>` : `<ul class="saved-list">${charts.map((chart) => `
           <li class="saved-item" data-chart="${esc(chart.id)}">
             <button type="button" class="library-chart" data-settings-action="open" data-chart="${esc(chart.id)}"${chart.pillars === null ? ' disabled' : ''}>
-              ${library.row(settings, chart, { ...tools, waiting: chart.id === settings.pending_partner })}
+              ${library.row(settings, chart, { ...tools, withPartners: false, waiting: chart.id === settings.pending_partner })}
             </button>
+            ${couplesIn(chart)}
             ${actionsOf(chart)}
           </li>`).join('')}</ul>`}`;
       // The name being changed goes in as the field's value, never into the markup: a
