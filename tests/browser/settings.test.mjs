@@ -443,6 +443,10 @@ for (const profile of profiles) {
       await page.locator('#save-note').waitFor({ state: 'visible' });
       assert.match(await page.evaluate(() => location.hash), /^#save\?as=partner&with=/);
       assert.match(await page.locator('#save-note-text').textContent(), /paired with Unnamed chart/);
+      // A saved birth needs a gender: "Not given" is no choice here, and none is made.
+      assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (needed)');
+      assert.equal(await page.locator('.gender-option:has(input[value=""])').isVisible(), false);
+      assert.equal(await page.locator('.gender-option input:checked').count(), 0);
       await page.locator('#save-name').fill('New partner');
       await page.locator('#date').fill('1988-11-02');
       await page.locator('#time').fill('21:05');
@@ -725,6 +729,10 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#save-note').isHidden(), true);
       assert.equal(await page.locator('#save-name-group').isHidden(), true);
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Create chart');
+      // A chart may go without a gender again, and does until one is chosen.
+      assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (optional)');
+      assert.equal(await page.locator('.gender-option:has(input[value=""])').isVisible(), true);
+      assert.equal(await page.locator('.gender-option input[value=""]').isChecked(), true);
     });
 
     check('a chart born in an hour the clocks repeat opens as its chart, at its pass, and is named', async (page) => {
