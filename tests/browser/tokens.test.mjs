@@ -157,6 +157,10 @@ async function eachView(page, visit) {
   await page.locator('#today-partner-choice:not(.hidden)').waitFor();
   await settled(page);
   await visit('Today, for a chart in two couples');
+  await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
+  await page.locator('#settings-charts-body .saved-card').first().waitFor();
+  await settled(page);
+  await visit('Saved charts');
   await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
   await page.locator('#settings-schools-body .settings-school').first().waitFor();
   await settled(page);

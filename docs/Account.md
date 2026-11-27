@@ -41,7 +41,8 @@ Signed in, Account opens it: at the top of the start page, in the chart's and th
 Actions, in Settings' bar, and among the commands (⌘K or Ctrl+K):
 - the address, and the plan (Free);
 - the account's language;
-- Settings;
+- Saved charts and Settings, the account's two pages
+  ([Settings and the saved charts](Standard-Settings.md));
 - Download my data: everything kept for the account, as `eightchord-account.json`;
 - Sign out, here, or on every device; the app then starts again, empty;
 - Delete account, after typing its address again. It cannot be undone.

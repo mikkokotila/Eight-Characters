@@ -3362,6 +3362,10 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   flex-direction: column;
   gap: var(--space-3);
 }
+/* Settings and the saved charts are two pages of one view (settings.js): each shows its
+   own part, its title included. */
+#settings-view[data-part='settings'] [data-part='charts'],
+#settings-view[data-part='charts'] [data-part='settings'] { display: none; }
 .settings-heading {
   font-family: var(--font-serif);
   font-weight: 400;

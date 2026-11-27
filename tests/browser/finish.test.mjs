@@ -370,7 +370,7 @@ for (const profile of profiles) {
           SAVED('Mikael Johannes Lindqvist-Korhonen', '1990-07-21', '08:15', 'male'),
         ],
       });
-      await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
+      await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
       await page.locator('#settings-pair-second').waitFor({ state: 'visible' });
       await settled(page);
       const pairs = await page.locator('#settings-view .settings-choose label').evaluateAll((labels) => labels.map((label) => {

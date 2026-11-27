@@ -43,7 +43,7 @@
   // day it is, and the partner in view.
   const reading = (state) => `${chartLink(state)} ${state.who} ${state.partner ?? ''}`;
 
-  const create = ({ view, translate: t, escape: esc, locale, settings, format, account, go, onChart, onSettings, onEdit, onLanguage, onBar, toast }) => {
+  const create = ({ view, translate: t, escape: esc, locale, settings, format, account, go, onChart, onSettings, onCharts, onEdit, onLanguage, onBar, toast }) => {
     const need = (selector) => {
       const node = view.querySelector(selector);
       if (!node) throw new Error(`Today is incomplete: ${selector}.`);
@@ -350,7 +350,7 @@
     };
     notice.addEventListener('click', (event) => {
       const action = event.target.closest('[data-today-action]')?.dataset.todayAction;
-      if (action === 'settings') onSettings();
+      if (action === 'charts') onCharts();
       else if (action === 'edit') onEdit(chartLink(state));
       else if (action === 'retry') show(state);
       // This chart's own day, with the first couple's partner in view again.
@@ -1329,7 +1329,7 @@
         let gone = null;
         if (partner === null && (state.who === 'partner' || state.partner !== null)) {
           if (state.who === 'partner') {
-            instead(partnerGone(kept), [['self', selfName()], ['settings', t('settings_open')]]);
+            instead(partnerGone(kept), [['self', selfName()], ['charts', t('library_title')]]);
             return;
           }
           // On this chart's own day the day is read without a couple, and the page says

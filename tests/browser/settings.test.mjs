@@ -66,8 +66,10 @@ async function openLibrary(page) {
 }
 // The charts a list offers, by name, in its order.
 const offered = (page, select) => page.locator(`${select} option`).evaluateAll((items) => items.map((item) => item.textContent.split(' · ')[0]));
-async function openSettings(page) {
-  await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
+// Settings (`part` 'settings': where you are, the schools, the toolbar) or the saved
+// charts ('charts': your chart, the couples, the charts), each a page of its own.
+async function openSettings(page, part = 'settings') {
+  await page.goto(new URL(`/#${part}`, process.env.EC_BASE_URL).href);
   await page.locator('#settings-view').waitFor({ state: 'visible' });
   await page.waitForFunction(() => !document.getElementById('settings-view').hasAttribute('aria-busy'));
   await settled(page);
@@ -90,12 +92,12 @@ for (const profile of profiles) {
       for (const [next, words] of [['paid', /Sandbox access: Plus · paid.*Paid access ends/],
         ['pending', /payment pending/], ['held', /verification held/], ['expired', /paid time expired/]]) {
         state = next;
-        await openSettings(page);
+        await openSettings(page, 'charts');
         assert.match(await page.locator('[data-billing-status]').textContent(), words);
       }
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       await page.locator('[data-lang="fi"]').click();
-      await goTo(page, '#settings');
+      await goTo(page, '#charts');
       await page.locator('[data-billing-status]').waitFor();
       assert.match(await page.locator('[data-billing-status]').textContent(), /Testikäyttö: Maksuton · käyttöaika päättynyt/);
     });
@@ -119,10 +121,28 @@ for (const profile of profiles) {
       }
       assert.equal(await page.locator('fieldset[data-setting="favourable"] input[value="structure"]').count(), 0);
       assert.match(await page.locator('#settings-place-now').textContent(), /No place is set/);
+      // Settings are where you are, the schools and the toolbar; the saved charts have a
+      // page of their own, opened from the account's window too.
+      assert.equal(await page.locator('.settings-bar h1').innerText(), 'Settings');
+      assert.equal(await page.evaluate(() => document.title), 'Settings — Eightchord');
+      for (const part of ['#settings-place', '#settings-schools', '#settings-toolbar']) assert.equal(await page.locator(part).isVisible(), true, part);
+      for (const part of ['#settings-mine', '#settings-couples', '#settings-charts']) assert.equal(await page.locator(part).isVisible(), false, part);
+      await page.locator('#settings-account').click();
+      await page.locator('#account-charts').click();
+      // The view shows the saved charts once it is drawn for them (the address moves first).
+      await page.waitForFunction(() => {
+        const view = document.getElementById('settings-view');
+        return location.hash === '#charts' && view.dataset.part === 'charts' && !view.classList.contains('hidden') && !view.hasAttribute('aria-busy');
+      });
+      assert.equal(await page.locator('.settings-bar h1').innerText(), 'Saved charts');
+      assert.equal(await page.evaluate(() => document.title), 'Saved charts — Eightchord');
+      for (const part of ['#settings-mine', '#settings-couples', '#settings-charts']) assert.equal(await page.locator(part).isVisible(), true, part);
+      for (const part of ['#settings-place', '#settings-schools', '#settings-toolbar']) assert.equal(await page.locator(part).isVisible(), false, part);
       assert.match(await page.locator('#settings-mine-body').textContent(), /No chart is marked as yours/);
       assert.match(await page.locator('#settings-couples-body').textContent(), /No couples/);
       assert.match(await page.locator('#settings-charts-body').textContent(), /No saved charts/);
-      // Close goes back to the page it was opened from.
+      // Close goes back to the page the first of them was opened from.
+      assert.equal(await page.locator('#settings-close').textContent(), 'Close');
       await page.locator('#settings-close').click();
       await page.locator('#input-view').waitFor({ state: 'visible' });
     });
@@ -191,7 +211,7 @@ for (const profile of profiles) {
       await reset(page);
       await saveElsewhere(page, partnerNamed('First'));
       await openLink(page, chartLink(), { place: HELSINKI });
-      await goTo(page, '#settings');
+      await goTo(page, '#charts');
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       await page.waitForFunction(() => !document.getElementById('settings-view').hasAttribute('aria-busy'));
       assert.match(await page.locator('#settings-charts-body').textContent(), /First/);
@@ -205,7 +225,7 @@ for (const profile of profiles) {
       // Settings opened again cannot read the settings: the old controls are still there.
       const refuse = (route) => route.fulfill({ status: 500, json: { detail: 'Stopped by the test.' } });
       await page.route('**/api/account/settings', refuse);
-      await goTo(page, '#settings');
+      await goTo(page, '#charts');
       await page.locator('#settings-status').waitFor({ state: 'visible' });
       assert.doesNotMatch(await page.locator('#settings-charts-body').textContent(), /Second/);
       const remove = page.locator('#settings-charts-body [data-settings-action="remove"]');
@@ -221,7 +241,7 @@ for (const profile of profiles) {
       await reset(page);
       const first = await saveElsewhere(page, partnerNamed('First'));
       await openLink(page, chartLink(), { place: HELSINKI });
-      await goTo(page, '#settings');
+      await goTo(page, '#charts');
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       await page.waitForFunction(() => !document.getElementById('settings-view').hasAttribute('aria-busy'));
       await page.goBack();
@@ -233,7 +253,7 @@ for (const profile of profiles) {
       await page.locator('#library-close').click();
       const refuse = (route) => route.fulfill({ status: 500, json: { detail: 'Stopped by the test.' } });
       await page.route('**/api/account/settings', refuse);
-      await goTo(page, '#settings');
+      await goTo(page, '#charts');
       await page.locator('#settings-status').waitFor({ state: 'visible' });
       await page.locator('#settings-charts-body [data-settings-action="open"]').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
@@ -400,7 +420,7 @@ for (const profile of profiles) {
       await page.keyboard.press('Escape');
       await page.locator('#library-dialog').waitFor({ state: 'hidden' });
       assert.equal(await page.evaluate(() => document.activeElement?.id), 'library-btn');
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // Under the settings, the website's own pages, as under the start page.
       assert.deepEqual(await page.locator('.site-links a').evaluateAll((nodes) => nodes
         .filter((node) => node.checkVisibility()).map((node) => node.textContent)),
@@ -418,7 +438,7 @@ for (const profile of profiles) {
       await card.locator('[data-settings-action="open"]').click();
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // Removed from the keyboard, asked once more on the button itself.
       await page.locator('#settings-charts-body [data-settings-action="remove"]').focus();
       await page.keyboard.press('Enter');
@@ -431,7 +451,7 @@ for (const profile of profiles) {
     check('a chart renamed in Settings keeps its birth, and the heading takes the name', async (page) => {
       await reset(page);
       const id = await saveElsewhere(page, SCREEN);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator(`#settings-charts-body [data-settings-action="rename"][data-chart="${id}"]`).click();
       await page.locator(`#settings-rename-${id}`).fill('Renamed');
       await page.keyboard.press('Enter');
@@ -447,7 +467,7 @@ for (const profile of profiles) {
       await reset(page);
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
       const mine = await saveElsewhere(page, SCREEN);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator('#settings-mine-choice').selectOption(mine);
       await page.locator('[data-settings-action="mark"]').click();
       await page.waitForFunction(() => document.getElementById('settings-mine-body').textContent.includes('Your chart'));
@@ -474,7 +494,7 @@ for (const profile of profiles) {
       await page.locator('#chart-form .gender-option input[value="male"]').check();
       await page.locator('#create-chart-btn').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
-      assert.equal(await page.evaluate(() => location.hash), '#settings');
+      assert.equal(await page.evaluate(() => location.hash), '#charts');
       const now = await read(page);
       const partner = now.charts.find((chart) => chart.name === 'New partner');
       assert.deepEqual(now.couples.map((couple) => couple.charts), [[mine, partner.id]]);
@@ -505,7 +525,7 @@ for (const profile of profiles) {
         const value = await response.json();
         return route.fulfill({ response, json: { ...value, couples: [...value.couples, ...extra] } });
       });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // My chart names every partner in the order paired, an unnamed one by its birth
       // date, and past three says how many more.
       const marks = await page.locator(`#settings-charts-body .saved-card[data-chart="${mine}"] .saved-head`).textContent();
@@ -531,7 +551,7 @@ for (const profile of profiles) {
       const second = await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
       await changeElsewhere(page, 'PUT', '/api/account/my-chart', { chart: mine });
       await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The first list starts at my chart; the second offers what it can pair with.
       assert.deepEqual(await offered(page, '#settings-pair-first'), ['Mine', 'First', 'Second']);
       assert.equal(await page.locator('#settings-pair-first').inputValue(), mine);
@@ -590,7 +610,7 @@ for (const profile of profiles) {
         const response = await route.fetch();
         return route.fulfill({ response, json: { ...(await response.json()), couples_per_chart: 1, pending_partner: third } });
       });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       assert.deepEqual(await offered(page, '#settings-pair-first'), ['Second', 'Third']);
       assert.deepEqual(await offered(page, '#settings-pair-second'), ['Third']);
       assert.deepEqual(await offered(page, '#settings-partner-of'), ['Second', 'Third']);
@@ -633,7 +653,7 @@ for (const profile of profiles) {
         await held;
         return route.fulfill({ response, json: { ...value, couples: [...value.couples, { id: 'e'.repeat(32), charts: [first, waiting] }] } });
       });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.evaluate(() => {
         window.__toasts = [];
         new MutationObserver(() => {
@@ -661,7 +681,7 @@ for (const profile of profiles) {
         const partner = await saveElsewhere(page, partnerNamed(`Partner ${index + 1}`, `${1970 + index}-03-04`));
         await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partner] });
       }
-      await openSettings(page);
+      await openSettings(page, 'charts');
       const marks = await page.locator(`#settings-charts-body .saved-card[data-chart="${mine}"] .saved-head`).textContent();
       assert.ok(marks.includes('Couple with Partner 1, Partner 2, Partner 3, and 7 more'), marks);
       assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 10);
@@ -674,7 +694,7 @@ for (const profile of profiles) {
       const first = await saveElsewhere(page, partnerNamed('First', '1980-01-02'));
       await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
       await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The lists never offer it; chosen all the same (as a stale list might), it is
       // refused before the API is asked.
       const asked = [];
@@ -707,7 +727,7 @@ for (const profile of profiles) {
           const response = await route.fetch();
           return route.fulfill({ response, json: { ...(await response.json()), couples } });
         });
-        await openSettings(page);
+        await openSettings(page, 'charts');
         await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('could not be read'));
         assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 0);
       }
@@ -722,7 +742,7 @@ for (const profile of profiles) {
           else value.couples_per_chart = cap;
           return route.fulfill({ response, json: value });
         });
-        await openSettings(page);
+        await openSettings(page, 'charts');
         await page.waitForFunction(() => document.getElementById('settings-status').textContent.includes('could not be read'));
         assert.equal(await page.locator('#settings-couples-body .couple-card').count(), 0, String(cap));
       }
@@ -730,13 +750,13 @@ for (const profile of profiles) {
 
     check('Cancel on a birth added from Settings saves nothing and goes back', async (page) => {
       await reset(page);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator('[data-settings-action="add-mine"]').click();
       await page.locator('#save-note').waitFor({ state: 'visible' });
       assert.match(await page.locator('#save-note-text').textContent(), /saved as your chart/);
       await page.locator('#save-cancel').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
-      assert.equal(await page.evaluate(() => location.hash), '#settings');
+      assert.equal(await page.evaluate(() => location.hash), '#charts');
       assert.deepEqual((await read(page)).charts, []);
       // The form, opened anew, is the plain form again.
       await page.locator('#settings-close').click();
@@ -785,7 +805,7 @@ for (const profile of profiles) {
       // 25 October 2020 in Helsinki: the clocks went back at 04:00, so 03:30 came twice.
       const REPEATED = { name: 'Repeated', date: '2020-10-25', time: '03:30', place: PLACE, fold: 1, gender: 'female', zi: 'split_midnight' };
       await saveElsewhere(page, REPEATED);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       const asked = [];
       page.on('request', (request) => {
         if (new URL(request.url()).pathname === '/api/four_pillars') asked.push(request.postDataJSON());
@@ -855,7 +875,7 @@ for (const profile of profiles) {
       await reset(page);
       const name = 'Quoted "name" <b>bold</b> & \'single\'';
       const id = await saveElsewhere(page, { ...SCREEN, name });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator(`#settings-charts-body [data-settings-action="rename"][data-chart="${id}"]`).click();
       const field = page.locator(`#settings-rename-${id}`);
       assert.equal(await field.inputValue(), name);
@@ -870,7 +890,7 @@ for (const profile of profiles) {
       await reset(page);
       const first = await saveElsewhere(page, SCREEN);
       const second = await saveElsewhere(page, partnerNamed('Second'));
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The pairing is held on its way while Pair is pressed again.
       let release;
       const held = new Promise((resolve) => { release = resolve; });
@@ -904,7 +924,7 @@ for (const profile of profiles) {
       const first = await saveElsewhere(page, { ...SCREEN, name: 'First' });
       const second = await saveElsewhere(page, partnerNamed('Second'));
       await changeElsewhere(page, 'PUT', '/api/account/my-chart', { chart: first });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The first mark is held on its way while Unmark and Mark are pressed.
       let release;
       const held = new Promise((resolve) => { release = resolve; });
@@ -974,7 +994,7 @@ for (const profile of profiles) {
       await page.locator('#save-chart-save').click();
       await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
       assert.deepEqual((await read(page)).charts.map((chart) => chart.name), ['Unlimited reader']);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator('#settings-mine-body [data-settings-action="add-mine"]').click();
       await page.locator('#save-note').waitFor({ state: 'visible' });
       assert.match(await page.locator('#save-note-text').textContent(), /saved as your chart/);
@@ -998,7 +1018,7 @@ for (const profile of profiles) {
           const value = await response.json();
           await route.fulfill({ response, json: { ...value, chart_limit: limit } });
         });
-        await openSettings(page);
+        await openSettings(page, 'charts');
         assert.match(await page.locator('#settings-status').textContent(), /200/);
         assert.equal(await page.locator('#settings-charts-body [data-settings-action="open"]').count(), 0);
         await page.unroute('**/api/account/settings');
@@ -1023,10 +1043,10 @@ for (const profile of profiles) {
       assert.equal(await page.locator('.toast').textContent(), message);
       await settled(page);
       assert.equal(await page.locator('#save-chart-dialog').isHidden(), true);
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator('#settings-mine-body [data-settings-action="add-mine"]').click();
       await page.waitForFunction((message) => document.getElementById('settings-status').textContent === message, message);
-      assert.equal(await page.evaluate(() => location.hash), '#settings');
+      assert.equal(await page.evaluate(() => location.hash), '#charts');
       assert.deepEqual(asked, []);
     });
 
@@ -1037,7 +1057,7 @@ for (const profile of profiles) {
       const single = await saveElsewhere(page, partnerNamed('Single', '1980-01-02'));
       await changeElsewhere(page, 'PUT', '/api/account/my-chart', { chart: mine });
       await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, partner] });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The first press asks, on the button itself.
       const asking = async (id) => {
         const remove = page.locator(`#settings-charts-body [data-settings-action="remove"][data-chart="${id}"]`);
@@ -1049,7 +1069,7 @@ for (const profile of profiles) {
       assert.equal(await asking(single), 'Remove Single?');
       // Parted elsewhere: my chart only stops being yours.
       await changeElsewhere(page, 'DELETE', `/api/account/couples/${(await read(page)).couples[0].id}`, {});
-      await openSettings(page);
+      await openSettings(page, 'charts');
       assert.equal(await asking(mine), 'Remove Mine? It is your chart: none is marked as yours then.');
       // A chart waiting to pair with your chart, as a partner kept from before charts
       // waits, stops waiting.
@@ -1059,7 +1079,7 @@ for (const profile of profiles) {
         const response = await route.fetch();
         return route.fulfill({ response, json: { ...(await response.json()), pending_partner: single } });
       });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       assert.equal(await asking(single), 'Remove Single? Then it won’t pair with your chart.');
       assert.equal((await read(page)).charts.length, 3, 'nothing was removed');
     });
@@ -1068,7 +1088,7 @@ for (const profile of profiles) {
       await reset(page);
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
       await saveElsewhere(page, { ...SCREEN, time: '21:05', name: 'Kept' });
-      await openSettings(page);
+      await openSettings(page, 'charts');
       const asked = [];
       page.on('request', (request) => {
         if (new URL(request.url()).pathname === '/api/account/charts' && request.method() === 'POST') asked.push(request.url());
@@ -1091,7 +1111,7 @@ for (const profile of profiles) {
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
       const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
       const waiting = await saveElsewhere(page, partnerNamed('Waiting'));
-      await openSettings(page);
+      await openSettings(page, 'charts');
       // The API pairs a partner kept from before charts with the chart next marked as
       // yours (test_accounts_settings.py); here its answers are given that couple.
       const paired = (method, id) => async (route) => {
@@ -1109,7 +1129,7 @@ for (const profile of profiles) {
       // Saved as yours from the form, the same.
       await changeElsewhere(page, 'DELETE', '/api/account/my-chart', {});
       await page.route('**/api/account/charts', paired('POST', null));
-      await openSettings(page);
+      await openSettings(page, 'charts');
       await page.locator('[data-settings-action="add-mine"]').click();
       await page.locator('#save-note').waitFor({ state: 'visible' });
       await page.locator('#date').fill('1990-01-02');

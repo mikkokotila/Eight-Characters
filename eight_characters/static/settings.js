@@ -682,12 +682,16 @@
     // Shows the settings, read anew: whatever another tab changed meanwhile is shown,
     // and `note` says why they are shown again, if they are. Each showing is numbered:
     // only the latest draws or says anything, so one that ends late changes nothing of a
-    // later one, its failure included.
+    // later one, its failure included. `part` is the page shown: 'charts' (your chart,
+    // the couples, the saved charts) or 'settings' (where you are, the schools, the
+    // toolbar); shown again without one, the page stays the one it was.
     let showing = 0;
-    const show = async (note = '') => {
+    const show = async (note = '', part = view.dataset.part) => {
+      if (part !== 'charts' && part !== 'settings') throw new Error(`Settings have no part ${part}.`);
       const mine = ++showing;
       say('');
       drawToolbar();
+      view.dataset.part = part;
       view.classList.remove('hidden');
       view.setAttribute('aria-busy', 'true');
       try {

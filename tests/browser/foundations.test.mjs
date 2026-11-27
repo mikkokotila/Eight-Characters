@@ -442,9 +442,12 @@ for (const profile of profiles) {
             assert.equal(await page.locator('#today-body').isVisible(), true, `${lang} ${topic}`);
             await inspect(`${lang} Today, ${topic}`);
           }
-          await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
-          await shown('#settings-view');
-          await inspect(`${lang} Settings`);
+          // Settings and the saved charts: two pages of one view.
+          for (const [address, name] of [['/#settings', 'Settings'], ['/#charts', 'Saved charts']]) {
+            await page.goto(new URL(address, process.env.EC_BASE_URL).href);
+            await shown('#settings-view');
+            await inspect(`${lang} ${name}`);
+          }
         }
         assert.deepEqual([...new Set(failures)], []);
       }));
