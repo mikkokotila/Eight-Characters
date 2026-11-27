@@ -61,6 +61,11 @@ class EssentialSuites(unittest.TestCase):
             ['engine-truth', 'account'],
         )
 
+    def test_a_changed_list_of_core_journeys_runs_every_suite(self) -> None:
+        chosen = self.choose(['tests/browser/essential.txt'])
+        self.assertEqual(list(chosen), list(self.available))
+        self.assertEqual(set(chosen.values()), {'changed: tests/browser/essential.txt'})
+
     def test_an_area_naming_no_suite_stops_the_run(self) -> None:
         with self.assertRaises(SystemExit):
             run_checks.essential_suites(
@@ -76,10 +81,11 @@ class TheRepository(unittest.TestCase):
         chosen = run_checks.essential_suites([], available, core)
         self.assertEqual(list(chosen), core)
 
-    def test_every_suite_takes_its_profiles_from_profiles_mjs(self) -> None:
-        # The runner runs each profile in a process of its own (EC_PROFILE): a suite with
-        # profiles of its own, or tests outside its profiles that are not describeOnce,
-        # would run them twice, or in the wrong profile.
+    def test_every_suite_takes_its_profiles_and_tests_from_profiles_mjs(self) -> None:
+        # The runner runs each profile, or a part of it, in a process of its own
+        # (EC_PROFILE, EC_PART): a suite with profiles of its own, tests outside its
+        # profiles that are not describeOnce, or tests registered with node:test's own
+        # `it`, would run them twice, or in the wrong profile.
         for path in sorted(SUITES.glob('*.mjs')):
             text = path.read_text(encoding='utf-8')
             with self.subTest(path.name):
@@ -90,6 +96,8 @@ class TheRepository(unittest.TestCase):
                     self.assertEqual(
                         re.findall(r'^(?:describe|it|test)\(', text, re.M), []
                     )
+                    own = r"import \{[^}]*\b(?:it|test)\b[^}]*\} from 'node:test'"
+                    self.assertIsNone(re.search(own, text))
 
 
 TAP = """TAP version 13

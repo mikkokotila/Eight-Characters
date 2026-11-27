@@ -1,10 +1,10 @@
 // Run with Node's built-in test runner and an explicitly selected Playwright install.
 // Covers picking the birth place and handing it to the chart and the explorer.
 import assert from 'node:assert/strict';
-import { before, after, describe, it } from 'node:test';
+import { before, after, describe } from 'node:test';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
 import { press } from './bar-helpers.mjs';
-import { profiles } from './profiles.mjs';
+import { profiles, it } from './profiles.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;

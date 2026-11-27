@@ -2,9 +2,9 @@
 // Covers the explorer's parameter pane: what it shows, what a recompute sends and
 // applies, and that the graph keeps its measure as the pane opens and closes.
 import assert from 'node:assert/strict';
-import { before, after, describe, it } from 'node:test';
+import { before, after, describe } from 'node:test';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
-import { profiles } from './profiles.mjs';
+import { profiles, it } from './profiles.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;

@@ -6,6 +6,7 @@ has an app server of its own, with its own database and mail folder, on a free p
 See tests/browser/README.md."""
 
 import argparse
+import math
 import os
 import re
 import secrets
@@ -89,6 +90,9 @@ SERVER_SETTINGS = {
     'EC_CHART_REQUESTS_PER_HOUR_PER_CLIENT': '1000',
 }
 SERVER_START_SECONDS = 60
+# A suite's profile runs in parts, beside each other, one for every this many bytes of
+# its source: the longest suites would otherwise finish long after the rest.
+PART_BYTES = 50_000
 # A job that a stop interrupts gets this long to close its browser before it is killed.
 STOP_GRACE_SECONDS = 10
 
@@ -148,7 +152,16 @@ def essential_suites(
     areas: Sequence[tuple[str, tuple[str, ...]]] = AREAS,
 ) -> dict[str, str]:
     """The essential run's suites, each with why: the core journeys, any suite the
-    change edits or whose helper it edits, and the suites of a changed area."""
+    change edits or whose helper it edits, and the suites of a changed area. A change
+    to the list of core journeys runs every suite."""
+    unknown = sorted({name for _, names in areas for name in names} - set(available))
+    if unknown:
+        raise SystemExit(
+            f'The areas name suites that do not exist: {", ".join(unknown)}.'
+        )
+    listed = str(ESSENTIAL.relative_to(ROOT))
+    if listed in changed:
+        return dict.fromkeys(available, f'changed: {listed}')
     chosen = dict.fromkeys(core, 'core journey')
     for path in changed:
         suite = re.fullmatch(r'tests/browser/([a-z-]+)\.test\.mjs', path)
@@ -163,11 +176,6 @@ def essential_suites(
             if re.fullmatch(area, path):
                 for name in names:
                     chosen.setdefault(name, f'area of {path}')
-    unknown = sorted({name for _, names in areas for name in names} - set(available))
-    if unknown:
-        raise SystemExit(
-            f'The areas name suites that do not exist: {", ".join(unknown)}.'
-        )
     return chosen
 
 
@@ -175,6 +183,28 @@ def essential_suites(
 class Job:
     suite: str
     profile: str
+    part: int = 1
+    parts: int = 1
+
+    @property
+    def label(self) -> str:
+        whole = f'{self.suite} · {self.profile}'
+        return whole if self.parts == 1 else f'{whole} · {self.part}/{self.parts}'
+
+    @property
+    def size(self) -> float:
+        """How long it runs, as the share of its suite's source it runs."""
+        return suite_size(self.suite) / self.parts
+
+
+def suite_size(suite: str) -> int:
+    return (SUITES / f'{suite}.test.mjs').stat().st_size
+
+
+def jobs_of(suite: str, profile: str) -> list[Job]:
+    """A suite's profile as one job, or in parts when the suite is long (EC_PART)."""
+    parts = max(1, math.ceil(suite_size(suite) / PART_BYTES))
+    return [Job(suite, profile, part, parts) for part in range(1, parts + 1)]
 
 
 @dataclass
@@ -235,11 +265,8 @@ def tap_failures(tap: str) -> list[str]:
 
 
 def order(jobs: list[Job]) -> list[Job]:
-    """Longest first, so that no long job starts last: a suite's size stands for how
-    long it runs."""
-    return sorted(
-        jobs, key=lambda job: -(SUITES / f'{job.suite}.test.mjs').stat().st_size
-    )
+    """Longest first, so that no long job starts last."""
+    return sorted(jobs, key=lambda job: -job.size)
 
 
 @dataclass
@@ -313,8 +340,11 @@ def wait_until_serving(server: Server) -> None:
 class Run:
     """Jobs shared out to workers, each with its own server, longest first."""
 
-    def __init__(self, node: str, jobs: list[Job], name: str | None) -> None:
+    def __init__(
+        self, node: str, jobs: list[Job], name: str | None, tap: Path | None
+    ) -> None:
         self.node = node
+        self.tap = tap
         self.pending = order(jobs)
         self.total = len(jobs)
         self.name = name
@@ -342,7 +372,7 @@ class Run:
                 state = 'ok  ' if result.passed(bool(self.name)) else 'FAIL'
                 failed = counts.get('fail', 0) + counts.get('cancelled', 0)
                 print(
-                    f'{state} {job.suite} · {job.profile}: {counts.get("tests", 0)} tests'
+                    f'{state} {job.label}: {plural(counts.get("tests", 0), "test")}'
                     + (f', {failed} failed' if failed else '')
                     + f', {result.seconds:.1f} s  [{done}/{self.total}]',
                     flush=True,
@@ -363,8 +393,10 @@ class Run:
             EC_BASE_URL=server.origin,
             EC_MAIL_DIRECTORY=str(server.mail),
             EC_PROFILE=job.profile,
+            EC_PART=f'{job.part}/{job.parts}',
         )
-        tap = directory / f'{job.suite}.{job.profile}.tap'
+        name = f'{job.suite}.{job.profile}.{job.part}-of-{job.parts}.tap'
+        tap = (self.tap or directory) / name
         started = time.monotonic()
         with tap.open('wb') as output:
             process = subprocess.Popen(
@@ -410,12 +442,11 @@ def report(
 ) -> bool:
     failed = [result for result in results if not result.passed(bool(name))]
     for result in sorted(
-        failed, key=lambda result: (result.job.suite, result.job.profile)
+        failed,
+        key=lambda result: (result.job.suite, result.job.profile, result.job.part),
     ):
         ran = result.counts.get('tests', 0)
-        print(
-            f'\n━━ {result.job.suite} · {result.job.profile}: exit {result.code}, {ran} tests'
-        )
+        print(f'\n━━ {result.job.label}: exit {result.code}, {plural(ran, "test")}')
         blocks = tap_failures(result.tap)
         # Without a failed test to show (a crash, or no test at all), the end of its output.
         print('\n'.join(blocks) if blocks else result.tap[-4000:])
@@ -425,20 +456,21 @@ def report(
     }
     minutes, rest = divmod(round(seconds), 60)
     print(
-        f'\n{totals["tests"]} tests: {totals["pass"]} passed, {totals["fail"]} failed, '
+        f'\n{plural(totals["tests"], "test")}: {totals["pass"]} passed, {totals["fail"]} failed, '
         f'{totals["cancelled"]} cancelled, {totals["skipped"]} skipped, '
-        f'{totals["todo"]} todo; {len(results)} runs on {workers} workers in '
+        f'{totals["todo"]} todo; {plural(len(results), "run")} on {plural(workers, "worker")} in '
         f'{minutes} min {rest} s.'
     )
     slowest = sorted(results, key=lambda result: -result.seconds)[:5]
     print(
         'Slowest: '
-        + ', '.join(
-            f'{result.job.suite} · {result.job.profile} {result.seconds:.0f} s'
-            for result in slowest
-        )
+        + ', '.join(f'{result.job.label} {result.seconds:.0f} s' for result in slowest)
     )
     return not failed
+
+
+def plural(count: int, word: str) -> str:
+    return f'{count} {word}' if count == 1 else f'{count} {word}s'
 
 
 def default_workers() -> int:
@@ -457,14 +489,16 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
             'Set EC_PLAYWRIGHT_MODULE to playwright or its index.mjs path.'
         )
     available = available_suites()
-    unknown = sorted((set(args.suite or []) | set(args.exclude or [])) - set(available))
+    named: list[str] = args.suite or []
+    excluded: list[str] = args.exclude or []
+    unknown = sorted((set(named) | set(excluded)) - set(available))
     if unknown:
         raise SystemExit(
             f'No such browser suite: {", ".join(unknown)}. The suites: '
             + ', '.join(available)
         )
-    if args.suite:
-        chosen = dict.fromkeys(args.suite, 'named')
+    if named:
+        chosen = dict.fromkeys(named, 'named')
         kind = 'named'
     elif args.full:
         chosen = dict.fromkeys(available, 'full')
@@ -472,12 +506,17 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
     else:
         chosen = essential_suites(changed_paths(), available, core_journeys())
         kind = 'essential'
-    for name in args.exclude or []:
+    for name in excluded:
         chosen.pop(name, None)
     if not chosen:
         raise SystemExit('No browser suite is left to run.')
     profiles = [args.profile] if args.profile else list(PROFILES)
-    jobs = [Job(suite, profile) for suite in chosen for profile in profiles]
+    jobs = [
+        job
+        for suite in chosen
+        for profile in profiles
+        for job in jobs_of(suite, profile)
+    ]
     workers = min(args.workers, len(jobs))
     what = {
         'essential': 'the essential browser tests',
@@ -485,22 +524,25 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
         'named': 'the named browser suites',
     }[kind]
     print(
-        f'Running {what} in {args.browser}: {len(chosen)} suites, {len(jobs)} runs on '
-        f'{workers} workers.',
+        f'Running {what} in {args.browser}: {plural(len(chosen), "suite")}, '
+        f'{plural(len(jobs), "run")} on {plural(workers, "worker")}.',
         flush=True,
     )
     if kind == 'essential':
         for suite, why in chosen.items():
             print(f'  {suite}: {why}', flush=True)
     os.environ['EC_BROWSER'] = args.browser
-    run = Run(node, jobs, args.name)
+    tap: Path | None = args.tap_dir
+    if tap is not None:
+        tap.mkdir(parents=True, exist_ok=True)
+    run = Run(node, jobs, args.name, tap)
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='ec-browser-') as scratch:
         directory = Path(scratch)
-        servers = [
-            start_server(directory / f'server-{index}') for index in range(workers)
-        ]
+        servers: list[Server] = []
         try:
+            for index in range(workers):
+                servers.append(start_server(directory / f'server-{index}'))
             for server in servers:
                 wait_until_serving(server)
             threads = [
@@ -525,10 +567,15 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
             for server in servers:
                 server.process.terminate()
             for server in servers:
-                server.process.wait()
-    if run.errors:
-        raise run.errors[0]
+                try:
+                    server.process.wait(STOP_GRACE_SECONDS)
+                except subprocess.TimeoutExpired:
+                    server.process.kill()
+                    server.process.wait()
     passed = report(run.results, workers, time.monotonic() - started, args.name)
+    if run.errors:
+        # The runner itself failed (a server stopped, say): the jobs left did not run.
+        raise run.errors[0]
     return 0 if passed else 1
 
 
@@ -557,6 +604,12 @@ def main() -> int:
         '--name', help='Run only browser test names matching this pattern'
     )
     parser.add_argument('--profile', choices=PROFILES, help='Run only this profile')
+    parser.add_argument(
+        '--tap-dir',
+        type=Path,
+        metavar='DIR',
+        help="Keep each run's TAP in DIR, as SUITE.PROFILE.tap (default: none kept)",
+    )
     parser.add_argument(
         '--workers',
         type=int,
