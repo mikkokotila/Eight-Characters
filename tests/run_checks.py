@@ -34,7 +34,7 @@ PROFILES = ('desktop', 'mobile')
 AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         r'eight_characters/(static/account(-billing)?\.js|accounts/.+)',
-        ('account', 'account-sessions', 'account-billing'),
+        ('account', 'account-sessions', 'account-billing', 'settings'),
     ),
     (r'eight_characters/static/compare\.js', ('compare',)),
     (r'eight_characters/static/(controls|toolbar|icons)\.js', ('controls', 'toolbar')),
@@ -409,6 +409,9 @@ class Run:
             )
             with self.lock:
                 self.running[worker] = process
+            if self.stopping.is_set():
+                # Stopped while it started: stop() did not see it.
+                signal_group(process, signal.SIGTERM)
             code = process.wait()
             with self.lock:
                 del self.running[worker]
@@ -631,7 +634,11 @@ def main() -> int:
         parser.error('--full runs every suite; --suite names the ones to run')
     if args.workers < 1:
         parser.error('--workers must be at least 1')
-    return run_browser(args, node)
+    try:
+        return run_browser(args, node)
+    except KeyboardInterrupt:
+        # Stopped while the servers started: they are stopped, and no job ran.
+        return 130
 
 
 if __name__ == '__main__':
