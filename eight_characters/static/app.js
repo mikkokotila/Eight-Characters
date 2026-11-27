@@ -1734,12 +1734,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (a === null) throw linkError('missing', 'a');
     return { a, b: side('b') };
   };
-  // A chart's name from its link, as its own bar writes it.
   // A birth as the page writes it: its date, its time and its city.
   const birthLine = ({ date, time, place }) => {
     const birth = parseWallClock(`${date}T${time}`);
     return [formatDate(birth), formatTime(birth, time.length > 5), place.city].join(' · ');
   };
+  // A chart's name from its link, as its own bar writes it.
   const headingOf = (params) => birthLine(readChartLink(`${CHART_ROUTE}${params}`));
   let comparingWith = null;
   const compareNote = document.getElementById('compare-note');
