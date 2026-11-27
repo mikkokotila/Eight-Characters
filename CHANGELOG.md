@@ -1,5 +1,39 @@
 # Changelog
 
+## 0.74.0
+
+The first chart: what a birth settles without its time, or without an account, from
+`POST /api/first_chart`.
+
+### Added
+- **Time unknown.** A choice under the time field sets the field aside and opens what
+  the date and the place settle, at the chart's address with `time=unknown`:
+  - the day, month and year pillars in the day's cards, and the hour left open;
+  - each pillar that changes during the day, with both its sides, when (on the place's
+    clock, with its UTC offset) and the one the cards show;
+  - the Day Master and its core passage, in full; when the day changes, the other side's
+    Day Master is named too.
+  The day, a comparison and a save need the time: their links say so and keep the birth
+  in the form, and their forms do not offer the choice.
+- **A visitor's first chart.** Without an account, a birth or a chart's link opened only
+  the sign-up dialog. It now opens all four pillars and the Day Master, with the
+  offer of the whole chart ("Create my free account"). Signed up, the address opens the
+  whole chart in the account's language; closed, the dialog leaves the first chart as it
+  was. No whole chart is asked for without an account.
+
+### Changed
+- Going back to a chart's address after signing out shows its first chart, whose offer
+  asks for the sign-in, where it asked for the sign-in at once.
+
+### Docs
+- The first chart (new), Links (`time=unknown`), Account, the browser tests' README.
+
+### Tests
+- Browser: a new suite (`first.test.mjs`) checks every pillar, change and Day Master
+  against the API, the visitor's sign-up to the whole chart, and the links and forms
+  that need the time. The account suites go through the first chart's offer.
+- Version bumped to `0.74.0`; the regression fixture changes only in `engine.version`.
+
 ## 0.73.0
 
 Links keep what they get right, and a comparison can take a saved chart.
