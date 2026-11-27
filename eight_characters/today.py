@@ -574,6 +574,8 @@ class ElementToday(TypedDict):
     element: ElementName
     # The day's count of the element: as in its pull, without the weight.
     today: float
+    # That count's share of all the day brings, in percent: read beside the chart's.
+    today_share: float
     # The element's share of the birth tally, in percent.
     chart_share: float
     organs: str
@@ -867,11 +869,14 @@ def _health(
     for char, count in characters:
         element = element_of(char)
         brought[element] += count * STANDING_TENTHS[season['standings'][element]] * 10
+    # Every character counts at least its weakest standing: the day always brings some.
+    whole = sum(brought.values())
     return {
         'elements': [
             {
                 'element': element,
                 'today': rounded(brought[element]),
+                'today_share': share(brought[element] * 100, whole, 1),
                 'chart_share': share(tally[element] * 100, total, 1),
                 'organs': ORGANS[element],
             }

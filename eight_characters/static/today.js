@@ -63,6 +63,7 @@
     const copyText = need('#today-copy-text');
     const printButton = need('#today-print');
     const settingsButton = need('#today-settings');
+    const accountButton = need('#today-account');
     const notice = need('#today-notice');
     const body = need('#today-body');
     const pullLine = need('#today-pull-line');
@@ -86,7 +87,10 @@
     const placeInput = need('#today-location');
     if (!window.EC_ICONS || !window.EC_PLACE_SEARCH) throw new Error('Today needs its icons and the place search.');
     // The question for where you are wears the sun, Today's own mark.
-    need('.today-place-mark').innerHTML = window.EC_ICONS.markup('sun');
+    need('#today-place .today-place-mark').innerHTML = window.EC_ICONS.markup('sun');
+    const genderSection = need('#today-gender');
+    need('#today-gender .today-place-mark').innerHTML = window.EC_ICONS.markup('calendar-range');
+    const selfLabel = need('.today-self-name');
 
     // What is shown: the chart, the day, whose day and the open topic (the address), the
     // settings it was asked with, and the API's answer. Each request is numbered: only
@@ -150,6 +154,11 @@
     const number = (value, digits = 1) => minus(new Intl.NumberFormat(locale(), {
       minimumFractionDigits: digits, maximumFractionDigits: digits,
     }).format(value));
+    // A share the API gives in percent, written as the language writes one: 65.8% in
+    // English, 65,8 % in Finnish.
+    const percent = (value) => new Intl.NumberFormat(locale(), {
+      style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1,
+    }).format(value / 100);
     const bandName = (band) => {
       if (!BANDS.includes(band)) throw new Error(t('today_answer_error'));
       return t('today_band_' + band);
@@ -157,9 +166,19 @@
     const pull = (value) => `${bandName(value.band)} (${score(value.score)})`;
     // A calendar date, held as UTC midnight so that formatting never moves it.
     const calendar = (day) => new Date(`${day}T00:00:00Z`);
-    const longDate = (day) => new Intl.DateTimeFormat(locale(), {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-    }).format(calendar(day));
+    // A day in full. Finnish writes a date's weekday in the essive ("perjantaina …"); a
+    // heading names the day itself, as the days' cards do, capitalised.
+    const longDate = (day) => {
+      if (lang() !== 'fi') {
+        return new Intl.DateTimeFormat(locale(), {
+          weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
+        }).format(calendar(day));
+      }
+      const weekday = new Intl.DateTimeFormat(locale(), { weekday: 'long', timeZone: 'UTC' }).format(calendar(day));
+      const date = new Intl.DateTimeFormat(locale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+        .format(calendar(day));
+      return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${date}`;
+    };
     const shortDate = (day) => new Intl.DateTimeFormat(locale(), {
       weekday: 'short', day: 'numeric', month: 'numeric', timeZone: 'UTC',
     }).format(calendar(day));
@@ -303,6 +322,20 @@
       return birth;
     };
     const partnerName = (partner) => partner.name ?? t('today_partner');
+    // The chart on screen as saved, or null: its name, and whether it is yours.
+    const savedSelf = () => (shownSettings === null ? null : window.EC_LIBRARY.savedOf(shownSettings, chartBirth(state.chart)));
+    const selfName = () => savedSelf()?.name ?? t('today_self');
+    // Whether you are one of those the day is read for: the chart on screen, or its
+    // partner in view, is the one marked as yours.
+    const yoursInView = () => {
+      const mine = shownSettings?.my_chart ?? null;
+      if (mine === null) return false;
+      return savedSelf()?.id === mine || (shownSettings !== null && partnerOf(shownSettings)?.id === mine);
+    };
+    // Whether the day pulls the couple apart: said to you when you are one of them.
+    const apart = (pulled) => t(yoursInView()
+      ? (pulled ? 'today_pull_apart' : 'today_pull_not_apart')
+      : (pulled ? 'today_pull_apart_couple' : 'today_pull_not_apart_couple'));
 
     // ── What the page says instead of the day, with what can be done ──
     const sayNotice = (text, actions = []) => {
@@ -334,9 +367,11 @@
     const drawBar = () => {
       dateHeading.textContent = longDate(state.day);
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
+      const named = savedSelf()?.name ?? null;
       const whose = state.who === 'partner' && partner !== null
         ? t('today_partner_chart', { name: partnerName(partner) })
-        : chartHeading(state.chart);
+        : [...(named === null ? [] : [named]), chartHeading(state.chart)].join(' · ');
+      selfLabel.textContent = selfName();
       const place = shownSettings?.place;
       chartLine.textContent = place ? `${whose} · ${t('today_at', { place: place.city })}` : whose;
       whoSwitch.classList.toggle('hidden', partner === null);
@@ -820,8 +855,8 @@
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
       if (partner === null) throw new Error(t('today_answer_error'));
       const sides = state.who === 'partner'
-        ? [[partnerName(partner), answer.layers.day.pull], [t('today_self'), m.partner.pull]]
-        : [[t('today_self'), answer.layers.day.pull], [partnerName(partner), m.partner.pull]];
+        ? [[partnerName(partner), answer.layers.day.pull], [selfName(), m.partner.pull]]
+        : [[selfName(), answer.layers.day.pull], [partnerName(partner), m.partner.pull]];
       couple.innerHTML = `<h3 id="today-couple-title" class="today-section-title">${esc(t('today_couple'))}</h3>
         <div class="today-couple-day">${cards(answer.layers.day.pillar, 'small')}</div>
         <ul class="today-couple-sides">${sides.map(([name, value], index) => `<li class="today-couple-side is-${index === 0 ? 'first' : 'second'}">
@@ -830,7 +865,7 @@
             <span class="today-pillar-pull band-${esc(value.band)}"><span class="today-band-mark" aria-hidden="true"></span>${esc(pull(value))}</span>
           </li>`).join('')}</ul>
         <span class="today-couple-scale" aria-hidden="true">${track([[sides[0][1].score, 'first'], [sides[1][1].score, 'second']])}</span>
-        <p class="today-couple-apart">${esc(t(m.pull_apart ? 'today_pull_apart' : 'today_pull_not_apart'))}</p>`;
+        <p class="today-couple-apart">${esc(apart(m.pull_apart))}</p>`;
     };
 
     // ── In your chart: each relationship, and on the main page the pillars it joins: the
@@ -850,11 +885,17 @@
         ${figure ? relationshipFigure(r) : ''}
         ${r.line ? `<span class="today-relationship-line">${esc(r.line)}</span>` : ''}
       </li>`;
+    // The chart on screen's own section: yours, by its saved name, or this one.
+    const inThisChart = () => {
+      const saved = savedSelf();
+      if (saved !== null && saved.id === shownSettings?.my_chart) return t('today_in_chart');
+      return saved?.name ? t('today_in_chart_of', { name: saved.name }) : t('today_in_this_chart');
+    };
     const drawInChart = () => {
       const all = LAYERS.flatMap((name) => (answer.layers[name]?.relationships ?? []));
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
       const title = state.who === 'partner' && partner !== null
-        ? t('today_in_chart_of', { name: partnerName(partner) }) : t('today_in_chart');
+        ? t('today_in_chart_of', { name: partnerName(partner) }) : inThisChart();
       inChart.innerHTML = `<h3 id="today-in-chart-title" class="today-section-title">${esc(title)}</h3>
         ${all.length ? `<ul class="today-relationships">${all.map((r) => relationshipItem(r, true)).join('')}</ul>`
           : `<p class="settings-note">${esc(t('today_in_chart_none'))}</p>`}`;
@@ -994,10 +1035,10 @@
         const m = answer.marriage;
         if (m === null) throw new Error(t('today_answer_error'));
         const partner = shownSettings === null ? null : partnerOf(shownSettings);
-        const other = state.who === 'partner' ? t('today_self') : partnerName(partner);
+        const other = state.who === 'partner' ? selfName() : partnerName(partner);
         return `<h3 id="today-detail-title" class="panel-heading">${esc(t('today_topic_marriage'))}</h3>
           <p>${esc(t('today_their_pull', { name: other, pull: pull(m.partner.pull) }))}</p>
-          <p>${esc(t(m.pull_apart ? 'today_pull_apart' : 'today_pull_not_apart'))}</p>
+          <p>${esc(apart(m.pull_apart))}</p>
           ${m.partner.luck === null ? '' : `<p>${esc(t('today_their_luck', { name: other, pull: pull(m.partner.luck.pull) }))} ${characters(m.partner.luck.pillar.stem, m.partner.luck.pillar.branch)}</p>`}
           ${palace(t('today_spouse_palace'), m.spouse_palace)}
           <h4 class="today-detail-subtitle">${esc(t('today_with_their_chart', { name: other }))}</h4>
@@ -1023,8 +1064,8 @@
           </tr></thead>
           <tbody>${ELEMENTS.map((element) => {
             const e = h.elements.find((item) => item.element === element);
-            if (!e) throw new Error(t('today_answer_error'));
-            return `<tr><th scope="row">${esc(t('element_' + element))}</th><td>${esc(number(e.today, 2))}</td><td>${esc(number(e.chart_share))} %</td><td>${esc(e.organs)}</td></tr>`;
+            if (!e || !Number.isFinite(e.today_share) || !Number.isFinite(e.chart_share)) throw new Error(t('today_answer_error'));
+            return `<tr><th scope="row">${esc(t('element_' + element))}</th><td>${esc(percent(e.today_share))}</td><td>${esc(percent(e.chart_share))}</td><td>${esc(e.organs)}</td></tr>`;
           }).join('')}</tbody>
         </table>`;
     };
@@ -1126,6 +1167,7 @@
     const instead = (text, actions) => keepingFocus(() => {
       leaveDay();
       putPlaceAway();
+      putGenderAway();
       sayNotice(text, actions);
     });
 
@@ -1177,6 +1219,7 @@
       const asking = placeSection.classList.contains('hidden');
       keepingFocus(() => {
         leaveDay();
+        putGenderAway();
         placeFrom = from;
         placeSection.classList.remove('hidden');
         // A place was kept, and the settings read again have none: it was removed, or
@@ -1191,6 +1234,24 @@
       });
       if (asking && !window.matchMedia('(pointer: coarse)').matches) placeInput.focus();
     };
+    // ── A chart without a gender: its luck pillars need one, so the day asks for it here,
+    // as it asks where you are, and opens once one is chosen. The chart's link takes it. ──
+    const putGenderAway = () => genderSection.classList.add('hidden');
+    const askGender = () => keepingFocus(() => {
+      leaveDay();
+      putPlaceAway();
+      clearNotice();
+      genderSection.classList.remove('hidden');
+    });
+    genderSection.addEventListener('click', (event) => {
+      const choice = event.target.closest('[data-gender]');
+      if (!choice || state === null) return;
+      const gender = choice.dataset.gender;
+      const params = new URLSearchParams(state.chartParams);
+      params.set('gender', gender);
+      putGenderAway();
+      move({ chart: { ...state.chart, gender }, chartParams: params.toString() });
+    });
     // The question goes, with what was typed and any choice on its way.
     const putPlaceAway = () => {
       placing += 1;
@@ -1240,9 +1301,10 @@
         catalog = named;
         keepingFocus(drawBar);
         if (!state.chart.gender) {
-          instead(t('today_needs_gender'), [['edit', t('edit_chart')]]);
+          askGender();
           return;
         }
+        putGenderAway();
         if (kept.place === null) {
           askPlace(settings.basis());
           return;
@@ -1261,7 +1323,7 @@
         let gone = null;
         if (partner === null && (state.who === 'partner' || state.partner !== null)) {
           if (state.who === 'partner') {
-            instead(partnerGone(kept), [['self', t('today_self')], ['settings', t('settings_open')]]);
+            instead(partnerGone(kept), [['self', selfName()], ['settings', t('settings_open')]]);
             return;
           }
           // On this chart's own day the day is read without a couple, and the page says
@@ -1346,6 +1408,7 @@
       stripRun = null;
       cancelDrag();
       putPlaceAway();
+      putGenderAway();
       view.classList.add('hidden');
       view.removeAttribute('aria-busy');
     };
@@ -1524,6 +1587,7 @@
       if (button && state !== null) onChart(chartLink(state));
     });
     settingsButton.addEventListener('click', () => onSettings());
+    accountButton.addEventListener('click', () => account.open());
     printButton.addEventListener('click', () => {
       if (answer !== null) window.print();
     });
@@ -1540,7 +1604,7 @@
     const text = () => {
       if (answer === null) return '';
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
-      const other = state.who === 'partner' ? t('today_self') : (partner === null ? null : partnerName(partner));
+      const other = state.who === 'partner' ? selfName() : (partner === null ? null : partnerName(partner));
       const lines = [
         `${longDate(state.day)} · ${chartLine.textContent}`,
         schoolsUsed(),
@@ -1553,7 +1617,7 @@
           return `${layerName(name)}: ${stem.chinese}${branch.chinese} ${stem.pinyin} ${branch.pinyin} · ${pull(layer.pull)}`;
         }),
         ...(answer.marriage === null ? [] : [
-          `${other}: ${pull(answer.marriage.partner.pull)} · ${t(answer.marriage.pull_apart ? 'today_pull_apart' : 'today_pull_not_apart')}`,
+          `${other}: ${pull(answer.marriage.partner.pull)} · ${apart(answer.marriage.pull_apart)}`,
         ]),
         `${t('today_run_label')}:`,
         ...answer.run.map((day) => `  ${shortDate(day.date)} ${day.pillar.stem.chinese}${day.pillar.branch.chinese} ${day.pillar.stem.pinyin} ${day.pillar.branch.pinyin} · ${pull(day)}`),
@@ -1597,7 +1661,7 @@
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
       if (partner !== null) {
         list.push(state.who === 'partner'
-          ? { label: t('today_self'), run: () => move({ who: 'self', topic: null }), icon: null }
+          ? { label: selfName(), run: () => move({ who: 'self', topic: null }), icon: null }
           : { label: partnerName(partner), run: () => move({ who: 'partner', topic: null }), icon: 'users-round' });
       }
       view.querySelectorAll('#today-topics [data-today-topic]').forEach((button) => {
@@ -1615,6 +1679,7 @@
         );
       }
       list.push({ label: t('settings_open'), run: () => onSettings(), icon: 'settings' });
+      list.push({ label: t('account_title'), run: () => account.open(), icon: 'user-round' });
       return list;
     };
 

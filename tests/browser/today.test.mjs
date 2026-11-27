@@ -602,6 +602,42 @@ for (const profile of profiles) {
       assert.match(await page.locator('#today-notice').textContent(), /not in a couple/);
     });
 
+    check('the chart on screen goes by its saved name, and the day is said to you only when it is yours', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      const write = (method, path, body = {}) => page.evaluate(async ({ method, path, body }) => {
+        const read = await (await fetch('/api/account/settings')).json();
+        const response = await fetch(path, {
+          method, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, key: read.key, updated_at: read.updated_at }),
+        });
+        return { status: response.status, value: response.status === 204 ? null : await response.json() };
+      }, { method, path, body });
+      const mine = await write('POST', '/api/account/charts', { ...SELF, name: 'Aino', mine: true });
+      assert.equal(mine.status, 201);
+      assert.equal((await write('POST', '/api/account/charts', { ...PARTNER, couple_with: mine.value.saved })).status, 201);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      // Yours: by its name, in your chart, and the day is said to you.
+      assert.match(await page.locator('#today-chart').textContent(), /^Aino · /);
+      assert.equal(await page.locator('#today-who [data-who="self"]').textContent(), 'Aino');
+      assert.equal(await page.locator('#today-in-chart-title').textContent(), 'In your chart');
+      assert.deepEqual(await page.locator('#today-couple .today-couple-name').allTextContents(), ['Aino', PARTNER.name]);
+      let { marriage } = answers.at(-1).payload;
+      assert.equal(await page.locator('.today-couple-apart').textContent(),
+        marriage.pull_apart ? 'The day pulls you apart.' : 'The day does not pull you apart.');
+      // No longer marked as yours: by its name still, and the day is said of the couple.
+      assert.equal((await write('DELETE', '/api/account/my-chart')).status, 200);
+      await page.reload();
+      await shown(page);
+      assert.equal(await page.locator('#today-in-chart-title').textContent(), 'In the chart: Aino');
+      ({ marriage } = answers.at(-1).payload);
+      assert.equal(await page.locator('.today-couple-apart').textContent(),
+        marriage.pull_apart ? 'The day pulls the couple apart.' : 'The day does not pull the couple apart.');
+    });
+
     check('a chart in several couples, as #96 will keep them: With chooses the partner in view, the address names it, and a chart that is not a partner is never swapped', async (page) => {
       await page.clock.setFixedTime(NOW);
       const { answers, hold } = await recordToday(page);
@@ -794,7 +830,8 @@ for (const profile of profiles) {
       ]));
       assert.deepEqual(sides, [['This chart', pull(before.layers.day.pull)], [PARTNER.name, pull(before.marriage.partner.pull)]]);
       assert.equal(await page.locator('.today-couple-apart').textContent(),
-        before.marriage.pull_apart ? 'The day pulls you apart.' : 'The day does not pull you apart.');
+        // Neither chart is marked as yours: the day is said of the couple, not of you.
+        before.marriage.pull_apart ? 'The day pulls the couple apart.' : 'The day does not pull the couple apart.');
       assert.deepEqual(await page.locator('#today-couple .today-scale-marker').evaluateAll((markers) => markers.map((m) => m.style.getPropertyValue('--at'))),
         [scaleAt(before.layers.day.pull.score), scaleAt(before.marriage.partner.pull.score)]);
       await page.locator('[data-today-topic="marriage"]').click();
@@ -812,7 +849,7 @@ for (const profile of profiles) {
       ])), [[PARTNER.name, pull(turned.layers.day.pull)], ['This chart', pull(turned.marriage.partner.pull)]]);
       assert.deepEqual([turned.layers.day.pull, turned.marriage.partner.pull], [marriage.partner.pull, before.layers.day.pull]);
       assert.equal(turned.marriage.pull_apart, before.marriage.pull_apart);
-      assert.match(await page.locator('#today-notice').textContent(), /your partner’s day/);
+      assert.match(await page.locator('#today-notice').textContent(), /the partner’s day/);
       // Removed elsewhere: the page says so, and offers the chart's own day.
       await setSettings(page);
       await page.reload();
@@ -825,7 +862,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-couple').isHidden(), true);
     });
 
-    check('without a place the day asks where you are, there, and opens at the place chosen; without a gender, it leads to the chart', async (page) => {
+    check('without a place the day asks where you are, there, and opens at the place chosen; without a gender, it asks for one', async (page) => {
       await page.clock.setFixedTime(NOW);
       const { answers } = await recordToday(page);
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
@@ -839,7 +876,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-notice').isHidden(), true);
       assert.equal(answers.length, 0);
       assert.equal(await page.locator('#today-place-title').textContent(), 'Where are you today?');
-      assert.equal(await page.locator('.today-place-lead').textContent(), 'The day is read where you are: on your calendar’s date, '
+      assert.equal(await page.locator('#today-place .today-place-lead').textContent(), 'The day is read where you are: on your calendar’s date, '
         + 'its twelve double hours following the sun in your sky. Name your place, and the day opens.');
       assert.equal(await page.locator('#today-location-label').textContent(), 'Find a place');
       assert.equal(await page.locator('#today-place-note').textContent(), 'Your account keeps it for every day you open, and Settings can change it.');
@@ -867,12 +904,22 @@ for (const profile of profiles) {
       assert.deepEqual(answers.at(-1).request.place, PLACE);
       assert.deepEqual(await page.evaluate(async () => (await (await fetch('/api/account/settings')).json()).place), PLACE);
       assert.equal(await page.evaluate(() => document.activeElement.id), 'today-date');
-      // Without a gender, the day leads to the chart.
+      // Without a gender, the day asks for one here, as it asked where you are, and opens
+      // once one is chosen: the chart's link takes it.
       const link = `/#today?${new URLSearchParams([...chartParams()].filter(([key]) => key !== 'gender'))}&day=${DAY}`;
       await page.goto(new URL(link, process.env.EC_BASE_URL).href);
-      await page.locator('#today-notice').waitFor({ state: 'visible' });
-      assert.match(await page.locator('#today-notice').textContent(), /gender/);
+      const gender = page.locator('#today-gender');
+      await gender.waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#today-gender-title').textContent(), 'Female or male?');
+      assert.equal(await page.locator('#today-notice').isHidden(), true);
       assert.equal(await question.isHidden(), true);
+      assert.equal(await page.locator('#today-body').isHidden(), true);
+      await gender.locator('[data-gender="female"]').click();
+      await shown(page);
+      await page.locator('#today-body').waitFor({ state: 'visible' });
+      assert.equal(await gender.isHidden(), true);
+      assert.equal(await part(page, 'gender'), 'female');
+      assert.equal(answers.at(-1).request.charts.self.gender, 'female');
     });
 
     check('a place refused because the settings changed elsewhere is said, and the day reads them again', async (page) => {
@@ -1051,6 +1098,26 @@ for (const profile of profiles) {
       assert.equal(await line.locator('.canon-line-toggle').getAttribute('aria-expanded'), 'true');
       assert.equal(await line.locator('.canon-line-passage').isVisible(), true);
       assert.equal(await page.locator('#today-detail .canon-line-toggle[aria-expanded="true"]').count(), 1);
+    });
+
+    check('Health reads the day and the chart in one measure, as each language writes a share; a Finnish heading names its day', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      for (const lang of ['en', 'fi']) {
+        await page.goto(new URL(todayLink({ topic: 'health' }, { lang }), process.env.EC_BASE_URL).href);
+        await shown(page);
+        const { payload } = answers.at(-1);
+        const percent = (value) => new Intl.NumberFormat(lang, { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
+          .format(value / 100);
+        const rows = await page.locator('.today-health tbody tr').evaluateAll((trs) => trs.map((tr) => [...tr.querySelectorAll('td')]
+          .slice(0, 2).map((td) => td.textContent)));
+        assert.deepEqual(rows, payload.health.elements.map((e) => [percent(e.today_share), percent(e.chart_share)]));
+        assert.match(rows[0][0], lang === 'en' ? /^\d+\.\d%$/ : /^\d+,\d\s%$/);
+      }
+      // In Finnish the heading names the day itself, capitalised, as the days' cards do.
+      assert.equal(await page.locator('#today-date').textContent(), 'Sunnuntai 11. lokakuuta 2026');
     });
 
     check('printed, the day keeps its run with each band as a word, and loses its controls', async (page) => {
@@ -2051,7 +2118,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     await keepSecondCouple(page);
     await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
     await shown(page);
-    assert.match(await page.locator('#today-chart').textContent(), /at Helsinki/);
+    assert.match(await page.locator('#today-chart').textContent(), /where you are: Helsinki/);
     assert.equal(await page.locator('.today-who-name').textContent(), 'First partner');
     assert.deepEqual(await page.locator('#today-partner option').allTextContents(), ['First partner', SECOND.name]);
     // To the start page, whose account menu signs out; the page stays as it is.
@@ -2070,7 +2137,7 @@ describe(`${engineName} / today and the session`, { concurrency: false }, () => 
     await page.locator('#today-notice').waitFor({ state: 'visible' });
     assert.match(await page.locator('#today-notice').textContent(), /Stopped by the test\./);
     // The chart's own heading names its birth city; where you are is not said.
-    assert.doesNotMatch(await page.locator('#today-chart').textContent(), /at Helsinki/);
+    assert.doesNotMatch(await page.locator('#today-chart').textContent(), /where you are/);
     assert.equal(await page.locator('#today-who').isHidden(), true);
     assert.equal(await page.locator('.today-who-name').textContent(), '');
     assert.equal(await page.locator('#today-body').isHidden(), true);

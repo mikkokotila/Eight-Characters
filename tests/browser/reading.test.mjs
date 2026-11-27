@@ -547,7 +547,7 @@ for (const profile of profiles) {
         // the chart's.
         ['The chart’s reading is incomplete: the ring.', (payload) => { delete payload.reading.day_master.cycle.ring[0].pinyin; }],
         ['The chart’s reading is incomplete: the ring.', (payload) => { payload.reading.day_master.cycle.ring[4].pinyin = 'Zhi'; }],
-        ['Chart rendering failed.', (payload) => { delete payload.reading; }],
+        ['Could not draw the chart.', (payload) => { delete payload.reading; }],
       ];
       for (const [message, mutate] of refusals) {
         await openChart(page, { ...EXAMPLE, success: false }, mutate);

@@ -392,11 +392,11 @@ for (const profile of profiles) {
       await openSettings(page);
       const card = page.locator(`#settings-charts-body .saved-card[data-chart="${kept.id}"]`);
       assert.equal(await card.locator('.saved-name').textContent(), name);
-      // Its pillars, year first, each character with its pinyin.
+      // Its pillars in the chart's order, hour first, each character with its pinyin.
       const tiles = await card.locator('.saved-glyph').evaluateAll((items) => items.map((item) => [
         item.querySelector('.saved-char').textContent, item.querySelector('.saved-pinyin').textContent,
       ]));
-      assert.deepEqual(tiles, ['year', 'month', 'day', 'hour'].flatMap((p) => [
+      assert.deepEqual(tiles, ['hour', 'day', 'month', 'year'].flatMap((p) => [
         [kept.pillars[p].stem.chinese, kept.pillars[p].stem.pinyin],
         [kept.pillars[p].branch.chinese, kept.pillars[p].branch.pinyin],
       ]));
@@ -733,6 +733,36 @@ for (const profile of profiles) {
       assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (optional)');
       assert.equal(await page.locator('.gender-option:has(input[value=""])').isVisible(), true);
       assert.equal(await page.locator('.gender-option input[value=""]').isChecked(), true);
+    });
+
+    check('Edit on a saved chart corrects it where it is kept, and the chart comes back on screen', async (page) => {
+      await reset(page);
+      const id = await saveElsewhere(page, { ...SCREEN, name: 'Kept' });
+      await openLink(page, chartLink(), { place: HELSINKI });
+      await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Kept');
+      // Edit: the form corrects the saved birth, filled with it, and says so.
+      await press(page, '#back-btn');
+      await page.locator('#save-note').waitFor({ state: 'visible' });
+      assert.equal(await page.evaluate(() => location.hash), `#save?as=correct&chart=${id}&back=chart`);
+      assert.equal(await page.locator('#save-note-text').textContent(), 'This corrects the birth of Kept.');
+      assert.equal(await page.locator('#date').inputValue(), SCREEN.date);
+      // Cancelled, the chart comes back as it was, and nothing is changed.
+      await page.locator('#save-cancel').click();
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('time')), SCREEN.time);
+      assert.equal((await read(page)).charts[0].time, SCREEN.time);
+      // Corrected, the saved chart is the corrected one, and it is on screen, still Kept.
+      await press(page, '#back-btn');
+      await page.locator('#save-note').waitFor({ state: 'visible' });
+      await page.locator('#time').fill('21:15');
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy'));
+      assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('time')), '21:15');
+      await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Kept');
+      const kept = (await read(page)).charts;
+      assert.deepEqual(kept.map((chart) => [chart.id, chart.time]), [[id, '21:15']]);
+      assert.equal(await page.locator('.toast').textContent(), 'The birth is corrected.');
     });
 
     check('a chart born in an hour the clocks repeat opens as its chart, at its pass, and is named', async (page) => {

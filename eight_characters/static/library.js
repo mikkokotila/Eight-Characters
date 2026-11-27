@@ -4,7 +4,8 @@
 // matches births to saved charts, draws a saved chart for Settings and for the
 // classic view, and runs the classic view's library, opened from the chart's heading.
 (() => {
-  const PILLARS = ['year', 'month', 'day', 'hour'];
+  // The chart's own order, hour to year, as every view of a chart reads.
+  const PILLARS = ['hour', 'day', 'month', 'year'];
 
   // A birth's chart, as the API tells births apart: the day, the time to the second,
   // the pass, the place on the globe and its zone, the gender and the Zi-hour
@@ -65,9 +66,9 @@
     return params.toString();
   };
 
-  // A saved chart's four pillars, year first: each a stem over its branch in their
-  // elements' colours, with their pinyin, as the classic view draws them. A chart the
-  // engine no longer charts says why instead.
+  // A saved chart's four pillars, hour first, as the chart lays them out: each a stem
+  // over its branch in their elements' colours, with their pinyin, as the classic view
+  // draws them. A chart the engine no longer charts says why instead.
   const strip = (chart, { escape: esc, translate: t }) => {
     if (chart.pillars === null) {
       return `<p class="saved-problem">${esc(t('saved_problem', { problem: chart.problem }))}</p>`;

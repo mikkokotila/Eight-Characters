@@ -181,7 +181,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#account-billing-cancel').isVisible(), false);
       assert.match(await page.locator('#account-billing-pending').textContent(), /Plus.*expires/);
       await page.locator('#account-billing-resume').click();
-      await page.waitForFunction(() => document.getElementById('account-billing-result').textContent.includes('Checkout expired'));
+      await page.waitForFunction(() => document.getElementById('account-billing-result').textContent.includes('The checkout expired.'));
       assert.deepEqual(resumed, { key: account.key, plan: 'plus', period: 'monthly' });
       await page.route('**/api/account/billing', (route) => route.fulfill({ json: billing(account.key, { status: 'expired', renewal: 'active' }) }));
       await page.locator('#account-billing-open').click();
@@ -195,7 +195,7 @@ for (const profile of profiles) {
       await page.locator('#account-billing-offers').waitFor({ state: 'visible' });
       await page.route('**/api/account/billing/checkout', (route) => route.fulfill({ json: { status: 'complete' } }));
       await page.locator('[data-billing-plan="basic"]').click();
-      await page.waitForFunction(() => document.getElementById('account-billing-result').textContent.includes('Access awaits independent payment verification'));
+      await page.waitForFunction(() => document.getElementById('account-billing-result').textContent.includes('Your plan opens once the payment is confirmed.'));
       await page.route('**/api/account/billing/checkout', (route) => route.fulfill({ status: 409, json: { detail: 'Account changed' } }));
       await page.route('**/api/account/billing', (route) => route.fulfill({ json: billing('b'.repeat(64)) }));
       await page.locator('[data-billing-plan="basic"]').click();

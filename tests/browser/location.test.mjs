@@ -325,7 +325,7 @@ for (const profile of profiles) {
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { places: [] } }));
       await page.locator('#location').fill('Helsinki');
       await page.waitForFunction(() => document.getElementById('location-status').classList.contains('is-error'));
-      assert.equal(await page.locator('#location-status').textContent(), 'Location search failed.');
+      assert.equal(await page.locator('#location-status').textContent(), 'Could not search for places.');
     });
 
     // No control leads to the explorer (#108): it is opened at its address, which names

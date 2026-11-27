@@ -7,9 +7,9 @@ but for the toolbar, which this browser keeps.
 
 ## Opening them
 
-**Settings**, in the account menu, in Today's bar and among the commands, opens
-`#settings`. Signed out, it asks for a sign-in first. Close goes back to the page they
-were opened from. Settings are not offered in a comparison's frames. Each opening reads
+**Settings**, in the account menu, in the chart's and the day's Actions and among the
+commands, opens `#settings`. Signed out, it asks for a sign-in first. Close goes back to
+the page they were opened from, and Account, beside it, opens the account's window. Settings are not offered in a comparison's frames. Each opening reads
 the settings anew, and only the latest one draws them or says why it could not.
 
 ## Saved charts and the library
@@ -68,7 +68,9 @@ the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or
 gender (it leaves "Not given" out and chooses none for you), and checks the birth as it
 checks a chart's; a birth saved already is said so,
 by the chart's name, and not asked for again. Save keeps it and goes back to Settings,
-and Cancel goes back without saving. A correction keeps the chart's Zi-hour
+and Cancel goes back without saving. **Edit** on a saved chart, in the chart's Actions,
+opens the same correction at `#save?as=correct&chart=<id>&back=chart`: Save and Cancel
+then go back to the chart, corrected or as it was. A correction keeps the chart's Zi-hour
 convention, and its pass while its day, time and zone are unchanged. With the library
 full, Add a new birth and Add the partner as a new birth say so instead.
 
@@ -78,7 +80,8 @@ Signed in, a visit to the site's bare address opens your chart, replacing the ad
 so Back does not come there again; with none marked, the form. Signing in from the
 account button on the empty form does the same. Every other address keeps its
 destination: a chart link, Today, a comparison, Settings, and a chart asked for from
-the form before signing in. New chart and Edit still open the form.
+the form before signing in. New chart, and Edit on a chart not saved, still open the
+form.
 
 ## Where you are
 

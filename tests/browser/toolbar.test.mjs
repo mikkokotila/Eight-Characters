@@ -55,7 +55,9 @@ const menu = (page) => page.evaluate(() => {
     rules: [...list.querySelectorAll(':scope > .bar-menu-rule')].map((rule) => rule.getAttribute('role')),
   };
 });
-const ITEMS = ['copy-link-btn', 'copy-text-btn', 'back-btn', 'new-chart-btn', 'compare-btn'];
+// The chart's actions, as the day's are laid out: out of the page, the chart's own,
+// then Settings and the account.
+const ITEMS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'chart-settings', 'chart-account'];
 // Where you are, kept for the account as Settings keeps it, so that Today draws a day.
 async function keepPlace(page) {
   const status = await page.evaluate(async (place) => {
@@ -76,7 +78,7 @@ for (const profile of profiles) {
     check('in words, the default, every switch says what it does, the topics their names, and the actions are one menu', async (page) => {
       await openLink(page, chartLink(), { place: HELSINKI });
       assert.equal(await way(page), 'words');
-      assert.deepEqual(await shown(page, '#page-switch button'), [['Chart', false], ['Today', false]]);
+      assert.deepEqual(await shown(page, '#page-switch button'), [['Chart', false], ['Day', false]]);
       assert.deepEqual(await shown(page, '#display-switch button'), [['Characters', false], ['Ten Gods', false], ['Hidden stems', false]]);
       assert.deepEqual(await shown(page, '#luck-switch button'), [['Natal', false], ['With luck', false]]);
       // A topic: its icon, its name and its count; its full name for a screen reader.
@@ -90,13 +92,14 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#chart-actions-button'), [['Actions', false]]);
       assert.equal(await page.locator('#chart-actions-button').getAttribute('aria-haspopup'), 'menu');
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: 'menu', named: 'chart-actions-button', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator'],
+        expanded: 'false', open: false, role: 'menu', named: 'chart-actions-button', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator', 'separator'],
       });
       assert.equal(await page.locator('#copy-link-btn').isVisible(), false);
       // Each item: its icon and its words, and no tooltip over it.
       await page.locator('#chart-actions-button').click();
       assert.deepEqual(await shown(page, '#chart-actions > button'),
-        [['Copy link', true], ['Copy as text', true], ['Edit', true], ['New chart', true], ['Compare', true]]);
+        [['Copy link', true], ['Copy as text', true], ['Print', true], ['Edit', true], ['New chart', true], ['Compare', true],
+          ['Settings', true], ['Account', true]]);
       await page.locator('#copy-text-btn').hover();
       await page.waitForTimeout(700);
       assert.equal(await page.locator('#control-tooltip').evaluate((tip) => tip.matches(':popover-open')), false);
@@ -117,15 +120,15 @@ for (const profile of profiles) {
       // Down opens it at its first item and Up at its last; the arrows move round it, and
       // Home and End go to its ends.
       await page.keyboard.press('ArrowUp');
-      assert.equal(await focused(page), 'compare-btn');
+      assert.equal(await focused(page), 'chart-account');
       await page.keyboard.press('ArrowDown');
       assert.equal(await focused(page), 'copy-link-btn');
       await page.keyboard.press('ArrowUp');
-      assert.equal(await focused(page), 'compare-btn');
+      assert.equal(await focused(page), 'chart-account');
       await page.keyboard.press('Home');
       assert.equal(await focused(page), 'copy-link-btn');
       await page.keyboard.press('End');
-      assert.equal(await focused(page), 'compare-btn');
+      assert.equal(await focused(page), 'chart-account');
       await page.keyboard.press('Escape');
       await page.keyboard.press('ArrowDown');
       assert.equal(await focused(page), 'copy-link-btn');
@@ -170,11 +173,11 @@ for (const profile of profiles) {
       await page.goto(new URL(`/#today?${new URLSearchParams(BIRTH)}&day=2026-10-11`, process.env.EC_BASE_URL).href);
       await page.locator('#today-body').waitFor({ state: 'visible' });
       await settled(page);
-      assert.deepEqual(await shown(page, '#today-page-switch button'), [['Chart', false], ['Today', false]]);
+      assert.deepEqual(await shown(page, '#today-page-switch button'), [['Chart', false], ['Day', false]]);
       await page.locator('#today-actions-button').click();
-      assert.deepEqual(await shown(page, '#today-actions > button'), [['Copy link', true], ['Copy as text', true], ['Print', true], ['Settings', true]]);
+      assert.deepEqual(await shown(page, '#today-actions > button'), [['Copy link', true], ['Copy as text', true], ['Print', true], ['Settings', true], ['Account', true]]);
       assert.deepEqual(await page.locator('#today-actions > button').evaluateAll((items) => items.map((item) => item.getAttribute('role'))),
-        ['menuitem', 'menuitem', 'menuitem', 'menuitem']);
+        ['menuitem', 'menuitem', 'menuitem', 'menuitem', 'menuitem']);
       await page.keyboard.press('Escape');
       await press(page, '#today-copy-text');
       await page.waitForFunction(() => window.__copied.length === 1);
@@ -200,7 +203,7 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#display-switch button'), [['', true], ['', true], ['', true]]);
       assert.equal(await page.locator('#chart-actions-button').isHidden(), true);
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: null, named: null, items: ITEMS.map((id) => `null ${id}`), rules: [null],
+        expanded: 'false', open: false, role: null, named: null, items: ITEMS.map((id) => `null ${id}`), rules: [null, null],
       });
       assert.deepEqual(await shown(page, '#chart-actions > button'), ITEMS.map(() => ['', true]));
       assert.equal(await page.locator('#copy-link-btn').isVisible(), true);
@@ -268,7 +271,7 @@ for (const profile of profiles) {
         assert.equal(await frame.locator('#chart-actions-button').isVisible(), false);
         assert.equal(await frame.locator('#chart-actions').getAttribute('role'), null);
         assert.equal(await frame.locator('#copy-text-btn').getAttribute('role'), null);
-        for (const hidden of ['#copy-link-btn', '#back-btn', '#new-chart-btn', '#compare-btn']) {
+        for (const hidden of ['#copy-link-btn', '#print-btn', '#back-btn', '#new-chart-btn', '#compare-btn', '#chart-settings', '#chart-account']) {
           assert.equal(await frame.locator(hidden).isVisible(), false, hidden);
         }
         // In the frame's order: the display, the luck pillar, then Copy as text.
