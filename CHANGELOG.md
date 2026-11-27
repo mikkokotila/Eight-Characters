@@ -7,8 +7,8 @@ Links keep what they get right, and a comparison can take a saved chart.
 ### Changed
 - **A bad link keeps its good parts.** One wrong part (`display=glyphs`, say) emptied the
   form. Each part is now read on its own: the form keeps the date, the time, the whole
-  place, the gender and the language the link gives right, and with the whole moment its
-  Zi-hour convention, beside the error that names the wrong part. A part it gets wrong
+  place and the gender the link gives right, and with the whole moment its Zi-hour
+  convention, beside the error that names the wrong part, in the reader's language. A part it gets wrong
   leaves its field empty. A refused day link keeps the chart's birth too.
 - **A day link without its day opens today** where you are, as Chart · Day does, and its
   address then names the day. It was refused.

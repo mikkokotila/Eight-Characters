@@ -1694,14 +1694,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // A link that opens no chart leaves in the form the parts of its birth it gives
   // right, each on its own, beside the error naming the part that is wrong: the date,
-  // the time, the whole place and the gender, in the link's language. A part it gets
-  // wrong leaves its field empty, not the field's last value.
+  // the time, the whole place and the gender. The page keeps the reader's language, as
+  // the error does. A part it gets wrong leaves its field empty, not the field's last
+  // value.
   const keepLinkBirth = (params) => {
     const { parts } = checkChartLink(params);
-    if (parts.lang !== null && parts.lang !== currentLanguage) {
-      currentLanguage = i18n.setLanguage(parts.lang);
-      applyLanguage();
-    }
     dateInput.value = parts.date ?? '';
     timeInput.value = parts.time ?? '';
     setFieldError(dateInput, dateStatus, '');
