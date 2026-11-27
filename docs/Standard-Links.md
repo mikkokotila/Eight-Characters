@@ -12,7 +12,9 @@ The chart lives in the address's fragment, the part after `#`:
 /#chart?date=1988-02-04&time=16%3A30&place=Chengdu%2C+Sichuan%2C+China&city=Chengdu&latitude=30.658&longitude=104.066&timezone=Asia%2FShanghai&lang=en
 ```
 
-- `date`, `time`: the birth as entered, on the place's local clock.
+- `date`, `time`: the birth as entered, on the place's local clock. Without a known
+  time, `time=unknown`: the link opens the [first chart](Standard-First-Chart.md), what
+  the date and place settle, and names nothing a chart without its time does not have.
 - `place`, `city`: the picked place's full name, shown in the form, and its short
   name, shown in the chart's heading.
 - `latitude`, `longitude`, `timezone`: the picked place itself. The chart is
@@ -58,6 +60,9 @@ birth in the body of its request, as it does when the form is used.
 - A chart reached through Back or Forward is calculated again when another chart
   is on screen. Only the chart of the latest step is drawn: one that arrives after
   a later step is dropped.
+
+Opened without an account, a chart's link shows its
+[first chart](Standard-First-Chart.md), with the offer of the whole chart.
 
 ## Links that open no chart
 

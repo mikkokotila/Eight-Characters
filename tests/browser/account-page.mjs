@@ -33,12 +33,21 @@ export function chartsAskedFor(page) {
   return asked;
 }
 
+// Create chart, from the form. Signed out, as the page believes, the birth opens as the
+// first chart (first.js), whose offer asks for the account the whole chart needs;
+// signed in, the whole chart is asked for at once.
 export async function askForChart(page) {
   await page.locator('#date').fill(BIRTH.date);
   await page.locator('#time').fill(BIRTH.time);
   await page.locator('#location').fill(CHENGDU.city);
   await page.locator('.location-suggestion').click();
+  const visitor = await page.locator('#account-btn').evaluate((button) => button.dataset.i18n === 'account_sign_in');
   await page.locator('#create-chart-btn').click();
+  if (visitor) await askFromFirstChart(page);
+}
+// The first chart a visitor sees, drawn, and its offer of the whole chart taken.
+export async function askFromFirstChart(page) {
+  await page.locator('#first-view:not(.hidden):not([aria-busy]) #first-account').click();
 }
 
 export const dialogIsOpen = (page) => page.evaluate(() => document.getElementById('account-dialog').open);
