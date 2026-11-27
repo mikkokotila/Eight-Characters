@@ -66,8 +66,11 @@ this chart does not have, does not open a chart. The form says why, in the page'
 language: which part is missing, not valid or given more than once, each part
 named in words as the page would name it (the birth date, the time zone, the open
 topic), never as the address spells it; a part no link takes is quoted as the link
-has it. The address becomes the form's. When the link's birth is valid, it waits
-in the form.
+has it. The address becomes the form's. The parts of the birth the link gives right
+wait in the form, each on its own: the date, the time, the place (whole), the gender
+and the language. A part it gets wrong leaves its field empty. With its whole moment
+and place, the form keeps the link's Zi-hour convention too, so Create chart opens the
+chart the link meant, in the display it opens in by default.
 
 ## Comparisons
 

@@ -212,34 +212,45 @@ for (const profile of profiles) {
 
     check('links that open no chart say why, keep a valid birth, and leave the form\'s address', async (page) => {
       // Each part is named in words, never as the address spells it; a part the app does
-      // not know is quoted as the link has it.
+      // not know is quoted as the link has it. The form keeps the parts of the birth the
+      // link gives right, each on its own, and leaves empty the ones it gets wrong.
       const { date, ...undated } = CANONICAL;
+      const birth = { date: '1988-02-04', time: '16:30', location: 'Chengdu, Sichuan, China' };
+      const empty = { date: '', time: '', location: '' };
       const bad = [
-        ['#elsewhere', 'the app has no page at its address'],
-        [link(undated), 'the birth date is missing'],
-        [link({ ...CANONICAL, date: '1988-02-30' }), 'the birth date is not valid'],
-        [link({ ...CANONICAL, time: '25:10' }), 'the birth time is not valid'],
-        [link({ ...CANONICAL, latitude: '91' }), 'the latitude is not valid'],
-        [link({ ...CANONICAL, lang: 'de' }), 'the language is not valid'],
-        [link({ ...CANONICAL, zi: 'midnight' }), 'the Zi hour convention is not valid'],
-        [link({ ...CANONICAL, fold: '2' }), 'the choice of a repeated clock time is not valid'],
-        [link({ ...CANONICAL, display: 'glyphs' }), 'what the cards show is not valid'],
-        [link({ ...CANONICAL, colour: 'red' }), 'the app does not know its part “colour”'],
-        [`${link(CANONICAL)}&lang=fi`, 'it gives the language more than once'],
-        [link({ ...CANONICAL, city: '' }), 'the city is missing'],
-        [link({ ...CANONICAL, topic: 'roles/stem/noon' }), 'the open topic is not valid'],
+        ['#elsewhere', 'the app has no page at its address', empty],
+        [link(undated), 'the birth date is missing', { ...birth, date: '' }],
+        [link({ ...CANONICAL, date: '1988-02-30' }), 'the birth date is not valid', { ...birth, date: '' }],
+        [link({ ...CANONICAL, time: '25:10' }), 'the birth time is not valid', { ...birth, time: '' }],
+        [link({ ...CANONICAL, latitude: '91' }), 'the latitude is not valid', { ...birth, location: '' }],
+        [link({ ...CANONICAL, lang: 'de' }), 'the language is not valid', birth],
+        [link({ ...CANONICAL, zi: 'midnight' }), 'the Zi hour convention is not valid', birth],
+        [link({ ...CANONICAL, fold: '2' }), 'the choice of a repeated clock time is not valid', birth],
+        [link({ ...CANONICAL, display: 'glyphs' }), 'what the cards show is not valid', birth],
+        [link({ ...CANONICAL, colour: 'red' }), 'the app does not know its part “colour”', birth],
+        [`${link(CANONICAL)}&lang=fi`, 'it gives the language more than once', birth],
+        [link({ ...CANONICAL, city: '' }), 'the city is missing', { ...birth, location: '' }],
+        [link({ ...CANONICAL, topic: 'roles/stem/noon' }), 'the open topic is not valid', birth],
         // Settings' own links, to save a birth.
-        ['#save?as=nothing', 'what to save is not valid'],
-        ['#save?as=partner', 'the chart to pair it with is missing'],
-        [`#save?as=correct&chart=${'g'.repeat(32)}`, 'the chart to correct is not valid'],
+        ['#save?as=nothing', 'what to save is not valid', empty],
+        ['#save?as=partner', 'the chart to pair it with is missing', empty],
+        [`#save?as=correct&chart=${'g'.repeat(32)}`, 'the chart to correct is not valid', empty],
       ];
-      for (const [address, why] of bad) {
+      for (const [address, why, kept] of bad) {
         await page.goto('about:blank');
         await openLink(page, address, { success: false });
         assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: ${why}.`, address);
         assert.equal(await linkParts(page), '', address);
         assert.equal((await onScreen(page)).view, 'form', address);
+        assert.deepEqual(await fields(page), kept, address);
       }
+      // A birth kept whole opens as the link's chart would have: its convention too.
+      await page.goto('about:blank');
+      await openLink(page, link({ ...CANONICAL, zi: 'whole_zi_23', display: 'glyphs' }), { success: false });
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#chart-view').waitFor({ state: 'visible' });
+      await settled(page);
+      assert.deepEqual(await linkParts(page), { ...CANONICAL, zi: 'whole_zi_23' });
       // In the page's language, the reader's, whatever language the link names.
       await page.goto('about:blank');
       await openLink(page, link({ ...CANONICAL, lang: 'fi' }));

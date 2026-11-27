@@ -192,7 +192,8 @@ day is read for.
 
 `#today?` with the chart's own link parts, as `#chart?` has them (see
 [Chart links](Standard-Links.md)), then:
-- `day`, the day shown, `YYYY-MM-DD`;
+- `day`, the day shown, `YYYY-MM-DD`; without it, the link opens today where you are,
+  as Chart · Day does, and the address then names the day;
 - `who=partner` for the partner's day;
 - `partner`, the partner in view: a saved chart's id in your account (see above);
 - `topic`: `day`, `marriage`, `work`, `health`, or `pillar/day`, `pillar/month`,
@@ -201,7 +202,7 @@ day is read for.
 A link names the chart and the day. The couple and where you are come from the
 account that opens it, and a link opened signed out asks for a sign-in first. A link
 with an unknown, repeated or invalid part says so, naming the part, as a chart link
-does. A day the API cannot read (outside the engine's years, with the run's days) is
+does, and the chart's birth waits in the form. A day the API cannot read (outside the engine's years, with the run's days) is
 shown with the API's reason, and nothing of the day before, nor its open topic, stays on
 screen; Try again asks again. While a day is on its way, the day before and its topic
 are dimmed.

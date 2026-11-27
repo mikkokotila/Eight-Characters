@@ -108,6 +108,48 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#compare-note').isVisible(), false);
     });
 
+    check('the second chart can be a saved one, chosen by its name and birth; the first is not offered', async (page) => {
+      await openChart(page, { lang: 'en', gender: 'female' });
+      const place = { name: CHENGDU.display, city: CHENGDU.city, timezone: CHENGDU.timezone, latitude: CHENGDU.latitude, longitude: CHENGDU.longitude };
+      // The account keeps the chart on screen and one other: only the other is offered.
+      const keep = (births) => page.evaluate(async (births) => {
+        const write = async (method, path, body) => {
+          const read = await (await fetch('/api/account/settings')).json();
+          const response = await fetch(path, {
+            method, headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...body, key: read.key, updated_at: read.updated_at }),
+          });
+          if (!response.ok) throw new Error(`${method} ${path}: ${response.status} ${await response.text()}`);
+        };
+        for (const chart of (await (await fetch('/api/account/settings')).json()).charts) {
+          await write('DELETE', `/api/account/charts/${chart.id}`, {});
+        }
+        for (const birth of births) await write('POST', '/api/account/charts', birth);
+      }, births);
+      await keep([
+        { name: 'First', date: '1988-02-04', time: '16:30', gender: 'female', place, zi: 'split_midnight' },
+        { name: 'Second', date: SECOND.date, time: SECOND.time, gender: 'male', place, zi: 'split_midnight' },
+      ]);
+      await press(page, '#compare-btn');
+      await page.locator('#compare-saved').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('label[for="compare-saved-chart"]').textContent(), 'Or a saved chart');
+      assert.deepEqual(await page.locator('#compare-saved-chart option').allTextContents(), ['Second · May 9, 1990 · 12:00 · Chengdu']);
+      assert.equal(await page.locator('#compare-saved-go').textContent(), 'Compare');
+      await page.locator('#compare-saved-go').click();
+      const [, b] = await bothDrawn(page);
+      const expected = await pillarsOf(page, SECOND.date, SECOND.time);
+      assert.deepEqual([b.stems, b.branches], [expected.stems, expected.branches]);
+      const pair = pairIn(page.url());
+      assert.deepEqual([pair.a.get('date'), pair.b.get('date'), pair.b.get('time'), pair.b.get('gender')],
+        ['1988-02-04', SECOND.date, SECOND.time, 'male']);
+      // Without saved charts other than the first, the form asks for a birth alone.
+      await keep([]);
+      await page.goto(new URL(`/#compare?${new URLSearchParams({ a: pair.a.toString() })}`, process.env.EC_BASE_URL).href);
+      await page.locator('#compare-note').waitFor({ state: 'visible' });
+      await settled(page);
+      assert.equal(await page.locator('#compare-saved').isVisible(), false);
+    });
+
     check('the second birth shows both charts side by side, each the chart view with only its own controls', async (page) => {
       await compareWithSecond(page);
       await bothDrawn(page);
