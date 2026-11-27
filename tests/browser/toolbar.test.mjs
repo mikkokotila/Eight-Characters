@@ -306,19 +306,21 @@ for (const profile of profiles) {
           return [...tops.entries()].sort((a, b) => a[0] - b[0]).map(([, parts]) => parts);
         });
         assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch', 'chart-language']]);
-        // The topics: one row under the Day Master's line, from the page's edge to its
-        // edge, scrolled sideways.
+        // The topics: one row under the Day Master's line, within the page, scrolled
+        // sideways. Nothing in it widens the page: a phone would zoom out to show it all,
+        // so the page's width is the screen's.
         const topics = () => page.evaluate(() => {
           const row = document.querySelector('#day-master-context .topic-row');
           const box = row.getBoundingClientRect();
           return {
             tops: [...new Set([...row.querySelectorAll('.topic-button, .context-toggle')].map((node) => Math.round(node.getBoundingClientRect().top)))].length,
             below: box.top >= document.getElementById('day-master-heading').getBoundingClientRect().bottom,
-            edges: [Math.round(box.left), Math.round(box.right) - innerWidth],
+            within: box.left >= 0 && box.right <= innerWidth,
             scrolls: row.scrollWidth > row.clientWidth,
+            page: [innerWidth, document.documentElement.scrollWidth],
           };
         });
-        assert.deepEqual(await topics(), { tops: 1, below: true, edges: [0, 0], scrolls: true });
+        assert.deepEqual(await topics(), { tops: 1, below: true, within: true, scrolls: true, page: [390, 390] });
         // A topic out of sight comes into sight when it takes the focus.
         await page.locator('#relationships-topic').focus();
         assert.equal(await page.locator('#relationships-topic').evaluate((node) => {
@@ -333,7 +335,7 @@ for (const profile of profiles) {
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${width}px`);
         }
         assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch'], ['chart-language']]);
-        assert.equal((await topics()).tops, 1);
+        assert.deepEqual(await topics(), { tops: 1, below: true, within: true, scrolls: true, page: [320, 320] });
       });
     }
   });

@@ -2881,16 +2881,19 @@ kbd {
   .chart-tools { justify-content: flex-start; }
   .is-embedded .display-switch { display: flex; flex-basis: 100%; }
   .is-embedded .display-switch button { flex: 1 1 auto; }
-  /* The topics: one row under the Day Master's line, running on past the page's edges
-     and scrolled sideways, so that the chart starts higher. Its padding keeps the
-     focus rings, which overflow would clip. */
+  /* The topics: one row under the Day Master's line, scrolled sideways, so that the
+     chart starts higher. Its padding keeps the focus rings, which overflow would clip,
+     and its margin gives the room back. It holds its buttons' screen-reader labels,
+     which are placed absolutely: otherwise they escape its clipping, and the page grows
+     wider than the screen. */
   .topic-row {
+    position: relative;
     display: flex;
     flex: 1 1 100%;
     gap: var(--space-2);
     min-width: 0;
-    margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-4));
-    padding: var(--space-1) var(--space-4);
+    margin: calc(-1 * var(--space-1));
+    padding: var(--space-1);
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: none;
