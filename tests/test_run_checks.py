@@ -241,19 +241,30 @@ class Tap(unittest.TestCase):
         self.assertEqual(
             command,
             [
-                'node', '--test', '--test-concurrency=1', '--test-reporter=tap',
-                '--test-name-pattern', 'Save asks', 'tests/browser/settings.test.mjs',
+                'node',
+                '--test',
+                '--test-concurrency=1',
+                '--test-reporter=tap',
+                '--test-name-pattern',
+                'Save asks',
+                'tests/browser/settings.test.mjs',
             ],
         )
         # So the line Node gives a suite with no test of that name is known as such,
         # wherever the repository is.
         self.assertTrue(run_checks.NO_TEST.search(f'ok 1 - {command[-1]}'))
-        self.assertNotIn('--test-name-pattern', run_checks.job_command('node', 'today', None))
+        self.assertNotIn(
+            '--test-name-pattern', run_checks.job_command('node', 'today', None)
+        )
 
     def test_a_name_no_test_matched_is_said(self) -> None:
         job = run_checks.Job('probe', 'desktop')
-        none = run_checks.Result(job, 1.0, 0, '', {'tests': 0, 'fail': 0, 'cancelled': 0})
-        one = run_checks.Result(job, 1.0, 0, '', {'tests': 1, 'fail': 0, 'cancelled': 0})
+        none = run_checks.Result(
+            job, 1.0, 0, '', {'tests': 0, 'fail': 0, 'cancelled': 0}
+        )
+        one = run_checks.Result(
+            job, 1.0, 0, '', {'tests': 1, 'fail': 0, 'cancelled': 0}
+        )
         self.assertTrue(run_checks.matched_nothing([none, none], 'no such test'))
         self.assertFalse(run_checks.matched_nothing([none, one], 'probe'))
         self.assertFalse(run_checks.matched_nothing([none], None))

@@ -639,7 +639,10 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
         # The runner itself failed (a server stopped, say): the jobs left did not run.
         raise run.errors[0]
     if passed and matched_nothing(run.results, args.name):
-        print(f"No test's name matches --name {args.name!r}: nothing was tested.", flush=True)
+        print(
+            f"No test's name matches --name {args.name!r}: nothing was tested.",
+            flush=True,
+        )
         return 1
     return 0 if passed else 1
 
