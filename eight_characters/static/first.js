@@ -23,10 +23,11 @@
     const masterNote = view.querySelector('#first-day-master-note');
     const passage = view.querySelector('#first-passage');
     const offer = view.querySelector('#first-offer');
+    const offerText = view.querySelector('#first-offer-text');
     const editButton = view.querySelector('#first-edit');
     const newButton = view.querySelector('#first-new');
     const accountButton = view.querySelector('#first-account');
-    if (![heading, lead, pillars, changes, master, masterTitle, masterNote, passage, offer, editButton, newButton, accountButton]
+    if (![heading, lead, pillars, changes, master, masterTitle, masterNote, passage, offer, offerText, editButton, newButton, accountButton]
       .every(Boolean) || typeof onEdit !== 'function' || typeof onNew !== 'function' || typeof onAccount !== 'function') {
       throw new Error('The first chart is incomplete.');
     }
@@ -148,6 +149,8 @@
         // The core reads in full, as it does without an account on eightchord.com.
         const core = passage.querySelector('.canon-line-toggle');
         if (core.getAttribute('aria-expanded') !== 'true') canon.toggle(core, true);
+        // Without the time, the account alone opens no more: the offer says so.
+        offerText.textContent = t(timed ? 'first_offer' : 'first_offer_unknown');
         offer.classList.toggle('hidden', !visitor);
       } finally {
         if (mine === asking) view.removeAttribute('aria-busy');

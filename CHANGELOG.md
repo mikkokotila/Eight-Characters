@@ -17,10 +17,13 @@ The first chart: what a birth settles without its time, or without an account, f
   The day, a comparison and a save need the time: their links say so and keep the birth
   in the form, and their forms do not offer the choice.
 - **A visitor's first chart.** Without an account, a birth or a chart's link opened only
-  the sign-up dialog. It now opens all four pillars and the Day Master, with the
-  offer of the whole chart ("Create my free account"). Signed up, the address opens the
-  whole chart in the account's language; closed, the dialog leaves the first chart as it
-  was. No whole chart is asked for without an account.
+  the sign-up dialog. It now opens all four pillars and the Day Master, with the offer of
+  the whole chart ("Create my free account"). Signed up, the address opens the whole
+  chart in the account's language; closed, the dialog leaves the first chart as it was.
+  No whole chart is asked for without an account. A visitor's link without the time
+  opens the first chart of its date and place, and its offer says the whole chart needs
+  the time too: eightchord.com will link a visitor who gave no time so
+  (mikkokotila/eightchord-com#47).
 
 - **`POST /api/first_chart` takes the Zi-hour convention**,
   `{"conventions": {"zi_convention": "whole_zi_23"}}`, so a link that names the whole Zi

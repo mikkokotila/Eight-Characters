@@ -114,7 +114,7 @@ for (const profile of profiles) {
       assert.deepEqual(found.pillars, ORDER.map((name) => [name, named(api.pillars[name])]));
       assert.deepEqual([found.heading, found.lead, found.changes, found.note, found.offer, found.overflow],
         ['February 4, 1988 · 16:30 · Chengdu', 'Your first chart, without an account.', [], null, true, false]);
-      assert.equal(await text(page, '#first-offer p'), 'The whole chart opens with a free account: its relationships, roles, luck pillars and days.');
+      assert.equal(await text(page, '#first-offer-text'), 'The whole chart opens with a free account: its relationships, roles, luck pillars and days.');
       assert.equal(await text(page, '#first-account'), 'Create my free account');
       assert.deepEqual(asked, [], 'no whole chart is asked for without an account');
       // Closed without signing up, the dialog leaves the first chart as it was.
@@ -136,6 +136,19 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#first-view').isVisible(), false);
       assert.equal(asked.length, 1);
       assert.deepEqual([asked[0].date, asked[0].time], [BIRTH.date, BIRTH.time]);
+    }, { signedIn: false });
+
+    check('a visitor\'s link without the time opens the first chart of its date and place, and says the whole chart needs the time too', async (page) => {
+      // As eightchord.com links a visitor who gave no birth time.
+      await visit(page, { lang: 'en', address: `#chart?${link(BIRTH.date, 'unknown', 'en')}` });
+      await firstDrawn(page);
+      const api = await firstChart(page);
+      const found = await shown(page);
+      assert.deepEqual(found.pillars, [['hour', 'Open'], ...ORDER.slice(1).map((name) => [name, named(api.pillars[name])])]);
+      assert.deepEqual([found.lead, found.offer], [
+        'Your first chart, without an account. Without the birth time the hour pillar stays open.', true]);
+      assert.equal(await text(page, '#first-offer-text'),
+        'The whole chart opens with a free account and the birth time: its relationships, roles, luck pillars and days.');
     }, { signedIn: false });
 
     check('the first chart reads the Zi-hour convention its link names, as the whole chart does', async (page) => {

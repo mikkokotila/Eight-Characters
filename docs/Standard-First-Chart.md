@@ -62,6 +62,11 @@ The offer opens the account window, on making an account. Signed in, the address
 the whole chart, with what the link names (its display, its topic). Closed without
 signing in, the window leaves the first chart as it was.
 
+A visitor's link without the time (`time=unknown`, as eightchord.com links a visitor who
+gave no birth time) opens the first chart of its date and place. Its offer says that the
+whole chart opens with a free account and the birth time; signed in, the chart stays the
+first chart until the time is added.
+
 No whole chart is asked for without an account.
 
 See [browser regression tests](../tests/browser/README.md): `first.test.mjs`.
