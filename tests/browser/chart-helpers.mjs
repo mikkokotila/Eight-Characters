@@ -6,6 +6,7 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
 import { press } from './bar-helpers.mjs';
+import { profiles } from './profiles.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -48,10 +49,6 @@ const TROMSO = {
   city: 'Tromsø', region: 'Troms', country: 'Norway', display: 'Tromsø, Troms, Norway',
   timezone: 'Europe/Oslo', longitude: 18.96, latitude: 69.65,
 };
-const profiles = [
-  { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
-  { name: 'mobile', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
-];
 
 async function count(page, selector, expected) {
   await page.waitForFunction(({ selector, expected }) =>

@@ -1,0 +1,3 @@
+# The core journeys: every essential run runs these suites (tests/browser/NAME.test.mjs).
+engine-truth
+account

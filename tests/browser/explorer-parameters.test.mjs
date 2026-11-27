@@ -4,6 +4,7 @@
 import assert from 'node:assert/strict';
 import { before, after, describe, it } from 'node:test';
 import { newAccount, deleteAccount, signInPage } from './account-helpers.mjs';
+import { profiles } from './profiles.mjs';
 
 const moduleName = process.env.EC_PLAYWRIGHT_MODULE;
 const baseURL = process.env.EC_BASE_URL;
@@ -31,11 +32,6 @@ after(async () => {
   if (account) await deleteAccount(playwright, account);
   if (browser) await browser.close();
 });
-
-const profiles = [
-  { name: 'desktop', viewport: { width: 1440, height: 1000 }, hasTouch: false, isMobile: false },
-  { name: 'mobile', viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true },
-];
 
 const BIRTH = {
   date: '1988-02-04',

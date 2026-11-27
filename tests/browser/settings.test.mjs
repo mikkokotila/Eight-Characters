@@ -9,6 +9,7 @@ import {
 } from './chart-helpers.mjs';
 import { newAccount, asAccount, signInPage, stubTurnstile } from './account-helpers.mjs';
 import { dialogOpens, signInThroughDialog } from './account-page.mjs';
+import { desktop, describeOnce } from './profiles.mjs';
 
 const PLACE = {
   name: HELSINKI.display, city: HELSINKI.city, timezone: HELSINKI.timezone,
@@ -1319,8 +1320,8 @@ for (const profile of profiles) {
   });
 }
 
-describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
-  it('signed in, the bare address opens my chart\'s day, today where I am, replacing the address; a chart link opens itself', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+describeOnce(`${engineName} / settings signed out`, { concurrency: false }, () => {
+  it('signed in, the bare address opens my chart\'s day, today where I am, replacing the address; a chart link opens itself', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const own = await newAccount(playwright, { language: 'en', label: 'settings-mine' });
     await asAccount(playwright, own, async (request) => {
       const kept = await request.post('/api/account/charts', { data: { ...SCREEN, name: 'Mine', mine: true, key: own.key, updated_at: null } });
@@ -1402,14 +1403,14 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Aino K');
   }, { signedIn: false }));
 
-  it('Settings asks for a sign-in first', { timeout: 60000 }, () => withPage(profiles[0], async (page) => {
+  it('Settings asks for a sign-in first', { timeout: 60000 }, () => withPage(desktop, async (page) => {
     await stubTurnstile(page);
     await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
     await page.locator('#account-dialog').waitFor({ state: 'visible' });
     assert.equal(await page.locator('#settings-view').isHidden(), true);
   }, { signedIn: false }));
 
-  it('after a sign-out, Settings show nothing of the account before, even when the next read fails', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('after a sign-out, Settings show nothing of the account before, even when the next read fails', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const first = await newAccount(playwright, { language: 'en', label: 'settings-first' });
     const second = await newAccount(playwright, { language: 'en', label: 'settings-second' });
     await asAccount(playwright, first, async (request) => {
@@ -1456,7 +1457,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     assert.equal(await page.locator('#settings-schools-body input').count(), 0);
   }, { signedIn: false }));
 
-  it('a change after the session ended elsewhere asks for a sign-in, and is not repeated', { timeout: 90000 }, () => withPage(profiles[0], async (page) => {
+  it('a change after the session ended elsewhere asks for a sign-in, and is not repeated', { timeout: 90000 }, () => withPage(desktop, async (page) => {
     const own = await newAccount(playwright, { language: 'en', label: 'settings-ended' });
     await signInPage(page, own);
     await stubTurnstile(page);
@@ -1488,7 +1489,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     return { first, second, firstChart };
   };
 
-  it('another account taken in this browser: the chart is not named from the one before, even by a read held on its way', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('another account taken in this browser: the chart is not named from the one before, even by a read held on its way', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const { first, second } = await twoAccounts('taken-name');
     await signInPage(page, first);
     // The chart's own read of the settings is answered for the first account, and held
@@ -1531,7 +1532,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     assert.deepEqual(await page.locator('#library-list .saved-name').allTextContents(), ['Second keeps']);
   }, { signedIn: false }));
 
-  it('another account taken while Settings are open: the change is not made, and Settings show the account taken', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('another account taken while Settings are open: the change is not made, and Settings show the account taken', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const { first, second } = await twoAccounts('taken-settings');
     await signInPage(page, first);
     await openSettings(page);
@@ -1552,7 +1553,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     }
   }, { signedIn: false }));
 
-  it('another account taken while a birth is corrected: the form lets the birth go', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('another account taken while a birth is corrected: the form lets the birth go', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const { first, second, firstChart } = await twoAccounts('taken-correct');
     await signInPage(page, first);
     await page.goto(new URL(`/#save?as=correct&chart=${firstChart}`, process.env.EC_BASE_URL).href);
