@@ -862,7 +862,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-couple').isHidden(), true);
     });
 
-    check('without a place the day asks where you are, there, and opens at the place chosen; without a gender, it leads to the chart', async (page) => {
+    check('without a place the day asks where you are, there, and opens at the place chosen; without a gender, it asks for one', async (page) => {
       await page.clock.setFixedTime(NOW);
       const { answers } = await recordToday(page);
       await page.route('**/api/location_suggest', (route) => route.fulfill({ json: { suggestions: [HELSINKI] } }));
@@ -876,7 +876,7 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#today-notice').isHidden(), true);
       assert.equal(answers.length, 0);
       assert.equal(await page.locator('#today-place-title').textContent(), 'Where are you today?');
-      assert.equal(await page.locator('.today-place-lead').textContent(), 'The day is read where you are: on your calendar’s date, '
+      assert.equal(await page.locator('#today-place .today-place-lead').textContent(), 'The day is read where you are: on your calendar’s date, '
         + 'its twelve double hours following the sun in your sky. Name your place, and the day opens.');
       assert.equal(await page.locator('#today-location-label').textContent(), 'Find a place');
       assert.equal(await page.locator('#today-place-note').textContent(), 'Your account keeps it for every day you open, and Settings can change it.');
