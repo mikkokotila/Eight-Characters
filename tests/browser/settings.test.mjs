@@ -645,11 +645,11 @@ for (const profile of profiles) {
       assert.equal(now.couples.filter((couple) => couple.charts.includes(mine)).length, 3);
     });
 
-    check('under a plan’s cap a chart at it is in neither list, the page says why, and marked past it your chart says the partner kept from before did not pair', async (page) => {
+    check('under a plan’s cap a chart at it offers no pairing and is offered to none, the page says why, and marked past it your chart says the partner kept from before did not pair', async (page) => {
       await reset(page);
       const mine = await saveElsewhere(page, { ...SCREEN, name: 'Mine' });
       const first = await saveElsewhere(page, partnerNamed('First', '1980-01-02'));
-      await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
+      const second = await saveElsewhere(page, partnerNamed('Second', '1981-01-02'));
       const third = await saveElsewhere(page, partnerNamed('Third', '1982-01-02'));
       await changeElsewhere(page, 'POST', '/api/account/couples', { charts: [mine, first] });
       // A plan that keeps one couple per chart, as one may once plans are sold, and Third
