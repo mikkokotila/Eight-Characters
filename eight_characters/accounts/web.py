@@ -239,7 +239,7 @@ def load_config(env: Mapping[str, str]) -> AccountsConfig:
     mail_from = env['EC_MAIL_FROM']
     if '@' not in parseaddr(mail_from)[1]:
         errors.append(
-            'EC_MAIL_FROM must hold an address, like Eight Chord <kirjaudu@nektari.fi>.'
+            'EC_MAIL_FROM must hold an address, like Eightchord <hello@eightchord.com>.'
         )
     if transport not in ('smtp', 'directory'):
         errors.append('EC_MAIL_TRANSPORT must be smtp or directory.')
@@ -1063,7 +1063,7 @@ def export_account(
     except UnknownUser as exc:
         raise HTTPException(status_code=401, detail=SIGN_IN_REQUIRED) from exc
     response.headers['Content-Disposition'] = (
-        'attachment; filename="eight-chord-account.json"'
+        'attachment; filename="eightchord-account.json"'
     )
     exported = {**data, 'exported_at': timestamp(accounts.clock())}
     if accounts.billing is not None:

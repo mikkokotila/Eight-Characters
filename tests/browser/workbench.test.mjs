@@ -268,7 +268,7 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => document.activeElement.id), 'date');
       assert.equal(await page.locator('#location-status').textContent(), '');
       assert.equal(await page.locator('#create-chart-btn').isDisabled(), true);
-      assert.equal(await page.title(), 'Eight Chord — Four pillars');
+      assert.equal(await page.title(), 'Eightchord — Four pillars');
       assert.equal(await page.locator('#chart-view').isVisible(), false);
     });
 

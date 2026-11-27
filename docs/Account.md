@@ -35,7 +35,7 @@ Actions, in Settings' bar, and among the commands (⌘K or Ctrl+K):
 - the address, and the plan (Free);
 - the account's language;
 - Settings;
-- Download my data: everything kept for the account, as `eight-chord-account.json`;
+- Download my data: everything kept for the account, as `eightchord-account.json`;
 - Sign out, here, or on every device; the app then starts again, empty;
 - Delete account, after typing its address again. It cannot be undone.
 

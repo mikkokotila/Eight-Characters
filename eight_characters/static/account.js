@@ -689,7 +689,7 @@
       // Inside the dialog: while it is open, the rest of the page is inert.
       const link = document.createElement('a');
       link.href = url;
-      link.download = 'eight-chord-account.json';
+      link.download = 'eightchord-account.json';
       link.hidden = true;
       dialog.append(link);
       link.click();
