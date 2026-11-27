@@ -49,6 +49,19 @@ meaning for Edit, the chart's own name on its day, and one word for each thing.
   order; the changed words. Python: `today_share` beside `chart_share`.
 - Version bumped to `0.70.0`; the regression fixture changes only in `engine.version`.
 
+## 0.69.2
+
+### Fixed
+- **A chart asks for an account to be made after Sign in.** Review of #143: once the
+  start page's Sign in turned the account window to signing in, a chart asked for next
+  opened there too, not on "Create a free account". A chart's request now opens on its
+  own side: making an account, until the page has known one (signed out, or its session
+  ended), then signing in. A window already open is left as it is.
+
+### Tests
+- Browser: Sign in, closed, then a chart: "Create a free account".
+- Version bumped to `0.69.2`; the regression fixture changes only in `engine.version`.
+
 ## 0.69.1
 
 Defects found by the 2026-11-27 review of the whole app (Evolution aside).
