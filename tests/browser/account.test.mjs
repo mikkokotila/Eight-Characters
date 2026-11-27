@@ -398,7 +398,10 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
       await settled(page);
       assert.match(await text(page, '#chart-date'), /^February 4, 1988 · 16:30 · Chengdu$/);
-      assert.equal(new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('topic'), 'season');
+      // The link's topic opens beside the chart; where it would be a sheet over the chart
+      // (a phone), the chart opens whole and the topic is left a press away.
+      const sheet = await page.locator('#chart-panel').evaluate((panel) => getComputedStyle(panel).position === 'fixed');
+      assert.equal(new URLSearchParams(new URL(page.url()).hash.split('?')[1]).get('topic'), sheet ? null : 'season');
     });
 
     check('a comparison opened without an account asks once, before its frames do', async (page) => {

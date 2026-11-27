@@ -59,7 +59,9 @@ chart, sees its first chart instead:
   luck pillars and days.", and **Create my free account**.
 
 The offer opens the account window, on making an account. Signed in, the address opens
-the whole chart, with what the link names (its display, its topic), and the save window
+the whole chart, with what the link names (its display, its topic; where a topic opens
+as a sheet over the chart, below 1200px wide, the chart opens whole and the topic is a
+press away on its line), and the save window
 ([Settings](Standard-Settings.md#saved-charts-and-the-library)) offers to keep it as the
 account's own, with **My own chart** chosen and the gender asked for when the link gave
 none: kept, each visit opens its day. An account with a chart of its own, or for which

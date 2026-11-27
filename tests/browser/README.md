@@ -158,7 +158,8 @@ against `POST /api/first_chart`, and:
   is left as it was when the dialog closes, and opens the whole chart once signed up,
   offered to be kept as the account's own (its gender asked, none chosen), after which
   the chart takes the gender and the next visit opens its day; an account with a chart
-  of its own is offered nothing;
+  of its own is offered nothing; a link naming a topic opens it beside the cards on a
+  wide screen, and on a phone leaves the cards in sight, the topic a press away;
 - that a link without the time opens no day, no comparison and no topic, keeping its
   birth in the form;
 - that a first chart made again from the form (Edit, then Create chart) keeps its link's
