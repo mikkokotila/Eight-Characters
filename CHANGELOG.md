@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.77.0
+
+Your people in one list: the third of five changes from the 2026-11-27 review of the
+app's repeated use.
+
+### Added
+- **The day's library.** The day had no way to another person's day: whose day it showed
+  followed the chart that had been on screen, so another's was Day, Chart, the library,
+  Open, Day. The day's heading now has the library's button, as the chart's has: it
+  names the chart, and a chart chosen there opens its day, on the date shown. The
+  chart's saved name moves from the line under the date to the button, as on the
+  chart's page; copied as text, the day still names it.
+
+### Changed
+- **A comparison's second chart is chosen from the same list.** "Or a saved chart" was a
+  drop-down of names and births, beside the library's list of cards. The saved charts
+  are now listed over the form as the start page and the library list them (name,
+  marks, birth and pillars), and one chosen opens the pair.
+
+### Docs
+- Standard-Today (the bar), Standard-Compare, Standard-Settings (the library).
+
 ## 0.76.0
 
 Keeping your own chart: the second of five changes from the 2026-11-27 review of the

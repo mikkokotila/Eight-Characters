@@ -1220,7 +1220,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     assert.equal(await page.evaluate(() => location.hash.startsWith('#today?')), true);
     assert.equal(await part('date'), BIRTH.date);
     assert.equal(await part('day'), await page.evaluate(() => new Date().toLocaleDateString('sv-SE')));
-    await page.waitForFunction(() => document.getElementById('today-chart').textContent.startsWith('Mine · '));
+    await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Mine');
     // The address was replaced, not added to: Back does not come to it again.
     assert.equal(await page.evaluate(() => history.length), entries);
     assert.equal(await page.locator('#start-charts').isHidden(), true);
@@ -1284,7 +1284,7 @@ describe(`${engineName} / settings signed out`, { concurrency: false }, () => {
     assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
     await page.goto(new URL('/', process.env.EC_BASE_URL).href);
     await page.locator('#today-view').waitFor({ state: 'visible' });
-    await page.waitForFunction(() => document.getElementById('today-chart').textContent.startsWith('Aino K · '));
+    await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Aino K');
   }, { signedIn: false }));
 
   it('Settings asks for a sign-in first', { timeout: 60000 }, () => withPage(profiles[0], async (page) => {

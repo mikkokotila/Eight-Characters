@@ -1799,83 +1799,53 @@ document.addEventListener('DOMContentLoaded', () => {
   const compareNote = document.getElementById('compare-note');
   const compareNoteText = document.getElementById('compare-note-text');
   const compareView = document.getElementById('compare-view');
-  const compareSaved = document.getElementById('compare-saved');
-  const compareSavedChart = document.getElementById('compare-saved-chart');
-  const compareSavedGo = document.getElementById('compare-saved-go');
-  if (!compareNote || !compareNoteText || !compareView || !compareSaved || !compareSavedChart || !compareSavedGo) {
-    throw new Error('Comparison is incomplete.');
-  }
-  // The second chart can be one of the account's saved charts, but the first: each by
-  // its name and birth, chosen from a list beside the form's own birth. Only the latest
-  // asking fills the list.
-  let savedAsked = 0;
-  const offerSaved = async (a) => {
-    const asked = ++savedAsked;
-    compareSaved.classList.add('hidden');
-    if (embedded || !account.signedIn()) return;
-    let kept;
-    try {
-      // The list is no reason to ask for a sign-in: Compare itself asks, when pressed.
-      kept = await settingsPage.load(() => asked === savedAsked, { signIn: false });
-    } catch (err) {
-      if (asked !== savedAsked) return;
-      // A session that ended keeps no saved charts to offer.
-      if (err.status === 401) return;
-      console.error(err);
-      showToast(err.message || t('settings_load_error'), true);
-      return;
-    }
-    if (asked !== savedAsked || comparingWith !== a) return;
-    const first = window.EC_LIBRARY.keyOf(readChartLink(`${CHART_ROUTE}${a}`));
-    const others = kept.charts.filter((chart) => window.EC_LIBRARY.keyOf(chart) !== first);
-    if (others.length === 0) return;
-    compareSavedChart.replaceChildren(...others.map((chart) => new Option(
-      `${chart.name ?? t('library_unnamed')} · ${birthLine(chart)}`, chart.id)));
-    compareSaved.classList.remove('hidden');
-  };
-  compareSavedGo.addEventListener('click', () => {
-    if (comparingWith === null) return;
-    const kept = settingsPage.current();
-    const chart = kept === null ? null : window.EC_LIBRARY.chartWith(kept, compareSavedChart.value);
-    // Removed in another tab since it was listed: said, and the list read again.
-    if (chart === null) {
-      showToast(t('save_chart_gone'), true);
-      offerSaved(comparingWith);
-      return;
-    }
-    const pair = new URLSearchParams({ a: comparingWith, b: window.EC_LIBRARY.chartParams(chart, currentLanguage) });
-    history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${pair}`);
-    followAddress();
-  });
-  // Signed in, the start page begins with the account's saved charts, yours first, each
-  // opening its chart (docs/Standard-Settings.md). While none is yours, each can be
-  // marked as yours, and its day then opens, as each visit will open it. The list is
-  // offered on the bare address, by New chart and on signing in there; only the latest
-  // asking draws it, and whatever else the form is asked for (a comparison's second
-  // chart, a birth to save, a chart link) takes it away.
+  if (!compareNote || !compareNoteText || !compareView) throw new Error('Comparison is incomplete.');
+  // Signed in, the form begins with the account's saved charts, as the library lists them
+  // (docs/Standard-Settings.md), and what the list is for follows what the form is for:
+  // - on the start page, the bare address, yours comes first and each opens its chart;
+  //   while none is yours, each can be marked as yours, and its day then opens, as each
+  //   visit will open it;
+  // - asking for a comparison's second chart, each but the first opens the pair.
+  // The list is offered on the bare address, on signing in there, and when a comparison
+  // asks for its second chart; only the latest asking draws it, and whatever else the
+  // form is asked for (a birth to save, a chart link) takes it away.
   const startCharts = document.getElementById('start-charts');
   const startNote = document.getElementById('start-charts-note');
   const startList = document.getElementById('start-charts-list');
   if (!startCharts || !startNote || !startList) throw new Error('The start page is incomplete.');
   let startAsked = 0;
-  // The basis of the settings the list was drawn from: a mark is made from them.
+  // What the list drawn is for, and the basis of the settings it was drawn from: a mark is
+  // made from them.
+  let startFor = null;
   let startBasis = null;
   let startMarking = null;
   const hideStart = () => {
     startAsked += 1;
+    startFor = null;
     startBasis = null;
     startCharts.classList.add('hidden');
     startList.replaceChildren();
   };
-  const onStart = () => location.hash === '' && saving === null && comparingWith === null && !inputView.classList.contains('hidden');
+  // What the list is for now: 'start', 'compare', or null while the form offers none.
+  const listFor = () => {
+    if (inputView.classList.contains('hidden') || saving !== null) return null;
+    if (comparingWith !== null) return 'compare';
+    return location.hash === '' ? 'start' : null;
+  };
   const drawStart = (kept) => {
-    if (kept.charts.length === 0) {
+    const purpose = listFor();
+    const first = purpose === 'compare' ? window.EC_LIBRARY.keyOf(readChartLink(`${CHART_ROUTE}${comparingWith}`)) : null;
+    const mine = purpose === 'start' && kept.my_chart !== null ? window.EC_LIBRARY.chartWith(kept, kept.my_chart) : null;
+    const charts = purpose === 'compare'
+      ? kept.charts.filter((chart) => window.EC_LIBRARY.keyOf(chart) !== first)
+      : mine === null ? kept.charts : [mine, ...kept.charts.filter((chart) => chart.id !== mine.id)];
+    if (purpose === null || charts.length === 0) {
       hideStart();
       return;
     }
+    startFor = purpose;
     startBasis = settingsPage.basis();
-    const mine = kept.my_chart === null ? null : window.EC_LIBRARY.chartWith(kept, kept.my_chart);
-    const charts = mine === null ? kept.charts : [mine, ...kept.charts.filter((chart) => chart.id !== mine.id)];
+    const marking = purpose === 'start' && kept.my_chart === null;
     const tools = {
       translate: requiredTranslation, escape: esc, format: { parseWallClock, date: formatDate, time: formatTime }, language: () => currentLanguage,
     };
@@ -1884,20 +1854,22 @@ document.addEventListener('DOMContentLoaded', () => {
         <button type="button" class="library-chart" data-start-chart="${esc(chart.id)}"${chart.pillars === null ? ' disabled' : ''}>
           ${window.EC_LIBRARY.row(kept, chart, tools)}
         </button>
-        ${mine === null && chart.pillars !== null
+        ${marking && chart.pillars !== null
     ? `<button type="button" class="bar-action" data-start-mine="${esc(chart.id)}">${esc(requiredTranslation('settings_mine_mark'))}</button>` : ''}
       </li>`).join('');
-    startNote.classList.toggle('hidden', mine !== null);
+    startNote.classList.toggle('hidden', !marking);
     startCharts.classList.remove('hidden');
   };
   const offerStart = async () => {
     hideStart();
     const asked = startAsked;
-    if (embedded || !account.signedIn() || !onStart()) return;
+    const purpose = listFor();
+    if (embedded || !account.signedIn() || purpose === null) return;
     let kept;
     try {
-      // The list is no reason to ask for a sign-in.
-      kept = await settingsPage.load(() => asked === startAsked && onStart(), { signIn: false });
+      // The list is no reason to ask for a sign-in: a comparison's Compare asks, when
+      // pressed.
+      kept = await settingsPage.load(() => asked === startAsked && listFor() === purpose, { signIn: false });
     } catch (err) {
       if (asked !== startAsked) return;
       // A session that ended keeps no saved charts to offer.
@@ -1906,13 +1878,15 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(err.message || t('settings_load_error'), true);
       return;
     }
-    if (asked !== startAsked || !onStart()) return;
+    if (asked !== startAsked || listFor() !== purpose) return;
     drawStart(kept);
   };
   startList.addEventListener('click', async (event) => {
     const opening = event.target.closest('[data-start-chart]');
     const marking = event.target.closest('[data-start-mine]');
     if (!opening && !marking) return;
+    const purpose = startFor;
+    if (purpose === null || listFor() !== purpose) return;
     const id = opening ? opening.dataset.startChart : marking.dataset.startMine;
     const kept = settingsPage.current();
     const chart = kept === null ? null : window.EC_LIBRARY.chartWith(kept, id);
@@ -1920,6 +1894,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (chart === null) {
       showToast(t('save_chart_gone'), true);
       offerStart();
+      return;
+    }
+    if (opening && purpose === 'compare') {
+      const pair = new URLSearchParams({ a: comparingWith, b: window.EC_LIBRARY.chartParams(chart, currentLanguage) });
+      history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${pair}`);
+      followAddress();
       return;
     }
     if (opening) {
@@ -1949,7 +1929,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     showToast(result.said, false);
     // Marked from the start page still shown: the chart's day opens, as each visit will.
-    if (asked !== startAsked || !onStart()) return;
+    if (asked !== startAsked || listFor() !== 'start') return;
     hideStart();
     history.pushState(null, '', `${formAddress()}${TODAY_ROUTE}${window.EC_LIBRARY.chartParams(chart, currentLanguage)}`);
     followAddress();
@@ -1964,13 +1944,11 @@ document.addEventListener('DOMContentLoaded', () => {
     createChartBtn.setAttribute('data-i18n', 'compare_create');
     createChartBtn.textContent = t('compare_create');
     offerTimeUnknown(false);
-    offerSaved(a);
+    offerStart();
   };
   const askForChart = () => {
     hideStart();
     comparingWith = null;
-    savedAsked += 1;
-    compareSaved.classList.add('hidden');
     compareNote.classList.add('hidden');
     stopSaving();
     createChartBtn.setAttribute('data-i18n', 'create_chart');
@@ -2118,6 +2096,8 @@ document.addEventListener('DOMContentLoaded', () => {
       applyLanguage();
       settingsPage.redraw();
     },
+    // The day's library button names its chart as the settings the day read say.
+    onBar: () => library.sayName(),
     toast: (text, isError) => showToast(text, isError),
   });
   // The first chart (first.js): Edit finds the birth in the form, New chart an empty
@@ -2359,20 +2339,35 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // The library, from the chart's heading (library.js).
+  // The library, from the chart's heading and the day's (library.js). A chart chosen from
+  // the day's opens its day, on the date shown; from the chart's, its chart.
   const libraryBtn = document.getElementById('library-btn');
+  const todayLibraryBtn = document.getElementById('today-library-btn');
   const libraryDialog = document.getElementById('library-dialog');
-  if (!libraryBtn || !libraryDialog) throw new Error('The library is incomplete.');
+  if (!libraryBtn || !todayLibraryBtn || !libraryDialog) throw new Error('The library is incomplete.');
   const library = window.EC_LIBRARY.create({
     dialog: libraryDialog,
-    button: libraryBtn,
+    pages: [
+      { page: 'chart', button: libraryBtn, screenBirth, canSave: true },
+      { page: 'today', button: todayLibraryBtn, screenBirth: () => today.screenBirth(), canSave: false },
+    ],
     translate: requiredTranslation,
     escape: esc,
     format: { parseWallClock, date: formatDate, time: formatTime },
     settings: settingsPage,
-    screenBirth,
     language: () => currentLanguage,
-    onOpen: (params) => goToChart(params),
+    onOpen: (params, page) => {
+      if (page !== 'today') {
+        goToChart(params);
+        return;
+      }
+      const shownDay = today.state();
+      if (shownDay === null) throw new Error('The day is not shown.');
+      const next = new URLSearchParams(params);
+      next.set('day', shownDay.day);
+      history.pushState(null, '', `${formAddress()}${TODAY_ROUTE}${next}`);
+      followAddress();
+    },
     onSave: () => openSaveChart(),
     onSettings: () => openSettings(),
   });

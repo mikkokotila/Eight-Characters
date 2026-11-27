@@ -511,19 +511,6 @@ body {
 }
 .not-found-home a:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 
-/* A comparison's second chart from the saved ones: a line under the note naming the
-   first, as the note's own words and Cancel stand. */
-.compare-saved {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2) var(--space-3);
-  margin: 0 0 var(--space-6);
-  font-size: var(--text-1);
-  color: var(--ink-2);
-}
-.compare-saved select { max-width: 100%; }
 
 /* The start page's tools: its language, and signing in or the account. */
 .page-tools {
@@ -3479,8 +3466,7 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   max-width: 100%;
 }
 .settings-choose select,
-.settings-rename input,
-.compare-saved select {
+.settings-rename input {
   min-width: 0;
   max-width: 100%;
   height: var(--control-2);
@@ -4458,7 +4444,6 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-partner select,
   .settings-choose select,
   .settings-rename input,
-  .compare-saved select,
   .time-unknown { min-height: var(--control-touch); }
   /* The start page's language switch stands level with the account's button. */
   .language-switch { min-height: var(--control-touch); }

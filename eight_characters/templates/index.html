@@ -39,32 +39,28 @@
     <h1 class="title" data-i18n="title">Eightchord</h1>
   </div>
 
-  <!-- Signed in, the start page begins with the account's saved charts, yours first, each
-       opening its chart; while none is yours, each can be marked as yours (app.js). The
-       form under them is then a new chart's. -->
-  <section id="start-charts" class="start-charts hidden" aria-labelledby="start-charts-title">
-    <h2 id="start-charts-title" class="settings-heading" data-i18n="library_title">Tallennetut kartat</h2>
-    <p id="start-charts-note" class="settings-note hidden" data-i18n="start_mine_choose"></p>
-    <ul id="start-charts-list" class="library-list start-list"></ul>
-    <h2 id="start-new-title" class="settings-heading" data-i18n="new_chart">Uusi kartta</h2>
-  </section>
 
   <!-- While a comparison's second chart is chosen: which chart it is compared with. -->
   <p id="compare-note" class="compare-note hidden">
     <span id="compare-note-text"></span>
     <button type="button" id="compare-cancel" class="bar-action" data-i18n="compare_cancel">Peruuta</button>
   </p>
-  <!-- Or one of the account's saved charts, as the comparison's second (app.js). -->
-  <div id="compare-saved" class="compare-saved hidden">
-    <label for="compare-saved-chart" data-i18n="compare_saved">Tai tallennettu kartta</label>
-    <select id="compare-saved-chart"></select>
-    <button type="button" id="compare-saved-go" class="bar-action" data-i18n="compare_create">Vertaa</button>
-  </div>
   <!-- A birth added or corrected from Settings: what it saves, and back to Settings. -->
   <p id="save-note" class="compare-note save-note hidden">
     <span id="save-note-text"></span>
     <button type="button" id="save-cancel" class="bar-action" data-i18n="cancel">Peruuta</button>
   </p>
+
+  <!-- Signed in, the form begins with the account's saved charts, as the library lists
+       them (app.js). On the start page, yours first, each opens its chart, and while none
+       is yours each can be marked as yours; asking for a comparison's second chart, each
+       but the first opens the pair. The form under them is a new birth's. -->
+  <section id="start-charts" class="start-charts hidden" aria-labelledby="start-charts-title">
+    <h2 id="start-charts-title" class="settings-heading" data-i18n="library_title">Tallennetut kartat</h2>
+    <p id="start-charts-note" class="settings-note hidden" data-i18n="start_mine_choose"></p>
+    <ul id="start-charts-list" class="library-list start-list"></ul>
+    <h2 id="start-new-title" class="settings-heading" data-i18n="new_chart">Uusi kartta</h2>
+  </section>
 
   <!-- Validated by app.js, so messages follow the page language. -->
   <form id="chart-form" novalidate>
@@ -333,6 +329,11 @@
       <div class="chart-identity">
         <h1 class="name" id="today-date" tabindex="-1"></h1>
         <p class="solar-time" id="today-chart"></p>
+        <!-- The saved charts, as from the chart's heading: the chart named if it is saved,
+             and the day of the chart chosen opens here (library.js). -->
+        <button type="button" id="today-library-btn" class="library-btn" aria-haspopup="dialog" data-saved="unknown">
+          <span class="library-label">Tallennetut kartat</span>
+        </button>
       </div>
       <div class="chart-tools">
         <div class="segmented page-switch" id="today-page-switch" role="group" aria-labelledby="today-page-label">

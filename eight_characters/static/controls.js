@@ -16,7 +16,7 @@
     '.luck-chip', '.luck-phase', '.luck-identity', '[data-zi-convention]',
     '#compare-sides button', '#compare-swap', '#compare-copy-link', '#compare-close',
     '#compare-cancel', '#create-chart-btn', '.gender-option',
-    '#page-switch button', '#today-page-switch button', '#library-btn', '#save-cancel', '#settings-close',
+    '#page-switch button', '#today-page-switch button', '.library-btn', '#save-cancel', '#settings-close',
     '#today-language button', '.today-step', '.today-now', '#today-copy-link', '#today-copy-text',
     '#today-print', '#today-settings',
   ].join(',');
@@ -109,7 +109,7 @@
     } else if (node.matches('#compare-sides button')) {
       [icon, key] = node.dataset.compareSide === 'a' ? ['panel-left', 'first'] : ['panel-right', 'second'];
     } else if (node.id === 'compare-cancel' || node.id === 'save-cancel') { icon = 'x'; key = 'cancel'; }
-    else if (node.id === 'library-btn') {
+    else if (node.matches('.library-btn')) {
       icon = 'library'; key = 'library'; label = node.querySelector('.library-label').textContent.trim();
     } else if (node.id === 'create-chart-btn') {
       [icon, key] = {

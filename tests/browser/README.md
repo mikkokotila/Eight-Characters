@@ -190,6 +190,9 @@ settings as read, and checks:
   elsewhere, then drawn anew) opens the day each visit then opens.
 
 The Today suite (`today.test.mjs`) checks every number against the API's answer, and:
+- the library's button in the day's heading: the chart by its saved name, the saved
+  charts listed with it marked and no save, another chosen opening its day on the date
+  shown (Back returning), and the day copied naming its chart;
 - the days: the chosen day as the chart's cards (each character in its element's
   colours, with its pinyin and the answer's lines), the run's days beside it (two on
   either side, one on a phone), moved by a press, by Left, Right, Home and End while
@@ -400,7 +403,8 @@ The foundations suite's contrast audit runs in both themes.
 
 The compare suite checks two charts side by side (#20).
 - **Starting.** Compare asks for the second birth, naming the first and starting
-  empty; Cancel goes back.
+  empty; Cancel goes back. The saved charts but the first are listed over the form as
+  the library lists them, nothing to mark among them, and one chosen opens the pair.
 - **The pair.** Both charts' pillars match the API. Each frame keeps only its own
   controls; frames and page are titled; the address names both.
 - **Topics and address.** Each chart opens its own topics, and the pair's address
