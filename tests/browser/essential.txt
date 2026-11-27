@@ -1,3 +1,15 @@
-# The core journeys: every essential run runs these suites (tests/browser/NAME.test.mjs).
+# The browser suites that run every time (README.md, "The essential tests"), whatever
+# changed: tests/browser/NAME.test.mjs, one NAME a line. Suites a change edits, or whose
+# helper it edits, and the suites of a changed area run too, and everything runs in a
+# full run. Changing this file runs every suite.
+
+# The engine's numbers on the chart: each pillar, the true solar time and its changes.
 engine-truth
+
+# Accounts: signing in and out, the account's language, Download my data and Delete
+# account; a session ended elsewhere, and another tab's account, never shown as this one.
 account
+account-sessions
+
+# Payments: the plans' checkout, each offer with its account, and cancelling.
+account-billing
