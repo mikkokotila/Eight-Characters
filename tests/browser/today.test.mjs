@@ -775,7 +775,7 @@ for (const profile of profiles) {
       await setSettings(page);
       await page.goto(new URL(todayLink({ who: 'partner' }), process.env.EC_BASE_URL).href);
       await page.locator('[data-today-action="self"]').waitFor({ state: 'visible' });
-      assert.match(await page.locator('#today-notice').textContent(), /^This chart is not in a couple: pair it in Settings\./);
+      assert.match(await page.locator('#today-notice').textContent(), /^This chart is not in a couple: pair it in Saved charts\./);
       assert.equal(await page.locator('#today-body').isHidden(), true);
       assert.equal(answers.length, 0, 'no day is asked for');
       await page.locator('[data-today-action="self"]').click();

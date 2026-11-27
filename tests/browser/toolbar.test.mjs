@@ -57,7 +57,9 @@ const menu = (page) => page.evaluate(() => {
 });
 // The chart's actions, as the day's are laid out: out of the page, the chart's own,
 // then Settings and the account.
-const ITEMS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn', 'chart-settings', 'chart-account'];
+// The chart's actions, as the day's begin: out of the page, then the chart's own. The
+// account stands after the menu, at the bar's end, as on every page.
+const ITEMS = ['copy-link-btn', 'copy-text-btn', 'print-btn', 'back-btn', 'new-chart-btn', 'compare-btn'];
 // Where you are, kept for the account as Settings keeps it, so that Today draws a day.
 async function keepPlace(page) {
   const status = await page.evaluate(async (place) => {
@@ -98,14 +100,23 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#chart-actions-button'), [['Actions', false]]);
       assert.equal(await page.locator('#chart-actions-button').getAttribute('aria-haspopup'), 'menu');
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: 'menu', named: 'chart-actions-button', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator', 'separator'],
+        expanded: 'false', open: false, role: 'menu', named: 'chart-actions-button', items: ITEMS.map((id) => `menuitem ${id}`), rules: ['separator'],
       });
       assert.equal(await page.locator('#copy-link-btn').isVisible(), false);
+      // The account: its own button after the menu, its icon and its word; on a phone its
+      // icon, its word a screen reader's and its tip's.
+      assert.deepEqual(await shown(page, '#chart-account'), [[profile.name === 'mobile' ? '' : 'Account', true]]);
+      assert.equal(await page.locator('#chart-account .control-label').textContent(), 'Account');
+      assert.equal(await page.locator('#chart-account').getAttribute('role'), null);
+      assert.equal(await page.evaluate(() => {
+        const menu = document.querySelector('#chart-view .bar-menu').getBoundingClientRect();
+        const account = document.getElementById('chart-account').getBoundingClientRect();
+        return account.left >= menu.right && Math.abs((account.top + account.bottom) / 2 - (menu.top + menu.bottom) / 2) < 1;
+      }), true, 'the account stands after the menu, level with it');
       // Each item: its icon and its words, and no tooltip over it.
       await page.locator('#chart-actions-button').click();
       assert.deepEqual(await shown(page, '#chart-actions > button'),
-        [['Copy link', true], ['Copy as text', true], ['Print', true], ['Edit', true], ['New chart', true], ['Compare', true],
-          ['Settings', true], ['Account', true]]);
+        [['Copy link', true], ['Copy as text', true], ['Print', true], ['Edit', true], ['New chart', true], ['Compare', true]]);
       await page.locator('#copy-text-btn').hover();
       await page.waitForTimeout(700);
       assert.equal(await page.locator('#control-tooltip').evaluate((tip) => tip.matches(':popover-open')), false);
@@ -126,15 +137,15 @@ for (const profile of profiles) {
       // Down opens it at its first item and Up at its last; the arrows move round it, and
       // Home and End go to its ends.
       await page.keyboard.press('ArrowUp');
-      assert.equal(await focused(page), 'chart-account');
+      assert.equal(await focused(page), 'compare-btn');
       await page.keyboard.press('ArrowDown');
       assert.equal(await focused(page), 'copy-link-btn');
       await page.keyboard.press('ArrowUp');
-      assert.equal(await focused(page), 'chart-account');
+      assert.equal(await focused(page), 'compare-btn');
       await page.keyboard.press('Home');
       assert.equal(await focused(page), 'copy-link-btn');
       await page.keyboard.press('End');
-      assert.equal(await focused(page), 'chart-account');
+      assert.equal(await focused(page), 'compare-btn');
       await page.keyboard.press('Escape');
       await page.keyboard.press('ArrowDown');
       assert.equal(await focused(page), 'copy-link-btn');
@@ -145,10 +156,11 @@ for (const profile of profiles) {
       // Tab leaves it, and closes it.
       await page.keyboard.press('Tab');
       assert.deepEqual([(await menu(page)).expanded, (await menu(page)).open], ['false', false]);
-      // A press outside closes it, and leaves the focus where it was pressed.
+      // A press outside closes it, and leaves the focus where it was pressed: above it,
+      // on the chart's heading, which the open menu never covers.
       await button.click();
       assert.equal((await menu(page)).open, true);
-      await page.locator('#day-master-context h2').click();
+      await page.locator('#chart-date').click();
       assert.deepEqual([(await menu(page)).expanded, (await menu(page)).open], ['false', false]);
     });
 
@@ -169,7 +181,7 @@ for (const profile of profiles) {
       assert.equal((await menu(page)).open, false);
     });
 
-    check('the day\'s actions are its menu too: Copy as text waits there until the day is drawn, and Settings is one', async (page) => {
+    check('the day\'s actions are its menu too: Copy as text waits there until the day is drawn; the account follows, and holds Settings', async (page) => {
       await page.addInitScript(() => {
         window.__copied = [];
         Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.__copied.push(text); } } });
@@ -181,16 +193,21 @@ for (const profile of profiles) {
       await settled(page);
       assert.deepEqual(await shown(page, '#today-page-switch button'), [['Chart', false], ['Day', false]]);
       await page.locator('#today-actions-button').click();
-      assert.deepEqual(await shown(page, '#today-actions > button'), [['Copy link', true], ['Copy as text', true], ['Print', true], ['Settings', true], ['Account', true]]);
+      assert.deepEqual(await shown(page, '#today-actions > button'), [['Copy link', true], ['Copy as text', true], ['Print', true]]);
       assert.deepEqual(await page.locator('#today-actions > button').evaluateAll((items) => items.map((item) => item.getAttribute('role'))),
-        ['menuitem', 'menuitem', 'menuitem', 'menuitem', 'menuitem']);
+        ['menuitem', 'menuitem', 'menuitem']);
       await page.keyboard.press('Escape');
       await press(page, '#today-copy-text');
       await page.waitForFunction(() => window.__copied.length === 1);
       assert.match(await page.evaluate(() => window.__copied[0]), /2026/);
       assert.equal(await page.locator('#today-actions').isVisible(), false);
-      await press(page, '#today-settings');
+      // The account, after the menu: its window opens Settings, and the saved charts.
+      await page.locator('#today-account').click();
+      await page.locator('#account-dialog').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#account-charts').isVisible(), true);
+      await page.locator('#account-settings').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
+      assert.equal(await page.evaluate(() => location.hash), '#settings');
     });
 
     check('Settings chooses icons for this browser, at once and after a reload, and words again', async (page) => {
@@ -209,7 +226,7 @@ for (const profile of profiles) {
       assert.deepEqual(await shown(page, '#display-switch button'), [['', true], ['', true], ['', true]]);
       assert.equal(await page.locator('#chart-actions-button').isHidden(), true);
       assert.deepEqual(await menu(page), {
-        expanded: 'false', open: false, role: null, named: null, items: ITEMS.map((id) => `null ${id}`), rules: [null, null],
+        expanded: 'false', open: false, role: null, named: null, items: ITEMS.map((id) => `null ${id}`), rules: [null],
       });
       assert.deepEqual(await shown(page, '#chart-actions > button'), ITEMS.map(() => ['', true]));
       assert.equal(await page.locator('#copy-link-btn').isVisible(), true);
@@ -282,7 +299,7 @@ for (const profile of profiles) {
         assert.equal(await frame.locator('#chart-actions-button').isVisible(), false);
         assert.equal(await frame.locator('#chart-actions').getAttribute('role'), null);
         assert.equal(await frame.locator('#copy-text-btn').getAttribute('role'), null);
-        for (const hidden of ['#copy-link-btn', '#print-btn', '#back-btn', '#new-chart-btn', '#compare-btn', '#chart-settings', '#chart-account']) {
+        for (const hidden of ['#copy-link-btn', '#print-btn', '#back-btn', '#new-chart-btn', '#compare-btn', '#chart-account']) {
           assert.equal(await frame.locator(hidden).isVisible(), false, hidden);
         }
         // In the frame's order: the display, the luck pillar, then Copy as text.
@@ -299,7 +316,7 @@ for (const profile of profiles) {
     }
 
     if (profile.name === 'mobile') {
-      check('on a phone, in words, the bar is two lines: the page and Actions, then the display, the luck pillar and the language', async (page) => {
+      check('on a phone, in words, the bar is two lines: the page, Actions and the account, then the display, the luck pillar and the language', async (page) => {
         await openLink(page, chartLink(), { place: HELSINKI });
         const lines = () => page.evaluate(() => {
           const tops = new Map();
@@ -310,7 +327,7 @@ for (const profile of profiles) {
           }
           return [...tops.entries()].sort((a, b) => a[0] - b[0]).map(([, parts]) => parts);
         });
-        assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch', 'chart-language']]);
+        assert.deepEqual(await lines(), [['page-switch', 'bar-menu', 'chart-account'], ['display-switch', 'luck-switch', 'chart-language']]);
         // The topics: one row under the Day Master's line, within the page, scrolled
         // sideways. Nothing in it widens the page: a phone would zoom out to show it all,
         // so the page's width is the screen's.
@@ -339,7 +356,7 @@ for (const profile of profiles) {
           await settled(page);
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${width}px`);
         }
-        assert.deepEqual(await lines(), [['page-switch', 'bar-menu'], ['display-switch', 'luck-switch'], ['chart-language']]);
+        assert.deepEqual(await lines(), [['page-switch', 'bar-menu', 'chart-account'], ['display-switch', 'luck-switch'], ['chart-language']]);
         assert.deepEqual(await topics(), { tops: 1, below: true, within: true, scrolls: true, page: [320, 320] });
       });
     }

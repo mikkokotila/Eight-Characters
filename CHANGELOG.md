@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.78.0
+
+Settings apart from your people, and one way to each place: the fourth of five changes
+from the 2026-11-27 review of the app's repeated use.
+
+### Changed
+- **The saved charts have a page of their own.** Settings was one page of everything the
+  account keeps: about 3,400px on a phone, the people a visit is about (your chart, the
+  couples, the saved charts) among choices made once (where you are, the schools, the
+  toolbar). They are now two pages of one view: **Saved charts** at `#charts` and
+  **Settings** at `#settings`, each titled by its name. Saved charts opens from the
+  account's window and from the library, whose Settings is now **Manage saved charts**;
+  a birth added or corrected goes back to it. The day's notice for a chart in no couple
+  points at it.
+- **The account has its own button at the end of every bar.** The chart's and the day's
+  Actions held the page's actions with the app's places, Settings and Account. Actions
+  now holds the page's actions alone, and **Account** stands after it, as tall as
+  Actions (its icon on a phone); its window holds Saved charts and Settings, as at the
+  top of the start page and in their own bar. Settings is also among the commands.
+
+### Docs
+- Standard-Settings (two pages), Standard-Toolbar, Standard-Today, Account.
+
 ## 0.77.0
 
 Your people in one list: the third of five changes from the 2026-11-27 review of the

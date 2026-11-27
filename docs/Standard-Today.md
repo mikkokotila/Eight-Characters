@@ -10,12 +10,12 @@ itself is the date, and the time, on the clock at where you are.
 
 **Chart · Day**, in a chart's bar, opens the chart's day: today's date where you are.
 Signed in, each visit to the site's bare address opens the day of your chart, the one
-marked as yours in [Settings](Standard-Settings.md#coming-back).
+marked as yours on the [saved charts' page](Standard-Settings.md#coming-back).
 The switch says Day (Päivä), since the page may show any day; its Today step goes back to
 today. Today is not offered in a comparison's frames, and the Evolution explorer, a page
 of its own, has none.
 
-The day asks for what the account keeps in [Settings](Standard-Settings.md): where you
+The day asks for what the account keeps ([Settings and the saved charts](Standard-Settings.md)): where you
 are, the schools and, when the chart on screen is a saved chart in a couple, the other
 chart of the couple.
 
@@ -46,8 +46,8 @@ From the top:
   chart before its birth); Chart · Day; the day before, Today (where
   you are) and the day after; whose day, when the chart is in a couple, each side by its
   name; With, the partner in view, when it is in several; FI · EN; Actions: Copy link,
-  Copy as text, Print, Settings and Account. Below 640px the actions show as their
-  icons.
+  Copy as text and Print; and the account, whose window holds the saved charts and
+  Settings. Below 640px the actions show as their icons.
 - **The days.** The chosen day in the middle, as the chart's cards: a stem card over
   its branch card, each in its own element's colours, its character with its pinyin,
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's

@@ -1,16 +1,25 @@
-# Settings: what the account keeps
+# Settings and the saved charts: what the account keeps
 
-Settings keep the account's saved charts, which of them is your own, the couples they
-form, where you are, and the schools [Today](Standard-Today.md) follows. Everything
-Settings show comes from the API (`GET /api/account/settings`, `GET /api/schools`),
-but for the toolbar, which this browser keeps.
+The account keeps its saved charts, which of them is your own, the couples they form,
+where you are, and the schools [Today](Standard-Today.md) follows. They are two pages
+of one view:
+- **Saved charts**, at `#charts`: your chart, the couples and the saved charts, the
+  people a visit is about;
+- **Settings**, at `#settings`: where you are, the schools and the toolbar, chosen once
+  and changed seldom.
+
+Everything both show comes from the API (`GET /api/account/settings`,
+`GET /api/schools`), but for the toolbar, which this browser keeps.
 
 ## Opening them
 
-**Settings**, in the account menu, in the chart's and the day's Actions and among the
-commands, opens `#settings`. Signed out, it asks for a sign-in first. Close goes back to
-the page they were opened from, and Account, beside it, opens the account's window. Settings are not offered in a comparison's frames. Each opening reads
-the settings anew, and only the latest one draws them or says why it could not.
+**Saved charts**, in the account's window, and **Manage saved charts**, in the library,
+open `#charts`. **Settings**, in the account's window and among the commands, opens
+`#settings`. Signed out, either asks for a sign-in
+first. The page's title names it, and its Close goes back to the page the first of them
+was opened from; Account, beside it, opens the account's window. Neither is offered in a
+comparison's frames. Each opening reads the settings anew, and only the latest one draws
+them or says why it could not.
 
 ## Saved charts and the library
 
@@ -43,7 +52,7 @@ saved saves nothing more. Someone else's chart is their data:
 save it only with their consent. The library is also among the commands. It is not in
 a comparison's frames.
 
-Settings have three parts for them:
+The saved charts' page has three parts:
 - **Your chart**: the chart marked as yours, with Open and Unmark; a choice from the
   saved charts to mark; and **Add a new birth**, saved as yours. Signed in, each visit
   to the site's bare address opens your chart's day (see below).
@@ -77,8 +86,8 @@ the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or
 `#save?as=correct&chart=<id>`. The form says what it saves, asks for a name, needs a
 gender (it leaves "Not given" out and chooses none for you), and checks the birth as it
 checks a chart's; a birth saved already is said so,
-by the chart's name, and not asked for again. Save keeps it and goes back to Settings,
-and Cancel goes back without saving. **Edit** on a saved chart, in the chart's Actions,
+by the chart's name, and not asked for again. Save keeps it and goes back to the saved
+charts' page, and Cancel goes back without saving. **Edit** on a saved chart, in the chart's Actions,
 opens the same correction at `#save?as=correct&chart=<id>&back=chart`: Save and Cancel
 then go back to the chart, corrected or as it was. A correction keeps the chart's Zi-hour
 convention, and its pass while its day, time and zone are unchanged. With the library

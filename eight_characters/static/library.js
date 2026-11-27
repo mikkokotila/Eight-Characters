@@ -108,11 +108,11 @@
   };
 
   // The classic view's library: the saved charts, the one on screen marked, each opening
-  // its chart; "Save the chart on screen" while it is unsaved; and Settings. It opens
+  // its chart; "Save the chart on screen" while it is unsaved; and Manage, their page. It opens
   // from the heading of each page that shows a chart (`pages`: the chart's, the day's),
   // each button naming the chart on that page; a chart chosen opens on the page the
   // library was opened from, so the day's library opens the chosen chart's day.
-  const create = ({ dialog, pages, translate: t, escape: esc, format, settings, language, onOpen, onSave, onSettings }) => {
+  const create = ({ dialog, pages, translate: t, escape: esc, format, settings, language, onOpen, onSave, onManage }) => {
     const need = (selector) => {
       const node = dialog.querySelector(selector);
       if (!node) throw new Error(`The library is incomplete: ${selector}.`);
@@ -121,7 +121,7 @@
     const list = need('#library-list');
     const status = need('#library-status');
     const saveButton = need('#library-save');
-    const settingsButton = need('#library-settings');
+    const manageButton = need('#library-manage');
     const closeButton = need('#library-close');
     if (!Array.isArray(pages) || pages.length === 0) throw new Error('The library opens from no page.');
     const triggers = pages.map(({ page, button, screenBirth, canSave }) => {
@@ -198,7 +198,7 @@
         if (mine !== opening || !dialog.open) return;
         draw(kept);
         sayName();
-        (list.querySelector('[aria-current="true"]') ?? list.querySelector('button') ?? (saveButton.classList.contains('hidden') ? settingsButton : saveButton)).focus();
+        (list.querySelector('[aria-current="true"]') ?? list.querySelector('button') ?? (saveButton.classList.contains('hidden') ? manageButton : saveButton)).focus();
       } catch (err) {
         if (mine !== opening || !dialog.open) return;
         console.error(err);
@@ -228,9 +228,9 @@
       dialog.close();
       onSave();
     });
-    settingsButton.addEventListener('click', () => {
+    manageButton.addEventListener('click', () => {
       dialog.close();
-      onSettings();
+      onManage();
     });
 
     return {

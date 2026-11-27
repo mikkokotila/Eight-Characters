@@ -37,11 +37,13 @@ use, is set in the account window, and the app follows it.
 
 ## The account window
 
-Signed in, Account opens it: at the top of the start page, in the chart's and the day's
-Actions, in Settings' bar, and among the commands (⌘K or Ctrl+K):
+Signed in, Account opens it: at the top of the start page, at the end of the chart's
+and the day's bars, in the saved charts' and Settings' bar, and among the commands (⌘K
+or Ctrl+K):
 - the address, and the plan (Free);
 - the account's language;
-- Settings;
+- Saved charts and Settings, the account's two pages
+  ([Settings and the saved charts](Standard-Settings.md));
 - Download my data: everything kept for the account, as `eightchord-account.json`;
 - Sign out, here, or on every device; the app then starts again, empty;
 - Delete account, after typing its address again. It cannot be undone.

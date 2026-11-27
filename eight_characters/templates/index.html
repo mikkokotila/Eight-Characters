@@ -173,8 +173,7 @@
           <button type="button" data-chart-lang="en" aria-pressed="false">EN</button>
         </div>
         <!-- The chart's actions: in words, one menu; in icons, a button each (toolbar.js).
-             The day's menu has the same first and last parts: out of the page, then
-             Settings and the account. -->
+             The day's menu begins as this one does, with what leaves the page. -->
         <div class="bar-menu" data-bar-menu>
           <button type="button" class="bar-action bar-menu-button" id="chart-actions-button" aria-haspopup="menu"
             aria-expanded="false" aria-controls="chart-actions"><span data-i18n="actions">Toiminnot</span></button>
@@ -186,11 +185,11 @@
             <button type="button" id="back-btn" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
             <button type="button" id="new-chart-btn" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
             <button type="button" id="compare-btn" class="bar-action" data-i18n="compare">Vertaa</button>
-            <span class="bar-menu-rule"></span>
-            <button type="button" id="chart-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
-            <button type="button" id="chart-account" class="bar-action" data-i18n="account_title">Tili</button>
           </div>
         </div>
+        <!-- The account, at the end of every page's bar: its window holds the saved charts,
+             Settings and the rest (account.js). -->
+        <button type="button" id="chart-account" class="bar-action bar-account" aria-haspopup="dialog" data-i18n="account_title">Tili</button>
       </div>
       <div id="zi-switch" class="zi-switch hidden" role="group" aria-labelledby="zi-switch-note"></div>
       <ul id="chart-notices" class="chart-notices hidden"></ul>
@@ -371,11 +370,10 @@
             <button type="button" id="today-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
             <button type="button" id="today-copy-text" class="bar-action" data-i18n="copy_text">Kopioi tekstinä</button>
             <button type="button" id="today-print" class="bar-action" data-i18n="print">Tulosta</button>
-            <span class="bar-menu-rule"></span>
-            <button type="button" id="today-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
-            <button type="button" id="today-account" class="bar-action" data-i18n="account_title">Tili</button>
           </div>
         </div>
+        <!-- The account, as at the end of the chart's bar. -->
+        <button type="button" id="today-account" class="bar-action bar-account" aria-haspopup="dialog" data-i18n="account_title">Tili</button>
       </div>
     </header>
     <!-- What the page cannot show yet, or says about what it shows. -->
@@ -451,32 +449,34 @@
 <!-- ═══════════════════════════════════════════════════
      VIEW 5 — SETTINGS (hidden initially)
      ═══════════════════════════════════════════════════ -->
-<!-- What the account keeps: its saved charts, your own among them, the couples they
-     form, where you are, and the schools (settings.js). -->
-<div id="settings-view" class="settings-container hidden">
+<!-- What the account keeps (settings.js), in two parts, each a page of its own: the
+     saved charts (#charts: your own among them, the couples they form, the charts), and
+     Settings (#settings: where you are, the schools, the toolbar). -->
+<div id="settings-view" class="settings-container hidden" data-part="settings">
   <header class="compare-bar settings-bar">
-    <h1 class="compare-title" data-i18n="settings_title">Asetukset</h1>
+    <h1 class="compare-title"><span data-part="settings" data-i18n="settings_title">Asetukset</span><span
+      data-part="charts" data-i18n="library_title">Tallennetut kartat</span></h1>
     <div class="compare-tools">
       <!-- The account's own window, as from the chart's and the day's menus. -->
       <button type="button" id="settings-account" class="bar-action" data-i18n="account_title">Tili</button>
-      <button type="button" id="settings-close" class="bar-action" data-i18n="settings_close">Sulje asetukset</button>
+      <button type="button" id="settings-close" class="bar-action" data-i18n="settings_close">Sulje</button>
     </div>
   </header>
   <div class="settings-body">
     <p id="settings-status" class="settings-status hidden" role="status"></p>
-    <section id="settings-mine" class="settings-section" aria-labelledby="settings-mine-title">
+    <section id="settings-mine" class="settings-section" data-part="charts" aria-labelledby="settings-mine-title">
       <h2 id="settings-mine-title" class="settings-heading" data-i18n="settings_mine">Oma karttasi</h2>
       <div id="settings-mine-body" class="settings-library"></div>
     </section>
-    <section id="settings-couples" class="settings-section" aria-labelledby="settings-couples-title">
+    <section id="settings-couples" class="settings-section" data-part="charts" aria-labelledby="settings-couples-title">
       <h2 id="settings-couples-title" class="settings-heading" data-i18n="settings_couples">Parit</h2>
       <div id="settings-couples-body" class="settings-library"></div>
     </section>
-    <section id="settings-charts" class="settings-section" aria-labelledby="settings-charts-title">
+    <section id="settings-charts" class="settings-section" data-part="charts" aria-labelledby="settings-charts-title">
       <h2 id="settings-charts-title" class="settings-heading" data-i18n="settings_charts">Tallennetut kartat</h2>
       <div id="settings-charts-body" class="settings-library"></div>
     </section>
-    <section id="settings-place" class="settings-section" aria-labelledby="settings-place-title">
+    <section id="settings-place" class="settings-section" data-part="settings" aria-labelledby="settings-place-title">
       <h2 id="settings-place-title" class="settings-heading" data-i18n="settings_place">Missä olet</h2>
       <p id="settings-place-now" class="settings-note"></p>
       <form id="settings-place-form" class="settings-place-form" novalidate>
@@ -497,13 +497,13 @@
         </div>
       </form>
     </section>
-    <section id="settings-schools" class="settings-section" aria-labelledby="settings-schools-title">
+    <section id="settings-schools" class="settings-section" data-part="settings" aria-labelledby="settings-schools-title">
       <h2 id="settings-schools-title" class="settings-heading" data-i18n="settings_schools">Koulukunnat</h2>
       <p class="settings-note" data-i18n="settings_schools_note"></p>
       <div id="settings-schools-body" class="settings-schools"></div>
     </section>
     <!-- How the bar shows its switches and actions: this browser's own (toolbar.js). -->
-    <section id="settings-toolbar" class="settings-section" aria-labelledby="settings-toolbar-title">
+    <section id="settings-toolbar" class="settings-section" data-part="settings" aria-labelledby="settings-toolbar-title">
       <h2 id="settings-toolbar-title" class="settings-heading" data-i18n="settings_toolbar">Työkalurivi</h2>
       <p class="settings-note" data-i18n="settings_toolbar_note"></p>
       <fieldset class="settings-school" id="settings-toolbar-choice">
@@ -623,7 +623,7 @@
   <p id="palette-empty" class="palette-empty hidden" data-i18n="palette_empty">Ei komentoa</p>
 </dialog>
 
-<!-- The saved charts, from the chart's heading (library.js). -->
+<!-- The saved charts, from the chart's heading and the day's (library.js): Manage opens their page. -->
 <dialog id="library-dialog" class="chart-dialog library-dialog" aria-labelledby="library-title">
   <div class="chart-dialog-bar">
     <h2 id="library-title" class="chart-dialog-title" data-i18n="library_title">Tallennetut kartat</h2>
@@ -633,7 +633,7 @@
   <ul id="library-list" class="library-list"></ul>
   <div class="account-actions">
     <button type="button" id="library-save" class="bar-action hidden" data-i18n="library_save">Tallenna tämä kartta</button>
-    <button type="button" id="library-settings" class="bar-action" data-i18n="library_settings">Asetukset</button>
+    <button type="button" id="library-manage" class="bar-action" data-i18n="library_manage">Hallitse tallennettuja karttoja</button>
   </div>
 </dialog>
 
@@ -735,6 +735,7 @@
     </div>
     <div class="account-actions">
       <button type="button" id="account-billing-open" class="bar-action" hidden aria-expanded="false" aria-controls="account-billing" data-i18n="billing_open">Plan</button>
+      <button type="button" id="account-charts" class="bar-action" data-i18n="library_title">Tallennetut kartat</button>
       <button type="button" id="account-settings" class="bar-action" data-i18n="settings_open">Asetukset</button>
       <button type="button" id="account-export" class="bar-action" data-i18n="account_export">Lataa tietoni</button>
       <button type="button" id="account-sign-out" class="bar-action" data-i18n="account_sign_out">Kirjaudu ulos</button>

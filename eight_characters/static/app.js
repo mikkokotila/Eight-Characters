@@ -1990,13 +1990,18 @@ document.addEventListener('DOMContentLoaded', () => {
     },
   });
 
-  // Settings: what the account keeps for a chart's day (settings.js), at #settings. Close
-  // goes back to the page Settings was opened from, or to the form.
+  // What the account keeps (settings.js), on two pages of one view: the saved charts at
+  // #charts (your chart, the couples, the charts), and Settings at #settings (where you
+  // are, the schools, the toolbar). Close goes back to the page either was opened from,
+  // or to the form.
   const SETTINGS_ROUTE = '#settings';
+  const CHARTS_ROUTE = '#charts';
+  const PARTS = { [SETTINGS_ROUTE]: 'settings', [CHARTS_ROUTE]: 'charts' };
   const settingsView = document.getElementById('settings-view');
   const accountSettingsBtn = document.getElementById('account-settings');
+  const accountChartsBtn = document.getElementById('account-charts');
   const accountDialog = document.getElementById('account-dialog');
-  if (!settingsView || !accountSettingsBtn || !accountDialog) throw new Error('Settings are incomplete.');
+  if (!settingsView || !accountSettingsBtn || !accountChartsBtn || !accountDialog) throw new Error('Settings are incomplete.');
   let settingsReturn = null;
   const settingsPage = window.EC_SETTINGS.create({
     view: settingsView,
@@ -2023,14 +2028,21 @@ document.addEventListener('DOMContentLoaded', () => {
     onChanged: () => library.sayName(),
     toast: (text, isError) => showToast(text, isError),
   });
-  const openSettings = () => {
-    if (location.hash !== SETTINGS_ROUTE) settingsReturn = `${formAddress()}${location.hash}`;
-    history.pushState(null, '', `${formAddress()}${SETTINGS_ROUTE}`);
+  // Opens Settings (`route` SETTINGS_ROUTE) or the saved charts (CHARTS_ROUTE); from one
+  // to the other, Close still goes back to the page the first was opened from.
+  const openSettings = (route = SETTINGS_ROUTE) => {
+    if (!Object.hasOwn(PARTS, route)) throw new Error(`No such page: ${route}.`);
+    if (!Object.hasOwn(PARTS, location.hash)) settingsReturn = `${formAddress()}${location.hash}`;
+    history.pushState(null, '', `${formAddress()}${route}`);
     followAddress();
   };
   accountSettingsBtn.addEventListener('click', () => {
     accountDialog.close();
-    openSettings();
+    openSettings(SETTINGS_ROUTE);
+  });
+  accountChartsBtn.addEventListener('click', () => {
+    accountDialog.close();
+    openSettings(CHARTS_ROUTE);
   });
 
   // Today: the chart's day (today.js), at #today? with the chart's link parts, the day
@@ -2089,7 +2101,8 @@ document.addEventListener('DOMContentLoaded', () => {
       await followAddress();
       if (!chartView.classList.contains('hidden')) pageSwitch.querySelector('[data-page="chart"]').focus();
     },
-    onSettings: () => openSettings(),
+    onSettings: () => openSettings(SETTINGS_ROUTE),
+    onCharts: () => openSettings(CHARTS_ROUTE),
     onEdit: (params) => goToChart(params),
     onLanguage: (lang) => {
       currentLanguage = i18n.setLanguage(lang);
@@ -2369,7 +2382,7 @@ document.addEventListener('DOMContentLoaded', () => {
       followAddress();
     },
     onSave: () => openSaveChart(),
-    onSettings: () => openSettings(),
+    onManage: () => openSettings(CHARTS_ROUTE),
   });
 
   // A birth added or corrected from Settings: #save?as=mine, #save?as=partner&with=<a
@@ -2449,7 +2462,7 @@ document.addEventListener('DOMContentLoaded', () => {
       setFormGender(correcting.gender);
       pickPlace({ ...correcting.place, display: correcting.place.name });
     }
-    document.title = requiredTranslation('settings_page_title');
+    document.title = requiredTranslation('charts_page_title');
     (correcting === null ? saveNameInput : dateInput).focus();
   };
   const stopSaving = () => {
@@ -2467,16 +2480,16 @@ document.addEventListener('DOMContentLoaded', () => {
     noGenderOption.hidden = false;
     if (formGender() === null) noGender.checked = true;
   };
-  const backToSettings = (method) => {
+  const backToCharts = (method) => {
     stopSaving();
-    history[method](null, '', `${formAddress()}${SETTINGS_ROUTE}`);
+    history[method](null, '', `${formAddress()}${CHARTS_ROUTE}`);
     followAddress();
   };
   // Done or cancelled, the form goes back where it came from: the corrected chart when the
-  // chart's Edit began the correction, Settings otherwise.
+  // chart's Edit began the correction, the saved charts' page otherwise.
   const leaveSaving = (mode, method) => {
     if (mode.back !== 'chart') {
-      backToSettings(method);
+      backToCharts(method);
       return;
     }
     const chart = window.EC_LIBRARY.chartWith(settingsPage.current(), mode.chart);
@@ -2730,13 +2743,14 @@ document.addEventListener('DOMContentLoaded', () => {
       today.show(next);
       return;
     }
-    if (location.hash === SETTINGS_ROUTE) {
-      // Settings are the account's: a session that ended since the page was served asks
-      // for a sign-in first.
+    if (Object.hasOwn(PARTS, location.hash)) {
+      // Settings and the saved charts are the account's: a session that ended since the
+      // page was served asks for a sign-in first.
+      const part = PARTS[location.hash];
       askForChart();
       leaveChart();
       inputView.classList.add('hidden');
-      document.title = requiredTranslation('settings_page_title');
+      document.title = requiredTranslation(part === 'charts' ? 'charts_page_title' : 'settings_page_title');
       try {
         const holds = await account.stillSignedIn(() => arrival === arrivals);
         if (arrival !== arrivals) return;
@@ -2750,7 +2764,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
       if (arrival !== arrivals) return;
-      await settingsPage.show();
+      await settingsPage.show('', part);
       return;
     }
     if (location.hash.startsWith(COMPARE_ROUTE)) {
@@ -2978,14 +2992,13 @@ document.addEventListener('DOMContentLoaded', () => {
       showToast(requiredTranslation('text_copy_error'), true);
     }
   });
-  // Print, Settings and the account, as the day's menu has them: the page's own print,
-  // whose stylesheet prints the chart and its open topic.
+  // Print, as the day's menu has it: the page's own print, whose stylesheet prints the
+  // chart and its open topic. The account, at the end of the bar, opens its window, which
+  // holds the saved charts and Settings.
   const printBtn = document.getElementById('print-btn');
-  const chartSettingsBtn = document.getElementById('chart-settings');
   const chartAccountBtn = document.getElementById('chart-account');
-  if (!printBtn || !chartSettingsBtn || !chartAccountBtn) throw new Error('Chart bar is incomplete.');
+  if (!printBtn || !chartAccountBtn) throw new Error('Chart bar is incomplete.');
   printBtn.addEventListener('click', () => window.print());
-  chartSettingsBtn.addEventListener('click', () => openSettings());
   chartAccountBtn.addEventListener('click', () => account.open());
 
   // ── The keys, and the commands ──

@@ -170,8 +170,12 @@ async function eachView(page, visit) {
   await page.waitForFunction(() => !document.getElementById('today-view').hasAttribute('aria-busy'));
   await settled(page);
   await visit('Today');
-  await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
+  await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
   await page.locator('#settings-charts .saved-glyph').first().waitFor();
+  await settled(page);
+  await visit('Saved charts');
+  await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
+  await page.locator('#settings-schools-body .settings-school').first().waitFor();
   await settled(page);
   await visit('Settings');
 }

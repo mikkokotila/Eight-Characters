@@ -34,10 +34,10 @@ const ROWS = [16, 20];
 // Each control's height, on a desktop and on a phone.
 const CONTROLS = {
   '.segmented > button': [36, 44],
-  '.bar-action:not(.bar-menu-button)': [36, 44],
-  // In the toolbar's words the Actions menu's button stands as tall as the switches'
-  // pills beside it.
-  '.bar-menu-button': [46, 54],
+  ':root[data-toolbar="icons"] .bar-action, :root[data-toolbar="words"] .bar-action:not(.bar-menu-button, .bar-account)': [36, 44],
+  // In the toolbar's words the Actions menu's button, and the account after it, stand as
+  // tall as the switches' pills beside them.
+  ':root[data-toolbar="words"] :is(.bar-menu-button, .bar-account)': [46, 54],
   '.topic-button, .chart-topics .context-toggle': [36, 44],
   '.panel-close': [36, 44],
   '.canon-link': [36, 44],
@@ -157,6 +157,10 @@ async function eachView(page, visit) {
   await page.locator('#today-partner-choice:not(.hidden)').waitFor();
   await settled(page);
   await visit('Today, for a chart in two couples');
+  await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
+  await page.locator('#settings-charts-body .saved-card').first().waitFor();
+  await settled(page);
+  await visit('Saved charts');
   await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);
   await page.locator('#settings-schools-body .settings-school').first().waitFor();
   await settled(page);
