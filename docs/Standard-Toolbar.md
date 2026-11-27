@@ -12,15 +12,16 @@ Every switch says what it does, and the actions gather in one menu.
 - **The topics** under the chart's name keep their icons and say their names: Roots,
   Roles and Relationships, each with its count (Roots 3, Relationships 3). The season
   already said its month.
-- **Actions** is one button at the bar's end. It opens a menu of the chart's actions:
-  Copy link and Copy as text, then Edit, New chart and Compare. The day's menu holds
-  Copy link, Copy as text and Print, then Settings. Each item has its icon and its
-  words, and needs no tooltip.
+- **Actions** is one button at the bar's end. Both menus begin and end alike: Copy
+  link, Copy as text and Print; then Settings and Account. Between them the chart's menu
+  holds Edit, New chart and Compare. Each item has its icon and its words, and needs no
+  tooltip. Settings' own bar opens the account too.
 - **A comparison** keeps its own actions in its bar, each with an icon and its words:
   Swap sides, Copy link and Close comparison. Its two charts keep their display and
   Copy as text in their own bars, without a menu.
-- The day's steps (the day before, today, the day after) and the luck ribbon's keep
-  their arrows and their calendar: they move through dates, and say so.
+- The day's steps (the day before, the day after) and the luck ribbon's keep their
+  arrows, and the ribbon its calendar: they move through dates, and say so. The day's
+  Today, a jump rather than a step, says its word beside its calendar.
 
 On a phone the chart's bar is three lines: the page and Actions; the display across the
 width; the luck pillar and the language. The day's bar is two.

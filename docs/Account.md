@@ -30,11 +30,12 @@ use, is set in the account window, and the app follows it.
 
 ## The account window
 
-Signed in, Account at the top of the start page (or Account among the commands, ⌘K or
-Ctrl+K, on a chart) opens it:
+Signed in, Account opens it: at the top of the start page, in the chart's and the day's
+Actions, in Settings' bar, and among the commands (⌘K or Ctrl+K):
 - the address, and the plan (Free);
 - the account's language;
-- Download my data: everything kept for the account, as `bazi-account.json`;
+- Settings;
+- Download my data: everything kept for the account, as `eight-chord-account.json`;
 - Sign out, here, or on every device; the app then starts again, empty;
 - Delete account, after typing its address again. It cannot be undone.
 

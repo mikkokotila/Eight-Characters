@@ -47,7 +47,8 @@ birth in the body of its request, as it does when the form is used.
 
 ## History
 
-- Creating a chart, opening another topic, Edit and New chart each add a history
+- Creating a chart, opening another topic, Edit (a saved chart's correction, at
+  `#save?as=correct&chart=<id>&back=chart`) and New chart each add a history
   entry, and Back and Forward step through them. Back from a chart returns to the
   form, with the chart's birth in it. A chart made again from that form keeps the
   chart's Zi-hour convention, and its pass of a repeated hour while its day, time and

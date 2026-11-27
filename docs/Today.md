@@ -328,7 +328,9 @@ element. The hour stems are not weighed.
   brings (its stem, and the hidden stems of its branch), each with the canon's sentence
   on what it is.
 - **Health.** The elements the day brings, each counted as in the pull but without
-  its weight; how much of each your chart holds, as its share of the birth tally; and
+  its weight (`today`), and as its share of all the day brings, in percent
+  (`today_share`); how much of each your chart holds, as its share of the birth tally
+  (`chart_share`), so that the two shares read side by side; and
   each element's organs in the canon's own words (Background): Wood the liver, Fire the
   heart, Earth the spleen and stomach, Metal the lungs, Water the kidneys. This is not
   medical advice, and the page says so.

@@ -8,13 +8,19 @@ itself is the date, and the time, on the clock at where you are.
 
 ## Opening it
 
-**Chart · Today**, in a chart's bar, opens the chart's day: today's date where you are.
-The chart needs a gender, since the day reads its luck pillars. Today is not offered in
-a comparison's frames, and the Evolution explorer, a page of its own, has none.
+**Chart · Day**, in a chart's bar, opens the chart's day: today's date where you are.
+The switch says Day (Päivä), since the page may show any day; its Today step goes back to
+today. Today is not offered in a comparison's frames, and the Evolution explorer, a page
+of its own, has none.
 
 The day asks for what the account keeps in [Settings](Standard-Settings.md): where you
 are, the schools and, when the chart on screen is a saved chart in a couple, the other
-chart of the couple. Without a gender, Today leads back to the chart.
+chart of the couple.
+
+The day reads the chart's luck pillars, which run by the birth's gender. A chart without
+one is asked for it there, as a missing place is: "Female or male?", why it asks, and the
+two choices. The choice goes into the chart's link (Edit changes it), and the day opens;
+the start page's hint says the day needs it too.
 
 Without a place, the day asks for it there, in the room it will take: "Where are you
 today?", why it asks (the day is read on your calendar's date, its twelve double hours
@@ -30,10 +36,13 @@ at any time.
 
 From the top:
 
-- **The bar:** the date, the chart and where you are; Chart · Today; the day before,
-  Today (where you are) and the day after; whose day, when the chart is in a couple;
-  With, the partner in view, when it is in several; FI · EN; Copy link; Copy as text;
-  Print; Settings. Below 640px the actions show as their icons.
+- **The bar:** the date (in Finnish the day's own name, capitalised: "Sunnuntai 11.
+  lokakuuta 2026"); the chart, by its saved name when it has one ("Aino · 14. elokuuta
+  1975 · 7.45 · Helsinki"), and where you are; Chart · Day; the day before, Today (where
+  you are) and the day after; whose day, when the chart is in a couple, each side by its
+  name; With, the partner in view, when it is in several; FI · EN; Actions: Copy link,
+  Copy as text, Print, Settings and Account. Below 640px the actions show as their
+  icons.
 - **The days.** The chosen day in the middle, as the chart's cards: a stem card over
   its branch card, each in its own element's colours, its character with its pinyin,
   its lines (the stem's trigram, the branch's hexagram) and its name (the stem's
@@ -73,7 +82,9 @@ From the top:
   both on one neutral scale (each chart's elements are its own), and whether the day
   pulls them apart, as the API says. The chart read comes first, so the sides turn
   around under the partner's day.
-- **In your chart:** the relationships the four form with the chart, each with the
+- **In your chart** (when the chart on screen is yours; else "In the chart: Aino", or
+  "In this chart" for one not saved by name): the relationships the four form with the
+  chart, each with the
   canon's line in English, and the pillars it joins: the day's own for its member of
   this day, month, year or luck pillar, and the chart's own for its members in the
   chart (the partner's under the partner's day), each named, the member outlined on its
@@ -97,7 +108,9 @@ pillar and in the same lines: a key in the app's words ("Its stem · Hurting Off
 never the canon's persona), the passage's first sentence beside it, and the rest opening
 beneath; then each relationship the pillar forms, as its entry reads, and what each
 kind of them is. Each pillar's lines open apart from the others'. A pillar's own page,
-opened from its card, gives the same for that pillar alone. Health says it reads the
+opened from its card, gives the same for that pillar alone. Health gives each element's
+share of what the day brings beside its share of the chart, both as percentages, written
+as the language writes them (65.8% in English, 65,8 % in Finnish); it says it reads the
 day's elements, not the body: it is not health advice.
 
 ## Moving through the days
@@ -149,7 +162,8 @@ distance, never through the days between. With reduced motion, the days change i
 ## A partner's day
 
 When the chart on screen is a saved chart in a couple, the bar names its partner in
-view beside This chart. A chart can be in several couples: then **With** chooses the
+view beside this chart, each by its name (This chart for one not named). A chart can be
+in several couples: then **With** chooses the
 partner in view among its partners, in the order the couples were formed, an unnamed
 one by its birth and one that no longer charts shown but not chosen. Without a partner
 in the address, the first couple's partner is in view, and the page writes it into the
@@ -159,8 +173,10 @@ on the partner's side turns to the chosen partner's side.
 The partner's day turns the whole page to the partner's chart, counted at where you
 are, and the page says so. Opening a partner's chart opens its own Today, which reads
 its own first couple unless its address names one. Marriage, the couple, In your chart,
-Copy as text and Print read the couple in view: each pull, whether the day pulls you
-apart, the day at the spouse palace, and the day's relationships with the other chart.
+Copy as text and Print read the couple in view: each pull, whether the day pulls them
+apart (said to you, "pulls you apart", only when one of the two is yours; otherwise "pulls
+the couple apart"), the day at the spouse palace, and the day's relationships with the
+other chart.
 A chart that is not saved, or not in a couple, has no partner side.
 
 A chart the address names that is not one of this chart's partners in your account (one
