@@ -771,7 +771,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       if (problem === null) {
         showToast(done, false);
-        backToSettings('replaceState');
+        leaveSaving(mode, 'replaceState');
       } else {
         setFormError(problem);
         // Refused, the settings may have been read again: the next save is made from them.
@@ -861,8 +861,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Edit keeps the birth, so another chart for it only needs what changed. Both steps
   // back to the form are history entries: Back returns to the chart.
+  // Edit: a saved chart is corrected where it is kept, as Settings' Correct the birth
+  // does, and comes back on screen corrected; any other chart's birth goes back to the
+  // form, to be made anew.
   backBtn.addEventListener('click', () => {
+    const saved = library.onScreen();
     leaveChart();
+    if (saved) {
+      history.pushState(null, '', `${formAddress()}${SAVE_ROUTE}${new URLSearchParams({ as: 'correct', chart: saved.id, back: 'chart' })}`);
+      followAddress();
+      return;
+    }
     addressForm('pushState');
   });
 
@@ -2025,7 +2034,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const readSaveLink = (hash) => {
     const params = new URLSearchParams(hash.slice(SAVE_ROUTE.length));
     const as = params.get('as');
-    const wanted = { mine: ['as'], partner: ['as', 'with'], correct: ['as', 'chart'] }[as];
+    // A correction begun from the chart's Edit goes back to the chart (back=chart).
+    const wanted = { mine: ['as'], partner: ['as', 'with'], correct: ['as', 'chart', 'back'] }[as];
     if (!wanted) throw linkError(as === null ? 'missing' : 'invalid', 'as');
     for (const key of new Set(params.keys())) {
       if (!wanted.includes(key)) throw linkError('unknown', key);
@@ -2037,7 +2047,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!/^[0-9a-f]{32}$/.test(value)) throw linkError('invalid', key);
       return value;
     };
-    return { as, with: as === 'partner' ? id('with') : null, chart: as === 'correct' ? id('chart') : null };
+    const back = params.get('back');
+    if (back !== null && back !== 'chart') throw linkError('invalid', 'back');
+    return { as, with: as === 'partner' ? id('with') : null, chart: as === 'correct' ? id('chart') : null, back };
   };
   // What the form saves, with the basis of the settings it read; null when it draws.
   let saving = null;
@@ -2099,7 +2111,20 @@ document.addEventListener('DOMContentLoaded', () => {
     history[method](null, '', `${formAddress()}${SETTINGS_ROUTE}`);
     followAddress();
   };
-  saveCancel.addEventListener('click', () => backToSettings('replaceState'));
+  // Done or cancelled, the form goes back where it came from: the corrected chart when the
+  // chart's Edit began the correction, Settings otherwise.
+  const leaveSaving = (mode, method) => {
+    if (mode.back !== 'chart') {
+      backToSettings(method);
+      return;
+    }
+    const chart = window.EC_LIBRARY.chartWith(settingsPage.current(), mode.chart);
+    if (chart === null) throw new Error(requiredTranslation('save_chart_gone'));
+    stopSaving();
+    history[method](null, '', `${formAddress()}${CHART_ROUTE}${window.EC_LIBRARY.chartParams(chart, currentLanguage)}`);
+    followAddress();
+  };
+  saveCancel.addEventListener('click', () => leaveSaving(saving, 'replaceState'));
   // The form's birth, kept as the mode says: null once kept, or why not.
   const saveBirth = async (mode, request, place) => {
     const name = saveNameInput.value.trim();
