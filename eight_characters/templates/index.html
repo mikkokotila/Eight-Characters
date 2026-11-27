@@ -76,6 +76,9 @@
       <div class="field-group">
         <label for="time" data-i18n="label_time">Kellonaika</label>
         <input type="time" id="time" name="time" aria-describedby="time-status" required>
+        <!-- Without the time, the chart is what the date and place settle (first.js): a
+             choice that stays pressed, as the page's other choices do. -->
+        <button type="button" id="time-unknown" class="time-unknown" aria-pressed="false" aria-controls="time" data-i18n="time_unknown">Aika ei tiedossa</button>
         <div id="time-status" class="field-status" aria-live="polite"></div>
       </div>
       <div class="field-group location-group">
@@ -255,6 +258,37 @@
 <!-- ═══════════════════════════════════════════════════
      VIEW 3 — TWO CHARTS SIDE BY SIDE (hidden initially)
      ═══════════════════════════════════════════════════ -->
+<!-- ═══════════════════════════════════════════════════
+     THE FIRST CHART — what a birth settles without an account, or without its time
+     (first.js; docs/Standard-First-Chart.md)
+     ═══════════════════════════════════════════════════ -->
+<div id="first-view" class="chart-container first-view hidden">
+  <div class="chart-column">
+    <header class="chart-bar">
+      <div class="chart-identity">
+        <h1 class="name" id="first-birth"></h1>
+        <p class="solar-time" id="first-lead"></p>
+      </div>
+      <div class="chart-tools first-tools">
+        <button type="button" id="first-edit" class="bar-action" data-i18n="edit_chart">Muokkaa</button>
+        <button type="button" id="first-new" class="bar-action" data-i18n="new_chart">Uusi kartta</button>
+      </div>
+    </header>
+    <div class="first-pillars" id="first-pillars" role="group" aria-labelledby="first-birth"></div>
+    <ul id="first-changes" class="chart-notices first-changes hidden"></ul>
+    <section id="first-day-master" class="first-day-master" aria-labelledby="first-day-master-title">
+      <h2 id="first-day-master-title" class="day-master-line"></h2>
+      <p id="first-day-master-note" class="first-day-master-note hidden"></p>
+      <div id="first-passage" class="first-passage"></div>
+    </section>
+    <!-- To a visitor: the whole chart, with a free account (and, without it, the time). -->
+    <div id="first-offer" class="first-offer hidden">
+      <p id="first-offer-text"></p>
+      <button type="button" id="first-account" class="submit-btn" data-i18n="first_account">Luo maksuton tilini</button>
+    </div>
+  </div>
+</div>
+
 <div id="compare-view" class="compare-container hidden">
   <header class="compare-bar">
     <h1 class="compare-title" data-i18n="compare_title">Vertailu</h1>
@@ -741,6 +775,7 @@
 <script src="/static/account.js?v={{ app_version }}"></script>
 <script src="/static/place-search.js?v={{ app_version }}"></script>
 <script src="/static/today.js?v={{ app_version }}"></script>
+<script src="/static/first.js?v={{ app_version }}"></script>
 <script src="/static/library.js?v={{ app_version }}"></script>
 <script src="/static/settings.js?v={{ app_version }}"></script>
 <script src="/static/app.js?v={{ app_version }}"></script>

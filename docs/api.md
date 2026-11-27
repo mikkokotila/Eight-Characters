@@ -416,6 +416,12 @@ Request: a `date`, alone, with its `location`, or with its `location` and `time`
   `timezone`, `latitude` and `longitude`, and `fold` (`0` or `1`) for a time the clocks
   repeat. A time the clocks skipped, or repeated when no `fold` is given, is refused
   with `400`, saying which.
+- `conventions` (optional): `{"zi_convention": "whole_zi_23"}` reads the Zi hour whole,
+  as a chart's link may name it: the day changes at 23:00 true solar time, not at
+  midnight (`split_midnight`, the default). In Chengdu on 4 February 1988, 00:30 on the
+  clock (23:13 true solar time) is the day 戊子 by midnight and 己丑 with the whole Zi
+  hour, and the hour 壬子 or 甲子; without a time, the day changes at 01:17:31 or at
+  00:17:31. Any other convention, or another field in it, is refused with `400`.
 
 Nothing else is taken: an unknown field, a string where a number belongs, a coordinate
 that is not finite or is out of range, or a `fold` other than `0` or `1` is refused with

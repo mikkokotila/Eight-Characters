@@ -10,8 +10,8 @@ import {
 } from './chart-helpers.mjs';
 import { newAddress, readMail, newAccount, asAccount, signInPage, turnstileAnswered } from './account-helpers.mjs';
 import {
-  BIRTH, link, visit, chartsAskedFor, askForChart, dialogIsOpen, dialogOpens, dialogCloses, text, sendCode, enterCode,
-  signInThroughDialog,
+  BIRTH, link, visit, chartsAskedFor, askForChart, askFromFirstChart, dialogIsOpen, dialogOpens, dialogCloses, text,
+  sendCode, enterCode, signInThroughDialog,
 } from './account-page.mjs';
 
 const baseURL = process.env.EC_BASE_URL;
@@ -144,19 +144,22 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#account-language').isVisible(), true);
     });
 
-    check('closing the dialog asks for no chart, and the form says why', async (page) => {
+    check('closing the dialog asks for no chart, and leaves the first chart as it was', async (page) => {
       const asked = chartsAskedFor(page);
       await visit(page);
       await askForChart(page);
       await dialogOpens(page);
       await page.keyboard.press('Escape');
-      await page.locator('#form-error').waitFor({ state: 'visible' });
-      assert.equal(await text(page, '#form-error'), 'Sign in to see charts.');
+      await dialogCloses(page);
+      assert.equal(await page.locator('#first-view').isVisible(), true);
+      assert.equal(await page.locator('#form-error').isVisible(), false);
       assert.deepEqual(asked, []);
-      assert.equal(await text(page, '#create-chart-btn'), 'Create chart');
-      // The birth stays, to try again.
+      // The birth stays, in Edit's form, to try again.
+      await page.locator('#first-edit').click();
       assert.equal(await page.locator('#date').inputValue(), BIRTH.date);
+      assert.equal(await text(page, '#create-chart-btn'), 'Create chart');
       await page.locator('#create-chart-btn').click();
+      await askFromFirstChart(page);
       await dialogOpens(page);
     });
 
@@ -232,7 +235,7 @@ for (const profile of profiles) {
       assert.equal(await statusOf(account), 401);
     });
 
-    check('going back to a chart after signing out shows no chart, and asks for a sign-in', async (page) => {
+    check('going back to a chart after signing out shows only its first chart, whose offer asks for a sign-in', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'back-out' });
       await signInPage(page, account);
       await visit(page, { lang: 'en' });
@@ -248,10 +251,14 @@ for (const profile of profiles) {
       await page.locator('#account-notice').filter({ hasText: 'You are signed out.' }).waitFor();
       await page.locator('#account-dialog [data-close-dialog]').click();
       await dialogCloses(page);
-      // Back to the chart's address: the chart is asked for, which needs a sign-in.
+      // Back to the chart's address: without an account, its first chart, whose offer
+      // asks for the sign-in the whole chart needs.
       await page.goBack();
-      await dialogOpens(page);
+      await page.locator('#first-view:not(.hidden):not([aria-busy])').waitFor();
       assert.equal(await page.locator('#chart-view').isVisible(), false);
+      assert.equal(await page.locator('#first-offer').isVisible(), true);
+      await askFromFirstChart(page);
+      await dialogOpens(page);
     });
 
     check("a chart on screen is asked for again in the language set in the account's menu", async (page) => {
@@ -382,9 +389,10 @@ for (const profile of profiles) {
       assert.equal(await statusOf(account), 401);
     });
 
-    check('a chart link opened without an account asks for one, then shows its chart', async (page) => {
+    check('a chart link opened without an account shows its first chart, whose offer asks for one, then the whole chart', async (page) => {
       const account = await newAccount(playwright, { language: 'en', label: 'link' });
       await visit(page, { lang: 'en', address: `#chart?${link(BIRTH.date, BIRTH.time, 'en')}&topic=season` });
+      await askFromFirstChart(page);
       await dialogOpens(page);
       await signInThroughDialog(page, account.email);
       await page.locator('#chart-view').waitFor({ state: 'visible' });

@@ -2,11 +2,13 @@
 
 Charts need an account. It is free, and needs no password: a code sent to your email
 signs you in. The start page needs none: anyone can open it, choose its language and
-type a birth.
+type a birth. Without an account, a birth, or a chart's link, opens its
+[first chart](Standard-First-Chart.md): its four pillars and its Day Master, with the
+offer of the whole chart.
 
 ## Creating an account
 
-Create chart, while signed out, opens the account window to create a free account.
+Create my free account, on the first chart, opens the account window to create one.
 (Sign in, at the top of the start page, opens it to sign in; "No account yet? Create a
 free one" turns it to creating one.)
 - Type your email address and choose the account's language, Finnish or English.

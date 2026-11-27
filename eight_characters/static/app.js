@@ -240,12 +240,30 @@ document.addEventListener('DOMContentLoaded', () => {
       : year < supportedYears[0] || year > supportedYears[1]
         ? t('date_out_of_range', { min: supportedYears[0], max: supportedYears[1] })
         : '');
-    flag(timeInput, timeStatus, timeInput.value ? '' : t('need_time'));
+    flag(timeInput, timeStatus, timeInput.value || isTimeUnknown() ? '' : t('need_time'));
     return firstInvalid;
   };
 
   dateInput.addEventListener('input', () => setFieldError(dateInput, dateStatus, ''));
   timeInput.addEventListener('input', () => setFieldError(timeInput, timeStatus, ''));
+
+  // Time unknown: the time field stands aside, and the chart is the first chart's, what
+  // the date and place settle (first.js). A birth saved or compared needs its time, so
+  // the choice is offered on the plain form alone.
+  const timeUnknown = document.getElementById('time-unknown');
+  if (!timeUnknown) throw new Error('The birth form is incomplete.');
+  const isTimeUnknown = () => timeUnknown.getAttribute('aria-pressed') === 'true';
+  const setTimeUnknown = (unknown) => {
+    timeUnknown.setAttribute('aria-pressed', String(unknown));
+    timeInput.disabled = unknown;
+    if (unknown) timeInput.value = '';
+    setFieldError(timeInput, timeStatus, '');
+  };
+  timeUnknown.addEventListener('click', () => setTimeUnknown(!isTimeUnknown()));
+  const offerTimeUnknown = (offered) => {
+    timeUnknown.classList.toggle('hidden', !offered);
+    if (!offered) setTimeUnknown(false);
+  };
 
   // Failures that belong to no single field: the chart request itself, or its evidence.
   const setFormError = (text) => {
@@ -713,6 +731,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // A form begun anew holds no chart's birth.
   form.addEventListener('reset', () => {
     formChart = null;
+    // A form begun anew has its time field back.
+    setTimeUnknown(false);
   });
 
   form.addEventListener('submit', async (e) => {
@@ -788,9 +808,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    // Without the time, or without an account, the birth opens as the first chart, what
+    // it settles (first.js), at the chart's own address.
+    if (isTimeUnknown() || (!embedded && !account.signedIn())) {
+      const params = linkParams(request, resolvedLocation);
+      if (isTimeUnknown()) {
+        params.set('time', 'unknown');
+        params.delete('zi');
+        params.delete('fold');
+      }
+      history.pushState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
+      await followAddress();
+      // It opens at its top, wherever the form was scrolled to.
+      if (!document.getElementById('first-view').classList.contains('hidden')) scrollTo(0, 0);
+      return;
+    }
+
     setPending(true);
     try {
-      if (await showChart(request, resolvedLocation)) addressChart('pushState');
+      // A chart made from the form opens at its top, wherever the form was scrolled to:
+      // a phone's form runs past the screen.
+      if (await showChart(request, resolvedLocation)) {
+        addressChart('pushState');
+        scrollTo(0, 0);
+      }
     } catch (err) {
       console.error(err);
       setFormError(err.message || t('chart_create_error'));
@@ -1645,9 +1686,10 @@ document.addEventListener('DOMContentLoaded', () => {
       return /^\d{4}-\d{2}-\d{2}$/.test(value) && Boolean(parseWallClock(`${value}T00:00`))
         && year >= supportedYears[0] && year <= supportedYears[1];
     });
-    // A time is read on its own date, or, when the date is wrong, on any day's clock.
-    const time = checked('time', text('time'), (value) => /^\d{2}:\d{2}(:\d{2})?$/.test(value)
-      && Boolean(parseWallClock(`${date ?? '2000-01-01'}T${value}`)));
+    // A time is read on its own date, or, when the date is wrong, on any day's clock; or
+    // it is unknown, and the chart is the first chart's (first.js).
+    const time = checked('time', text('time'), (value) => value === 'unknown' || (/^\d{2}:\d{2}(:\d{2})?$/.test(value)
+      && Boolean(parseWallClock(`${date ?? '2000-01-01'}T${value}`))));
     const lang = checked('lang', text('lang'), (value) => ['fi', 'en'].includes(value));
     // Which pass of a time the place's clocks repeat, 0 or 1: only a saved birth names one.
     const fold = optional('fold', (value) => value === '0' || value === '1');
@@ -1674,6 +1716,11 @@ document.addEventListener('DOMContentLoaded', () => {
       life: optional('life', (value) => value === 'pillars' && params.has('gender')),
       topic: optional('topic', (value) => TOPIC_PATH.test(value)),
     };
+    // Without its time, a chart has no pass of a time to name, nor a display, a luck
+    // pillar, a life grid or a topic to open: the first chart has none.
+    if (time === 'unknown') {
+      for (const key of ['fold', 'display', 'luck', 'life', 'topic']) if (parts[key] !== null) wrong('invalid', key);
+    }
     return { parts, problems };
   };
 
@@ -1700,7 +1747,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const keepLinkBirth = (params) => {
     const { parts } = checkChartLink(params);
     dateInput.value = parts.date ?? '';
-    timeInput.value = parts.time ?? '';
+    setTimeUnknown(parts.time === 'unknown');
+    timeInput.value = parts.time === null || parts.time === 'unknown' ? '' : parts.time;
     setFieldError(dateInput, dateStatus, '');
     setFieldError(timeInput, timeStatus, '');
     setFormGender(parts.gender);
@@ -1709,7 +1757,7 @@ document.addEventListener('DOMContentLoaded', () => {
       clearResolvedLocation();
     } else pickPlace(parts.place);
     // With its whole moment, the form holds its convention and pass too.
-    formChart = parts.date === null || parts.time === null || parts.place === null ? null : chartRequest({
+    formChart = parts.date === null || parts.time === null || parts.time === 'unknown' || parts.place === null ? null : chartRequest({
       ...parts, lang: currentLanguage, zi: parts.zi ?? ZI_CONVENTIONS[0],
     });
   };
@@ -1725,7 +1773,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     const side = (key) => {
       const value = params.get(key);
-      return value === null ? null : { params: value, link: readChartLink(`${CHART_ROUTE}${value}`) };
+      if (value === null) return null;
+      const link = readChartLink(`${CHART_ROUTE}${value}`);
+      // Each side is a whole chart: one without its time has no frame to stand in.
+      if (link.time === 'unknown') throw linkError('needs_time', key);
+      return { params: value, link };
     };
     const a = side('a');
     if (a === null) throw linkError('missing', 'a');
@@ -1797,6 +1849,7 @@ document.addEventListener('DOMContentLoaded', () => {
     compareNote.classList.remove('hidden');
     createChartBtn.setAttribute('data-i18n', 'compare_create');
     createChartBtn.textContent = t('compare_create');
+    offerTimeUnknown(false);
     offerSaved(a);
   };
   const askForChart = () => {
@@ -1918,6 +1971,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // A chart's display, luck pillar and life grid are the chart page's, not the day's.
     for (const key of ['display', 'luck', 'life']) if (params.has(key)) throw linkError('chart_only', key);
     const chart = readChartLink(`${CHART_ROUTE}${params}`);
+    if (chart.time === 'unknown') throw linkError('needs_time', 'day');
     // Without its day, the link opens today, where you are (followAddress).
     if (own.day !== null && (!window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`))) {
       throw linkError('invalid', 'day');
@@ -1950,6 +2004,48 @@ document.addEventListener('DOMContentLoaded', () => {
       settingsPage.redraw();
     },
     toast: (text, isError) => showToast(text, isError),
+  });
+  // The first chart (first.js): Edit finds the birth in the form, New chart an empty
+  // form, and its offer signs up, after which the address opens the whole chart. Closed
+  // without signing up, the dialog leaves the first chart as it was.
+  const firstView = document.getElementById('first-view');
+  if (!firstView) throw new Error('The first chart is incomplete.');
+  const toForm = () => {
+    first.hide();
+    inputView.classList.remove('hidden');
+    document.title = t('page_title');
+    addressForm('pushState');
+  };
+  const first = window.EC_FIRST.create({
+    view: firstView,
+    translate: requiredTranslation,
+    escape: esc,
+    onEdit: () => {
+      toForm();
+      dateInput.focus();
+    },
+    onNew: () => {
+      toForm();
+      form.reset();
+      clearResolvedLocation();
+      setFieldError(dateInput, dateStatus, '');
+      setFieldError(timeInput, timeStatus, '');
+      dateInput.focus();
+    },
+    onAccount: () => {
+      account.signIn().then(() => {
+        // Signing in set the page to the account's language: the whole chart is asked
+        // for in it, and its address says so.
+        const params = new URLSearchParams(location.hash.slice(CHART_ROUTE.length));
+        if (location.hash.startsWith(CHART_ROUTE) && params.get('lang') !== currentLanguage) {
+          params.set('lang', currentLanguage);
+          history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
+        }
+        return followAddress();
+      }, (err) => {
+        if (account.signedIn() || account.isOpen()) throw err;
+      });
+    },
   });
   const openToday = async () => {
     const chosen = shown;
@@ -2165,6 +2261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ? requiredTranslation('save_note_partner', { name: settingsPage.chartName(chartNamed(mode.with)) })
         : requiredTranslation('save_note_correct', { name: settingsPage.chartName(correcting) });
     form.reset();
+    offerTimeUnknown(false);
     clearResolvedLocation();
     setFieldError(dateInput, dateStatus, '');
     setFieldError(timeInput, timeStatus, '');
@@ -2193,6 +2290,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
   const stopSaving = () => {
     saving = null;
+    offerTimeUnknown(comparingWith === null);
     saveNote.classList.add('hidden');
     saveNameGroup.classList.add('hidden');
     saveNameInput.value = '';
@@ -2359,6 +2457,7 @@ document.addEventListener('DOMContentLoaded', () => {
     compare.hide();
     settingsPage.hide();
     today.hide();
+    first.hide();
     if (location.hash === '#plan') {
       account.openPlan();
       return;
@@ -2567,10 +2666,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     dateInput.value = link.date;
     setFormGender(link.gender);
-    timeInput.value = link.time;
+    setTimeUnknown(link.time === 'unknown');
+    if (link.time !== 'unknown') timeInput.value = link.time;
     setFieldError(dateInput, dateStatus, '');
     setFieldError(timeInput, timeStatus, '');
     pickPlace(link.place);
+    // Without its time, or without an account, the birth opens as the first chart: what
+    // it settles (first.js). Its Edit finds the birth in the form.
+    if (link.time === 'unknown' || (!embedded && !account.signedIn())) {
+      formChart = null;
+      leaveChart();
+      inputView.classList.add('hidden');
+      const title = link.time === 'unknown'
+        ? [formatDate(parseWallClock(`${link.date}T12:00`)), t('first_time_unknown'), link.place.city].join(' · ')
+        : birthLine(link);
+      document.title = t('chart_page_title', { chart: title });
+      try {
+        await first.show(link, { title, visitor: !embedded && !account.signedIn() });
+      } catch (err) {
+        if (arrival !== arrivals) return;
+        console.error(err);
+        first.hide();
+        inputView.classList.remove('hidden');
+        document.title = t('page_title');
+        setFormError(err.message || t('first_error'));
+        addressForm('replaceState');
+      }
+      return;
+    }
     // The form holds the link's birth now, drawn or not: a chart that cannot be drawn
     // leaves it there to be corrected, with its own convention and pass.
     formChart = chartRequest(link);

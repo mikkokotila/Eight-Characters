@@ -415,6 +415,88 @@ body {
   letter-spacing: var(--tracking-1);
 }
 
+/* Time unknown: a choice under the time field that stays pressed, as the page's other
+   choices do, in the size of the field's status. */
+.time-unknown {
+  min-height: var(--control-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-1);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background var(--flow-feedback) var(--flow-feedback-ease), color var(--flow-feedback) var(--flow-feedback-ease);
+}
+.time-unknown:hover { background: var(--surface-2); }
+.time-unknown[aria-pressed='true'] { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
+.time-unknown:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
+.field-group input:disabled { opacity: 0.5; }
+
+/* ── The first chart (first.js): what a birth settles without an account, or without
+   its time. A column to a pillar, hour to year, each the day's cards; the hour open
+   without a time; then its changes, the Day Master and, to a visitor, the offer. ── */
+.first-pillars {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-5) var(--space-4);
+  margin: var(--space-6) 0 var(--space-5);
+}
+.first-pillar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  text-align: center;
+}
+.first-pillar-name {
+  font-family: var(--font-serif);
+  font-size: var(--text-1);
+  font-weight: 500;
+  letter-spacing: var(--tracking-2);
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.first-pillar-chars {
+  font-family: var(--font-serif);
+  font-size: var(--text-2);
+  color: var(--ink-1);
+}
+.first-pillar.is-open .first-pillar-chars,
+.first-pillar-note {
+  font-family: var(--font-sans);
+  font-size: var(--text-1);
+  line-height: var(--leading-3);
+  color: var(--ink-2);
+}
+.first-pillar .today-cards.is-pending .today-card { min-height: 0; flex: 1 1 0; }
+.first-pillar .today-cards.is-pending { flex: 1 1 auto; }
+.first-changes { margin: 0 0 var(--space-5); }
+.first-day-master { margin: var(--space-5) 0; }
+.first-day-master-note {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-1);
+  line-height: var(--leading-3);
+  color: var(--ink-2);
+}
+.first-passage { margin: var(--space-3) 0 0; }
+.first-offer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  margin: var(--space-7) 0 var(--space-5);
+  text-align: center;
+  color: var(--ink-1);
+}
+.first-offer .submit-btn { width: auto; padding-inline: var(--space-6); }
+@media (max-width: 640px) {
+  .first-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
 /* The page for an address the app does not have (not_found.html): the start page's
    header, a line and the way home. */
 .not-found { text-align: center; }
@@ -2923,7 +3005,7 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .luck-chip, .gender-option span,
   .relationship-chip, .reading-toggle,
-  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle,
+  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle, .time-unknown,
   .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot, .toast { transition: none; }
 }
 
@@ -4339,7 +4421,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-partner select,
   .settings-choose select,
   .settings-rename input,
-  .compare-saved select { min-height: var(--control-touch); }
+  .compare-saved select,
+  .time-unknown { min-height: var(--control-touch); }
   /* The start page's language switch stands level with the account's button. */
   .language-switch { min-height: var(--control-touch); }
 }

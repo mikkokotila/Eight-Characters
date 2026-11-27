@@ -11,6 +11,7 @@ This folder contains practical user documentation for running and using the Ba Z
 - Day Master season and roots: `Standard-Day-Master-Context.md`
 - Whole-chart roles and visible-stem roots: `Standard-Roles.md`
 - Chart links, history and Copy link: `Standard-Links.md`
+- The first chart, without the birth time or without an account: `Standard-First-Chart.md`
 - Copying a chart as text, and printing it: `Standard-Copy-and-Print.md`
 - Two charts side by side: `Standard-Compare.md`
 - Luck pillars, the ribbon of decades and a decade's page: `Standard-Luck-Pillars.md`

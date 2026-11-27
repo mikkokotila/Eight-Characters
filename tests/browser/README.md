@@ -69,19 +69,21 @@ response to verify visible errors. No real birth records or saved user data are 
 and every account is made for the run, on `example.com` addresses.
 
 The account suite (`account.test.mjs`) checks:
-- that the start page needs no account, and that creating a chart signed out opens the
-  account dialog before anything is sent, with no language preset;
+- that the start page needs no account, and that creating a chart signed out shows its
+  first chart, whose offer opens the account dialog before any chart is asked for, with
+  no language preset;
 - that a new account needs its language, that its email and then the page take it, and
   that the chart is asked for in it, once; a wrong code is said;
 - signing in an existing account, in its own language and in any letter case;
-- that closing the dialog asks for no chart and says why, keeping the birth;
+- that closing the dialog asks for no chart and leaves the first chart as it was, its
+  birth in Edit's form;
 - that a Turnstile script that does not load is said, and no code is asked for;
 - the account: its address and plan, its language (the page follows it, and a chart
   on screen, or on its way, is asked for again in it, in the language set last),
   Download my data, Sign out, Sign out on every device (from the commands, on a
   chart), and Delete account, which needs the address typed again;
-- that going back to a chart's address after signing out shows no chart, and asks
-  for a sign-in;
+- that going back to a chart's address after signing out shows only its first chart,
+  whose offer asks for a sign-in;
 - that a chart link and a comparison opened signed out ask first, the comparison
   before its frames, in the account's language, and that swapping a comparison's
   sides after the session ended asks for a sign-in before its frames do, and draws
@@ -145,6 +147,21 @@ all visible-stem roots, unchanged natal role reference, stable occurrence IDs,
 absent roles, unrooted visible stems, repeated visible identities, nested back/focus
 navigation, exclusive selection, card gestures, Finnish layouts, and corrupted
 profile rejection. `chart-helpers.mjs` is shared by the role, context, and relationship suites.
+
+The first chart suite (`first.test.mjs`) checks every pillar, change and Day Master
+against `POST /api/first_chart`, and:
+- that Time unknown sets the time field aside, and opens what the date and place settle:
+  the hour open, each change of the day with both its sides and the one shown, and the
+  Day Master with the other side's named when the day changes; its address, its reload,
+  and Edit's form with the time still unknown;
+- that a visitor's link opens all four pillars and the offer, asks for no whole chart,
+  is left as it was when the dialog closes, and opens the whole chart once signed up;
+- that a link without the time opens no day, no comparison and no topic, keeping its
+  birth in the form;
+- that the forms that save a birth or ask for a comparison's second chart do not offer
+  the choice;
+- that the first chart reads the Zi-hour convention its link names, and that a chart
+  made from a scrolled form opens at its top.
 
 The Settings suite (`settings.test.mjs`) makes every change through the API, from the
 settings as read, and checks:
