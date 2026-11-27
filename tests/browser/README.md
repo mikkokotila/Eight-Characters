@@ -158,6 +158,8 @@ against `POST /api/first_chart`, and:
   is left as it was when the dialog closes, and opens the whole chart once signed up;
 - that a link without the time opens no day, no comparison and no topic, keeping its
   birth in the form;
+- that a first chart made again from the form (Edit, then Create chart) keeps its link's
+  Zi-hour convention, with its time or without it, and the pass of a repeated hour;
 - that the forms that save a birth or ask for a comparison's second chart do not offer
   the choice;
 - that the first chart reads the Zi-hour convention its link names, and that a chart
@@ -176,7 +178,11 @@ settings as read, and checks:
   answers and failures changing nothing later;
 - answers refused, never drawn: a couple naming one chart twice, the same pair twice,
   a missing or malformed `couples_per_chart`; a change made from settings another tab
-  has changed is refused, and the page shows them as they are.
+  has changed is refused, and the page shows them as they are;
+- coming back: the bare address opens your chart's day, replacing the address; without
+  a chart of your own, the start page begins with the saved charts, each opening its
+  chart, in the page's language, and Mark as yours (refused when the settings changed
+  elsewhere, then drawn anew) opens the day each visit then opens.
 
 The Today suite (`today.test.mjs`) checks every number against the API's answer, and:
 - the days: the chosen day as the chart's cards (each character in its element's

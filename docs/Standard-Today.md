@@ -9,6 +9,8 @@ itself is the date, and the time, on the clock at where you are.
 ## Opening it
 
 **Chart · Day**, in a chart's bar, opens the chart's day: today's date where you are.
+Signed in, each visit to the site's bare address opens the day of your chart, the one
+marked as yours in [Settings](Standard-Settings.md#coming-back).
 The switch says Day (Päivä), since the page may show any day; its Today step goes back to
 today. Today is not offered in a comparison's frames, and the Evolution explorer, a page
 of its own, has none.

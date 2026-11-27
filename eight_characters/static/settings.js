@@ -421,6 +421,21 @@
         if (latest === mine) latest = null;
       }
     };
+    // What marking chart `chosen` as yours says, given the settings it left and the ones it
+    // was made from. A partner kept from before charts pairs with the chart marked: said,
+    // by name. When the chart is at its plan's cap the partner does not, waits no longer,
+    // and the page says why. Both are read from the settings the mark was made from, not
+    // those drawn when it was asked for: changes before it may have paired the partner
+    // already.
+    const markedSaying = (chosen) => (now, was) => {
+      const partner = library.pairedSince(was, now, chosen);
+      if (partner !== null) return t('settings_mine_marked_paired', { name: chartName(partner) });
+      const waiting = was.pending_partner === null || was.pending_partner === chosen ? null : library.chartWith(now, was.pending_partner);
+      const atCap = now.couples_per_chart !== null && library.couplesOf(now, chosen).length >= now.couples_per_chart;
+      return waiting !== null && atCap && now.pending_partner === null
+        ? t('settings_mine_marked_unpaired', { name: chartName(waiting) })
+        : t('settings_mine_marked');
+    };
     // Removing a chart says first what else it ends: being your chart, each of its
     // couples, or its wait to pair with your chart.
     const removing = (chart) => {
@@ -450,21 +465,7 @@
         case 'mark': {
           const chosen = chosenIn('#settings-mine-choice');
           if (chosen === null) break;
-          // A partner kept from before charts pairs with the chart marked: said, by name.
-          // When the chart is at its plan's cap the partner does not, waits no longer, and
-          // the page says why. Both are read from the settings the mark was made from,
-          // not those drawn when it was asked for: changes before it may have paired the
-          // partner already.
-          const marked = (now, was) => {
-            const partner = library.pairedSince(was, now, chosen);
-            if (partner !== null) return t('settings_mine_marked_paired', { name: chartName(partner) });
-            const waiting = was.pending_partner === null || was.pending_partner === chosen ? null : library.chartWith(now, was.pending_partner);
-            const atCap = now.couples_per_chart !== null && library.couplesOf(now, chosen).length >= now.couples_per_chart;
-            return waiting !== null && atCap && now.pending_partner === null
-              ? t('settings_mine_marked_unpaired', { name: chartName(waiting) })
-              : t('settings_mine_marked');
-          };
-          await once(`mark ${chosen}`, () => change('PUT', '/api/account/my-chart', { chart: chosen }, marked));
+          await once(`mark ${chosen}`, () => change('PUT', '/api/account/my-chart', { chart: chosen }, markedSaying(chosen)));
           break;
         }
         case 'unmark':
@@ -721,6 +722,15 @@
     );
     // Corrects a saved chart's birth: it keeps its id, its mark and its couple.
     const correctChart = async (id, birth, from) => write('PUT', `/api/account/charts/${encodeURIComponent(id)}`, birth, from);
+    // Marks a saved chart as yours, as the start page asks (app.js), from the settings it
+    // read: `problem` is null once marked, or why not; `said` is what marking it says.
+    const markChart = async (id, from) => {
+      let said = null;
+      const problem = await write('PUT', '/api/account/my-chart', { chart: id }, from, (was, now) => {
+        said = markedSaying(id)(now, was);
+      });
+      return { problem, said };
+    };
     // Sets where you are, as Today asks for it when none is set (today.js), from the
     // settings it read: null once set, or why not.
     const setPlace = async (place, from) => write('PUT', '/api/account/place', { place }, from);
@@ -736,6 +746,7 @@
       basis: () => basis,
       saveChart,
       correctChart,
+      markChart,
       setPlace,
       chartName,
       // A sign-out, or another account taken (`why` says which), forgets what was read for

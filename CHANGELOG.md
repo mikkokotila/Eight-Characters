@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.75.0
+
+Coming back: the first of five changes from the 2026-11-27 review of the app as it is
+used again and again.
+
+### Changed
+- **The bare address opens your chart's day.** Signed in, each visit opened your chart,
+  which never changes, while what changes from one visit to the next is its day. Each
+  visit now opens your chart's day, today where you are, replacing the address.
+
+### Added
+- **The start page begins with your saved charts.** Signed in without a chart marked as
+  yours, coming back opened the empty form a first visitor sees, and only Settings could
+  mark a chart as yours. The start page now lists the saved charts as the library does,
+  each opening its chart, with **Mark as yours** under each: marked, its day opens, as
+  each visit then does. The form follows under **New chart**. New chart, from a chart,
+  still opens the form alone.
+
+### Docs
+- Standard-Settings: Coming back (was Signing in to your chart). Standard-Today: the bare
+  address opens your chart's day.
+
 ## 0.74.0
 
 The first chart: what a birth settles without its time, or without an account, from
@@ -34,6 +56,10 @@ The first chart: what a birth settles without its time, or without an account, f
 ### Changed
 - Going back to a chart's address after signing out shows its first chart, whose offer
   asks for the sign-in, where it asked for the sign-in at once.
+- Made again from the form (Edit, then Create chart), a first chart keeps its link's
+  Zi-hour convention, with its time or without it, and its pass of an hour the clocks
+  repeat: the form held neither, so a `whole_zi_23` link came back as `split_midnight`,
+  and a repeated hour lost its pass, which the API refuses.
 - A chart made from the form opens at its top. On a phone the form runs past the screen,
   and the chart opened as far down as the form had been scrolled.
 

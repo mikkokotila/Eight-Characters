@@ -35,8 +35,8 @@ a comparison's frames.
 
 Settings have three parts for them:
 - **Your chart**: the chart marked as yours, with Open and Unmark; a choice from the
-  saved charts to mark; and **Add a new birth**, saved as yours. Signed in, the site's
-  bare address opens your chart (see below).
+  saved charts to mark; and **Add a new birth**, saved as yours. Signed in, each visit
+  to the site's bare address opens your chart's day (see below).
 - **Couples**: each couple, with both charts' pillars, and End the couple, which ends
   that couple alone and keeps both charts. A chart can be in any number of couples,
   each with its own card, in the order paired.
@@ -74,14 +74,25 @@ then go back to the chart, corrected or as it was. A correction keeps the chart'
 convention, and its pass while its day, time and zone are unchanged. With the library
 full, Add a new birth and Add the partner as a new birth say so instead.
 
-## Signing in to your chart
+## Coming back
 
-Signed in, a visit to the site's bare address opens your chart, replacing the address,
-so Back does not come there again; with none marked, the form. Signing in from the
-account button on the empty form does the same. Every other address keeps its
-destination: a chart link, Today, a comparison, Settings, and a chart asked for from
-the form before signing in. New chart, and Edit on a chart not saved, still open the
-form.
+Signed in, a visit to the site's bare address opens your chart's day, today where you
+are ([Today](Standard-Today.md)): what each visit is for. The address is replaced, so
+Back does not come there again. Signing in from the account button on the empty form
+does the same.
+
+With no chart marked as yours, the start page begins with the saved charts, as the
+library lists them: each opens its chart, and Back comes to the start page again. Each
+has **Mark as yours** under it, which marks it and opens its day, as each visit then
+will; pressed again while the mark is on its way, it is asked for once. A mark refused
+(the settings changed elsewhere, say) is said, and the list is drawn as the settings
+are now. The list is in the page's language, as it changes. The form follows, under
+**New chart**. With nothing saved, the start page is the form alone; the list is no
+reason to ask for a sign-in.
+
+Every other address keeps its destination: a chart link, Today, a comparison, Settings,
+and a chart asked for from the form before signing in. New chart, and Edit on a chart
+not saved, open the form alone.
 
 ## Where you are
 
