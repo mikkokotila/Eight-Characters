@@ -11,9 +11,9 @@ The chart on a phone: more of it on the first screen.
   (their names are their tips' and a screen reader's) with the language, which takes a
   line of its own below 390px until it goes. In icons the bar is three lines, not four.
   A comparison's frames keep their full-width display switch.
-- **The topics in one row on phones**, under the Day Master's line, from the page's edge
-  to its edge, scrolled sideways; a topic that takes the focus comes into sight. At
-  390px the first card now starts at 541px, not 655px.
+- **The topics in one row on phones**, under the Day Master's line, scrolled sideways; a
+  topic that takes the focus comes into sight. At 390px the first card now starts at
+  541px, not 655px.
 - **The luck pillar follows the chart on phones**, as it stands right of the Year on a
   wider screen; it stood above the two-by-two chart.
 
@@ -21,8 +21,9 @@ The chart on a phone: more of it on the first screen.
 - Toolbar, Luck pillars.
 
 ### Tests
-- Browser: the phone bar's two lines and its icons, the topics' row (one line, edge to
-  edge, scrolled, a focused topic in sight), the luck pillar after the chart.
+- Browser: the phone bar's two lines and its icons, the topics' row (one line, within
+  the page, scrolled, a focused topic in sight, the page no wider than the screen), the
+  luck pillar after the chart.
 - Version bumped to `0.72.0`; the regression fixture changes only in `engine.version`.
 
 ## 0.71.1

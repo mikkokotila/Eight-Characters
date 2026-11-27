@@ -26,9 +26,8 @@ Every switch says what it does, and the actions gather in one menu.
 On a phone the chart's bar is two lines: the page and Actions; then the display and the
 luck pillar's switches, as their icons (their names are their tips' and a screen
 reader's), and the language, which takes a line of its own below 390px. The day's bar
-is two lines too. The topics stand in one row under the Day Master's line, from the
-page's edge to its edge, and scroll sideways; a topic that takes the focus comes into
-sight.
+is two lines too. The topics stand in one row under the Day Master's line, and scroll
+sideways; a topic that takes the focus comes into sight.
 
 ### The menu
 
