@@ -197,9 +197,12 @@ for (const profile of profiles) {
         const arc = [...document.querySelectorAll('.relationship-arc')].find((node) => node.dataset.relationshipId === relationship.id);
         const line = arc.querySelector('.relationship-arc-line').getBoundingClientRect();
         const stem = relationship.component === 'stem';
+        // Rounded to the pixel, a hair below zero is -0, which a strict comparison tells
+        // apart from 0: it is 0.
+        const px = (value) => Math.round(value) || 0;
         return [relationship.id,
-          Math.round(line.left - (first.left + first.width / 2)), Math.round(line.right - (last.left + last.width / 2)),
-          Math.round(stem ? first.top - line.bottom : line.top - first.bottom)];
+          px(line.left - (first.left + first.width / 2)), px(line.right - (last.left + last.width / 2)),
+          px(stem ? first.top - line.bottom : line.top - first.bottom)];
       }), payload.interactions);
       const screen = await where();
       assert.ok(screen.length > 0);
