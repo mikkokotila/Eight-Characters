@@ -22,7 +22,11 @@ a birth once). The Zi switch, another gender or another pass make another chart.
 A chart's heading has a button that names it: its saved name, or that it is unsaved.
 It opens **the library**: the saved charts, each with its birth and four pillars (each
 character in its element's colours, with its pinyin), Your chart marked in words, and
-each chart's partner named. Choosing one opens it; the chart on screen is marked.
+each chart's partner named. Choosing one opens it; the chart on screen is marked. The
+day's heading has the same button, for the chart whose day it shows: a chart chosen
+there opens its day, on the date shown, and the day offers no save. The start page and
+a comparison's second chart list the saved charts in the same way (see Coming back and
+[Compare](Standard-Compare.md)).
 **Save the chart on screen** asks for a name (optional: one line, at most 80 characters)
 and keeps the chart as it is on screen: its date, time and place, its pass, its gender
 and its Zi-hour convention. A saved chart needs a gender, since the day reads its luck

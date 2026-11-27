@@ -8,10 +8,11 @@ Compare, in a chart's bar and among the commands (⌘K or Ctrl+K), asks for the
 second birth. The form says which chart it will be compared with, and starts
 empty. Compare, at its foot, opens the pair. Cancel goes back to the first chart.
 
-The second chart can be one of your saved charts instead: "Or a saved chart" lists
-them under the note, each by its name and birth (the first chart, if it is one of
-them, is left out), and its Compare opens the pair with it. With no other saved chart,
-the list is not shown.
+The second chart can be one of your saved charts instead. Under the note, **Saved
+charts** lists them as the start page and the library list them, each by its name, its
+birth and its pillars (the first chart, if it is one of them, is left out): choosing
+one opens the pair with it. The form follows under **New chart**. With no other saved
+chart, the list is not shown, and nothing asks for a sign-in until Compare is pressed.
 
 ## The two charts
 

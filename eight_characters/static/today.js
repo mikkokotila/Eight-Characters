@@ -43,7 +43,7 @@
   // day it is, and the partner in view.
   const reading = (state) => `${chartLink(state)} ${state.who} ${state.partner ?? ''}`;
 
-  const create = ({ view, translate: t, escape: esc, locale, settings, format, account, go, onChart, onSettings, onEdit, onLanguage, toast }) => {
+  const create = ({ view, translate: t, escape: esc, locale, settings, format, account, go, onChart, onSettings, onEdit, onLanguage, onBar, toast }) => {
     const need = (selector) => {
       const node = view.querySelector(selector);
       if (!node) throw new Error(`Today is incomplete: ${selector}.`);
@@ -360,6 +360,9 @@
     // ── The bar ──
     // The choice of partners as last drawn.
     let partnerChoices = '';
+    // The chart's line as copied: with its saved name, which on the page is its library
+    // button's, beside the line (app.js), as on the chart's page.
+    let copiedLine = '';
     const chartHeading = (chart) => {
       const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
       return [format.date(reading), format.time(reading, chart.time.length > 5), chart.place.city].join(' · ');
@@ -368,12 +371,13 @@
       dateHeading.textContent = longDate(state.day);
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
       const named = savedSelf()?.name ?? null;
-      const whose = state.who === 'partner' && partner !== null
-        ? t('today_partner_chart', { name: partnerName(partner) })
-        : [...(named === null ? [] : [named]), chartHeading(state.chart)].join(' · ');
+      const partnerSide = state.who === 'partner' && partner !== null;
+      const whose = partnerSide ? t('today_partner_chart', { name: partnerName(partner) }) : chartHeading(state.chart);
       selfLabel.textContent = selfName();
       const place = shownSettings?.place;
-      chartLine.textContent = place ? `${whose} · ${t('today_at', { place: place.city })}` : whose;
+      const at = place ? ` · ${t('today_at', { place: place.city })}` : '';
+      chartLine.textContent = `${whose}${at}`;
+      copiedLine = `${partnerSide || named === null ? whose : `${named} · ${whose}`}${at}`;
       whoSwitch.classList.toggle('hidden', partner === null);
       partnerLabel.textContent = partner === null ? '' : partnerName(partner);
       // With the chart in several couples, or one named that is not its partner, the
@@ -408,6 +412,8 @@
       });
       nowButton.disabled = !place || state.day === todayAt(place.timezone);
       document.title = t('today_page_title', { day: longDate(state.day) });
+      // The library's button beside the line names the chart as the settings now say.
+      onBar();
     };
 
     // ── The answer, drawn ──
@@ -1420,6 +1426,7 @@
       ready(false);
       dateHeading.textContent = '';
       chartLine.textContent = '';
+      copiedLine = '';
       partnerLabel.textContent = '';
       whoSwitch.classList.add('hidden');
       partnerChoice.classList.add('hidden');
@@ -1606,7 +1613,7 @@
       const partner = shownSettings === null ? null : partnerOf(shownSettings);
       const other = state.who === 'partner' ? selfName() : (partner === null ? null : partnerName(partner));
       const lines = [
-        `${longDate(state.day)} · ${chartLine.textContent}`,
+        `${longDate(state.day)} · ${copiedLine}`,
         schoolsUsed(),
         t('today_pull_line', { pull: pull(answer.layers.day.pull) }),
         GODS.map((god) => godLine(god, answer.favourable.gods[god])).join(' · '),
@@ -1692,6 +1699,9 @@
       isShown: () => state !== null,
       // The current state, for the address: null while Today is not shown.
       state: () => state,
+      // The birth of the chart whose day is shown, as the library tells births apart; null
+      // while Today is not shown.
+      screenBirth: () => (state === null ? null : chartBirth(state.chart)),
       // A sign-out forgets the settings read for the account and leaves nothing of its day
       // on the page.
       forget: () => {

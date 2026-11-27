@@ -108,8 +108,11 @@
   };
 
   // The classic view's library: the saved charts, the one on screen marked, each opening
-  // its chart; "Save the chart on screen" while it is unsaved; and Settings.
-  const create = ({ dialog, button, translate: t, escape: esc, format, settings, screenBirth, language, onOpen, onSave, onSettings }) => {
+  // its chart; "Save the chart on screen" while it is unsaved; and Settings. It opens
+  // from the heading of each page that shows a chart (`pages`: the chart's, the day's),
+  // each button naming the chart on that page; a chart chosen opens on the page the
+  // library was opened from, so the day's library opens the chosen chart's day.
+  const create = ({ dialog, pages, translate: t, escape: esc, format, settings, language, onOpen, onSave, onSettings }) => {
     const need = (selector) => {
       const node = dialog.querySelector(selector);
       if (!node) throw new Error(`The library is incomplete: ${selector}.`);
@@ -120,31 +123,42 @@
     const saveButton = need('#library-save');
     const settingsButton = need('#library-settings');
     const closeButton = need('#library-close');
-    const label = button.querySelector('.library-label');
-    if (!label) throw new Error('The library button is incomplete.');
+    if (!Array.isArray(pages) || pages.length === 0) throw new Error('The library opens from no page.');
+    const triggers = pages.map(({ page, button, screenBirth, canSave }) => {
+      const label = button.querySelector('.library-label');
+      if (!label) throw new Error('The library button is incomplete.');
+      return { page, button, label, screenBirth, canSave };
+    });
+    const pageOf = (name) => {
+      const found = triggers.find((trigger) => trigger.page === name);
+      if (!found) throw new Error(`The library opens from no ${name} page.`);
+      return found;
+    };
+    // The page the library was last opened from.
+    let from = triggers[0];
 
     const nameOf = (chart) => chart.name ?? t('library_unnamed');
-    // The saved chart on screen, by the settings last read: null when the chart is not
-    // saved, undefined while no settings have been read.
-    const onScreen = () => {
+    // The saved chart on a page's screen, by the settings last read: null when the chart
+    // is not saved, undefined while no settings have been read or no chart is shown.
+    const onScreen = (name = triggers[0].page) => {
       const kept = settings.current();
-      const birth = screenBirth();
+      const birth = pageOf(name).screenBirth();
       if (kept === null || birth === null) return undefined;
       return savedOf(kept, birth);
     };
-    // The button names the chart on screen: its saved name, or that it is not saved.
-    const sayName = () => {
-      const saved = onScreen();
+    // Each button names its page's chart: its saved name, or that it is not saved.
+    const sayName = () => triggers.forEach(({ page, button, label }) => {
+      const saved = onScreen(page);
       const text = saved === undefined ? t('library_open') : saved === null ? t('library_unsaved') : nameOf(saved);
       // Rewritten only when it changes: WebKit drops a click whose label is replaced
       // between the press and the release.
       if (label.textContent !== text) label.textContent = text;
       const state = saved === undefined ? 'unknown' : String(saved !== null);
       if (button.dataset.saved !== state) button.dataset.saved = state;
-    };
+    });
 
     const draw = (kept) => {
-      const saved = savedOf(kept, screenBirth());
+      const saved = savedOf(kept, from.screenBirth());
       list.innerHTML = kept.charts.length === 0
         ? `<li class="library-empty">${esc(t('library_empty'))}</li>`
         : kept.charts.map((chart) => {
@@ -156,7 +170,8 @@
               </button>
             </li>`;
         }).join('');
-      saveButton.classList.toggle('hidden', saved !== null);
+      // A page that cannot save its chart (the day's) offers no save.
+      saveButton.classList.toggle('hidden', saved !== null || !from.canSave);
     };
 
     const say = (text, isError = false) => {
@@ -165,10 +180,13 @@
       status.classList.toggle('hidden', text === '');
     };
 
-    // Opens with the settings read anew, so the list is the account's as it is now.
+    // Opens with the settings read anew, so the list is the account's as it is now: from
+    // the page named (the chart's when none is), while it shows a chart.
     let opening = 0;
-    const open = async () => {
-      if (dialog.open || screenBirth() === null) return;
+    const open = async (name = triggers[0].page) => {
+      const trigger = pageOf(name);
+      if (dialog.open || trigger.screenBirth() === null) return;
+      from = trigger;
       const mine = ++opening;
       say('');
       list.innerHTML = '';
@@ -192,9 +210,9 @@
     dialog.addEventListener('close', () => {
       opening += 1;
       dialog.removeAttribute('aria-busy');
-      button.focus();
+      from.button.focus();
     });
-    button.addEventListener('click', open);
+    triggers.forEach(({ page, button }) => button.addEventListener('click', () => open(page)));
     closeButton.addEventListener('click', () => dialog.close());
     list.addEventListener('click', (event) => {
       const chosen = event.target.closest('[data-library-chart]');
@@ -202,8 +220,9 @@
       const kept = settings.current();
       const chart = kept === null ? null : chartWith(kept, chosen.dataset.libraryChart);
       if (chart === null) return;
+      const page = from.page;
       dialog.close();
-      onOpen(chartParams(chart, language()));
+      onOpen(chartParams(chart, language()), page);
     });
     saveButton.addEventListener('click', () => {
       dialog.close();

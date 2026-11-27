@@ -131,11 +131,17 @@ for (const profile of profiles) {
         { name: 'Second', date: SECOND.date, time: SECOND.time, gender: 'male', place, zi: 'split_midnight' },
       ]);
       await press(page, '#compare-btn');
-      await page.locator('#compare-saved').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('label[for="compare-saved-chart"]').textContent(), 'Or a saved chart');
-      assert.deepEqual(await page.locator('#compare-saved-chart option').allTextContents(), ['Second · May 9, 1990 · 12:00 · Chengdu']);
-      assert.equal(await page.locator('#compare-saved-go').textContent(), 'Compare');
-      await page.locator('#compare-saved-go').click();
+      // Listed as the start page and the library list them, over the form for a new birth.
+      await page.locator('#start-charts').waitFor({ state: 'visible' });
+      assert.equal(await page.locator('#start-charts-title').textContent(), 'Saved charts');
+      assert.deepEqual(await page.locator('#start-charts-list .saved-name').allTextContents(), ['Second']);
+      assert.deepEqual(await page.locator('#start-charts-list .saved-birth').allTextContents(), ['May 9, 1990 · 12:00 · Chengdu']);
+      assert.equal(await page.locator('#start-charts-list .saved-strip').count(), 1);
+      assert.equal(await page.locator('#start-new-title').textContent(), 'New chart');
+      // Nothing is marked as yours from here.
+      assert.equal(await page.locator('[data-start-mine]').count(), 0);
+      assert.equal(await page.locator('#start-charts-note').isHidden(), true);
+      await page.locator('#start-charts-list [data-start-chart]').click();
       const [, b] = await bothDrawn(page);
       const expected = await pillarsOf(page, SECOND.date, SECOND.time);
       assert.deepEqual([b.stems, b.branches], [expected.stems, expected.branches]);
@@ -147,7 +153,7 @@ for (const profile of profiles) {
       await page.goto(new URL(`/#compare?${new URLSearchParams({ a: pair.a.toString() })}`, process.env.EC_BASE_URL).href);
       await page.locator('#compare-note').waitFor({ state: 'visible' });
       await settled(page);
-      assert.equal(await page.locator('#compare-saved').isVisible(), false);
+      assert.equal(await page.locator('#start-charts').isVisible(), false);
     });
 
     check('the second birth shows both charts side by side, each the chart view with only its own controls', async (page) => {

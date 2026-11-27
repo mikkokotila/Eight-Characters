@@ -39,8 +39,11 @@ at any time.
 From the top:
 
 - **The bar:** the date (in Finnish the day's own name, capitalised: "Sunnuntai 11.
-  lokakuuta 2026"); the chart, by its saved name when it has one ("Aino · 14. elokuuta
-  1975 · 7.45 · Helsinki"), and where you are; Chart · Day; the day before, Today (where
+  lokakuuta 2026"); the chart's birth ("14. elokuuta 1975 · 7.45 · Helsinki") and where
+  you are; the library's button, as on the chart's page, naming the chart by its saved
+  name, or that it is unsaved: it opens the saved charts, and a chart chosen there opens
+  its day on the date shown (the day offers no save; copied as text, the day names its
+  chart before its birth); Chart · Day; the day before, Today (where
   you are) and the day after; whose day, when the chart is in a couple, each side by its
   name; With, the partner in view, when it is in several; FI · EN; Actions: Copy link,
   Copy as text, Print, Settings and Account. Below 640px the actions show as their

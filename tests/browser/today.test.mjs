@@ -632,8 +632,11 @@ for (const profile of profiles) {
       assert.equal((await write('POST', '/api/account/charts', { ...PARTNER, couple_with: mine.value.saved })).status, 201);
       await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
       await shown(page);
-      // Yours: by its name, in your chart, and the day is said to you.
-      assert.match(await page.locator('#today-chart').textContent(), /^Aino · /);
+      // Yours: by its name, on the library's button beside its birth as on the chart's
+      // page, in your chart, and the day is said to you.
+      await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Aino');
+      assert.equal(await page.locator('#today-library-btn').getAttribute('data-saved'), 'true');
+      assert.match(await page.locator('#today-chart').textContent(), /^August 14, 1975 · 07:45 · Helsinki · where you are: Helsinki$/);
       assert.equal(await page.locator('#today-who [data-who="self"]').textContent(), 'Aino');
       assert.equal(await page.locator('#today-in-chart-title').textContent(), 'In your chart');
       assert.deepEqual(await page.locator('#today-couple .today-couple-name').allTextContents(), ['Aino', PARTNER.name]);
@@ -648,6 +651,59 @@ for (const profile of profiles) {
       ({ marriage } = answers.at(-1).payload);
       assert.equal(await page.locator('.today-couple-apart').textContent(),
         marriage.pull_apart ? 'The day pulls the couple apart.' : 'The day does not pull the couple apart.');
+    });
+
+    check('the day\'s library names its chart; another saved chart chosen there opens its day on the date shown, and the day copied names its chart', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      await page.addInitScript(() => {
+        window.__copied = [];
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText: async (text) => { window.__copied.push(text); } } });
+      });
+      const { answers } = await recordToday(page);
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await setSettings(page);
+      const write = (method, path, body = {}) => page.evaluate(async ({ method, path, body }) => {
+        const read = await (await fetch('/api/account/settings')).json();
+        const response = await fetch(path, {
+          method, headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...body, key: read.key, updated_at: read.updated_at }),
+        });
+        return { status: response.status, value: await response.json() };
+      }, { method, path, body });
+      assert.equal((await write('POST', '/api/account/charts', { ...SELF, name: 'Aino' })).status, 201);
+      assert.equal((await write('POST', '/api/account/charts', PARTNER)).status, 201);
+      await page.goto(new URL(todayLink(), process.env.EC_BASE_URL).href);
+      await shown(page);
+      await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Aino');
+      // Copied, the day names its chart, as the button does on the page.
+      await press(page, '#today-copy-text');
+      await page.waitForFunction(() => window.__copied.length === 1);
+      assert.ok((await page.evaluate(() => window.__copied[0])).startsWith('Sunday, October 11, 2026 · Aino · August 14, 1975 · 07:45 · Helsinki'));
+      // The next day, then the library from the day's heading: the saved charts, this one
+      // marked as on screen, and no save from the day.
+      await page.locator('.today-step[data-today-step="1"]').click();
+      await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('day') === '2026-10-12');
+      await shown(page);
+      await page.locator('#today-library-btn').click();
+      await page.locator('#library-dialog').waitFor({ state: 'visible' });
+      await page.waitForFunction(() => !document.getElementById('library-dialog').hasAttribute('aria-busy'));
+      assert.deepEqual(await page.locator('#library-list .saved-name').allTextContents(), ['Aino', PARTNER.name]);
+      assert.equal(await page.locator('#library-list [aria-current="true"] .saved-name').textContent(), 'Aino');
+      assert.equal(await page.locator('#library-save').isHidden(), true);
+      assert.equal(await page.evaluate(() => window.__named), undefined, 'a name is text');
+      // The other chart chosen: its day, on the date shown, named on the button.
+      await page.locator('#library-list [data-library-chart]').nth(1).click();
+      await page.waitForFunction((date) => new URLSearchParams(location.hash.split('?')[1]).get('date') === date, PARTNER.date);
+      await shown(page);
+      const params = await page.evaluate(() => Object.fromEntries(new URLSearchParams(location.hash.split('?')[1])));
+      assert.deepEqual([params.day, params.time, params.gender], ['2026-10-12', PARTNER.time, PARTNER.gender]);
+      assert.equal(answers.at(-1).payload.date, '2026-10-12');
+      assert.deepEqual([answers.at(-1).request.charts.self.date, answers.at(-1).request.charts.self.gender], [PARTNER.date, PARTNER.gender]);
+      await page.waitForFunction((name) => document.querySelector('#today-library-btn .library-label').textContent === name, PARTNER.name);
+      // Back returns to the first chart's day.
+      await page.goBack();
+      await page.waitForFunction((date) => new URLSearchParams(location.hash.split('?')[1]).get('date') === date, CHART.date);
+      await page.waitForFunction(() => document.querySelector('#today-library-btn .library-label').textContent === 'Aino');
     });
 
     check('a chart in several couples, as #96 will keep them: With chooses the partner in view, the address names it, and a chart that is not a partner is never swapped', async (page) => {
