@@ -10,12 +10,13 @@ Copy as text, in the bar above the chart and among the commands (⌘K or Ctrl+K)
 puts two lines on the clipboard, for notes and messages:
 
 ```
-丁卯 癸丑 己丑 壬申
+Hour 壬申 Ren Shen · Day 己丑 Ji Chou · Month 癸丑 Gui Chou · Year 丁卯 Ding Mao
 February 4, 1988 · 16:30 · Chengdu · True solar time 15:12:24 · Day changes at midnight
 ```
 
-- **The first line** is the chart's pillars, read from its cards, in the written
-  order: year, month, day, hour. The chart itself lays them out Hour to Year.
+- **The first line** is the chart's pillars in the chart's own order, Hour to Year:
+  each by its name, with its characters and their pinyin beside them. Characters
+  never stand alone.
 - **The second line** is the birth as it was entered, its true solar time and the
   convention that set the day. When the true solar time falls on another day than
   the clock, it names that day too.

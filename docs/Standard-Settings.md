@@ -65,7 +65,8 @@ Settings have three parts for them:
 **Add a new birth**, **Add the partner as a new birth** and **Correct the birth** open
 the birth form at `#save?as=mine`, `#save?as=partner&with=<id>` or
 `#save?as=correct&chart=<id>`. The form says what it saves, asks for a name, needs a
-gender, and checks the birth as it checks a chart's; a birth saved already is said so,
+gender (it leaves "Not given" out and chooses none for you), and checks the birth as it
+checks a chart's; a birth saved already is said so,
 by the chart's name, and not asked for again. Save keeps it and goes back to Settings,
 and Cancel goes back without saving. A correction keeps the chart's Zi-hour
 convention, and its pass while its day, time and zone are unchanged. With the library
