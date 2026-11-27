@@ -1610,62 +1610,108 @@ document.addEventListener('DOMContentLoaded', () => {
   chartView.addEventListener('click', followView);
   document.addEventListener('keydown', followView);
 
-  // The chart a link describes, or null when it describes none. A link that describes
-  // no chart throws, naming the part that is missing or wrong.
-  const readChartLink = (hash) => {
-    if (hash === '' || hash === '#') return null;
-    if (!hash.startsWith(CHART_ROUTE)) throw linkError('no_page');
-    const params = new URLSearchParams(hash.slice(CHART_ROUTE.length));
+  // A chart link's parts, each read on its own: its value, or null when it is absent or
+  // wrong, and what is wrong with which part, in the order the page reads them.
+  const checkChartLink = (params) => {
+    const problems = [];
+    const wrong = (problem, part) => {
+      problems.push([problem, part]);
+      return null;
+    };
     for (const key of new Set(params.keys())) {
-      if (!LINK_PARTS.includes(key)) throw linkError('unknown', key);
-      if (params.getAll(key).length > 1) throw linkError('repeated', key);
+      if (!LINK_PARTS.includes(key)) wrong('unknown', key);
+      else if (params.getAll(key).length > 1) wrong('repeated', key);
     }
+    // A repeated part names no one value: it is wrong as repeated, and read as none.
+    const one = (key) => (params.getAll(key).length > 1 ? null : params.get(key));
     const text = (key) => {
+      if (params.getAll(key).length > 1) return null;
       const value = params.get(key);
-      if (value === null || value.trim() === '') throw linkError('missing', key);
-      return value;
+      return value === null || value.trim() === '' ? wrong('missing', key) : value;
     };
     const optional = (key, valid) => {
-      const value = params.get(key);
-      if (value !== null && !valid(value)) throw linkError('invalid', key);
-      return value;
+      const value = one(key);
+      return value === null || valid(value) ? value : wrong('invalid', key);
     };
     const coordinate = (key, limit) => {
-      const value = Number(text(key));
-      if (!Number.isFinite(value) || Math.abs(value) > limit) throw linkError('invalid', key);
-      return value;
+      const value = text(key);
+      if (value === null) return null;
+      const number = Number(value);
+      return Number.isFinite(number) && Math.abs(number) <= limit ? number : wrong('invalid', key);
     };
-    const date = text('date');
-    const year = Number(date.slice(0, 4));
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !parseWallClock(`${date}T00:00`)
-      || year < supportedYears[0] || year > supportedYears[1]) throw linkError('invalid', 'date');
-    const time = text('time');
-    if (!/^\d{2}:\d{2}(:\d{2})?$/.test(time) || !parseWallClock(`${date}T${time}`)) throw linkError('invalid', 'time');
-    const lang = text('lang');
-    if (!['fi', 'en'].includes(lang)) throw linkError('invalid', 'lang');
+    const checked = (key, value, valid) => (value === null || valid(value) ? value : wrong('invalid', key));
+    const date = checked('date', text('date'), (value) => {
+      const year = Number(value.slice(0, 4));
+      return /^\d{4}-\d{2}-\d{2}$/.test(value) && Boolean(parseWallClock(`${value}T00:00`))
+        && year >= supportedYears[0] && year <= supportedYears[1];
+    });
+    // A time is read on its own date, or, when the date is wrong, on any day's clock.
+    const time = checked('time', text('time'), (value) => /^\d{2}:\d{2}(:\d{2})?$/.test(value)
+      && Boolean(parseWallClock(`${date ?? '2000-01-01'}T${value}`)));
+    const lang = checked('lang', text('lang'), (value) => ['fi', 'en'].includes(value));
     // Which pass of a time the place's clocks repeat, 0 or 1: only a saved birth names one.
     const fold = optional('fold', (value) => value === '0' || value === '1');
-    return {
+    const place = {
+      display: text('place'),
+      city: text('city'),
+      latitude: coordinate('latitude', 90),
+      longitude: coordinate('longitude', 180),
+      timezone: text('timezone'),
+    };
+    const parts = {
       date,
       time,
-      place: {
-        display: text('place'),
-        city: text('city'),
-        latitude: coordinate('latitude', 90),
-        longitude: coordinate('longitude', 180),
-        timezone: text('timezone'),
-      },
+      // Whole, or none: a chart is computed for the place's own coordinates.
+      place: Object.values(place).every((value) => value !== null) ? place : null,
       lang,
       gender: optional('gender', (value) => GENDERS.includes(value)),
-      zi: optional('zi', (value) => ZI_CONVENTIONS.includes(value)) ?? ZI_CONVENTIONS[0],
+      zi: optional('zi', (value) => ZI_CONVENTIONS.includes(value)),
       fold: fold === null ? null : Number(fold),
-      display: optional('display', (value) => DISPLAYS.includes(value)) ?? 'characters',
+      display: optional('display', (value) => DISPLAYS.includes(value)),
       // Only a chart with a gender has luck pillars to stand in it.
       luck: optional('luck', (value) => LUCK_PATH.test(value) && params.has('gender')),
       // So has its life grid, whose list of the pillars alone a link can name.
-      life: optional('life', (value) => value === 'pillars' && params.has('gender')) ?? 'grid',
+      life: optional('life', (value) => value === 'pillars' && params.has('gender')),
       topic: optional('topic', (value) => TOPIC_PATH.test(value)),
     };
+    return { parts, problems };
+  };
+
+  // The chart a link describes, or null when it describes none. A link that describes
+  // no chart throws, naming the first part that is missing or wrong.
+  const readChartLink = (hash) => {
+    if (hash === '' || hash === '#') return null;
+    if (!hash.startsWith(CHART_ROUTE)) throw linkError('no_page');
+    const { parts, problems } = checkChartLink(new URLSearchParams(hash.slice(CHART_ROUTE.length)));
+    if (problems.length > 0) throw linkError(...problems[0]);
+    return {
+      ...parts,
+      zi: parts.zi ?? ZI_CONVENTIONS[0],
+      display: parts.display ?? 'characters',
+      life: parts.life ?? 'grid',
+    };
+  };
+
+  // A link that opens no chart leaves in the form the parts of its birth it gives
+  // right, each on its own, beside the error naming the part that is wrong: the date,
+  // the time, the whole place and the gender. The page keeps the reader's language, as
+  // the error does. A part it gets wrong leaves its field empty, not the field's last
+  // value.
+  const keepLinkBirth = (params) => {
+    const { parts } = checkChartLink(params);
+    dateInput.value = parts.date ?? '';
+    timeInput.value = parts.time ?? '';
+    setFieldError(dateInput, dateStatus, '');
+    setFieldError(timeInput, timeStatus, '');
+    setFormGender(parts.gender);
+    if (parts.place === null) {
+      locationInput.value = '';
+      clearResolvedLocation();
+    } else pickPlace(parts.place);
+    // With its whole moment, the form holds its convention and pass too.
+    formChart = parts.date === null || parts.time === null || parts.place === null ? null : chartRequest({
+      ...parts, lang: currentLanguage, zi: parts.zi ?? ZI_CONVENTIONS[0],
+    });
   };
 
   // Two charts side by side: #compare?a=<a chart link's parameters>&b=<the other's>.
@@ -1685,17 +1731,65 @@ document.addEventListener('DOMContentLoaded', () => {
     if (a === null) throw linkError('missing', 'a');
     return { a, b: side('b') };
   };
-  // A chart's name from its link, as its own bar writes it.
-  const headingOf = (params) => {
-    const link = readChartLink(`${CHART_ROUTE}${params}`);
-    const birth = parseWallClock(`${link.date}T${link.time}`);
-    return [formatDate(birth), formatTime(birth, link.time.length > 5), link.place.city].join(' · ');
+  // A birth as the page writes it: its date, its time and its city.
+  const birthLine = ({ date, time, place }) => {
+    const birth = parseWallClock(`${date}T${time}`);
+    return [formatDate(birth), formatTime(birth, time.length > 5), place.city].join(' · ');
   };
+  // A chart's name from its link, as its own bar writes it.
+  const headingOf = (params) => birthLine(readChartLink(`${CHART_ROUTE}${params}`));
   let comparingWith = null;
   const compareNote = document.getElementById('compare-note');
   const compareNoteText = document.getElementById('compare-note-text');
   const compareView = document.getElementById('compare-view');
-  if (!compareNote || !compareNoteText || !compareView) throw new Error('Comparison is incomplete.');
+  const compareSaved = document.getElementById('compare-saved');
+  const compareSavedChart = document.getElementById('compare-saved-chart');
+  const compareSavedGo = document.getElementById('compare-saved-go');
+  if (!compareNote || !compareNoteText || !compareView || !compareSaved || !compareSavedChart || !compareSavedGo) {
+    throw new Error('Comparison is incomplete.');
+  }
+  // The second chart can be one of the account's saved charts, but the first: each by
+  // its name and birth, chosen from a list beside the form's own birth. Only the latest
+  // asking fills the list.
+  let savedAsked = 0;
+  const offerSaved = async (a) => {
+    const asked = ++savedAsked;
+    compareSaved.classList.add('hidden');
+    if (embedded || !account.signedIn()) return;
+    let kept;
+    try {
+      // The list is no reason to ask for a sign-in: Compare itself asks, when pressed.
+      kept = await settingsPage.load(() => asked === savedAsked, { signIn: false });
+    } catch (err) {
+      if (asked !== savedAsked) return;
+      // A session that ended keeps no saved charts to offer.
+      if (err.status === 401) return;
+      console.error(err);
+      showToast(err.message || t('settings_load_error'), true);
+      return;
+    }
+    if (asked !== savedAsked || comparingWith !== a) return;
+    const first = window.EC_LIBRARY.keyOf(readChartLink(`${CHART_ROUTE}${a}`));
+    const others = kept.charts.filter((chart) => window.EC_LIBRARY.keyOf(chart) !== first);
+    if (others.length === 0) return;
+    compareSavedChart.replaceChildren(...others.map((chart) => new Option(
+      `${chart.name ?? t('library_unnamed')} · ${birthLine(chart)}`, chart.id)));
+    compareSaved.classList.remove('hidden');
+  };
+  compareSavedGo.addEventListener('click', () => {
+    if (comparingWith === null) return;
+    const kept = settingsPage.current();
+    const chart = kept === null ? null : window.EC_LIBRARY.chartWith(kept, compareSavedChart.value);
+    // Removed in another tab since it was listed: said, and the list read again.
+    if (chart === null) {
+      showToast(t('save_chart_gone'), true);
+      offerSaved(comparingWith);
+      return;
+    }
+    const pair = new URLSearchParams({ a: comparingWith, b: window.EC_LIBRARY.chartParams(chart, currentLanguage) });
+    history.pushState(null, '', `${formAddress()}${COMPARE_ROUTE}${pair}`);
+    followAddress();
+  });
   // The form asks for a comparison's second chart, naming the first; or it is itself again.
   const askForSecond = (a) => {
     comparingWith = a;
@@ -1703,9 +1797,12 @@ document.addEventListener('DOMContentLoaded', () => {
     compareNote.classList.remove('hidden');
     createChartBtn.setAttribute('data-i18n', 'compare_create');
     createChartBtn.textContent = t('compare_create');
+    offerSaved(a);
   };
   const askForChart = () => {
     comparingWith = null;
+    savedAsked += 1;
+    compareSaved.classList.add('hidden');
     compareNote.classList.add('hidden');
     stopSaving();
     createChartBtn.setAttribute('data-i18n', 'create_chart');
@@ -1821,8 +1918,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // A chart's display, luck pillar and life grid are the chart page's, not the day's.
     for (const key of ['display', 'luck', 'life']) if (params.has(key)) throw linkError('chart_only', key);
     const chart = readChartLink(`${CHART_ROUTE}${params}`);
-    if (own.day === null) throw linkError('missing', 'day');
-    if (!window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`)) throw linkError('invalid', 'day');
+    // Without its day, the link opens today, where you are (followAddress).
+    if (own.day !== null && (!window.EC_TODAY.DAY_PATH.test(own.day) || !parseWallClock(`${own.day}T12:00`))) {
+      throw linkError('invalid', 'day');
+    }
     if (own.who !== null && own.who !== 'partner') throw linkError('invalid', 'who');
     if (own.partner !== null && !/^[0-9a-f]{32}$/.test(own.partner)) throw linkError('invalid', 'partner');
     if (own.topic !== null && !window.EC_TODAY.TOPIC_PATH.test(own.topic)) throw linkError('invalid', 'topic');
@@ -2306,6 +2405,9 @@ document.addEventListener('DOMContentLoaded', () => {
         console.error(err);
         askForChart();
         leaveChart();
+        const birth = new URLSearchParams(location.hash.slice(TODAY_ROUTE.length));
+        for (const key of ['day', 'who', 'partner', 'topic']) birth.delete(key);
+        keepLinkBirth(birth);
         setFormError(err.message);
         addressForm('replaceState');
         return;
@@ -2335,6 +2437,24 @@ document.addEventListener('DOMContentLoaded', () => {
         // Signing in here, or another tab's account taken by the check, set the page to
         // the account's language: the day is shown in it, and its address says so.
         next = { ...next, lang: currentLanguage };
+        history.replaceState(null, '', `${formAddress()}${window.EC_TODAY.address(next)}`);
+      }
+      if (next.day === null) {
+        // A day's link without its day opens today where you are, as Chart · Day does,
+        // and its address names the day.
+        let kept;
+        try {
+          kept = await settingsPage.load(() => arrival === arrivals);
+        } catch (err) {
+          if (arrival !== arrivals) return;
+          console.error(err);
+          inputView.classList.remove('hidden');
+          setFormError(err.message);
+          addressForm('replaceState');
+          return;
+        }
+        if (arrival !== arrivals) return;
+        next = { ...next, day: dateIn(kept.place?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone) };
         history.replaceState(null, '', `${formAddress()}${window.EC_TODAY.address(next)}`);
       }
       today.show(next);
@@ -2432,6 +2552,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
       leaveChart();
+      if (location.hash.startsWith(CHART_ROUTE)) keepLinkBirth(new URLSearchParams(location.hash.slice(CHART_ROUTE.length)));
       setFormError(err.message);
       addressForm('replaceState');
       return;

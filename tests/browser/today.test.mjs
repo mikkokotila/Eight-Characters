@@ -215,6 +215,18 @@ for (const profile of profiles) {
   describe(`${engineName} / ${profile.name} / today`, { concurrency: false }, () => {
     const check = (name, run) => it(name, { timeout: 120000 }, () => withPage(profile, run));
 
+    check('a day\'s link without its day opens today where you are, and its address names the day', async (page) => {
+      await page.clock.setFixedTime(NOW);
+      const { answers } = await recordToday(page);
+      await openLink(page, `/#chart?${chartParams()}`, { place: HELSINKI });
+      await setSettings(page);
+      await page.goto(new URL(`/#today?${chartParams()}`, process.env.EC_BASE_URL).href);
+      await shown(page);
+      assert.equal(await part(page, 'day'), DAY);
+      assert.equal(answers.at(-1).request.date, DAY);
+      assert.equal(await page.locator('#form-error').isVisible(), false);
+    });
+
     check('Chart · Today opens the day of the chart on screen, every number the API’s', async (page) => {
       await page.clock.setFixedTime(NOW);
       const { answers } = await recordToday(page);
@@ -1009,6 +1021,9 @@ for (const profile of profiles) {
         await page.locator('#form-error').waitFor({ state: 'visible' });
         assert.equal(await page.locator('#form-error').textContent(), `This link does not open a chart: ${why}.`, link);
         assert.equal(await page.locator('#today-view').isHidden(), true);
+        // The chart's birth, which the link gives right, waits in the form.
+        assert.deepEqual(await page.evaluate(() => ['date', 'time', 'location'].map((id) => document.getElementById(id).value)),
+          [CHART.date, CHART.time, HELSINKI.display], link);
       }
     });
 

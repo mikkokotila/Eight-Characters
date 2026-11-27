@@ -135,12 +135,13 @@
     // The settings, read anew in their turn. A session that ended meanwhile asks for a
     // sign-in first, while `wanted` holds: the page may still hold the account whose
     // session ended, so the server is asked before the sign-in is. The settings are
-    // then those of the account signed in.
-    const load = (wanted = () => true) => inTurn(async () => {
+    // then those of the account signed in. With `signIn` false, nothing asks for one:
+    // the refusal is the caller's.
+    const load = (wanted = () => true, { signIn = true } = {}) => inTurn(async () => {
       try {
         return await read();
       } catch (err) {
-        if (!(err instanceof Refused) || err.status !== 401 || !wanted()) throw err;
+        if (!(err instanceof Refused) || err.status !== 401 || !signIn || !wanted()) throw err;
         if (!(await account.recheck(wanted))) {
           if (!wanted()) throw err;
           await account.signIn();
