@@ -648,7 +648,7 @@ for (const profile of profiles) {
       for (const mutate of broken) {
         await page.clock.setFixedTime(TODAY);
         await openChart(page, { ...SAMPLE, success: false }, mutate);
-        assert.equal(await page.locator('#form-error').textContent(), 'Reading the luck pillars failed.');
+        assert.equal(await page.locator('#form-error').textContent(), 'Could not read the luck pillars.');
         assert.equal(await page.locator('#chart-view').isVisible(), false);
         await page.unrouteAll();
       }
