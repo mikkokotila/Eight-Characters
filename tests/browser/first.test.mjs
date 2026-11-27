@@ -4,7 +4,7 @@
 // Day Master shown is the API's own. Only the place search and Cloudflare's widget are
 // stubbed.
 import {
-  assert, describe, it, engineName, profiles, settled, withPage, CHENGDU,
+  assert, describe, it, engineName, profiles, settled, withPage, CHENGDU, HELSINKI,
 } from './chart-helpers.mjs';
 import { newAddress } from './account-helpers.mjs';
 import { BIRTH, link, visit, chartsAskedFor, dialogOpens, text, sendCode, enterCode } from './account-page.mjs';
@@ -165,6 +165,47 @@ for (const profile of profiles) {
       const api = await response.json();
       assert.equal(named(api.pillars.day), '己丑 Ji Chou');
       assert.deepEqual((await shown(page)).pillars, ORDER.map((name) => [name, named(api.pillars[name])]));
+    }, { signedIn: false });
+
+    check('made again from the form, a first chart keeps its link\'s Zi-hour convention and pass, with its time or without it', async (page) => {
+      const part = (name) => page.evaluate((name) => new URLSearchParams(location.hash.split('?')[1]).get(name), name);
+      const again = async () => {
+        await page.locator('#first-edit').click();
+        await page.locator('#input-view').waitFor({ state: 'visible' });
+        await page.locator('#create-chart-btn').click();
+        await firstDrawn(page);
+      };
+      // The whole Zi hour: 00:30 in Chengdu is already the next day's, and stays so.
+      const whole = new URLSearchParams(link(BIRTH.date, '00:30', 'en'));
+      whole.set('zi', 'whole_zi_23');
+      await visit(page, { lang: 'en', address: `#chart?${whole}` });
+      await firstDrawn(page);
+      const day = (await shown(page)).pillars.find(([name]) => name === 'day')[1];
+      assert.equal(day, '己丑 Ji Chou');
+      await again();
+      assert.equal(await part('zi'), 'whole_zi_23');
+      assert.equal((await shown(page)).pillars.find(([name]) => name === 'day')[1], day);
+      // Without the time, the convention still moves the day's change: it is kept too.
+      const untimed = new URLSearchParams(link(BIRTH.date, 'unknown', 'en'));
+      untimed.set('zi', 'whole_zi_23');
+      await page.goto(new URL(`/#chart?${untimed}`, process.env.EC_BASE_URL).href);
+      await firstDrawn(page);
+      const changes = (await shown(page)).changes;
+      await again();
+      assert.deepEqual([await part('time'), await part('zi')], ['unknown', 'whole_zi_23']);
+      assert.deepEqual((await shown(page)).changes, changes);
+      // A time Helsinki's clocks repeat (03:30 on 31 October 2021), at its second pass:
+      // without it the API cannot tell which is meant.
+      const repeated = new URLSearchParams({
+        date: '2021-10-31', time: '03:30', place: HELSINKI.display, city: HELSINKI.city, latitude: String(HELSINKI.latitude),
+        longitude: String(HELSINKI.longitude), timezone: HELSINKI.timezone, lang: 'en', fold: '1',
+      });
+      await page.goto(new URL(`/#chart?${repeated}`, process.env.EC_BASE_URL).href);
+      await firstDrawn(page);
+      await again();
+      assert.equal(await part('fold'), '1');
+      assert.equal(await page.locator('#form-error').isVisible(), false);
+      assert.equal((await shown(page)).heading, 'October 31, 2021 · 03:30 · Helsinki');
     }, { signedIn: false });
 
     check('a chart made from the form opens at its top, wherever the form was scrolled to', async (page) => {

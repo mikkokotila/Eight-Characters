@@ -56,6 +56,10 @@ The first chart: what a birth settles without its time, or without an account, f
 ### Changed
 - Going back to a chart's address after signing out shows its first chart, whose offer
   asks for the sign-in, where it asked for the sign-in at once.
+- Made again from the form (Edit, then Create chart), a first chart keeps its link's
+  Zi-hour convention, with its time or without it, and its pass of an hour the clocks
+  repeat: the form held neither, so a `whole_zi_23` link came back as `split_midnight`,
+  and a repeated hour lost its pass, which the API refuses.
 - A chart made from the form opens at its top. On a phone the form runs past the screen,
   and the chart opened as far down as the form had been scrolled.
 

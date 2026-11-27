@@ -812,9 +812,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // it settles (first.js), at the chart's own address.
     if (isTimeUnknown() || (!embedded && !account.signedIn())) {
       const params = linkParams(request, resolvedLocation);
+      // Without its time a birth has no pass of a repeated hour; its Zi-hour convention
+      // still moves the day's change, and is kept.
       if (isTimeUnknown()) {
         params.set('time', 'unknown');
-        params.delete('zi');
         params.delete('fold');
       }
       history.pushState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
@@ -2793,10 +2794,12 @@ document.addEventListener('DOMContentLoaded', () => {
     setFieldError(dateInput, dateStatus, '');
     setFieldError(timeInput, timeStatus, '');
     pickPlace(link.place);
+    // The form holds the link's birth now, drawn or not, with its own convention and pass:
+    // made again from the form (Edit, then Create chart), the chart keeps them.
+    formChart = chartRequest(link);
     // Without its time, or without an account, the birth opens as the first chart: what
     // it settles (first.js). Its Edit finds the birth in the form.
     if (link.time === 'unknown' || (!embedded && !account.signedIn())) {
-      formChart = null;
       leaveChart();
       inputView.classList.add('hidden');
       const title = link.time === 'unknown'
@@ -2816,9 +2819,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       return;
     }
-    // The form holds the link's birth now, drawn or not: a chart that cannot be drawn
-    // leaves it there to be corrected, with its own convention and pass.
-    formChart = chartRequest(link);
+    // A chart that cannot be drawn leaves its birth in the form, to be corrected.
     // Meanwhile a chart on screen takes no clicks, and the form says it is creating one.
     const onChart = !chartView.classList.contains('hidden');
     try {

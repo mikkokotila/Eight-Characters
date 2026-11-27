@@ -158,6 +158,8 @@ against `POST /api/first_chart`, and:
   is left as it was when the dialog closes, and opens the whole chart once signed up;
 - that a link without the time opens no day, no comparison and no topic, keeping its
   birth in the form;
+- that a first chart made again from the form (Edit, then Create chart) keeps its link's
+  Zi-hour convention, with its time or without it, and the pass of a repeated hour;
 - that the forms that save a birth or ask for a comparison's second chart do not offer
   the choice;
 - that the first chart reads the Zi-hour convention its link names, and that a chart
