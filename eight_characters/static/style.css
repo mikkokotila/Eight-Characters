@@ -847,8 +847,10 @@ body {
   letter-spacing: var(--tracking-1);
   color: var(--ink-1);
 }
-/* The Day Master's own topics sit in the row with the relationships. */
-.chart-topics .context-controls { display: contents; }
+/* The Day Master's own topics sit in the row with the relationships, and both in the
+   line's row (on a phone, below). */
+.chart-topics .context-controls,
+.topic-row { display: contents; }
 .topic-button,
 .chart-topics .context-toggle {
   min-height: var(--control-2);
@@ -2872,12 +2874,32 @@ kbd {
   border: 0;
 }
 
-/* On a phone the tools read from the left, under the chart's identity, and the
-   display switch, the one used most, spans the width. */
+/* On a phone the tools read from the left, under the chart's identity. In a
+   comparison's frame the display switch, the one used most, spans the width; the
+   chart's own bar is compact (below). */
 @media (max-width: 640px) {
   .chart-tools { justify-content: flex-start; }
-  .display-switch { display: flex; flex-basis: 100%; }
-  .display-switch button { flex: 1 1 auto; }
+  .is-embedded .display-switch { display: flex; flex-basis: 100%; }
+  .is-embedded .display-switch button { flex: 1 1 auto; }
+  /* The topics: one row under the Day Master's line, scrolled sideways, so that the
+     chart starts higher. Its padding keeps the focus rings, which overflow would clip,
+     and its margin gives the room back. It holds its buttons' screen-reader labels,
+     which are placed absolutely: otherwise they escape its clipping, and the page grows
+     wider than the screen. */
+  .topic-row {
+    position: relative;
+    display: flex;
+    flex: 1 1 100%;
+    gap: var(--space-2);
+    min-width: 0;
+    margin: calc(-1 * var(--space-1));
+    padding: var(--space-1);
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .topic-row::-webkit-scrollbar { display: none; }
+  .topic-row :is(.topic-button, .context-toggle) { flex: 0 0 auto; white-space: nowrap; }
 }
 @container panel (max-width: 640px) {
   .relationship-members { grid-template-columns: 1fr; }
@@ -3143,9 +3165,10 @@ kbd {
   }
   /* The second row of pillars. */
   .pillar:nth-child(n + 3) { margin-top: var(--space-5); }
-  /* The luck pillar stands above the two-by-two chart, its stem and branch side by side. */
+  /* The luck pillar follows the two-by-two chart, as it stands right of the Year on a
+     wider screen, its stem and branch side by side. */
   .pillars.has-luck { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .pillars.has-luck .pillar.is-luck { grid-column: 1 / -1; order: -1; margin: 0 0 var(--space-5); }
+  .pillars.has-luck .pillar.is-luck { grid-column: 1 / -1; margin: var(--space-5) 0 0; }
   .pillar.is-luck .pillar-cards {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-template-rows: auto auto;
@@ -4253,13 +4276,27 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
 }
 /* A comparison's frame keeps only Copy as text, standing in its bar as a button, as in
    icons: the menu's rules above hold outside the frames alone. */
-/* On a phone: the page and the menu on the first line, the display across the second,
-   the luck pillar and the language on the third. */
+/* On a phone the bar is compact: the page and the menu on the first line; on the
+   second the display and the luck pillar's switches, as icons (their names are their
+   tips', and a screen reader's), and the language, the parts as far apart as the lines. */
 @media (max-width: 640px) {
+  :root[data-toolbar='words']:not(.is-embedded) .chart-tools { column-gap: var(--space-2); }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .page-switch { order: 1; }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > .bar-menu { order: 2; margin-inline-start: auto; }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :not(.page-switch, .bar-menu) { order: 3; }
   :root[data-toolbar='words']:not(.is-embedded) .chart-tools > :is(#chart-language, #today-language) { order: 4; }
+  :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button.icon-control {
+    min-width: var(--control-touch);
+    padding: var(--space-2);
+  }
+  :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button > .control-icon { display: inline-block; }
+  :root[data-toolbar='words']:not(.is-embedded) :is(#display-switch, #luck-switch) > button > .control-label.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
 }
 @media (max-width: 640px), (pointer: coarse) {
   :root[data-toolbar='words']:not(.is-embedded) .bar-menu-items > .bar-action { min-height: var(--control-touch); }

@@ -980,7 +980,7 @@ for (const profile of profiles) {
       assert.equal((await decadePage(page)).title, '戊子 Wu Zi');
     });
 
-    check('on a phone the luck pillar stands above the two-by-two chart, its stem beside its branch', async (page) => {
+    check('on a phone the luck pillar follows the two-by-two chart, as it stands right of the Year, its stem beside its branch', async (page) => {
       await openSample(page);
       await click(page, '#luck-switch [data-luck-show="on"]');
       const at = await page.evaluate(() => Object.fromEntries([...document.querySelectorAll('#pillars .card')].map((card) => {
@@ -989,7 +989,7 @@ for (const profile of profiles) {
       })));
       if (profile.name === 'mobile') {
         assert.ok(at['luck stem'].x < at['luck branch'].x && at['luck stem'].y === at['luck branch'].y, JSON.stringify(at));
-        assert.ok(at['luck branch'].bottom < at['hour stem'].y, JSON.stringify(at));
+        assert.ok(at['luck stem'].y > at['year branch'].bottom && at['luck stem'].y > at['month branch'].bottom, JSON.stringify(at));
         assert.ok(at['hour stem'].y === at['day stem'].y && at['month stem'].y > at['hour branch'].bottom, JSON.stringify(at));
       } else {
         // Beside the Year, in the cards' own rows.

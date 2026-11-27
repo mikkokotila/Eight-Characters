@@ -184,8 +184,11 @@
     <!-- The chart's topics: each opens its explanation in the panel. -->
     <nav id="day-master-context" class="chart-topics" aria-labelledby="day-master-heading">
       <h2 id="day-master-heading" class="day-master-line"></h2>
-      <div id="context-controls" class="context-controls"></div>
-      <button type="button" id="relationships-topic" class="topic-button" aria-expanded="false" aria-controls="chart-panel"></button>
+      <!-- In the line's row; on a phone, a row of their own that scrolls sideways. -->
+      <div class="topic-row">
+        <div id="context-controls" class="context-controls"></div>
+        <button type="button" id="relationships-topic" class="topic-button" aria-expanded="false" aria-controls="chart-panel"></button>
+      </div>
     </nav>
 
     <!-- The luck pillars of a chart with a gender, by decade (luck.js). -->

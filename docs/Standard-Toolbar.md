@@ -23,8 +23,11 @@ Every switch says what it does, and the actions gather in one menu.
   arrows, and the ribbon its calendar: they move through dates, and say so. The day's
   Today, a jump rather than a step, says its word beside its calendar.
 
-On a phone the chart's bar is three lines: the page and Actions; the display across the
-width; the luck pillar and the language. The day's bar is two.
+On a phone the chart's bar is two lines: the page and Actions; then the display and the
+luck pillar's switches, as their icons (their names are their tips' and a screen
+reader's), and the language, which takes a line of its own below 390px. The day's bar
+is two lines too. The topics stand in one row under the Day Master's line, and scroll
+sideways; a topic that takes the focus comes into sight.
 
 ### The menu
 
