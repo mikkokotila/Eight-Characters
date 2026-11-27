@@ -2148,11 +2148,15 @@ document.addEventListener('DOMContentLoaded', () => {
     onAccount: () => {
       account.signIn().then(async () => {
         // Signing in set the page to the account's language: the whole chart is asked
-        // for in it, and its address says so.
+        // for in it, and its address says so. Where a topic opens as a sheet over the
+        // chart (a narrow screen: the panel's own style says so), the chart signed up
+        // for opens whole, its topic one press away on its line, not over its cards.
         const params = new URLSearchParams(location.hash.slice(CHART_ROUTE.length));
-        if (location.hash.startsWith(CHART_ROUTE) && params.get('lang') !== currentLanguage) {
+        if (location.hash.startsWith(CHART_ROUTE)) {
+          const before = params.toString();
           params.set('lang', currentLanguage);
-          history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
+          if (getComputedStyle(chartPanel).position === 'fixed') params.delete('topic');
+          if (params.toString() !== before) history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
         }
         await followAddress();
         // The whole chart a visitor signed up for is offered to be kept as theirs, with

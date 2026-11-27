@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.79.1
+
+### Fixed
+- **Signed up on a phone, the chart is in sight.** eightchord.com's free account link
+  names the Day Master's page, and on a screen narrower than 1200px a topic opens as a
+  sheet over the foot of the page: right after signing up, the reading covered half the
+  chart that had just been signed up for. Where a topic opens as a sheet, the chart now
+  opens whole, and the Day Master's line opens its page with a press. A wide screen
+  keeps the page beside the chart.
+
 ## 0.79.0
 
 The same kind of thing alike everywhere: the last of five changes from the 2026-11-27

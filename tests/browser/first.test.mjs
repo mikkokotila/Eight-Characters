@@ -160,6 +160,35 @@ for (const profile of profiles) {
       assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
     }, { signedIn: false });
 
+    check('signed up from a link that names a topic, the chart opens with it beside the cards on a wide screen; on a narrow one, whole, the topic one press away', async (page) => {
+      // As eightchord.com's free account link names the Day Master's page.
+      await visit(page, { lang: 'en', address: `#chart?${link(BIRTH.date, BIRTH.time, 'en')}&topic=day-master` });
+      await firstDrawn(page);
+      await page.locator('#first-account').click();
+      await dialogOpens(page);
+      const email = newAddress('first-topic');
+      await sendCode(page, email, 'en');
+      await enterCode(page, email);
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      await page.locator('#save-chart-close').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      await settled(page);
+      const topic = await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('topic'));
+      const narrow = await page.locator('#chart-panel').evaluate((panel) => getComputedStyle(panel).position === 'fixed');
+      assert.equal(narrow, profile.name === 'mobile');
+      if (narrow) {
+        // The cards are in sight, nothing over them; the Day Master's line opens its page.
+        assert.equal(topic, null);
+        assert.equal(await page.locator('#chart-panel').isVisible(), false);
+        assert.equal(await page.locator('#pillars .card').first().evaluate((card) => card.getBoundingClientRect().top < innerHeight), true);
+        await page.locator('#day-master-heading .canon-day-master-line, #day-master-heading button').first().click();
+        await page.locator('#chart-panel').waitFor({ state: 'visible' });
+      } else {
+        assert.equal(topic, 'day-master');
+        assert.equal(await page.locator('#chart-panel').isVisible(), true);
+      }
+    }, { signedIn: false });
+
     check('an account with a chart of its own, signed in from a first chart, is offered nothing to keep', async (page) => {
       // An account whose own chart is another birth's.
       const email = newAddress('first-own');
