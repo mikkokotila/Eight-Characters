@@ -27,7 +27,8 @@ jobs:
         run: |
           python -m unittest \
             tests.test_phase5_verification_harness \
-            tests.test_production_python
+            tests.test_production_python \
+            tests.test_run_checks
 
       - name: Ensure fixtures remain unchanged
         run: |
