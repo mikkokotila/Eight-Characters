@@ -1761,9 +1761,12 @@ document.addEventListener('DOMContentLoaded', () => {
     if (embedded || !account.signedIn()) return;
     let kept;
     try {
-      kept = await settingsPage.load(() => asked === savedAsked);
+      // The list is no reason to ask for a sign-in: Compare itself asks, when pressed.
+      kept = await settingsPage.load(() => asked === savedAsked, { signIn: false });
     } catch (err) {
       if (asked !== savedAsked) return;
+      // A session that ended keeps no saved charts to offer.
+      if (err.status === 401) return;
       console.error(err);
       showToast(err.message || t('settings_load_error'), true);
       return;
