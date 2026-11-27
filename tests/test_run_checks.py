@@ -85,6 +85,13 @@ class Jobs(unittest.TestCase):
         [(job, expected)] = run_checks.jobs_of('theme', 'mobile', 7)
         self.assertEqual((job.label, job.parts, expected), ('theme · mobile', 1, 7))
 
+    def test_a_suite_not_yet_measured_runs_as_one_job_first(self) -> None:
+        planned = [
+            *run_checks.jobs_of('b', 'desktop', 300),
+            *run_checks.jobs_of('new', 'desktop', None),
+        ]
+        self.assertEqual(run_checks.order(planned)[0].label, 'new · desktop')
+
     def test_the_longest_run_starts_first(self) -> None:
         planned = [
             *run_checks.jobs_of('a', 'desktop', 10),

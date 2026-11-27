@@ -1355,7 +1355,7 @@ describeOnce(`${engineName} / settings signed out`, { concurrency: false }, () =
     assert.equal(await page.locator('#start-charts').isHidden(), true);
   }, { signedIn: false }));
 
-  it('signed in without a chart of my own, the start page begins with my saved charts: each opens its chart, and Mark as yours opens its day', { timeout: 120000 }, () => withPage(profiles[0], async (page) => {
+  it('signed in without a chart of my own, the start page begins with my saved charts: each opens its chart, and Mark as yours opens its day', { timeout: 120000 }, () => withPage(desktop, async (page) => {
     const own = await newAccount(playwright, { language: 'en', label: 'settings-start' });
     await signInPage(page, own);
     // With nothing saved, the start page is the form alone.

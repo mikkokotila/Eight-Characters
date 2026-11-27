@@ -37,6 +37,7 @@ AREAS: tuple[tuple[str, tuple[str, ...]], ...] = (
         ('account', 'account-sessions', 'account-billing', 'settings'),
     ),
     (r'eight_characters/static/compare\.js', ('compare',)),
+    (r'eight_characters/(static/first\.js|first_chart\.py)', ('first',)),
     (r'eight_characters/static/(controls|toolbar|icons)\.js', ('controls', 'toolbar')),
     (
         r'eight_characters/(static/day-master-context\.js|day_master_context\.py)',
@@ -194,7 +195,8 @@ class Job:
 
 
 def durations(available: Sequence[str]) -> dict[str, dict[str, int]]:
-    """Each suite's seconds in each profile, from durations.txt."""
+    """Each suite's seconds in each profile, from durations.txt. A line for no suite
+    stops the run; a suite without a line (a new one, being measured) has none."""
     found: dict[str, dict[str, int]] = {}
     for line in DURATIONS.read_text(encoding='utf-8').splitlines():
         if not line.strip() or line.startswith('#'):
@@ -205,20 +207,21 @@ def durations(available: Sequence[str]) -> dict[str, dict[str, int]]:
                 f'{DURATIONS.relative_to(ROOT)}: not NAME DESKTOP MOBILE: {line}'
             )
         found[fields[0]] = dict(zip(PROFILES, map(int, fields[1:]), strict=True))
-    missing = sorted(set(available) - set(found))
     unknown = sorted(set(found) - set(available))
-    if missing or unknown:
+    if unknown:
         raise SystemExit(
-            f'{DURATIONS.relative_to(ROOT)} must give the seconds of every suite, and only '
-            f'those: missing {", ".join(missing) or "none"}; no such suite '
-            f'{", ".join(unknown) or "none"}.'
+            f'{DURATIONS.relative_to(ROOT)} gives the seconds of no such suite: '
+            f'{", ".join(unknown)}.'
         )
     return found
 
 
-def jobs_of(suite: str, profile: str, seconds: int) -> list[tuple[Job, float]]:
+def jobs_of(suite: str, profile: str, seconds: int | None) -> list[tuple[Job, float]]:
     """A suite's profile as one job, or in parts when it takes long (EC_PART), each
-    with the seconds it is expected to take."""
+    with the seconds it is expected to take. A suite not yet measured runs as one job,
+    before the others: it may be long."""
+    if seconds is None:
+        return [(Job(suite, profile), math.inf)]
     parts = max(1, math.ceil(seconds / PART_SECONDS))
     return [
         (Job(suite, profile, part, parts), seconds / parts)
@@ -534,12 +537,20 @@ def run_browser(args: argparse.Namespace, node: str) -> int:
         raise SystemExit('No browser suite is left to run.')
     profiles = [args.profile] if args.profile else list(PROFILES)
     seconds = durations(available)
+    unmeasured = [suite for suite in chosen if suite not in seconds]
+    if unmeasured:
+        print(
+            f'No seconds for {", ".join(unmeasured)} in '
+            f'{DURATIONS.relative_to(ROOT)}: each profile runs as one job, first. Add '
+            'a line for each, from the seconds this run prints.',
+            flush=True,
+        )
     jobs = order(
         [
             planned
             for suite in chosen
             for profile in profiles
-            for planned in jobs_of(suite, profile, seconds[suite][profile])
+            for planned in jobs_of(suite, profile, seconds.get(suite, {}).get(profile))
         ]
     )
     workers = min(args.workers, len(jobs))
