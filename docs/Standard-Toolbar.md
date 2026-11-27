@@ -19,9 +19,9 @@ Every switch says what it does, and the actions gather in one menu.
   its word: its window holds the saved charts, Settings and the rest of the account
   ([The account](Account.md)). The saved charts' and Settings' own bar opens it too, as
   the start page's top does.
-- **A comparison** keeps its own actions in its bar, each with an icon and its words:
-  Swap sides, Copy link and Close comparison. Its two charts keep their display and
-  Copy as text in their own bars, without a menu.
+- **A comparison**'s bar is a chart's: its Actions menu holds Swap sides and Copy link,
+  and Account and Close comparison follow it, each with its icon and its words. Its two
+  charts keep their display and Copy as text in their own bars, without a menu.
 - The day's steps (the day before, the day after) and the luck ribbon's keep their
   arrows, and the ribbon its calendar: they move through dates, and say so. The day's
   Today, a jump rather than a step, says its word beside its calendar.

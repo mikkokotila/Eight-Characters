@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.79.0
+
+The same kind of thing alike everywhere: the last of five changes from the 2026-11-27
+review of the app's repeated use.
+
+### Changed
+- **A comparison's bar is a chart's.** Its bar put Swap sides, Copy link and Close in a
+  row of their own, where the chart puts Copy link under Actions; on a phone it took
+  three lines. Its Actions menu now holds Swap sides and Copy link, as the chart's holds
+  its actions, and Account and Close follow it, as on every page: two lines on a phone.
+  Its second chart is chosen from the saved charts' list since 0.77.0.
+- **The save window is every window.** It had a bold sans title, no Close and two equal
+  buttons, where every other window has its title in a serif, with Close beside it. It
+  now has the same bar, and Save is its one action; Close saves nothing.
+- **An error said about a page leaves with it.** A toast stayed its time over the next
+  page, where it read as that page's. An error now leaves, in its exit, when another
+  page opens; a confirmation still stays its time, as one said just before a page
+  opens does.
+
+### Docs
+- Standard-Compare, Standard-Toolbar, Standard-Settings (the save window), Natural-Flow.
+
 ## 0.78.0
 
 Settings apart from your people, and one way to each place: the fourth of five changes

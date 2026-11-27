@@ -2751,7 +2751,8 @@ kbd {
   margin: 0;
   text-align: left;
 }
-.account-step .submit-btn {
+.account-step .submit-btn,
+.dialog-form .submit-btn {
   justify-self: start;
   padding: var(--space-3) var(--space-6);
 }

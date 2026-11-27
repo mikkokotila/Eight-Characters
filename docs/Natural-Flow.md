@@ -36,7 +36,7 @@ settling. There are no decorative repeating animations.
 | Luck and life views | The natal columns make room for the fifth pillar; the chosen phase and folded life view use the same information and layout rules. |
 | Comparison swap | Frame positions follow their chart identities through a shared layout transition; embedded charts do not add independent natal entrances. |
 | Explorer | Pan, zoom-to-fit and parameter-pane layout use the shared model. Repeating decorative rings are removed. |
-| Notices and toasts | Feedback enters and leaves coherently. Toast text remains present throughout its exit. |
+| Notices and toasts | Feedback enters and leaves coherently. Toast text remains present throughout its exit. An error said about a page leaves, in its exit, when another page is followed to; a confirmation stays its time. |
 
 ## Accessibility and lifecycle
 

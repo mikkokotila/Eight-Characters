@@ -69,7 +69,7 @@ for (const profile of profiles) {
       await compareWithSecond(page);
       await bothDrawn(page);
       await settled(page);
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       await page.waitForFunction(() => document.querySelector('.compare-frame[data-flow-key="a"][data-flow-layout]'));
       await page.waitForTimeout(100);
       const drift = await page.evaluate(() => new Promise((resolve) => {
@@ -214,7 +214,7 @@ for (const profile of profiles) {
       const [before] = await bothDrawn(page);
       await before.frame.locator('button[data-context="roots"]').click();
       await page.waitForFunction(() => location.hash.includes('topic%3Droots'));
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       // The session is made sure of first; then the charts change sides.
       await page.waitForFunction((date) => {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
@@ -321,11 +321,11 @@ for (const profile of profiles) {
         }
         return route.fallback();
       });
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       await holding;
       assert.equal(await page.locator('#compare-view').getAttribute('aria-busy'), 'true');
       // Meanwhile neither the sides nor the language take a click.
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       await page.locator('#compare-language button[data-compare-lang="fi"]').click();
       release();
       await page.waitForFunction(() => !document.getElementById('compare-view').hasAttribute('aria-busy'));
@@ -353,7 +353,7 @@ for (const profile of profiles) {
         }
         return route.fallback();
       });
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       const toast = page.locator('.toast.is-error');
       await toast.waitFor({ state: 'visible' });
       assert.equal(await toast.textContent(), 'The server answered 500. Try again.');
@@ -361,7 +361,7 @@ for (const profile of profiles) {
       const pair = pairIn(page.url());
       assert.deepEqual([pair.a.get('date'), pair.b.get('date')], ['1988-02-04', SECOND.date]);
       // Asked again, the sides change.
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       await page.waitForFunction((date) => {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
         return new URLSearchParams(pair.get('a')).get('date') === date;
@@ -392,7 +392,7 @@ for (const profile of profiles) {
         return ['a', 'b'].every((key) => new URLSearchParams(pair.get(key)).get('lang') === 'fi');
       });
       await withheld;
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       await page.waitForFunction((date) => {
         const pair = new URLSearchParams(location.hash.slice('#compare?'.length));
         return new URLSearchParams(pair.get('a')).get('date') === date;
@@ -415,7 +415,7 @@ for (const profile of profiles) {
       });
       await compareWithSecond(page);
       await bothDrawn(page);
-      await page.locator('#compare-copy-link').click();
+      await press(page, '#compare-copy-link');
       await page.waitForFunction(() => document.querySelector('.toast').textContent === 'Comparison link copied');
       // Said where it shows: over the comparison, which hides the chart view.
       assert.equal(await page.locator('.toast').isVisible(), true);

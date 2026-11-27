@@ -349,7 +349,7 @@ for (const profile of profiles) {
       await asAccount(playwright, account, async (request) => {
         assert.equal((await request.delete('/api/account/sessions', { data: { key: account.key } })).status(), 204);
       });
-      await page.locator('#compare-swap').click();
+      await press(page, '#compare-swap');
       // The page asks for the sign-in the frames cannot, before they ask for their charts.
       await dialogOpens(page);
       assert.equal(await text(page, '#account-notice'), 'Your session ended. Sign in again.');

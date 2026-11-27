@@ -309,9 +309,15 @@ for (const profile of profiles) {
         }));
         assert.ok(places[0][0] <= places[1][0] && places[1][0] <= places[2][0], JSON.stringify(places));
         assert.ok(places[1][0] < places[2][0] || places[1][1] < places[2][1], JSON.stringify(places));
-        // The comparison's own actions: in words, an icon and words each.
-        assert.deepEqual(await shown(page, '#compare-swap, #compare-copy-link, #compare-close'),
-          toolbar === 'words' ? [['Swap sides', true], ['Copy link', true], ['Close comparison', true]] : [['', true], ['', true], ['', true]]);
+        // The comparison's own actions, as a chart's: in words one menu, Actions, with
+        // Swap sides and Copy link; then the account and Close, each an icon and words.
+        assert.equal(await page.locator('#compare-actions-button').isVisible(), toolbar === 'words');
+        if (toolbar === 'words') await page.locator('#compare-actions-button').click();
+        assert.deepEqual(await shown(page, '#compare-swap, #compare-copy-link'),
+          toolbar === 'words' ? [['Swap sides', true], ['Copy link', true]] : [['', true], ['', true]]);
+        if (toolbar === 'words') await page.keyboard.press('Escape');
+        assert.deepEqual(await shown(page, '#compare-account, #compare-close'),
+          toolbar === 'words' ? [[profile.name === 'mobile' ? '' : 'Account', true], ['Close comparison', true]] : [['', true], ['', true]]);
       }, { toolbar });
     }
 

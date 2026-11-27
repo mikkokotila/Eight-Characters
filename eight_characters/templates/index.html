@@ -309,8 +309,17 @@
         <button type="button" data-compare-lang="fi" aria-pressed="false">FI</button>
         <button type="button" data-compare-lang="en" aria-pressed="false">EN</button>
       </div>
-      <button type="button" id="compare-swap" class="bar-action" data-i18n="compare_swap">Vaihda puolet</button>
-      <button type="button" id="compare-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+      <!-- The pair's actions, as a chart's: in words one menu, in icons a button each
+           (toolbar.js); then the account, and Close, as Settings' bar has them. -->
+      <div class="bar-menu" data-bar-menu>
+        <button type="button" class="bar-action bar-menu-button" id="compare-actions-button" aria-haspopup="menu"
+          aria-expanded="false" aria-controls="compare-actions"><span data-i18n="actions">Toiminnot</span></button>
+        <div class="bar-menu-items" id="compare-actions">
+          <button type="button" id="compare-swap" class="bar-action" data-i18n="compare_swap">Vaihda puolet</button>
+          <button type="button" id="compare-copy-link" class="bar-action" data-i18n="copy_link">Kopioi linkki</button>
+        </div>
+      </div>
+      <button type="button" id="compare-account" class="bar-action bar-account" aria-haspopup="dialog" data-i18n="account_title">Tili</button>
       <button type="button" id="compare-close" class="bar-action" data-i18n="compare_close">Sulje vertailu</button>
     </div>
   </header>
@@ -639,10 +648,13 @@
 
 <!-- Saving the chart on screen: its name; its gender, asked here when it has none (a
      saved chart needs one, since the day reads its luck pillars); whether it is your own
-     chart; and the consent it needs. -->
-<dialog id="save-chart-dialog" class="chart-dialog partner-dialog" aria-labelledby="save-chart-title">
+     chart; and the consent it needs. Its bar is every window's: its title, and Close. -->
+<dialog id="save-chart-dialog" class="chart-dialog" aria-labelledby="save-chart-title">
+  <div class="chart-dialog-bar">
+    <h2 id="save-chart-title" class="chart-dialog-title" data-i18n="save_chart_title">Tallenna kartta</h2>
+    <button type="button" id="save-chart-close" class="panel-close" data-i18n="panel_close">Sulje</button>
+  </div>
   <form id="save-chart-form" class="dialog-form" method="dialog" novalidate>
-    <h2 id="save-chart-title" data-i18n="save_chart_title">Tallenna kartta</h2>
     <p id="save-chart-chart" class="account-lead"></p>
     <div class="account-field">
       <label for="save-chart-name" data-i18n="save_chart_name">Nimi (valinnainen)</label>
@@ -664,10 +676,7 @@
       <p id="save-chart-mine-note" class="account-note hidden"></p>
     </div>
     <p class="account-note" data-i18n="save_chart_consent"></p>
-    <div class="account-actions">
-      <button type="submit" id="save-chart-save" class="bar-action" value="save" data-i18n="save_chart_confirm">Tallenna</button>
-      <button type="button" id="save-chart-cancel" class="bar-action" data-i18n="cancel">Peruuta</button>
-    </div>
+    <button type="submit" id="save-chart-save" class="submit-btn" value="save" data-i18n="save_chart_confirm">Tallenna</button>
   </form>
 </dialog>
 

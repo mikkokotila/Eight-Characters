@@ -174,7 +174,9 @@ settings as read, and checks:
   removed after a confirmation that says what else ends, and a full library said
   before anything is asked; a chart without a gender given one in the save window (not
   saved without one), the chart on screen taking it, My own chart marking it, and the
-  same birth with the same gender said to be saved already;
+  same birth with the same gender said to be saved already; the save window's bar (its
+  title as the library's, and Close, which saves nothing) and Save its one action; an
+  error toast leaving when another page opens;
 - your chart and the couples: marked and unmarked, a partner added as a new birth and
   paired at once, every partner of a chart named (past three as so many more), Pair's
   second list following its first, no pair left, a plan's cap said and kept out of
@@ -405,6 +407,8 @@ The compare suite checks two charts side by side (#20).
 - **Starting.** Compare asks for the second birth, naming the first and starting
   empty; Cancel goes back. The saved charts but the first are listed over the form as
   the library lists them, nothing to mark among them, and one chosen opens the pair.
+  The pair's bar is a chart's: Swap sides and Copy link in its Actions menu (pressed
+  through it), then Account and Close.
 - **The pair.** Both charts' pillars match the API. Each frame keeps only its own
   controls; frames and page are titled; the address names both.
 - **Topics and address.** Each chart opens its own topics, and the pair's address
