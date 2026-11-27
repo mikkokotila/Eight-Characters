@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.71.1
+
+### Fixed
+- **0.71.0 never went live.** Its footers wrote hello@eightchord.com into the page.
+  Cloudflare's email obfuscation rewrote the page and added a script of its own
+  (`/cdn-cgi/.../email-decode.min.js`). s0's release check then found an asset the
+  release does not have, and kept 0.70.0 on both tries. The footers now link the
+  website's Method, Terms and Privacy Policy, as the website's own footer does. The
+  Terms and the Privacy Policy give the address to write to. A test checks that no
+  address is written into the page.
+
+### Tests
+- Python: no email address in the start page or the 404 page. Browser: the links on the
+  start page and in Settings.
+- Version bumped to `0.71.1`; the regression fixture changes only in `engine.version`.
+
 ## 0.71.0
 
 The app takes the name and the pages of eightchord.com, the website in front of it.

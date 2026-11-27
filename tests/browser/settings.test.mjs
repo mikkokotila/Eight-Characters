@@ -404,7 +404,7 @@ for (const profile of profiles) {
       // Under the settings, the website's own pages, as under the start page.
       assert.deepEqual(await page.locator('.site-links a').evaluateAll((nodes) => nodes
         .filter((node) => node.checkVisibility()).map((node) => node.textContent)),
-      ['Method', 'Terms', 'Privacy Policy', 'hello@eightchord.com']);
+      ['Method', 'Terms', 'Privacy Policy']);
       const card = page.locator(`#settings-charts-body .saved-card[data-chart="${kept.id}"]`);
       assert.equal(await card.locator('.saved-name').textContent(), name);
       // Its pillars in the chart's order, hour first, each character with its pinyin.

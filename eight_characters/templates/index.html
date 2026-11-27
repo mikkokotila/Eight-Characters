@@ -102,13 +102,14 @@
 
   </form>
 
-  <!-- The website's own pages, which cover the app too: how a chart is made, the
-       Privacy Policy and the Terms, and where to write. -->
+  <!-- The website's own pages, which cover the app too: how a chart is made, the Terms
+       and the Privacy Policy, which give the address to write to. No address is written
+       into this page: Cloudflare's email obfuscation would rewrite the page and add a
+       script of its own, which the release check (s0-control-plane) refuses. -->
   <footer class="site-links" aria-label="Eightchord">
     <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
     <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
     <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
-    <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
   </footer>
 </div>
 
@@ -470,7 +471,6 @@
       <a href="https://eightchord.com/method/" target="_blank" rel="noopener" data-i18n="site_method">Menetelmä</a>
       <a href="https://eightchord.com/terms/" target="_blank" rel="noopener" data-i18n="site_terms">Käyttöehdot</a>
       <a href="https://eightchord.com/privacy/" target="_blank" rel="noopener" data-i18n="site_privacy">Tietosuojaseloste</a>
-      <a href="mailto:hello@eightchord.com">hello@eightchord.com</a>
     </footer>
   </div>
 </div>

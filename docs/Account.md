@@ -20,9 +20,8 @@ The chart you asked for then opens, in the account's language.
 
 The window links the [Terms](https://eightchord.com/terms/) and the
 [Privacy Policy](https://eightchord.com/privacy/), on eightchord.com: they cover the app,
-at my.eightchord.com, too. The start page and Settings end with them, the
-[Method](https://eightchord.com/method/) and the address to write to,
-hello@eightchord.com.
+at my.eightchord.com, too, and give the address to write to. The start page and Settings
+end with them and the [Method](https://eightchord.com/method/).
 
 Already have an account? Sign in, at the top of the start page, or "Already have an
 account? Sign in" in the same window: only the address is needed. The email never says whether an address has an account to anyone but its
