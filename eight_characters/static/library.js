@@ -84,9 +84,9 @@
   };
 
   // A saved chart as every list of them shows it (the library, the start page): its
-  // name, its marks (your chart, its partners, on screen when `here`), its birth and its
-  // pillars. `tools` are the page's: translate, escape, format and language.
-  const row = (kept, chart, { here = false, translate: t, escape: esc, format, language }) => {
+  // name, its marks (your chart, its partners, waiting to pair with your chart when
+  // `waiting`, on screen when `here`), its birth and its pillars. `tools` are the page's: translate, escape, format and language.
+  const row = (kept, chart, { here = false, waiting = false, translate: t, escape: esc, format, language }) => {
     const reading = format.parseWallClock(`${chart.date}T${chart.time}`);
     if (!reading) throw new Error(t('settings_answer_error', { status: 200 }));
     const birthLine = [format.date(reading), format.time(reading, chart.time.length > 5), chart.place.city].join(' · ');
@@ -100,6 +100,7 @@
       partners.length === 0 ? '' : `<span class="saved-mark">${esc(t('library_with', {
         names: partnerList(partners, { lang: language(), nameOf: listName, more: (count) => t('names_more', { count }) }),
       }))}</span>`,
+      waiting ? `<span class="saved-mark">${esc(t('settings_waiting'))}</span>` : '',
       here ? `<span class="saved-mark is-here">${esc(t('library_here'))}</span>` : '',
     ].join('');
     return `<span class="saved-head"><span class="saved-name">${esc(chart.name ?? t('library_unnamed'))}</span>${marks}</span>

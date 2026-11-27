@@ -44,7 +44,7 @@ const CONTROLS = {
   '.role-choice': [36, 44],
   '.gender-option span': [36, 44],
   '.language-switch': [36, 44],
-  '.today-partner select, .settings-choose select': [36, 44],
+  '.today-partner select': [36, 44],
   '.library-btn': [28, 28],
   '.field-group input, .account-field input[type="email"], .palette-input': [48, 48],
   '.submit-btn': [48, 48],
@@ -158,7 +158,7 @@ async function eachView(page, visit) {
   await settled(page);
   await visit('Today, for a chart in two couples');
   await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
-  await page.locator('#settings-charts-body .saved-card').first().waitFor();
+  await page.locator('#settings-charts-body .saved-item').first().waitFor();
   await settled(page);
   await visit('Saved charts');
   await page.goto(new URL('/#settings', process.env.EC_BASE_URL).href);

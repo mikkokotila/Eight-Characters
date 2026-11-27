@@ -473,16 +473,11 @@
   </header>
   <div class="settings-body">
     <p id="settings-status" class="settings-status hidden" role="status"></p>
-    <section id="settings-mine" class="settings-section" data-part="charts" aria-labelledby="settings-mine-title">
-      <h2 id="settings-mine-title" class="settings-heading" data-i18n="settings_mine">Oma karttasi</h2>
-      <div id="settings-mine-body" class="settings-library"></div>
-    </section>
-    <section id="settings-couples" class="settings-section" data-part="charts" aria-labelledby="settings-couples-title">
-      <h2 id="settings-couples-title" class="settings-heading" data-i18n="settings_couples">Parit</h2>
-      <div id="settings-couples-body" class="settings-library"></div>
-    </section>
+    <!-- The saved charts: one list, yours first, as every list of them is; what can be
+         done with a chart (mark it as yours, pair it, rename, correct or remove it) under
+         it. The page's title names it, for the eye. -->
     <section id="settings-charts" class="settings-section" data-part="charts" aria-labelledby="settings-charts-title">
-      <h2 id="settings-charts-title" class="settings-heading" data-i18n="settings_charts">Tallennetut kartat</h2>
+      <h2 id="settings-charts-title" class="sr-only" data-i18n="settings_charts">Tallennetut kartat</h2>
       <div id="settings-charts-body" class="settings-library"></div>
     </section>
     <section id="settings-place" class="settings-section" data-part="settings" aria-labelledby="settings-place-title">

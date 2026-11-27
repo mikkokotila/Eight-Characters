@@ -38,7 +38,7 @@ const CARDS = [
 const SHAPES = { full: [16, 4], small: [12, 4], tile: [12, 4], tiny: [8, 2] };
 const LABELS = [
   '.field-group label', '.gender-group legend', '.account-field > label', '.account-field > legend', '.account-label',
-  '.settings-choose label', '.settings-rename label', '.today-partner-label', '.pillar-plain', '.life-head-name',
+  '.settings-rename label', '.today-partner-label', '.pillar-plain', '.life-head-name',
   '.today-pillar-name', '.today-member-place', '.relationship-position', '.pillar-change-side', '.canon-line-key',
   '.luck-sequence', '.luck-ribbon-label', '.today-run-label', '.today-pillars-note',
 ];
@@ -224,7 +224,7 @@ for (const profile of profiles) {
       const read = new Set(found.map((label) => label.selector));
       for (const selector of ['.field-group label', '.gender-group legend', '.account-label', '.pillar-plain', '.life-head-name',
         '.today-pillar-name', '.today-member-place', '.relationship-position', '.canon-line-key', '.luck-sequence', '.today-run-label',
-        '.today-pillars-note', '.settings-choose label']) {
+        '.today-pillars-note']) {
         assert.ok(read.has(selector), `no ${selector} was read`);
       }
       const ink = await page.evaluate(() => getComputedStyle(document.body).getPropertyValue('--ink-2'));

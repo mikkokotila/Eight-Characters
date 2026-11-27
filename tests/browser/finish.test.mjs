@@ -362,27 +362,36 @@ for (const profile of profiles) {
       await page.locator('#chart-view').waitFor({ state: 'visible' });
     });
 
-    check('Settings\' pair form keeps each label with its list', async (page) => {
+    check('Saved charts\' pair choices keep their question above them, and long names inside their chart\'s row', async (page) => {
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
-      await keep(page, {
+      const [first] = await keep(page, {
         charts: [
           SAVED(LONG, '1985-11-02', '23:40', 'female'),
           SAVED('Mikael Johannes Lindqvist-Korhonen', '1990-07-21', '08:15', 'male'),
         ],
       });
       await page.goto(new URL('/#charts', process.env.EC_BASE_URL).href);
-      await page.locator('#settings-pair-second').waitFor({ state: 'visible' });
+      await page.locator(`[data-settings-action="pair-start"][data-chart="${first}"]`).click();
+      await page.locator('.settings-pair-choices').waitFor({ state: 'visible' });
       await settled(page);
-      const pairs = await page.locator('#settings-view .settings-choose label').evaluateAll((labels) => labels.map((label) => {
-        const own = label.getBoundingClientRect();
-        const list = document.getElementById(label.htmlFor).getBoundingClientRect();
-        const beside = Math.abs((own.top + own.bottom) / 2 - (list.top + list.bottom) / 2) <= 2 && own.right <= list.left;
-        const above = own.bottom <= list.top + 0.5 && Math.abs(own.left - list.left) <= 1;
-        return { label: label.textContent, beside, above };
-      }));
+      const laid = await page.locator(`.saved-item[data-chart="${first}"]`).evaluate((item) => {
+        const box = (node) => node.getBoundingClientRect();
+        const row = box(item);
+        const group = item.querySelector('.settings-pair-choices');
+        const question = box(group.querySelector('.settings-note'));
+        const buttons = [...group.querySelectorAll('button')];
+        return {
+          question: group.querySelector('.settings-note').textContent,
+          above: buttons.every((button) => question.bottom <= box(button).top + 0.5),
+          inside: buttons.filter((button) => box(button).left < row.left - 0.5 || box(button).right > row.right + 0.5).map((button) => button.textContent),
+          rowInPage: row.left >= -0.5 && row.right <= window.innerWidth + 0.5,
+          sideways: document.documentElement.scrollWidth > window.innerWidth,
+        };
+      });
       await keep(page);
-      assert.ok(pairs.length >= 2);
-      for (const pair of pairs) assert.ok(pair.beside || pair.above, `${pair.label} is apart from its list`);
+      assert.deepEqual(laid, {
+        question: `Pair ${LONG} with:`, above: true, inside: [], rowInPage: true, sideways: false,
+      });
     });
 
     check('no text is drawn off the type scale', async (page) => {
