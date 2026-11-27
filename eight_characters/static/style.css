@@ -111,9 +111,13 @@
   --space-8: 64px;
 
   /* ── Type: six sizes and three trackings ── */
-  --font-serif: 'Cormorant Garamond', 'Noto Serif TC', serif;
-  --font-sans: 'Manrope', 'Noto Serif TC', sans-serif;
-  --font-glyph: 'Noto Serif TC', serif;
+  /* Han characters: the stems and branches in Noto Serif TC (the page's own subset);
+     any other (the canon's titles, the schools' sources) in the device's own Ming
+     serif, the same cut, rather than whatever sans the device would pick. */
+  --font-han: 'Noto Serif TC', 'Songti TC', 'Noto Serif CJK TC', 'Source Han Serif TC', 'PMingLiU', 'MingLiU';
+  --font-serif: 'Cormorant Garamond', var(--font-han), serif;
+  --font-sans: 'Manrope', var(--font-han), sans-serif;
+  --font-glyph: var(--font-han), serif;
   --text-1: 13px;  /* the smallest: notes, labels, metadata */
   --text-2: 15px;  /* controls and running text */
   --text-3: 18px;  /* names */
