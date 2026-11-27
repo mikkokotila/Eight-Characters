@@ -33,14 +33,12 @@ for (const profile of profiles) {
       const asked = chartsAskedFor(page);
       await visit(page);
       assert.equal(await text(page, '#account-btn'), 'Sign in');
-      // The website's own pages, which cover the app too, and where to write.
+      // The website's own pages, which cover the app too.
       const links = (selector) => page.locator(selector).evaluateAll((nodes) => nodes
         .filter((node) => node.checkVisibility()).map((node) => [node.textContent, node.getAttribute('href')]));
       const TERMS = ['Terms', 'https://eightchord.com/terms/'];
       const PRIVACY = ['Privacy Policy', 'https://eightchord.com/privacy/'];
-      assert.deepEqual(await links('.site-links a'), [
-        ['Method', 'https://eightchord.com/method/'], TERMS, PRIVACY, ['hello@eightchord.com', 'mailto:hello@eightchord.com'],
-      ]);
+      assert.deepEqual(await links('.site-links a'), [['Method', 'https://eightchord.com/method/'], TERMS, PRIVACY]);
       await page.locator('#location').fill(CHENGDU.city);
       await page.locator('.location-suggestion').waitFor();
       // Nothing failed, and nothing came from another site, before the dialog opened.

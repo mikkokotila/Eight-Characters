@@ -155,8 +155,8 @@ class TestApiIndexRoute(unittest.TestCase):
 
     def test_pages_link_the_websites_own_pages(self) -> None:
         # The website's Privacy Policy and Terms cover the app too (my.eightchord.com):
-        # the start page and Settings link them with the Method and the address to
-        # write to, and the account window links the two before a code is asked for.
+        # the start page and Settings link them with the Method, and the account window
+        # links the two before a code is asked for.
         response = self.client.get('/')
         self.assertEqual(response.status_code, 200)
         for page in ('method', 'terms', 'privacy'):
@@ -165,7 +165,18 @@ class TestApiIndexRoute(unittest.TestCase):
                 2 if page == 'method' else 3,
                 page,
             )
-        self.assertEqual(response.text.count('href="mailto:hello@eightchord.com"'), 2)
+
+    def test_no_email_address_is_written_into_the_page(self) -> None:
+        # Cloudflare's email obfuscation rewrites a page that writes an address and
+        # adds a script of its own; the release check then finds an asset the release
+        # does not have, and keeps the old release. 0.71.0 wrote hello@eightchord.com
+        # into its footers, and every deploy of it was rolled back.
+        for path, accept in (('/', '*/*'), ('/no-such-page', 'text/html')):
+            page = self.client.get(path, headers={'Accept': accept}).text
+            self.assertEqual(
+                re.findall(r'[\w.+-]+@[\w-]+(?:\.[\w-]+)+', page), [], path
+            )
+            self.assertNotIn('mailto:', page, path)
 
     def test_relationship_view_has_accessible_controls(self) -> None:
         response = self.client.get('/')
