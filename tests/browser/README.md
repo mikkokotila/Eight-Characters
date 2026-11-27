@@ -61,11 +61,13 @@ suite, and a change can break a suite outside the set until the next full run.
 
 `--full` runs every suite. It runs on main, not as a pull request's check: nightly at
 03:41 UTC, as poise's and isomora's full suites do, and by hand. CI runs no browser
-tests here, so the nightly run is a scheduled task on the machine that runs the
-suites: `--full` in both engines on a fresh copy of `origin/main`. A run that fails
-opens one issue, `fix: the full browser suite fails on main`, naming the failed tests
-and the commit; another failure adds a comment, never an edit, and a run that passes
-closes it. The failure is fixed in a pull request of its own. A pull request runs the
+tests here, so the nightly run is a scheduled task on the machine that runs the suites
+(it keeps that machine's clock, so summer time moves it by an hour): `--full` in
+Chromium, then WebKit, on a fresh copy of `origin/main` with a fresh install. A run
+that fails opens one issue, `fix: the full browser suite fails on main`, naming the
+commit and the failed tests. While it is open, each failed run adds a comment, never
+an edit, marking the tests that did not fail the run before. A run that passes closes
+it. The failure is fixed in a pull request of its own. A pull request runs the
 essential tests, which are every suite when it changes `essential.txt`.
 
 ### How a run is made fast
@@ -90,7 +92,22 @@ them, and the runner refuses to start with `EC_BASE_URL` or `EC_MAIL_DIRECTORY` 
 
 ### Timings
 
-TBD.
+Measured on 2026-11-27 on a 10-CPU Apple M1 Max, with eight workers, while other
+work kept the machine at load averages of 25 to 160 (10 keeps it busy):
+
+| Run, in Chromium unless named | Load average, start to end | Time |
+|---|---|---|
+| Every suite one file at a time, main 0.71.1 | 24 to 76 | 83 min 39 s |
+| Every suite one file at a time, main 0.75.0 | 57 to 33 | 88 min 45 s |
+| `--full`, the same 0.75.0 commit | 34 to 127 | 24 min 10 s |
+| `--full`, main 0.79.1 | 45 to 33 | 13 min 1 s |
+| `--full` in WebKit, main 0.79.1 | 33 to 126 | 14 min 59 s |
+| The essential tests' core journeys, main 0.79.1 | 60 to 45 | 3 min 36 s |
+
+The suites hold about 88 minutes of work, 11 a worker. A busy machine stretches each
+run, up to about twice its seconds, and fails timing tests whichever way they run. A
+pull request's essential run takes the core journeys' time plus that of any suites
+its change adds.
 
 ### Against a server of your own
 
