@@ -25,13 +25,18 @@ part also in full. Every pillar is computed by the engine; nothing here works on
 
 import re
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, time, timedelta, timezone
 from typing import Any, Final, Literal, NotRequired
 
 from typing_extensions import TypedDict
 
 from eight_characters.canon import load_canon
+from eight_characters.conventions import (
+    ALLOWED_ZI_CONVENTIONS,
+    ZI_CONVENTION_SPLIT_MIDNIGHT,
+    ConventionSettings,
+)
 from eight_characters.data import BRANCHES, PILLAR_LABELS, STEMS
 from eight_characters.engine import compute_engine_payload
 from eight_characters.life_stages import life_stage
@@ -83,6 +88,9 @@ class FirstBirth:
     day: date
     clock: time | None
     place: Place | None
+    # The Zi-hour convention: whether the day changes at true solar midnight (the
+    # engine's default) or at 23:00, as a chart's link may name it.
+    conventions: ConventionSettings = field(default_factory=ConventionSettings)
 
 
 class Stem(TypedDict):
@@ -148,10 +156,14 @@ class FirstChart(TypedDict):
 
 
 def parse_first_birth(
-    date_text: str, time_text: str | None, place: Place | None
+    date_text: str,
+    time_text: str | None,
+    place: Place | None,
+    zi_convention: str = ZI_CONVENTION_SPLIT_MIDNIGHT,
 ) -> FirstBirth:
     """The birth, checked: a date that exists within the engine's years, a time in
-    HH:MM or HH:MM:SS, a zone the engine knows, and a time only with a place."""
+    HH:MM or HH:MM:SS, a zone the engine knows, a time only with a place, and a Zi-hour
+    convention the engine has."""
     if _DATE.fullmatch(date_text) is None:
         raise FirstChartInputError('date must be in YYYY-MM-DD format.')
     try:
@@ -174,7 +186,16 @@ def parse_first_birth(
             load_timezone(place.timezone)
         except ValueError as exc:
             raise FirstChartInputError(str(exc)) from exc
-    return FirstBirth(day=day, clock=clock, place=place)
+    if zi_convention not in ALLOWED_ZI_CONVENTIONS:
+        raise FirstChartInputError(
+            f'zi_convention must be one of: {", ".join(ALLOWED_ZI_CONVENTIONS)}.'
+        )
+    return FirstBirth(
+        day=day,
+        clock=clock,
+        place=place,
+        conventions=ConventionSettings(zi_convention=zi_convention),
+    )
 
 
 def _pillar(name: PillarName, stem: str, branch: str) -> ChartPillar:
@@ -315,7 +336,10 @@ def build_first_chart(birth: FirstBirth) -> FirstChart:
         # A date alone: the year and month wherever the birth was.
         noon = datetime.combine(birth.day, NOON, tzinfo=UTC)
         payload = compute_engine_payload(
-            BirthInput(utc_timestamp=noon.strftime('%Y-%m-%dT%H:%M:%SZ'))
+            BirthInput(
+                utc_timestamp=noon.strftime('%Y-%m-%dT%H:%M:%SZ'),
+                conventions=birth.conventions,
+            )
         )
         start = datetime.combine(birth.day, time(0), tzinfo=EARLIEST_OFFSET)
         end = datetime.combine(
@@ -352,6 +376,7 @@ def build_first_chart(birth: FirstBirth) -> FirstChart:
                 # Noon is the chart's own choice: its first pass, if the clocks
                 # ever repeated it.
                 fold=place.fold if birth.clock is not None else 0,
+                conventions=birth.conventions,
             )
         )
     except NonexistentTimeError as exc:

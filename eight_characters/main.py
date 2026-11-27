@@ -361,6 +361,13 @@ class FirstChartPlace(BaseModel):
     fold: int | None = Field(default=None, ge=0, le=1)
 
 
+class FirstChartConventions(BaseModel):
+    # The one convention a chart's link names: when the day changes at night.
+    model_config = ConfigDict(extra='forbid', strict=True)
+
+    zi_convention: str
+
+
 class FirstChartRequest(BaseModel):
     # Asked without an account, so a misspelt or unknown field is refused, never
     # dropped without a word.
@@ -369,6 +376,7 @@ class FirstChartRequest(BaseModel):
     date: str
     time: str | None = None
     location: FirstChartPlace | None = None
+    conventions: FirstChartConventions | None = None
 
 
 class SchoolsChoice(BaseModel):
@@ -1300,6 +1308,11 @@ def first_chart(
                 latitude=place.latitude,
                 longitude=place.longitude,
                 fold=place.fold,
+            ),
+            *(
+                ()
+                if payload.conventions is None
+                else (payload.conventions.zi_convention,)
             ),
         )
     except FirstChartInputError as exc:

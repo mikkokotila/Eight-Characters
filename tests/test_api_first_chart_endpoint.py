@@ -292,6 +292,91 @@ class TestWhatABirthSettles(FirstChartTestCase):
                 self.chart(**body)
 
 
+class TestTheZiHourConvention(FirstChartTestCase):
+    """A chart's link may name the whole Zi hour (whole_zi_23): the day then changes at
+    23:00 true solar time, not at midnight, and the first chart reads it so too."""
+
+    CHENGDU: ClassVar[dict[str, Any]] = {
+        'timezone': 'Asia/Shanghai',
+        'latitude': 30.658,
+        'longitude': 104.066,
+    }
+    WHOLE: ClassVar[dict[str, str]] = {'zi_convention': 'whole_zi_23'}
+
+    def test_a_birth_in_the_zi_hour_takes_the_next_day_with_the_whole_zi_hour(
+        self,
+    ) -> None:
+        # 00:30 on Beijing's clock in Chengdu is 23:13 true solar time the evening
+        # before: still February 3rd's day by midnight, already February 4th's by 23:00.
+        split = self.chart(date='1988-02-04', time='00:30', location=self.CHENGDU)
+        named = self.chart(
+            date='1988-02-04',
+            time='00:30',
+            location=self.CHENGDU,
+            conventions={'zi_convention': 'split_midnight'},
+        )
+        whole = self.chart(
+            date='1988-02-04',
+            time='00:30',
+            location=self.CHENGDU,
+            conventions=self.WHOLE,
+        )
+        self.assertEqual(four(split), four(named))
+        self.assertEqual(four(split)[2], '戊子')
+        self.assertEqual(four(whole)[2], '己丑')
+        self.assertEqual(
+            [split['day_master']['stem'], whole['day_master']['stem']], ['戊', '己']
+        )
+        # The Zi hour's stem follows the day's stem, so the hour changes with the day;
+        # the year and the month do not hang on the convention.
+        self.assertEqual([four(split)[3], four(whole)[3]], ['壬子', '甲子'])
+        self.assertEqual(four(split)[:2], four(whole)[:2])
+
+    def test_without_a_time_the_day_changes_an_hour_earlier_with_the_whole_zi_hour(
+        self,
+    ) -> None:
+        split = self.chart(date='1988-02-04', location=self.CHENGDU)
+        whole = self.chart(
+            date='1988-02-04', location=self.CHENGDU, conventions=self.WHOLE
+        )
+        self.assertEqual(
+            [entry for entry in change(split) if entry[0] == 'day'],
+            [('day', '01:17:31+08:00', '戊子', '己丑')],
+        )
+        self.assertEqual(
+            [entry for entry in change(whole) if entry[0] == 'day'],
+            [('day', '00:17:31+08:00', '戊子', '己丑')],
+        )
+        # Lichun's year and month change does not move.
+        self.assertEqual(
+            [entry for entry in change(split) if entry[0] != 'day'],
+            [entry for entry in change(whole) if entry[0] != 'day'],
+        )
+
+    def test_a_convention_the_engine_does_not_have_is_refused(self) -> None:
+        for conventions, detail in (
+            (
+                {'zi_convention': 'midnight'},
+                'zi_convention must be one of: split_midnight, whole_zi_23.',
+            ),
+            ({'zi_convention': 'whole_zi_23', 'hour_basis': 'civil'}, None),
+            ({}, None),
+            ({'zi_convention': 23}, None),
+        ):
+            with self.subTest(conventions=conventions):
+                response = self.client.post(
+                    '/api/first_chart',
+                    json={
+                        'date': '1988-02-04',
+                        'location': self.CHENGDU,
+                        'conventions': conventions,
+                    },
+                )
+                self.assertEqual(response.status_code, 400, response.text)
+                if detail is not None:
+                    self.assertIn(detail, response.json()['detail'])
+
+
 class TestTheDayMastersReading(FirstChartTestCase):
     """Its parts, as the app's Day Master page reads them, each by the line it shows."""
 
