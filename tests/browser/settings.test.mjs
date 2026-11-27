@@ -460,8 +460,8 @@ for (const profile of profiles) {
       assert.match(await page.locator('#save-note-text').textContent(), /paired with Unnamed chart/);
       // A saved birth needs a gender: "Not given" is no choice here, and none is made.
       assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (needed)');
-      assert.equal(await page.locator('.gender-option:has(input[value=""])').isVisible(), false);
-      assert.equal(await page.locator('.gender-option input:checked').count(), 0);
+      assert.equal(await page.locator('#chart-form .gender-option:has(input[value=""])').isVisible(), false);
+      assert.equal(await page.locator('#chart-form .gender-option input:checked').count(), 0);
       await page.locator('#save-name').fill('New partner');
       await page.locator('#date').fill('1988-11-02');
       await page.locator('#time').fill('21:05');
@@ -471,7 +471,7 @@ for (const profile of profiles) {
       await page.locator('#create-chart-btn').click();
       await page.waitForFunction(() => document.getElementById('form-error').textContent.includes('gender'));
       assert.equal((await read(page)).charts.length, 1);
-      await page.locator('.gender-option input[value="male"]').check();
+      await page.locator('#chart-form .gender-option input[value="male"]').check();
       await page.locator('#create-chart-btn').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       assert.equal(await page.evaluate(() => location.hash), '#settings');
@@ -567,7 +567,7 @@ for (const profile of profiles) {
       await page.locator('#time').fill('07:45');
       await page.locator('#location').fill('Helsinki');
       await page.locator('#location-suggestions .location-suggestion').click();
-      await page.locator('.gender-option input[value="female"]').check();
+      await page.locator('#chart-form .gender-option input[value="female"]').check();
       await page.locator('#create-chart-btn').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       const now = await read(page);
@@ -746,8 +746,8 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#create-chart-btn').textContent(), 'Create chart');
       // A chart may go without a gender again, and does until one is chosen.
       assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (optional)');
-      assert.equal(await page.locator('.gender-option:has(input[value=""])').isVisible(), true);
-      assert.equal(await page.locator('.gender-option input[value=""]').isChecked(), true);
+      assert.equal(await page.locator('#chart-form .gender-option:has(input[value=""])').isVisible(), true);
+      assert.equal(await page.locator('#chart-form .gender-option input[value=""]').isChecked(), true);
     });
 
     check('Edit on a saved chart corrects it where it is kept, and the chart comes back on screen', async (page) => {
@@ -800,16 +800,55 @@ for (const profile of profiles) {
       await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Repeated');
     });
 
-    check('a chart without a gender is not saved, and says why', async (page) => {
+    check('a chart without a gender is given one where it is saved, and the chart on screen takes it; My own chart marks it as yours', async (page) => {
       await reset(page);
-      await openLink(page, chartLink({ gender: '' }).replace('&gender=', ''), { place: HELSINKI });
+      const genderless = chartLink({ gender: '' }).replace('&gender=', '');
+      await openLink(page, genderless, { place: HELSINKI });
       await openLibrary(page);
       await page.locator('#library-save').click();
-      await page.waitForFunction(() => document.querySelector('.toast').classList.contains('is-shown'));
-      assert.match(await page.locator('.toast').textContent(), /gender/);
-      await settled(page);
-      assert.equal(await page.locator('#save-chart-dialog').isHidden(), true);
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      // Asked here, with none chosen for the reader; nor is My own chart.
+      assert.equal(await page.locator('#save-chart-gender').isVisible(), true);
+      assert.deepEqual(await page.locator('#save-chart-gender input').evaluateAll((radios) => radios.map((radio) => [radio.value, radio.checked])),
+        [['female', false], ['male', false]]);
+      assert.equal(await page.locator('#save-chart-mine').isChecked(), false);
+      assert.equal(await page.locator('#save-chart-mine-note').isHidden(), true);
+      // Saved without one: nothing is saved, and the dialog says why.
+      await page.locator('#save-chart-save').click();
+      assert.equal(await page.locator('#save-chart-gender-status').textContent(), 'Choose female or male: a saved chart needs it.');
+      assert.equal(await page.locator('#save-chart-dialog').isVisible(), true);
       assert.deepEqual((await read(page)).charts, []);
+      // My own chart says what it does once chosen.
+      await page.locator('#save-chart-mine').check();
+      assert.equal(await page.locator('#save-chart-mine-note').textContent(), 'Each visit then opens its day.');
+      await page.locator('#save-chart-gender input[value="male"]').check();
+      assert.equal(await page.locator('#save-chart-gender-status').textContent(), '');
+      await page.locator('#save-chart-name').fill('Given');
+      await page.locator('#save-chart-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      const kept = await read(page);
+      assert.deepEqual([kept.charts.length, kept.charts[0].gender, kept.charts[0].name, kept.my_chart], [1, 'male', 'Given', kept.charts[0].id]);
+      assert.equal(await page.locator('.toast').textContent(), 'The chart is saved as yours: each visit opens its day.');
+      // The chart on screen takes the gender: its link names it, and it is the one saved.
+      await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('gender') === 'male');
+      await page.waitForFunction(() => document.querySelector('#library-btn .library-label').textContent === 'Given');
+      assert.equal(await page.locator('#luck-switch').isVisible(), true);
+      // The same birth given the same gender is that chart: said, in the dialog, and not
+      // asked of the API. The chart on screen was the saved one: the link's own is drawn
+      // once the chart takes clicks again and its button says it is unsaved.
+      await openLink(page, genderless, { place: HELSINKI });
+      await page.waitForFunction(() => !document.getElementById('chart-view').hasAttribute('aria-busy')
+        && document.querySelector('#library-btn .library-label').textContent === 'Unsaved chart');
+      await openLibrary(page);
+      await page.locator('#library-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      // Another chart is yours now: what My own chart would do says so.
+      await page.locator('#save-chart-mine').check();
+      assert.equal(await page.locator('#save-chart-mine-note').textContent(), 'Each visit then opens its day. Given is yours no longer, and stays saved.');
+      await page.locator('#save-chart-gender input[value="male"]').check();
+      await page.locator('#save-chart-save').click();
+      assert.equal(await page.locator('#save-chart-status').textContent(), 'This chart is saved already, as Given.');
+      assert.equal((await read(page)).charts.length, 1);
     });
 
     check('a name with quotes is changed from the name itself, quotes and all', async (page) => {
@@ -945,7 +984,7 @@ for (const profile of profiles) {
       await page.locator('#time').fill('07:45');
       await page.locator('#location').fill('Helsinki');
       await page.locator('#location-suggestions .location-suggestion').click();
-      await page.locator('.gender-option input[value="female"]').check();
+      await page.locator('#chart-form .gender-option input[value="female"]').check();
       await page.locator('#create-chart-btn').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       assert.deepEqual((await read(page)).charts.map((chart) => chart.name), ['Unlimited reader', 'Unlimited form']);
@@ -1040,7 +1079,7 @@ for (const profile of profiles) {
       await page.locator('#time').fill('21:05');
       await page.locator('#location').fill('Helsinki');
       await page.locator('#location-suggestions .location-suggestion').click();
-      await page.locator(`.gender-option input[value="${BIRTH.gender}"]`).check();
+      await page.locator(`#chart-form .gender-option input[value="${BIRTH.gender}"]`).check();
       await page.locator('#create-chart-btn').click();
       await page.waitForFunction(() => document.getElementById('form-error').textContent === 'This chart is saved already, as Kept.');
       assert.deepEqual(asked, []);
@@ -1077,7 +1116,7 @@ for (const profile of profiles) {
       await page.locator('#time').fill('10:00');
       await page.locator('#location').fill('Helsinki');
       await page.locator('#location-suggestions .location-suggestion').click();
-      await page.locator('.gender-option input[value="female"]').check();
+      await page.locator('#chart-form .gender-option input[value="female"]').check();
       await page.locator('#create-chart-btn').click();
       await page.locator('#settings-view').waitFor({ state: 'visible' });
       assert.equal(await page.locator('.toast').textContent(), 'The chart is saved as yours, and paired with Waiting.');

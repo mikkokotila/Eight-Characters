@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.76.0
+
+Keeping your own chart: the second of five changes from the 2026-11-27 review of the
+app's repeated use.
+
+### Changed
+- **Save asks for the gender.** A chart without a gender (as eightchord.com's links
+  give it) could not be saved: the library said so in a toast. The save window now asks
+  for it (Female or Male, none chosen for you), and the chart saved and the chart on
+  screen both take it: its link names it, and its luck pillars are drawn.
+
+### Added
+- **My own chart**, in the save window, saves the chart as yours, so each visit opens its
+  day; once chosen it says so, and which chart it takes the place of.
+- **Signing up from a first chart keeps it as yours.** The whole chart a visitor signed
+  up for was shown, and then forgotten: unsaved, without a gender, not marked. The save
+  window now opens over it with My own chart chosen and the gender asked for; an account
+  with a chart of its own is offered nothing.
+
+### Docs
+- Standard-Settings: the save window's gender and My own chart. Standard-First-Chart: the
+  whole chart offered as yours after signing up.
+
 ## 0.75.0
 
 Coming back: the first of five changes from the 2026-11-27 review of the app as it is

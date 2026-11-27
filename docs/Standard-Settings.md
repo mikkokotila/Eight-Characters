@@ -25,8 +25,14 @@ character in its element's colours, with its pinyin), Your chart marked in words
 each chart's partner named. Choosing one opens it; the chart on screen is marked.
 **Save the chart on screen** asks for a name (optional: one line, at most 80 characters)
 and keeps the chart as it is on screen: its date, time and place, its pass, its gender
-and its Zi-hour convention. A chart needs a gender to be saved, since the day reads its
-luck pillars; without one, the library says so. An account keeps at most 50 charts
+and its Zi-hour convention. A saved chart needs a gender, since the day reads its luck
+pillars: a chart without one is given it in the same window (Female or Male, none chosen
+for you; saved without one, the window says so and nothing is saved). The chart saved,
+and the chart on screen, take it: the chart's link names it, and the chart is drawn with
+its luck pillars. Given a gender, the birth may be a chart saved already: the window says
+which, and the API is not asked. **My own chart** saves it as yours, so each visit opens
+its day; once chosen it says so, and that a chart marked as yours before stays saved, no
+longer yours. An account keeps at most 50 charts
 (`chart_limit` in the settings): with as many saved, the library says so, in the page's
 language, and asks the API nothing. A second press of Save while the chart is being
 saved saves nothing more. Someone else's chart is their data:

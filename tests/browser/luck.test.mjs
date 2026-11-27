@@ -176,10 +176,10 @@ for (const profile of profiles) {
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       await page.locator('[data-lang="fi"]').click();
       assert.equal(await page.locator('.gender-group legend').textContent(), 'Sukupuoli (valinnainen)');
-      assert.deepEqual(await page.locator('.gender-option').allTextContents(), ['Ei annettu', 'Nainen', 'Mies']);
+      assert.deepEqual(await page.locator('#chart-form .gender-option').allTextContents(), ['Ei annettu', 'Nainen', 'Mies']);
       await page.locator('[data-lang="en"]').click();
       assert.equal(await page.locator('.gender-group legend').textContent(), 'Gender (optional)');
-      assert.deepEqual(await page.locator('.gender-option').allTextContents(), ['Not given', 'Female', 'Male']);
+      assert.deepEqual(await page.locator('#chart-form .gender-option').allTextContents(), ['Not given', 'Female', 'Male']);
       assert.equal(await page.locator('#gender-hint').textContent(), 'For the luck pillars and the day, whose direction depends on it.');
       assert.equal(await page.locator('input[name="gender"]:checked').getAttribute('value'), '');
       const payload = await openChart(page);
