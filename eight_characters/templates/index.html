@@ -76,11 +76,9 @@
       <div class="field-group">
         <label for="time" data-i18n="label_time">Kellonaika</label>
         <input type="time" id="time" name="time" aria-describedby="time-status" required>
-        <!-- Without the time, the chart is what the date and place settle (first.js). -->
-        <label class="time-unknown" id="time-unknown-choice">
-          <input type="checkbox" id="time-unknown" name="time_unknown">
-          <span data-i18n="time_unknown">Aika ei tiedossa</span>
-        </label>
+        <!-- Without the time, the chart is what the date and place settle (first.js): a
+             choice that stays pressed, as the page's other choices do. -->
+        <button type="button" id="time-unknown" class="time-unknown" aria-pressed="false" aria-controls="time" data-i18n="time_unknown">Aika ei tiedossa</button>
         <div id="time-status" class="field-status" aria-live="polite"></div>
       </div>
       <div class="field-group location-group">

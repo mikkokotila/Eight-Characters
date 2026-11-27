@@ -240,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
       : year < supportedYears[0] || year > supportedYears[1]
         ? t('date_out_of_range', { min: supportedYears[0], max: supportedYears[1] })
         : '');
-    flag(timeInput, timeStatus, timeInput.value || timeUnknown.checked ? '' : t('need_time'));
+    flag(timeInput, timeStatus, timeInput.value || isTimeUnknown() ? '' : t('need_time'));
     return firstInvalid;
   };
 
@@ -251,17 +251,17 @@ document.addEventListener('DOMContentLoaded', () => {
   // the date and place settle (first.js). A birth saved or compared needs its time, so
   // the choice is offered on the plain form alone.
   const timeUnknown = document.getElementById('time-unknown');
-  const timeUnknownChoice = document.getElementById('time-unknown-choice');
-  if (!timeUnknown || !timeUnknownChoice) throw new Error('The birth form is incomplete.');
+  if (!timeUnknown) throw new Error('The birth form is incomplete.');
+  const isTimeUnknown = () => timeUnknown.getAttribute('aria-pressed') === 'true';
   const setTimeUnknown = (unknown) => {
-    timeUnknown.checked = unknown;
+    timeUnknown.setAttribute('aria-pressed', String(unknown));
     timeInput.disabled = unknown;
     if (unknown) timeInput.value = '';
     setFieldError(timeInput, timeStatus, '');
   };
-  timeUnknown.addEventListener('change', () => setTimeUnknown(timeUnknown.checked));
+  timeUnknown.addEventListener('click', () => setTimeUnknown(!isTimeUnknown()));
   const offerTimeUnknown = (offered) => {
-    timeUnknownChoice.classList.toggle('hidden', !offered);
+    timeUnknown.classList.toggle('hidden', !offered);
     if (!offered) setTimeUnknown(false);
   };
 
@@ -731,8 +731,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // A form begun anew holds no chart's birth.
   form.addEventListener('reset', () => {
     formChart = null;
-    // The choice unticks with the reset; the field it set aside comes back.
-    timeInput.disabled = false;
+    // A form begun anew has its time field back.
+    setTimeUnknown(false);
   });
 
   form.addEventListener('submit', async (e) => {
@@ -810,21 +810,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Without the time, or without an account, the birth opens as the first chart, what
     // it settles (first.js), at the chart's own address.
-    if (timeUnknown.checked || (!embedded && !account.signedIn())) {
+    if (isTimeUnknown() || (!embedded && !account.signedIn())) {
       const params = linkParams(request, resolvedLocation);
-      if (timeUnknown.checked) {
+      if (isTimeUnknown()) {
         params.set('time', 'unknown');
         params.delete('zi');
         params.delete('fold');
       }
       history.pushState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
-      followAddress();
+      await followAddress();
+      // It opens at its top, wherever the form was scrolled to.
+      if (!document.getElementById('first-view').classList.contains('hidden')) scrollTo(0, 0);
       return;
     }
 
     setPending(true);
     try {
-      if (await showChart(request, resolvedLocation)) addressChart('pushState');
+      // A chart made from the form opens at its top, wherever the form was scrolled to:
+      // a phone's form runs past the screen.
+      if (await showChart(request, resolvedLocation)) {
+        addressChart('pushState');
+        scrollTo(0, 0);
+      }
     } catch (err) {
       console.error(err);
       setFormError(err.message || t('chart_create_error'));

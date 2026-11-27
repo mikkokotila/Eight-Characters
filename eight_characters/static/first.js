@@ -112,10 +112,13 @@
       try {
         const where = { timezone: link.place.timezone, latitude: link.place.latitude, longitude: link.place.longitude };
         if (timed && link.fold !== null) where.fold = link.fold;
+        // The link's Zi-hour convention decides when its day changes at night, as on the
+        // whole chart.
+        const conventions = link.zi === 'split_midnight' ? {} : { conventions: { zi_convention: link.zi } };
         const response = await fetch('/api/first_chart', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ date: link.date, ...(timed ? { time: link.time } : {}), location: where }),
+          body: JSON.stringify({ date: link.date, ...(timed ? { time: link.time } : {}), location: where, ...conventions }),
         });
         const payload = await response.json();
         if (mine !== asking) return;

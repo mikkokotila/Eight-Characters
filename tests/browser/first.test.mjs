@@ -38,7 +38,7 @@ const firstDrawn = (page) => page.locator('#first-view:not(.hidden):not([aria-bu
 const fields = (page) => page.evaluate(() => ({
   date: document.getElementById('date').value,
   time: document.getElementById('time').value,
-  unknown: document.getElementById('time-unknown').checked,
+  unknown: document.getElementById('time-unknown').getAttribute('aria-pressed') === 'true',
   timeOff: document.getElementById('time').disabled,
   location: document.getElementById('location').value,
 }));
@@ -52,13 +52,16 @@ for (const profile of profiles) {
       await visit(page, { lang: 'en' });
       await page.locator('#date').fill(BIRTH.date);
       await page.locator('#time').fill(BIRTH.time);
-      await page.locator('#time-unknown').check();
+      await page.locator('#time-unknown').click();
       assert.deepEqual(await fields(page), { date: BIRTH.date, time: '', unknown: true, timeOff: true, location: '' });
       await page.locator('#location').fill(CHENGDU.city);
       await page.locator('.location-suggestion').click();
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
       await page.locator('#create-chart-btn').click();
       await firstDrawn(page);
       await settled(page);
+      // It opens at its top, wherever the form was scrolled to.
+      assert.equal(await page.evaluate(() => scrollY), 0);
       const api = await firstChart(page);
       // Chengdu keeps Beijing's clock, an hour ahead of its sun: the day pillar changes
       // during the date, at true solar midnight.
@@ -96,8 +99,9 @@ for (const profile of profiles) {
       await page.locator('#input-view').waitFor({ state: 'visible' });
       assert.deepEqual(await fields(page), { date: BIRTH.date, time: '', unknown: true, timeOff: true, location: CHENGDU.display });
       assert.equal(await page.locator('#first-view').isVisible(), false);
-      await page.locator('#time-unknown').uncheck();
+      await page.locator('#time-unknown').click();
       assert.equal(await page.locator('#time').isDisabled(), false);
+      assert.equal(await page.locator('#time-unknown').getAttribute('aria-pressed'), 'false');
     });
 
     check('a visitor\'s link opens the birth\'s first chart, and its offer signs up for the whole chart', async (page) => {
@@ -134,6 +138,35 @@ for (const profile of profiles) {
       assert.deepEqual([asked[0].date, asked[0].time], [BIRTH.date, BIRTH.time]);
     }, { signedIn: false });
 
+    check('the first chart reads the Zi-hour convention its link names, as the whole chart does', async (page) => {
+      // 00:30 on Beijing's clock in Chengdu is 23:13 true solar time the evening before:
+      // with the whole Zi hour, already the next day.
+      const whole = new URLSearchParams(link(BIRTH.date, '00:30', 'en'));
+      whole.set('zi', 'whole_zi_23');
+      await visit(page, { lang: 'en', address: `#chart?${whole}` });
+      await firstDrawn(page);
+      const response = await page.request.post(new URL('/api/first_chart', process.env.EC_BASE_URL).href, {
+        data: { date: BIRTH.date, time: '00:30', location: LOCATION, conventions: { zi_convention: 'whole_zi_23' } },
+      });
+      assert.equal(response.status(), 200);
+      const api = await response.json();
+      assert.equal(named(api.pillars.day), '己丑 Ji Chou');
+      assert.deepEqual((await shown(page)).pillars, ORDER.map((name) => [name, named(api.pillars[name])]));
+    }, { signedIn: false });
+
+    check('a chart made from the form opens at its top, wherever the form was scrolled to', async (page) => {
+      await visit(page, { lang: 'en' });
+      await page.locator('#date').fill(BIRTH.date);
+      await page.locator('#time').fill(BIRTH.time);
+      await page.locator('#location').fill(CHENGDU.city);
+      await page.locator('.location-suggestion').click();
+      await page.evaluate(() => scrollTo(0, document.documentElement.scrollHeight));
+      await page.locator('#create-chart-btn').click();
+      await page.locator('#chart-view:not(.hidden) #pillars .card').first().waitFor();
+      await settled(page);
+      assert.equal(await page.evaluate(() => scrollY), 0);
+    });
+
     check('a link without the time opens no day, no comparison and no topic, and the form keeps its birth', async (page) => {
       const unknown = link(BIRTH.date, 'unknown', 'en');
       await visit(page, { lang: 'en' });
@@ -156,15 +189,15 @@ for (const profile of profiles) {
     check('a birth saved or compared takes its time: the choice is not offered there', async (page) => {
       await visit(page, { lang: 'en', address: `#compare?${new URLSearchParams({ a: link(BIRTH.date, BIRTH.time, 'en').toString() })}` });
       await page.locator('#compare-note').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#time-unknown-choice').isVisible(), false);
+      assert.equal(await page.locator('#time-unknown').isVisible(), false);
       await page.goto(new URL('/#save?as=mine', process.env.EC_BASE_URL).href);
       await page.locator('#save-note').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#time-unknown-choice').isVisible(), false);
+      assert.equal(await page.locator('#time-unknown').isVisible(), false);
       // The plain form offers it again.
       await page.locator('#save-cancel').click();
       await page.goto(new URL('/', process.env.EC_BASE_URL).href);
       await page.locator('#input-view').waitFor({ state: 'visible' });
-      assert.equal(await page.locator('#time-unknown-choice').isVisible(), true);
+      assert.equal(await page.locator('#time-unknown').isVisible(), true);
     });
   });
 }

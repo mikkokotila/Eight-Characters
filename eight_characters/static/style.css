@@ -415,30 +415,24 @@ body {
   letter-spacing: var(--tracking-1);
 }
 
-/* Time unknown: a choice under the time field, in the field's status's size, not a
-   field's label. */
-.field-group .time-unknown {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
+/* Time unknown: a choice under the time field that stays pressed, as the page's other
+   choices do, in the size of the field's status. */
+.time-unknown {
+  min-height: var(--control-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--line-1);
+  border-radius: var(--radius-pill);
+  background: var(--surface-1);
   font-family: var(--font-sans);
   font-size: var(--text-1);
-  font-weight: 400;
   letter-spacing: var(--tracking-1);
-  text-transform: none;
   color: var(--ink-2);
   cursor: pointer;
+  transition: background var(--flow-feedback) var(--flow-feedback-ease), color var(--flow-feedback) var(--flow-feedback-ease);
 }
-.field-group .time-unknown input {
-  width: auto;
-  height: auto;
-  margin: 0;
-  padding: 0;
-  border: none;
-  background: none;
-  box-shadow: none;
-  accent-color: var(--ink-1);
-}
+.time-unknown:hover { background: var(--surface-2); }
+.time-unknown[aria-pressed='true'] { background: var(--ink-1); border-color: var(--ink-1); color: var(--bg); }
+.time-unknown:focus-visible { outline: 2px solid var(--ink-2); outline-offset: 2px; }
 .field-group input:disabled { opacity: 0.5; }
 
 /* ── The first chart (first.js): what a birth settles without an account, or without
@@ -3011,7 +3005,7 @@ kbd {
 @media (prefers-reduced-motion: reduce) {
   .luck-chip, .gender-option span,
   .relationship-chip, .reading-toggle,
-  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle,
+  .segmented button, .bar-action, .topic-button, .chart-topics .context-toggle, .time-unknown,
   .relationship-arc-line, .relationship-arc-rise, .relationship-arc-foot, .toast { transition: none; }
 }
 
@@ -4427,7 +4421,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   .today-partner select,
   .settings-choose select,
   .settings-rename input,
-  .compare-saved select { min-height: var(--control-touch); }
+  .compare-saved select,
+  .time-unknown { min-height: var(--control-touch); }
   /* The start page's language switch stands level with the account's button. */
   .language-switch { min-height: var(--control-touch); }
 }

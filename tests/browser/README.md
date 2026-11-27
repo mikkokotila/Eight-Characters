@@ -159,7 +159,9 @@ against `POST /api/first_chart`, and:
 - that a link without the time opens no day, no comparison and no topic, keeping its
   birth in the form;
 - that the forms that save a birth or ask for a comparison's second chart do not offer
-  the choice.
+  the choice;
+- that the first chart reads the Zi-hour convention its link names, and that a chart
+  made from a scrolled form opens at its top.
 
 The Settings suite (`settings.test.mjs`) makes every change through the API, from the
 settings as read, and checks:

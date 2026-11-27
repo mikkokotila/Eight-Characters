@@ -7,8 +7,8 @@ as on the whole chart. eightchord.com shows the same first chart to its visitors
 
 ## Without the birth time
 
-The form's **Time unknown**, under the time field, sets the time field aside. Create
-chart then opens the first chart of the date and the place:
+The form's **Time unknown**, under the time field, a choice that stays pressed, sets the
+time field aside. Create chart then opens the first chart of the date and the place:
 - the day, month and year pillars, each a stem card over its branch card, in the
   chart's order, with their characters and pinyin;
 - the hour pillar left open: "Your birth time opens it";
@@ -32,7 +32,8 @@ then on: 甲寅 Jia Yin. The cards show 癸丑 Gui Chou.
 
 The day pillar changes at true solar midnight, so wherever the clock runs ahead of the
 sun or behind it, it changes during the date. The month changes at a solar term, and
-the year at Lichun.
+the year at Lichun. A link that names the whole Zi hour (`zi=whole_zi_23`) is read so,
+as the whole chart reads it: the day changes at 23:00 true solar time, an hour earlier.
 
 **The Day Master** is the day pillar's stem, named as the chart names it ("Day Master
 · Ren — Yang Water"), and the canon's core passage for it reads in full. When the day

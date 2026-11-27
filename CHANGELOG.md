@@ -6,8 +6,9 @@ The first chart: what a birth settles without its time, or without an account, f
 `POST /api/first_chart`.
 
 ### Added
-- **Time unknown.** A choice under the time field sets the field aside and opens what
-  the date and the place settle, at the chart's address with `time=unknown`:
+- **Time unknown.** A choice under the time field (a pill that stays pressed) sets the
+  field aside and opens what the date and the place settle, at the chart's address with
+  `time=unknown`:
   - the day, month and year pillars in the day's cards, and the hour left open;
   - each pillar that changes during the day, with both its sides, when (on the place's
     clock, with its UTC offset) and the one the cards show;
@@ -21,17 +22,27 @@ The first chart: what a birth settles without its time, or without an account, f
   whole chart in the account's language; closed, the dialog leaves the first chart as it
   was. No whole chart is asked for without an account.
 
+- **`POST /api/first_chart` takes the Zi-hour convention**,
+  `{"conventions": {"zi_convention": "whole_zi_23"}}`, so a link that names the whole Zi
+  hour shows the day the whole chart shows (in Chengdu on 4 February 1988 at 00:30,
+  己丑, not 戊子); without a time, the day's change comes an hour earlier. Any other
+  convention is refused.
+
 ### Changed
 - Going back to a chart's address after signing out shows its first chart, whose offer
   asks for the sign-in, where it asked for the sign-in at once.
+- A chart made from the form opens at its top. On a phone the form runs past the screen,
+  and the chart opened as far down as the form had been scrolled.
 
 ### Docs
 - The first chart (new), Links (`time=unknown`), Account, the browser tests' README.
 
 ### Tests
 - Browser: a new suite (`first.test.mjs`) checks every pillar, change and Day Master
-  against the API, the visitor's sign-up to the whole chart, and the links and forms
-  that need the time. The account suites go through the first chart's offer.
+  against the API, the link's Zi-hour convention, the visitor's sign-up to the whole
+  chart, the links and forms that need the time, and a chart from a scrolled form
+  opening at its top. The account suites go through the first chart's offer. Python:
+  the convention on the endpoint, with and without a time, and its refusals.
 - Version bumped to `0.74.0`; the regression fixture changes only in `engine.version`.
 
 ## 0.73.0
