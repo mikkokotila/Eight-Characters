@@ -164,7 +164,8 @@ for (const profile of profiles) {
       const line = page.locator('#print-relationships');
       assert.equal(await line.isVisible(), false, 'on screen the list names them');
       await openRelationships(page);
-      const names = await page.locator('.relationship-chip > span:nth-child(2)').allTextContents();
+      // Each chip's name: its one span without a class, beside its mark, icon and line.
+      const names = await page.locator('.relationship-chip > span:not([class])').allTextContents();
       assert.equal(names.length, payload.interactions.length);
       await page.emulateMedia({ media: 'print' });
       await settled(page);
