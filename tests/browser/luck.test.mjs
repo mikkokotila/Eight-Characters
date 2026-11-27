@@ -1220,10 +1220,12 @@ for (const profile of profiles) {
         ['luck-meets', 'Your Water on this ground · Ren 壬 on Chou 丑'],
         ['luck-stage', 'Your Water’s stage here · Decline 衰'],
       ]);
-      // Each line opens to the rest of its passage.
+      // Each line opens to the rest of its passage, which unfolds from no height at all:
+      // it is measured once it has.
       const stem = page.locator('#luck-detail .canon-line[data-canon-part="luck-stem"]');
       await stem.locator('.canon-line-toggle').click();
       assert.equal(await stem.locator('.canon-line-toggle').getAttribute('aria-expanded'), 'true');
+      await settled(page);
       assert.equal(await stem.locator('.canon-line-passage').isVisible(), true);
       // Its relationships carry the canon's sentence about their form; the page says what it reads.
       assert.deepEqual(await page.locator('#luck-detail .luck-relationship .canon-chip-line').allTextContents(),
