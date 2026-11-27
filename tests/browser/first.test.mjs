@@ -136,6 +136,56 @@ for (const profile of profiles) {
       assert.equal(await page.locator('#first-view').isVisible(), false);
       assert.equal(asked.length, 1);
       assert.deepEqual([asked[0].date, asked[0].time], [BIRTH.date, BIRTH.time]);
+      // The whole chart is offered to be kept as the new account's own, with the gender
+      // the link did not give asked for there, and none chosen for the reader.
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      assert.equal(await text(page, '#save-chart-chart'), 'February 4, 1988 · 16:30 · Chengdu');
+      assert.equal(await page.locator('#save-chart-mine').isChecked(), true);
+      assert.equal(await text(page, '#save-chart-mine-note'), 'Each visit then opens its day.');
+      assert.equal(await page.locator('#save-chart-gender').isVisible(), true);
+      assert.equal(await page.locator('#save-chart-gender input:checked').count(), 0);
+      await page.locator('#save-chart-gender input[value="female"]').check();
+      await page.locator('#save-chart-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      assert.equal(await text(page, '.toast'), 'The chart is saved as yours: each visit opens its day.');
+      const kept = await page.evaluate(async () => (await fetch('/api/account/settings')).json());
+      assert.deepEqual([kept.charts.length, kept.charts[0].date, kept.charts[0].time.slice(0, 5), kept.charts[0].gender, kept.my_chart],
+        [1, BIRTH.date, BIRTH.time, 'female', kept.charts[0].id]);
+      // The chart on screen takes the gender, and with it its luck pillars.
+      await page.waitForFunction(() => new URLSearchParams(location.hash.split('?')[1]).get('gender') === 'female');
+      await page.locator('#luck-switch').waitFor({ state: 'visible' });
+      // The next visit opens its day.
+      await page.goto(new URL('/', process.env.EC_BASE_URL).href);
+      await page.locator('#today-view').waitFor({ state: 'visible' });
+      assert.equal(await page.evaluate(() => new URLSearchParams(location.hash.split('?')[1]).get('date')), BIRTH.date);
+    }, { signedIn: false });
+
+    check('an account with a chart of its own, signed in from a first chart, is offered nothing to keep', async (page) => {
+      // An account whose own chart is another birth's.
+      const email = newAddress('first-own');
+      await visit(page, { lang: 'en', address: `#chart?${link('1975-08-14', '07:45', 'en')}&gender=female` });
+      await firstDrawn(page);
+      await page.locator('#first-account').click();
+      await dialogOpens(page);
+      await sendCode(page, email, 'en');
+      await enterCode(page, email);
+      await page.locator('#save-chart-dialog').waitFor({ state: 'visible' });
+      await page.locator('#save-chart-save').click();
+      await page.locator('#save-chart-dialog').waitFor({ state: 'hidden' });
+      // Signed out, and in again from another birth's first chart.
+      assert.equal(await page.evaluate(async () => (await fetch('/api/account/session', { method: 'DELETE' })).status), 204);
+      await page.goto(new URL(`/#chart?${link(BIRTH.date, BIRTH.time, 'en')}`, process.env.EC_BASE_URL).href);
+      await page.reload();
+      await firstDrawn(page);
+      await page.locator('#first-account').click();
+      await dialogOpens(page);
+      await page.locator('#account-mode').click();
+      await sendCode(page, email);
+      await enterCode(page, email);
+      await page.locator('#chart-view:not(.hidden) #pillars .card').first().waitFor();
+      await settled(page);
+      await page.waitForTimeout(500);
+      assert.equal(await page.locator('#save-chart-dialog').isVisible(), false);
     }, { signedIn: false });
 
     check('a visitor\'s link without the time opens the first chart of its date and place, and says the whole chart needs the time too', async (page) => {

@@ -59,8 +59,12 @@ chart, sees its first chart instead:
   luck pillars and days.", and **Create my free account**.
 
 The offer opens the account window, on making an account. Signed in, the address opens
-the whole chart, with what the link names (its display, its topic). Closed without
-signing in, the window leaves the first chart as it was.
+the whole chart, with what the link names (its display, its topic), and the save window
+([Settings](Standard-Settings.md#saved-charts-and-the-library)) offers to keep it as the
+account's own, with **My own chart** chosen and the gender asked for when the link gave
+none: kept, each visit opens its day. An account with a chart of its own, or for which
+the chart is saved already, is offered nothing. Cancel keeps nothing. Closed without
+signing in, the account window leaves the first chart as it was.
 
 A visitor's link without the time (`time=unknown`, as eightchord.com links a visitor who
 gave no birth time) opens the first chart of its date and place. Its offer says that the

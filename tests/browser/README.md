@@ -155,7 +155,10 @@ against `POST /api/first_chart`, and:
   Day Master with the other side's named when the day changes; its address, its reload,
   and Edit's form with the time still unknown;
 - that a visitor's link opens all four pillars and the offer, asks for no whole chart,
-  is left as it was when the dialog closes, and opens the whole chart once signed up;
+  is left as it was when the dialog closes, and opens the whole chart once signed up,
+  offered to be kept as the account's own (its gender asked, none chosen), after which
+  the chart takes the gender and the next visit opens its day; an account with a chart
+  of its own is offered nothing;
 - that a link without the time opens no day, no comparison and no topic, keeping its
   birth in the form;
 - that a first chart made again from the form (Edit, then Create chart) keeps its link's
@@ -169,7 +172,9 @@ The Settings suite (`settings.test.mjs`) makes every change through the API, fro
 settings as read, and checks:
 - the saved charts: saved from the library, named as text, renamed, corrected,
   removed after a confirmation that says what else ends, and a full library said
-  before anything is asked;
+  before anything is asked; a chart without a gender given one in the save window (not
+  saved without one), the chart on screen taking it, My own chart marking it, and the
+  same birth with the same gender said to be saved already;
 - your chart and the couples: marked and unmarked, a partner added as a new birth and
   paired at once, every partner of a chart named (past three as so many more), Pair's
   second list following its first, no pair left, a plan's cap said and kept out of

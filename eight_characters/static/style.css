@@ -2671,7 +2671,8 @@ kbd {
   margin-top: 6vh;
   max-height: 88dvh;
 }
-.account-step {
+.account-step,
+.dialog-form {
   display: grid;
   gap: var(--space-4);
   font-family: var(--font-sans);
@@ -2742,6 +2743,21 @@ kbd {
   line-height: var(--leading-3);
   color: var(--ink-2);
 }
+/* Saving a chart: the gender as wide as its choices; My own chart a line of text with
+   its box, as the account's languages are, and what it does said under it once chosen. */
+.save-chart-gender .gender-options { justify-self: start; }
+.save-chart-mine { display: grid; gap: var(--space-1); }
+.save-chart-mine label {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--control-touch);
+  font-size: var(--text-2);
+  color: var(--ink-1);
+  cursor: pointer;
+}
+.save-chart-mine input { width: 18px; height: 18px; }
 /* Turnstile's widget, 65px tall, holds its place while it loads. */
 .account-check { min-height: 65px; }
 .account-step .form-error {

@@ -636,15 +636,31 @@
   </div>
 </dialog>
 
-<!-- Saving the chart on screen: its name, and the consent it needs. -->
+<!-- Saving the chart on screen: its name; its gender, asked here when it has none (a
+     saved chart needs one, since the day reads its luck pillars); whether it is your own
+     chart; and the consent it needs. -->
 <dialog id="save-chart-dialog" class="chart-dialog partner-dialog" aria-labelledby="save-chart-title">
-  <form id="save-chart-form" method="dialog" novalidate>
+  <form id="save-chart-form" class="dialog-form" method="dialog" novalidate>
     <h2 id="save-chart-title" data-i18n="save_chart_title">Tallenna kartta</h2>
     <p id="save-chart-chart" class="account-lead"></p>
     <div class="account-field">
       <label for="save-chart-name" data-i18n="save_chart_name">Nimi (valinnainen)</label>
       <input type="text" id="save-chart-name" maxlength="80" autocomplete="off" spellcheck="false" aria-describedby="save-chart-status">
       <p id="save-chart-status" class="field-status" aria-live="polite"></p>
+    </div>
+    <fieldset id="save-chart-gender" class="account-field save-chart-gender hidden" aria-describedby="save-chart-gender-note save-chart-gender-status">
+      <legend data-i18n="save_gender">Sukupuoli (tarvitaan)</legend>
+      <div class="gender-options">
+        <label class="gender-option"><input type="radio" name="save-chart-gender" value="female"><span data-i18n="gender_female">Nainen</span></label>
+        <label class="gender-option"><input type="radio" name="save-chart-gender" value="male"><span data-i18n="gender_male">Mies</span></label>
+      </div>
+      <p id="save-chart-gender-note" class="account-note" data-i18n="save_chart_gender_note"></p>
+      <p id="save-chart-gender-status" class="field-status" aria-live="polite"></p>
+    </fieldset>
+    <div class="save-chart-mine">
+      <label><input type="checkbox" id="save-chart-mine" aria-describedby="save-chart-mine-note">
+        <span data-i18n="save_chart_mine">Oma karttani</span></label>
+      <p id="save-chart-mine-note" class="account-note hidden"></p>
     </div>
     <p class="account-note" data-i18n="save_chart_consent"></p>
     <div class="account-actions">

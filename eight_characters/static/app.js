@@ -2148,7 +2148,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dateInput.focus();
     },
     onAccount: () => {
-      account.signIn().then(() => {
+      account.signIn().then(async () => {
         // Signing in set the page to the account's language: the whole chart is asked
         // for in it, and its address says so.
         const params = new URLSearchParams(location.hash.slice(CHART_ROUTE.length));
@@ -2156,7 +2156,11 @@ document.addEventListener('DOMContentLoaded', () => {
           params.set('lang', currentLanguage);
           history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
         }
-        return followAddress();
+        await followAddress();
+        // The whole chart a visitor signed up for is offered to be kept as theirs, with
+        // the gender asked for when the link gave none: an account with a chart of its
+        // own is offered nothing.
+        await openSaveChart({ own: true });
       }, (err) => {
         if (account.signedIn() || account.isOpen()) throw err;
       });
@@ -2205,16 +2209,29 @@ document.addEventListener('DOMContentLoaded', () => {
   const screenBirth = () => (shown === null ? null : birthOfChart(shown));
 
   // Save the chart on screen: kept in the library (settings.js), with a name if one is
-  // given. The day needs the luck pillars, and so a gender.
+  // given, and as your own chart when so chosen. The day needs the luck pillars, and so
+  // a gender: a chart without one is given it here, and the chart on screen takes it.
   const saveChartDialog = document.getElementById('save-chart-dialog');
   const saveChartForm = document.getElementById('save-chart-form');
   const saveChartChart = document.getElementById('save-chart-chart');
   const saveChartName = document.getElementById('save-chart-name');
   const saveChartStatus = document.getElementById('save-chart-status');
   const saveChartCancel = document.getElementById('save-chart-cancel');
-  if (!saveChartDialog || !saveChartForm || !saveChartChart || !saveChartName || !saveChartStatus || !saveChartCancel) {
+  const saveChartGender = document.getElementById('save-chart-gender');
+  const saveChartGenderStatus = document.getElementById('save-chart-gender-status');
+  const saveChartMine = document.getElementById('save-chart-mine');
+  const saveChartMineNote = document.getElementById('save-chart-mine-note');
+  if (!saveChartDialog || !saveChartForm || !saveChartChart || !saveChartName || !saveChartStatus || !saveChartCancel
+    || !saveChartGender || !saveChartGenderStatus || !saveChartMine || !saveChartMineNote) {
     throw new Error('Saving a chart is incomplete.');
   }
+  const savedGender = () => saveChartGender.querySelector('input[name="save-chart-gender"]:checked')?.value ?? null;
+  saveChartGender.addEventListener('change', () => {
+    saveChartGenderStatus.textContent = '';
+  });
+  // What My own chart does is said once it is chosen.
+  const sayMine = () => saveChartMineNote.classList.toggle('hidden', !saveChartMine.checked);
+  saveChartMine.addEventListener('change', sayMine);
   // The chart the dialog saves, taken when it opened, and the basis of the settings it
   // read then: a save is made from them.
   let chartToSave = null;
@@ -2226,12 +2243,11 @@ document.addEventListener('DOMContentLoaded', () => {
   let chartSaving = null;
   // A name is one line of printable text, up to 80 characters, or none.
   const nameProblem = (name) => (name.length > 80 || /\p{Cc}/u.test(name) ? requiredTranslation('save_chart_name_error') : null);
-  const openSaveChart = async () => {
+  // `own`: offered as the visitor's own chart, once signed up from its first chart: then
+  // only to an account without a chart of its own, for a chart not saved yet, and with
+  // "My own chart" chosen; otherwise nothing is said.
+  const openSaveChart = async ({ own = false } = {}) => {
     if (shown === null || chartView.classList.contains('hidden') || saveChartDialog.open) return;
-    if (!shown.request.gender) {
-      showToast(requiredTranslation('save_chart_needs_gender'), true);
-      return;
-    }
     const chosen = shown;
     let current;
     try {
@@ -2244,13 +2260,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Only for the chart still on screen, and once.
     if (shown !== chosen || chartView.classList.contains('hidden') || saveChartDialog.open) return;
     const saved = window.EC_LIBRARY.savedOf(current, screenBirth());
+    if (own && (saved !== null || current.my_chart !== null)) return;
     if (saved !== null) {
       showToast(requiredTranslation('save_chart_saved_already', { name: settingsPage.chartName(saved) }), false);
       library.sayName();
       return;
     }
     if (current.chart_limit !== null && current.charts.length >= current.chart_limit) {
-      showToast(requiredTranslation('library_full', { limit: current.chart_limit }), true);
+      if (!own) showToast(requiredTranslation('library_full', { limit: current.chart_limit }), true);
       return;
     }
     chartToSave = chosen;
@@ -2258,6 +2275,17 @@ document.addEventListener('DOMContentLoaded', () => {
     saveChartChart.textContent = chosen.heading;
     saveChartName.value = '';
     saveChartStatus.textContent = '';
+    // A chart without a gender is given one here; none is chosen for the reader.
+    saveChartGender.classList.toggle('hidden', Boolean(chosen.request.gender));
+    saveChartGender.querySelectorAll('input').forEach((radio) => { radio.checked = false; });
+    saveChartGenderStatus.textContent = '';
+    // Your own chart: each visit then opens its day; another marked as yours gives way.
+    const mine = current.my_chart === null ? null : window.EC_LIBRARY.chartWith(current, current.my_chart);
+    saveChartMine.checked = own;
+    saveChartMineNote.textContent = mine === null
+      ? requiredTranslation('save_chart_mine_note')
+      : requiredTranslation('save_chart_mine_instead', { name: settingsPage.chartName(mine) });
+    sayMine();
     chartOpening = {};
     saveChartDialog.showModal();
     saveChartName.focus();
@@ -2279,25 +2307,51 @@ document.addEventListener('DOMContentLoaded', () => {
       saveChartName.focus();
       return;
     }
-    // The chart the dialog named when it opened, whatever is on screen now.
-    const birth = { ...birthOfChart(chartToSave), ...(name ? { name } : {}) };
+    // The chart the dialog named when it opened, whatever is on screen now, with the
+    // gender given here when it had none.
+    const saving = chartToSave;
+    const given = saving.request.gender ? null : savedGender();
+    if (!saving.request.gender && given === null) {
+      saveChartGenderStatus.textContent = requiredTranslation('save_chart_choose_gender');
+      saveChartGender.querySelector('input').focus();
+      return;
+    }
+    const birth = { ...birthOfChart(saving), ...(given === null ? {} : { gender: given }), ...(name ? { name } : {}) };
+    const mine = saveChartMine.checked;
+    // A birth is saved once, and a gender makes another chart: one saved already is
+    // said here, in the page's language, and the API is not asked.
+    const kept = settingsPage.current();
+    const already = kept === null ? null : window.EC_LIBRARY.savedOf(kept, birth);
+    if (already !== null) {
+      saveChartStatus.textContent = requiredTranslation('save_chart_saved_already', { name: settingsPage.chartName(already) });
+      return;
+    }
     let problem;
     chartSaving = opening;
     try {
-      problem = await settingsPage.saveChart(birth, {}, chartBasis);
+      problem = await settingsPage.saveChart(birth, { mine }, chartBasis);
     } catch (err) {
       console.error(err);
       problem = err.message;
     } finally {
       if (chartSaving === opening) chartSaving = null;
     }
+    const said = requiredTranslation(mine ? 'save_chart_saved_mine' : 'save_chart_saved');
     if (opening !== chartOpening) {
-      showToast(problem ?? requiredTranslation('save_chart_saved'), problem !== null);
+      showToast(problem ?? said, problem !== null);
       return;
     }
     if (problem === null) {
       saveChartDialog.close();
-      showToast(requiredTranslation('save_chart_saved'), false);
+      showToast(said, false);
+      // Given its gender here, the chart on screen is the one saved: its link takes the
+      // gender, as the day's question gives it, and the chart is drawn with its luck.
+      if (given !== null && shown === saving && !chartView.classList.contains('hidden') && location.hash.startsWith(CHART_ROUTE)) {
+        const params = new URLSearchParams(location.hash.slice(CHART_ROUTE.length));
+        params.set('gender', given);
+        history.replaceState(null, '', `${formAddress()}${CHART_ROUTE}${params}`);
+        followAddress();
+      }
     } else {
       // Refused, the settings may have been read again: the next save is made from them.
       saveChartStatus.textContent = problem;
