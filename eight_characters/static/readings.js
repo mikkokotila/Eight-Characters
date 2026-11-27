@@ -36,19 +36,23 @@
   // The canon reads no luck position: a luck pillar reads as its stem and its branch do.
   const LUCK_NOTE = 'The canon has no passages for the luck position. These are its passages for this stem and this branch, read from the Day Master’s seat.';
 
-  const create = ({ root, escape: esc, spot, roleName, go }) => {
-    const panel = root.querySelector('#chart-panel');
-    if (!panel || !spot || typeof roleName !== 'function' || typeof go !== 'function') {
-      throw new Error('Readings view is incomplete.');
+  // Lines outside the chart's panel point at nothing on the page.
+  const NO_SPOT = { attr: () => '' };
+  // Every passage on the page has an id of its own, whichever panel it is in.
+  let passages = 0;
+
+  // The lines a reading is read in, in one panel: each a key that names what it is, its
+  // passage's first sentence, and the rest of the passage beneath, opened in place. The
+  // chart's pages read the canon in them, and so does the day (today.js), each of its
+  // pillars as the decade page reads a luck pillar. `subject` says whose reading is
+  // incomplete when one is.
+  const reader = ({ panel, escape: esc, spot = NO_SPOT, subject }) => {
+    if (!panel || typeof esc !== 'function' || typeof spot?.attr !== 'function' || !subject) {
+      throw new Error('Reading lines are incomplete.');
     }
-    let reading = null;
-    // The luck pillars' readings, decade by decade (luck_reading), or null.
-    let luckReading = null;
-    let chart = {};
-    let serial = 0;
     // The kinds of reading that are open: they stay open on the next page that has them.
     const open = new Set();
-    const fail = (what) => { throw new Error(`The chart’s reading is incomplete: ${what}.`); };
+    const fail = (what) => { throw new Error(`${subject} reading is incomplete: ${what}.`); };
 
     // The canon's arrow is drawn, as the page's other arrows are: the page fonts have
     // none. The words beside it say what it means, so assistive technology skips it.
@@ -60,8 +64,6 @@
     // A sentence ends at its stop, or just after the closing quote that follows it.
     const sentences = (text) => text.split(/(?<=[.!?]["”]?)\s+/);
     const paragraphMarkup = (p) => `<p class="canon-text">${p.label === null ? '' : `<strong>${arrows(esc(p.label))}:</strong>${p.text ? ' ' : ''}`}${marks(p.text)}</p>`;
-    // A link names its page in the app's words; `quote`, the canon's words there, follows.
-    const link = (label, target, tokens = [], quote = null) => `<button type="button" class="canon-link" data-canon-go="${esc(target)}"${spot.attr(tokens)}>${esc(label)}${quote === null ? '' : `<span class="canon-link-quote">${marks(quote)}</span>`}</button>`;
 
     // A line: a key that names what it is, the passage's first sentence, and the rest of
     // the passage beneath, open while its kind is open. A single labelled paragraph gives
@@ -75,8 +77,8 @@
       const [lead, ...rest] = sentences(first.text);
       if (head === null && !lead) fail(`${part}: its first sentence`);
       const remainder = [...(rest.length ? [{ label: null, text: rest.join(' ') }] : []), ...others];
-      serial += 1;
-      const id = `canon-passage-${serial}`;
+      passages += 1;
+      const id = `canon-passage-${passages}`;
       const isOpen = open.has(part);
       return `
         <div class="canon-line" data-canon-part="${esc(part)}"${spot.attr(tokens)}>
@@ -92,6 +94,85 @@
         </div>`;
     };
     const lines = (markup) => (markup ? `<div class="canon-lines">${markup}</div>` : '');
+
+    // A relationship, read as its entry reads: what decides it in this chart (its month,
+    // `monthPinyin`), then its pairing and its other parts where the canon gives them.
+    // `prefix` keeps apart the kinds of reading of more than one relationship on a page.
+    const relationship = (id, r, monthPinyin, prefix = '') => {
+      if (r.condition && !monthPinyin) fail(`the month of ${id}`);
+      const condition = r.condition
+        ? `<p class="canon-condition">In this chart: born in the ${esc(monthPinyin)} month, in ${esc(r.condition.season)}. The entry reads <q>${marks(r.condition.sentence)}</q></p>`
+        : '';
+      // An entry's title is its characters, then its name: '子午冲 — Zi-Wu Clash (…)'.
+      const parts = r.entry.title.split(' — ');
+      if (parts.length !== 2) fail(`the title of ${id}`);
+      const [title, subtitle] = parts;
+      return lines([
+        r.pairing ? line({ part: `${prefix}pairing`, key: r.pairing.label, paragraphs: [{ label: null, text: r.pairing.text }], tokens: [`arc:${id}`] }) : '',
+        r.with_day_master ? line({ part: `${prefix}with-day-master`, paragraphs: [r.with_day_master], tokens: ['stem:day'] }) : '',
+        r.neither_day_master ? line({ part: `${prefix}neither-day-master`, paragraphs: [r.neither_day_master], tokens: [`arc:${id}`] }) : '',
+        line({ part: `${prefix}entry`, key: `${title} · ${subtitle}`, paragraphs: r.entry.paragraphs, tokens: [`arc:${id}`], before: condition }),
+        r.dynamic ? line({ part: `${prefix}dynamic`, paragraphs: [r.dynamic], tokens: [`arc:${id}`] }) : '',
+        r.mechanics.length ? line({ part: `${prefix}mechanics`, key: 'When a combination transforms', paragraphs: r.mechanics, tokens: [`arc:${id}`] }) : '',
+      ].join(''));
+    };
+    // What each family of the relationships `found` is, in the canon's sections' order.
+    const aboutFamilies = (found, prefix = '') => {
+      found.forEach((r) => { if (!Object.hasOwn(FAMILY_OF, r.kind)) fail(`the kind ${r.kind}`); });
+      return lines(ABOUT_FAMILY.filter(([family]) => found.some((r) => FAMILY_OF[r.kind] === family))
+        .map(([family, part, key]) => line({
+          part: `${prefix}${part}`, key, paragraphs: found.find((r) => FAMILY_OF[r.kind] === family).introduction,
+        })).join(''));
+    };
+    // A luck pillar's reading, or a pillar of the day's: its stem by its role, its branch,
+    // the Day Master on it and the Day Master's stage there, from the Day Master's seat.
+    // `dayMaster` is the chart's (char, pinyin, element), `branch` the pillar's (char,
+    // pinyin), and `role` names a stem's role in the app's words.
+    const decade = (d, { dayMaster: dm, branch, role }, prefix = '') => {
+      const el = ELEMENT[dm.element];
+      if (!el) fail('the Day Master’s element');
+      if (!ANIMAL[branch.char]) fail(`the branch ${branch.char}`);
+      return lines([
+        line({ part: `${prefix}luck-stem`, key: `Its stem · ${role(d.stem.ten_god)}`, paragraphs: d.stem.core, tokens: ['stem:luck'] }),
+        line({ part: `${prefix}luck-ground-about`, key: `About the ${ANIMAL[branch.char]}`, paragraphs: d.branch.about, tokens: ['branch:luck'] }),
+        line({ part: `${prefix}luck-meets`, key: `Your ${el} on this ground · ${dm.pinyin} ${dm.char} on ${branch.pinyin} ${branch.char}`,
+          paragraphs: d.branch.meets, tokens: ['branch:luck'] }),
+        line({ part: `${prefix}luck-stage`, key: `Your ${el}’s stage here · ${d.branch.stage.name} ${d.branch.stage.chinese}`,
+          paragraphs: d.branch.stage.paragraphs, tokens: ['branch:luck'] }),
+      ].join(''));
+    };
+
+    // ── Opening ──
+    const toggle = (button, force) => {
+      const next = force ?? button.getAttribute('aria-expanded') !== 'true';
+      button.setAttribute('aria-expanded', String(next));
+      const passage = panel.querySelector(`#${button.getAttribute('aria-controls')}`);
+      if (!passage) fail('a passage');
+      window.EC_MOTION.disclose(passage, next, true, () => { passage.hidden = !next; });
+      const part = button.closest('.canon-line').dataset.canonPart;
+      if (next) open.add(part); else open.delete(part);
+    };
+    panel.addEventListener('click', (event) => {
+      const button = event.target.closest('.canon-line-toggle');
+      if (button) toggle(button);
+    });
+
+    return { fail, marks, sentences, line, lines, relationship, aboutFamilies, decade, toggle };
+  };
+
+  const create = ({ root, escape: esc, spot, roleName, go }) => {
+    const panel = root.querySelector('#chart-panel');
+    if (!panel || !spot || typeof roleName !== 'function' || typeof go !== 'function') {
+      throw new Error('Readings view is incomplete.');
+    }
+    let reading = null;
+    // The luck pillars' readings, decade by decade (luck_reading), or null.
+    let luckReading = null;
+    let chart = {};
+    const canon = reader({ panel, escape: esc, spot, subject: 'The chart’s' });
+    const { fail, marks, sentences, line, lines } = canon;
+    // A link names its page in the app's words; `quote`, the canon's words there, follows.
+    const link = (label, target, tokens = [], quote = null) => `<button type="button" class="canon-link" data-canon-go="${esc(target)}"${spot.attr(tokens)}>${esc(label)}${quote === null ? '' : `<span class="canon-link-quote">${marks(quote)}</span>`}</button>`;
     // A relationship's name as the list names it (relationships.js).
     let relationshipLabel = null;
     const role = (name) => roleName(name);
@@ -139,23 +220,7 @@
       if (!r) fail(`relationship ${id}`);
       return relationshipMarkup(id, r);
     };
-    const relationshipMarkup = (id, r) => {
-      const condition = r.condition
-        ? `<p class="canon-condition">In this chart: born in the ${esc(chart.month.branch.pinyin)} month, in ${esc(r.condition.season)}. The entry reads <q>${marks(r.condition.sentence)}</q></p>`
-        : '';
-      // An entry's title is its characters, then its name: '子午冲 — Zi-Wu Clash (…)'.
-      const parts = r.entry.title.split(' — ');
-      if (parts.length !== 2) fail(`the title of ${id}`);
-      const [title, subtitle] = parts;
-      return lines([
-        r.pairing ? line({ part: 'pairing', key: r.pairing.label, paragraphs: [{ label: null, text: r.pairing.text }], tokens: [`arc:${id}`] }) : '',
-        r.with_day_master ? line({ part: 'with-day-master', paragraphs: [r.with_day_master], tokens: ['stem:day'] }) : '',
-        r.neither_day_master ? line({ part: 'neither-day-master', paragraphs: [r.neither_day_master], tokens: [`arc:${id}`] }) : '',
-        line({ part: 'entry', key: `${title} · ${subtitle}`, paragraphs: r.entry.paragraphs, tokens: [`arc:${id}`], before: condition }),
-        r.dynamic ? line({ part: 'dynamic', paragraphs: [r.dynamic], tokens: [`arc:${id}`] }) : '',
-        r.mechanics.length ? line({ part: 'mechanics', key: 'When a combination transforms', paragraphs: r.mechanics, tokens: [`arc:${id}`] }) : '',
-      ].join(''));
-    };
+    const relationshipMarkup = (id, r) => canon.relationship(id, r, chart.month.branch.pinyin);
     // The meaning under a relationship's name in the list: the canon's sentence about its
     // own form, which the reading chooses (a pairing's first sentence, a half's own pair).
     const chipLine = (id) => {
@@ -166,15 +231,7 @@
       return `<span class="canon-chip-line">${marks(r.line)}</span>`;
     };
     // What each family of relationship in the list is.
-    const relationshipsAbout = () => {
-      if (!reading) return '';
-      const found = Object.values(reading.relationships);
-      found.forEach((r) => { if (!Object.hasOwn(FAMILY_OF, r.kind)) fail(`the kind ${r.kind}`); });
-      return lines(ABOUT_FAMILY.filter(([family]) => found.some((r) => FAMILY_OF[r.kind] === family))
-        .map(([family, part, key]) => line({
-          part, key, paragraphs: found.find((r) => FAMILY_OF[r.kind] === family).introduction,
-        })).join(''));
-    };
+    const relationshipsAbout = () => (reading ? canon.aboutFamilies(Object.values(reading.relationships)) : '');
 
     const rolesAbout = () => (reading
       ? lines(line({ part: 'about-roles', key: 'About the roles', paragraphs: reading.roles_introduction })) : '');
@@ -313,20 +370,8 @@
       if (!decade) fail(`luck pillar ${sequence}`);
       return decade;
     };
-    const luckPage = (sequence, branch) => {
-      if (!luckReading) return '';
-      const d = luckDecade(sequence);
-      const el = element();
-      const dm = chart.day.stem;
-      return lines([
-        line({ part: 'luck-stem', key: `Its stem · ${role(d.stem.ten_god)}`, paragraphs: d.stem.core, tokens: ['stem:luck'] }),
-        line({ part: 'luck-ground-about', key: `About the ${ANIMAL[branch.char]}`, paragraphs: d.branch.about, tokens: ['branch:luck'] }),
-        line({ part: 'luck-meets', key: `Your ${el} on this ground · ${dm.pinyin} ${dm.char} on ${branch.pinyin} ${branch.char}`,
-          paragraphs: d.branch.meets, tokens: ['branch:luck'] }),
-        line({ part: 'luck-stage', key: `Your ${el}’s stage here · ${d.branch.stage.name} ${d.branch.stage.chinese}`,
-          paragraphs: d.branch.stage.paragraphs, tokens: ['branch:luck'] }),
-      ].join(''));
-    };
+    const luckPage = (sequence, branch) => (luckReading
+      ? canon.decade(luckDecade(sequence), { dayMaster: chart.day.stem, branch, role }) : '');
     // What the canon waits for that this luck pillar brings: what waits in the natal chart,
     // and the canon's sentence. `labelOf` names a relationship, natal or the luck pillar's.
     const luckSettles = (sequence, labelOf) => {
@@ -354,22 +399,13 @@
     };
     const luckRelationship = (sequence, id) => (luckReading ? relationshipMarkup(id, luckRelationshipOf(sequence, id)) : '');
 
-    // ── Opening, following, arriving ──
-    const toggle = (button, force) => {
-      const next = force ?? button.getAttribute('aria-expanded') !== 'true';
-      button.setAttribute('aria-expanded', String(next));
-      const passage = root.querySelector(`#${button.getAttribute('aria-controls')}`);
-      if (!passage) fail('a passage');
-      window.EC_MOTION.disclose(passage, next, true, () => { passage.hidden = !next; });
-      const part = button.closest('.canon-line').dataset.canonPart;
-      if (next) open.add(part); else open.delete(part);
-    };
+    // ── Following, arriving (a line opens in its reader) ──
     let arrivalTimer = 0;
     // Brings a page's line into view and marks it a moment; `openIt` opens it too.
     const arrive = (section, part, openIt = false) => {
       const target = section.querySelector(`.canon-line[data-canon-part="${part}"]`);
       if (!target) return null;
-      if (openIt) toggle(target.querySelector('.canon-line-toggle'), true);
+      if (openIt) canon.toggle(target.querySelector('.canon-line-toggle'), true);
       window.EC_MOTION.scroll(panel, panel.scrollLeft, () => Math.max(0,
         target.getBoundingClientRect().top - panel.getBoundingClientRect().top + panel.scrollTop - panel.clientHeight / 8), {
         pending: () => window.EC_MOTION.value(panel, 'panel-size') !== null
@@ -382,11 +418,8 @@
       return target;
     };
     panel.addEventListener('click', (event) => {
-      const button = event.target.closest('.canon-line-toggle');
-      if (button) {
-        toggle(button);
-        return;
-      }
+      // A line's own toggle opens it (reader); its links go to their pages.
+      if (event.target.closest('.canon-line-toggle')) return;
       const target = event.target.closest('[data-canon-go]');
       if (!target) return;
       const [path, part] = target.dataset.canonGo.split('#');
@@ -458,5 +491,5 @@
       arrive,
     };
   };
-  window.EC_READINGS = { create };
+  window.EC_READINGS = { create, reader };
 })();

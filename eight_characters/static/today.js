@@ -78,6 +78,8 @@
     const hours = need('#today-hours');
     const panel = need('#today-panel');
     const detail = need('#today-detail');
+    // The day's readings, in the lines the chart reads the canon in.
+    const canon = window.EC_READINGS.reader({ panel, escape: esc, subject: 'The day’s' });
     const status = need('#today-status');
     const placeSection = need('#today-place');
     const placeForm = need('#today-place-form');
@@ -938,22 +940,25 @@
           <td>${esc(score(part.value))}</td>
         </tr>`).join('')}</tbody>
       </table>`;
-    // The canon's readings for a pillar of the day, as the decade page reads a luck
-    // pillar (English only).
-    const passage = (key, paragraphs) => (paragraphs?.length ? `<details class="today-reading">
-        <summary><span class="canon-line-key">${esc(key)}</span></summary>
-        ${paragraphs.map((p) => `<p class="canon-text">${p.label === null ? '' : `<strong>${esc(p.label)}:</strong> `}${esc(p.text)}</p>`).join('')}
-      </details>` : '');
+    // The canon's readings for a pillar of the day, as the decade page reads a luck pillar
+    // and in the same lines (readings.js, English only): its stem by its role, its
+    // branch, the Day Master on it and its stage there, then each relationship it forms
+    // as its entry reads, and what each kind of them is. Each pillar's lines open apart
+    // from the others'.
     const readingOf = (name, layer) => {
       const reading = answer.readings?.[name];
       if (!reading) return '';
-      const stage = reading.branch.stage;
+      const dm = answer.natal.day.stem;
+      const { branch } = layer.pillar;
+      const found = Object.entries(reading.relationships);
       return `<div class="today-readings">
-        ${passage(`Its stem · ${reading.stem.name}`, reading.stem.core)}
-        ${passage(`About the ${layer.pillar.branch.sign}`, reading.branch.about)}
-        ${passage('On this ground', reading.branch.meets)}
-        ${passage(`The stage here · ${stage.name} ${stage.chinese}`, stage.paragraphs)}
-        ${Object.values(reading.relationships).map((r) => passage(`${r.entry.title}${r.line ? ` · ${r.line}` : ''}`, [...(r.introduction ?? []), ...r.entry.paragraphs])).join('')}
+        ${canon.decade(reading, {
+          dayMaster: { char: dm.chinese, pinyin: dm.pinyin, element: dm.element },
+          branch: { char: branch.chinese, pinyin: branch.pinyin },
+          role: (god) => t('ten_god_' + god),
+        }, `${name}:`)}
+        ${found.map(([id, r]) => canon.relationship(id, r, answer.natal.month.branch.pinyin, `${name}:${id}:`)).join('')}
+        ${canon.aboutFamilies(found.map(([, r]) => r), `${name}:`)}
         ${reading.settles.map((s) => `<p class="canon-condition">${esc(s.sentence)}</p>`).join('')}
       </div>`;
     };

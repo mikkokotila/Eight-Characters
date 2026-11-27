@@ -3880,10 +3880,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   font-size: var(--text-2);
   color: var(--ink-1);
 }
+/* A pillar's readings: the chart's lines (readings.js), one block after another. */
 .today-readings { display: flex; flex-direction: column; }
-.today-reading { padding: var(--space-2) 0; border-bottom: 1px solid var(--line-1); }
-.today-reading summary { cursor: pointer; color: var(--ink-1); }
-.today-reading .canon-text { margin-top: var(--space-2); }
 .today-gods { list-style: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0; }
 @media (max-width: 640px) {
   .today-pillars { grid-template-columns: repeat(2, minmax(0, 1fr)); }
