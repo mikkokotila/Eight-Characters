@@ -3485,6 +3485,8 @@ body:has(> .compare-container:not(.hidden)) { padding: var(--space-4); }
   line-height: var(--leading-4);
   color: var(--ink-2);
 }
+/* The gender question's note runs as wide as its lead: no field below it to match. */
+.today-gender .today-place-note { max-width: 34em; }
 .today-view[aria-busy='true'] button { cursor: progress; }
 .today-view .bar-action[aria-disabled='true'] { opacity: 0.5; cursor: default; }
 /* The partner in view, with the chart in several couples: a pill like the switches
