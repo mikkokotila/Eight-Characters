@@ -15,6 +15,8 @@
   const NATAL = ['year', 'month', 'day', 'hour'];
   // The five gods, from the useful to the unfavourable (docs/Today.md).
   const GODS = ['useful', 'favourable', 'idle', 'enemy', 'unfavourable'];
+  // The three settings the day follows a school in, in Settings' order.
+  const SCHOOL_SETTINGS = ['favourable', 'season', 'transits'];
   // The pull's scale, the same for every layer and day: the rules' largest pull is 3.28
   // (test_schools.py holds every pull inside it).
   const SCALE = 3.5;
@@ -89,6 +91,8 @@
     // the answer to the latest is drawn.
     let state = null;
     let shownSettings = null;
+    // The schools' names, as Settings gives them (GET /api/schools).
+    let catalog = null;
     let answer = null;
     let asked = 0;
     // The run drawn last, the strip: Home and End go to its ends. None while no day is
@@ -169,6 +173,16 @@
     const characters = (stem, branch) => `<span class="today-chars" lang="zh-Hant">${esc(stem.chinese + branch.chinese)}</span>`
       + `<span class="today-pinyin">${esc(`${stem.pinyin} ${branch.pinyin}`)}</span>`;
     const layerName = (layer) => t('today_layer_' + layer);
+    // A school by the name Settings gives it, in the day's language: never by its id.
+    const schoolName = (setting, id) => {
+      const preset = catalog?.settings.find((s) => s.id === setting)?.presets.find((p) => p.id === id);
+      if (!preset) throw new Error(t('today_answer_error'));
+      return preset.name[lang()];
+    };
+    // "Schools: Support and restrain, Earth's 18 days, By phase": those the day followed.
+    const schoolsUsed = () => t('today_schools_used', {
+      schools: SCHOOL_SETTINGS.map((setting) => schoolName(setting, answer.schools[setting])).join(', '),
+    });
     // A natal pillar by its name; a pillar of the day as this day's, month's or year's.
     const placeName = (pillar) => (FIFTH[pillar] ? t('today_member_' + FIFTH[pillar]) : t('pillar_' + pillar));
     const relationshipName = (kind) => t('relationship_' + kind);
@@ -962,8 +976,8 @@
       if (topic === 'day') {
         const season = answer.season;
         return `<h3 id="today-detail-title" class="panel-heading">${esc(t('today_topic_day'))}</h3>
-          <p class="settings-note">${esc(t('today_season', { element: t('element_' + season.ruler), school: season.school }))}</p>
-          <p class="settings-note">${esc(t('today_schools_used', { schools: Object.values(answer.schools).join(', ') }))}</p>
+          <p class="settings-note">${esc(t('today_season', { element: t('element_' + season.ruler), school: schoolName('season', season.school) }))}</p>
+          <p class="settings-note">${esc(schoolsUsed())}</p>
           ${LAYERS.map(pillarSection).join('')}
           ${lang() === 'fi' ? `<p class="settings-note">${esc(t('today_readings_english'))}</p>` : ''}`;
       }
@@ -1213,9 +1227,12 @@
         drawBar();
       });
       try {
-        const kept = await settings.load(() => mine === asked);
+        // The settings, and the schools by the names Settings gives them, which the day's
+        // page and its text name.
+        const [kept, named] = await Promise.all([settings.load(() => mine === asked), settings.catalog()]);
         if (mine !== asked) return;
         shownSettings = kept;
+        catalog = named;
         keepingFocus(drawBar);
         if (!state.chart.gender) {
           instead(t('today_needs_gender'), [['edit', t('edit_chart')]]);
@@ -1521,7 +1538,7 @@
       const other = state.who === 'partner' ? t('today_self') : (partner === null ? null : partnerName(partner));
       const lines = [
         `${longDate(state.day)} · ${chartLine.textContent}`,
-        t('today_schools_used', { schools: Object.values(answer.schools).join(', ') }),
+        schoolsUsed(),
         t('today_pull_line', { pull: pull(answer.layers.day.pull) }),
         GODS.map((god) => godLine(god, answer.favourable.gods[god])).join(' · '),
         ...LAYERS.map((name) => {
@@ -1534,7 +1551,7 @@
           `${other}: ${pull(answer.marriage.partner.pull)} · ${t(answer.marriage.pull_apart ? 'today_pull_apart' : 'today_pull_not_apart')}`,
         ]),
         `${t('today_run_label')}:`,
-        ...answer.run.map((day) => `  ${shortDate(day.date)} ${day.pillar.stem.chinese}${day.pillar.branch.chinese} · ${pull(day)}`),
+        ...answer.run.map((day) => `  ${shortDate(day.date)} ${day.pillar.stem.chinese}${day.pillar.branch.chinese} ${day.pillar.stem.pinyin} ${day.pillar.branch.pinyin} · ${pull(day)}`),
         `${t('today_hours')}:`,
         ...answer.hours.map((hour) => `  ${hour.branch} ${hour.pinyin} ${hour.spans.map((s) => `${clock(s.start)}–${clock(s.end)}`).join(', ')}${hour.call === null ? '' : ` · ${t('today_call_' + hour.call)}`}`),
       ];

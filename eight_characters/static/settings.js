@@ -725,6 +725,9 @@
       show,
       hide,
       load,
+      // The schools as Settings names them (GET /api/schools), for Today to name the ones
+      // it follows.
+      catalog: loadCatalog,
       current: () => settings,
       basis: () => basis,
       saveChart,
